@@ -11,9 +11,7 @@ LDFLAGS += -lm
 
 SRC := $(filter-out src/main.c, $(wildcard src/*.c))
 OBJ := $(SRC:src/%.c=obj/%.o) obj/stb_image.o obj/stb_image_resize.o
-HEADERS := $(wildcard src/*.h src/objects/*.h)
-TESTS_SRC := $(wildcard tests/*.c tests/objects/*.c)
-TESTS_HEADERS := $(filter-out tests/runcalls.h, $(wildcard tests/*.h)) tests/runcalls.h
+HEADERS := $(wildcard src/*.h)
 
 all: game
 

@@ -57,6 +57,51 @@ struct Plane sphere_visplane(struct Sphere sph)
 	};
 }
 
+#define IS_TRANSPARENT(alpha) ((alpha) < 0x80)
+
+static void average_color(const uint8_t *data, size_t npixels, uint8_t *rgb)
+{
+	// yes, rgb math is bad ikr
+	unsigned long long rsum = 0, gsum = 0, bsum = 0;
+	size_t count = 0;
+
+	for (size_t i = 0; i < npixels; i += 4) {
+		if (IS_TRANSPARENT(data[4*i + 3]))
+			continue;
+
+		rsum += data[4*i];
+		gsum += data[4*i + 1];
+		bsum += data[4*i + 2];
+		count++;
+	}
+
+	if (count == 0) {
+		// just set it to something, avoid divide by zero
+		rgb[0] = 0xff;
+		rgb[1] = 0xff;
+		rgb[2] = 0xff;
+	} else {
+		rgb[0] = (uint8_t) iclamp((int)(rsum / count), 0, 0xff);
+		rgb[1] = (uint8_t) iclamp((int)(gsum / count), 0, 0xff);
+		rgb[2] = (uint8_t) iclamp((int)(bsum / count), 0, 0xff);
+	}
+}
+
+static void replace_alpha_with_average(uint8_t *rgba, size_t npixels)
+{
+	uint8_t rgbavg[3];
+	average_color(rgba, npixels, rgbavg);
+
+	for (size_t i = 0; i < npixels; i += 1) {
+		if (IS_TRANSPARENT(rgba[4*i + 3])) {
+			rgba[4*i] = rgbavg[0];
+			rgba[4*i + 1] = rgbavg[1];
+			rgba[4*i + 2] = rgbavg[2];
+		}
+		rgba[4*i + 3] = 0xff;
+	}
+}
+
 static SphereColorArray *read_image(const char *filename)
 {
 	FILE *f = fopen(filename, "rb");
@@ -64,57 +109,33 @@ static SphereColorArray *read_image(const char *filename)
 		fatal_error("fopen", strerror(errno));
 
 	int chansinfile, tmpw, tmph;
-	uint8_t *readbuf = stbi_load_from_file(f, &tmpw, &tmph, &chansinfile, 3);
+	uint8_t *readbuf = stbi_load_from_file(f, &tmpw, &tmph, &chansinfile, 4);
 	fclose(f);
 	if (!readbuf)
 		fatal_error("stbi_load_from_file", strerror(errno));
 
-	uint8_t *reszbuf = malloc(SPHERE_PIXELS_AROUND * SPHERE_PIXELS_VERTICALLY * 3);
+	replace_alpha_with_average(readbuf, (size_t)tmpw*(size_t)tmph);
+
+	uint8_t *reszbuf = malloc(SPHERE_PIXELS_AROUND * SPHERE_PIXELS_VERTICALLY * 4);
 	if (!reszbuf)
 		fatal_error("malloc", strerror(errno));
 
 	int ok = stbir_resize_uint8(
 		readbuf, tmpw, tmph, 0,
 		reszbuf, SPHERE_PIXELS_AROUND, SPHERE_PIXELS_VERTICALLY, 0,
-		3);
+		4);
 	free(readbuf);
 	if (!ok)
 		fatal_error("stbir_resize_uint8", strerror(errno));
 
-	SphereColorArray *colorarr = malloc(sizeof(*colorarr));
-	if (!colorarr)
-		fatal_error("malloc", strerror(errno));
-
-	size_t i = 0;
-	for (size_t y = 0; y < SPHERE_PIXELS_VERTICALLY; y++) {
-		for (size_t ar = 0; ar < SPHERE_PIXELS_AROUND; ar++) {
-			(*colorarr)[y][ar].r = reszbuf[i++];
-			(*colorarr)[y][ar].g = reszbuf[i++];
-			(*colorarr)[y][ar].b = reszbuf[i++];
-			(*colorarr)[y][ar].a = 0xff;
-		}
+	for (size_t i = 0; i < SPHERE_PIXELS_AROUND * SPHERE_PIXELS_VERTICALLY; i++)
+	{
+		SDL_Color col = { reszbuf[4*i], reszbuf[4*i+1], reszbuf[4*i+2], reszbuf[4*i+3] };
+		static_assert(sizeof(col) == 4, "u got weird paddings");
+		*(SDL_Color*) &reszbuf[4*i] = col;
 	}
 
-	free(reszbuf);
-	return colorarr;
-}
-
-static SDL_Color average_color(const SDL_Color *pixels, size_t npixels)
-{
-	// yes, rgb math is bad ikr
-	unsigned long long rsum = 0, gsum = 0, bsum = 0;
-	for (size_t i = 0; i < npixels; i++) {
-		rsum += pixels[i].r;
-		gsum += pixels[i].g;
-		bsum += pixels[i].b;
-	}
-
-	return (SDL_Color){
-		.r = (uint8_t) iclamp((int)(rsum / npixels), 0, 0xff),
-		.g = (uint8_t) iclamp((int)(gsum / npixels), 0, 0xff),
-		.b = (uint8_t) iclamp((int)(bsum / npixels), 0, 0xff),
-		.a = 0xff,
-	};
+	return (void*)reszbuf;
 }
 
 struct Sphere sphere_load(const char *filename, struct Vec3 center)
@@ -122,7 +143,6 @@ struct Sphere sphere_load(const char *filename, struct Vec3 center)
 	struct Sphere sph;
 	sph.center = center;
 	sph.colorarr = read_image(filename);
-	sph.bgcolor = average_color((SDL_Color*)sph.colorarr, (size_t)SPHERE_PIXELS_AROUND * (size_t)SPHERE_PIXELS_VERTICALLY);
 	return sph;
 }
 
@@ -188,7 +208,7 @@ void sphere_display(struct Sphere sph, struct SDL_Renderer *rnd)
 
 	// parts of image in front of this can be approximated with rectangles
 	struct Plane rectplane = vplane;
-	plane_move(&rectplane, vec3_withlength(rectplane.normal, 0.2f*RADIUS));
+	plane_move(&rectplane, vec3_withlength(rectplane.normal, 0.15f*RADIUS));
 
 	const struct Vec3 *vecs = get_vectors();
 
@@ -206,10 +226,13 @@ void sphere_display(struct Sphere sph, struct SDL_Renderer *rnd)
 				continue;
 			}
 
+			SDL_Color col = (*sph.colorarr)[v][a];
+
 			struct Display4Gon gon = get_4gon(sph, vecs, v,v2,a,a2);
-			SDL_Color col = (a < SPHERE_PIXELS_AROUND) ? (*sph.colorarr)[v][a] : sph.bgcolor;
-			bool userects = plane_whichside(rectplane, vecs[VECTORS_IDX(v, a)]);
-			display_4gon(rnd, gon, col, userects);
+			enum DisplayKind k =
+				plane_whichside(rectplane, vecs[VECTORS_IDX(v, a)])
+				? DISPLAY_RECT : DISPLAY_BORDER;
+			display_4gon(rnd, gon, col, k);
 		}
 	}
 }

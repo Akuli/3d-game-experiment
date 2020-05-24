@@ -38,26 +38,50 @@ static uint32_t convert_color_for_gfx(SDL_Color col)
 #define min4(a,b,c,d) min(min(a,b),min(c,d))
 #define max4(a,b,c,d) max(max(a,b),max(c,d))
 
-void display_4gon(SDL_Renderer *rnd, struct Display4Gon gon, SDL_Color col, bool rect)
+static void point_to_screen_floats(struct Vec3 pt, float *x, float *y)
 {
-	struct SDL_Point p1 = display_point_to_sdl(gon.point1);
-	struct SDL_Point p2 = display_point_to_sdl(gon.point2);
-	struct SDL_Point p3 = display_point_to_sdl(gon.point3);
-	struct SDL_Point p4 = display_point_to_sdl(gon.point4);
+	*x = display_xzr_to_screenx(pt.x / pt.z);
+	*y = display_yzr_to_screeny(pt.y / pt.z);
+}
 
-	if (rect){
-		int xmin = min4(p1.x, p2.x, p3.x, p4.x);
-		int xmax = max4(p1.x, p2.x, p3.x, p4.x);
-		int ymin = min4(p1.y, p2.y, p3.y, p4.y);
-		int ymax = max4(p1.y, p2.y, p3.y, p4.y);
+void display_4gon(SDL_Renderer *rnd, struct Display4Gon gon, SDL_Color col, enum DisplayKind dk)
+{
+	float p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y;
+	point_to_screen_floats(gon.point1, &p1x, &p1y);
+	point_to_screen_floats(gon.point2, &p2x, &p2y);
+	point_to_screen_floats(gon.point3, &p3x, &p3y);
+	point_to_screen_floats(gon.point4, &p4x, &p4y);
+
+	float xmin = min4(p1x, p2x, p3x, p4x);
+	float xmax = max4(p1x, p2x, p3x, p4x);
+	float ymin = min4(p1y, p2y, p3y, p4y);
+	float ymax = max4(p1y, p2y, p3y, p4y);
+
+	// note the order 1,2,4,3, this is because sdl and my Display4Gon differ
+	int16_t xarr[] = { (int16_t)p1x, (int16_t)p2x, (int16_t)p4x, (int16_t)p3x };
+	int16_t yarr[] = { (int16_t)p1y, (int16_t)p2y, (int16_t)p4y, (int16_t)p3y };
+
+	switch(dk) {
+	case DISPLAY_BORDER:
+		polygonColor(rnd, xarr, yarr, 4, convert_color_for_gfx(col));
+		break;
+
+	case DISPLAY_FILLED:
+		/*
+		This function is VERY SLOW. I tried implementing it myself and my
+		implementation was even slower :D
+		*/
+		filledPolygonColor(rnd, xarr, yarr, 4, convert_color_for_gfx(col));
+		break;
+
+	case DISPLAY_RECT:
 		SDL_SetRenderDrawColor(rnd, col.r, col.g, col.b, col.a);
-		SDL_RenderFillRect(rnd, &(SDL_Rect){ xmin, ymin, xmax-xmin, ymax-ymin });
-	}else{
-		filledPolygonColor(
-			rnd,
-			(int16_t[]){ (int16_t)p1.x, (int16_t)p2.x, (int16_t)p4.x, (int16_t)p3.x },
-			(int16_t[]){ (int16_t)p1.y, (int16_t)p2.y, (int16_t)p4.y, (int16_t)p3.y },
-			4,
-			convert_color_for_gfx(col));
+		SDL_RenderFillRect(rnd, &(SDL_Rect){
+			(int)floorf(xmin),
+			(int)floorf(ymin),
+			(int)ceilf(xmax-xmin),
+			(int)ceilf(ymax-ymin),
+		});
+		break;
 	}
 }

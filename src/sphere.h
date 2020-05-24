@@ -14,7 +14,6 @@ typedef SDL_Color SphereColorArray[SPHERE_PIXELS_VERTICALLY][SPHERE_PIXELS_AROUN
 struct Sphere {
 	struct Vec3 center;
 
-	SDL_Color bgcolor;
 	SphereColorArray *colorarr;  // pointer prevents this struct from being huge
 };
 
