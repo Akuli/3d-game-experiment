@@ -11,41 +11,56 @@
 
 /*
 When drawing a pixel of the screen, the 3D points that could be drawn to that pixel
-form a line. This struct is intended to represent that in coordinates where the z
-axis is in the direction of the player. This won't do well with e.g. lines going in
-the direction of the x or y axis, because their equations can be written as
+form a line. We can write the equation of that line in the following form:
 
-	x = xcoeff*z + xconst
-	y = ycoeff*z + yconst,
+This won't do well with e.g. lines going in the direction of the x or y axis,
+because their equations can't be written like this.
 
-which is how this struct represents lines.
+The above equations actually specify an intersection of two planes. A horizontal
+such plane represents all the points that are shown on a given horizontal row of
+pixels. Note that the equation containing x specifies a *vertical* plane, since it
+doesn't contain any restrictions for values of y.
+
+Both of the added numbers are 0, because the lines pass through the camera, and
+the camera is at (0,0,0). This means that we actually have:
+
+	x = (some number)*z      (vertical plane)
+	y = (some number)*z      (horizontal plane)
+
+and we only need one number to represent these. The number here is
+
+	some number = x/z,
+
+so I call it the "x to z ratio", or xzr for short, and similarly yzr.
 */
-struct DisplayLine {
-	float xcoeff, xconst, ycoeff, yconst;
+
+// Conversion between screen coordinates and plane x/z and y/z ratios
+float display_screenx_to_xzr(float screenx);
+float display_screeny_to_yzr(float screeny);
+float display_xzr_to_screenx(float xzr);
+float display_yzr_to_screeny(float yzr);
+
+// Where on the screen should a 3D point be shown?
+SDL_Point display_point_to_sdl(struct Vec3 pt);
+
+/*
+The points must be laid out something like this:
+
+	point 1    point 3
+
+	point 2    point 4
+
+Not like this:
+
+	point 1    point 4
+
+	point 2    point 3
+*/
+struct Display4Gon {
+	struct Vec3 point1, point2, point3, point4;
 };
 
-// Given line and z coordinate, calculate corresponding x and y coords
-struct Vec3 displayline_z2point(struct DisplayLine ln, float z);
-
-/*
-Construct a line representing the 3D points that correspond to a pixel on the screen.
-*/
-struct DisplayLine displayline_frompixel(int screenx, int screeny);
-
-/*
-Move the line by a vector
-*/
-void displayline_move(struct DisplayLine *ln, struct Vec3 mv);
-
-/*
-Example: 0xabcdef means 0xab for red, 0xcd for green, 0xef for blue.
-
-This uses only 24 of the available 32 bits, but that's fine imo. An advantage of
-this is that -1 can be used to represent a "nothing" color.
-*/
-typedef int32_t displaycolor;
-
-SDL_Color displaycolor2sdl(int32_t displaycolor);
+void display_4gon(SDL_Renderer *rnd, struct Display4Gon gon);
 
 
 #endif    // DISPLAY_H

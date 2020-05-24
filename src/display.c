@@ -1,16 +1,3 @@
-#include "display.h"
-#include <assert.h>
-#include <SDL2/SDL.h>
-
-struct Vec3 displayline_z2point(struct DisplayLine ln, float z)
-{
-	return (struct Vec3){
-		.x = ln.xcoeff*z + ln.xconst,
-		.y = ln.ycoeff*z + ln.yconst,
-		.z = z,
-	};
-}
-
 /*
 The mapping from a 3D point (x,y,z) to a screen point (screenx,screeny) is:
 
@@ -18,56 +5,87 @@ The mapping from a 3D point (x,y,z) to a screen point (screenx,screeny) is:
 	screeny = DISPLAY_HEIGHT/2 - DISPLAY_SCALING_FACTOR*y/z
 
 Here the positive z direction is where the player is looking.
-
-I call these the screen equations. Keep that in mind while reading comments.
 */
-struct DisplayLine displayline_frompixel(int screenx, int screeny)
-{
-	/*
-	Solving screen equations for x and y gives
 
-		x = ( screenx - DISPLAY_WIDTH /2)/DISPLAY_SCALING_FACTOR * z
-		y = (-screeny + DISPLAY_HEIGHT/2)/DISPLAY_SCALING_FACTOR * z
-	*/
-	return (struct DisplayLine){
-		.xcoeff = (float)(screenx - DISPLAY_WIDTH/2) / DISPLAY_SCALING_FACTOR,
-		.ycoeff = (float)(-screeny + DISPLAY_HEIGHT/2) / DISPLAY_SCALING_FACTOR,
-		.xconst = 0,
-		.yconst = 0,
+#include "display.h"
+#include <assert.h>
+#include <stdint.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL2_gfxPrimitives.h>   // sudo apt install libsdl2-gfx-dev
+
+float display_xzr_to_screenx(float xzr) { return DISPLAY_WIDTH/2 + DISPLAY_SCALING_FACTOR*xzr; }
+float display_yzr_to_screeny(float yzr) { return DISPLAY_HEIGHT/2 - DISPLAY_SCALING_FACTOR*yzr; }
+
+float display_screenx_to_xzr(float screenx) { return (screenx - DISPLAY_WIDTH/2)/DISPLAY_SCALING_FACTOR; }
+float display_screeny_to_yzr(float screeny) { return (-screeny + DISPLAY_HEIGHT/2)/DISPLAY_SCALING_FACTOR; }
+
+SDL_Point display_point_to_sdl(struct Vec3 pt)
+{
+	return (SDL_Point){
+		.x = (int)display_xzr_to_screenx(pt.x/pt.z),
+		.y = (int)display_yzr_to_screeny(pt.y/pt.z),
 	};
 }
 
-void displayline_move(struct DisplayLine *ln, struct Vec3 mv)
+int compare_y_coords(const void *p1, const void *p2)
 {
-	/*
-	Generally moving changes the equation of an object so that x gets replaced with
-	x - mv.x, y gets replaced with y - mv.y, and you guess what happens to z.
-	Doing that to the DisplayLine equations
-
-		x = xcoeff*z + xconst
-		y = ycoeff*z + yconst
-
-	gives
-
-		x - mv.x = xcoeff*(z - mv.z) + xconst
-		y - mv.y = ycoeff*(z - mv.z) + yconst
-
-	which can be rewritten like this:
-
-		x = xcoeff*z + xconst + mv.x - xcoeff*mv.z
-		y = ycoeff*z + yconst + mv.y - ycoeff*mv.z
-	*/
-	ln->xconst += mv.x - ln->xcoeff*mv.z;
-	ln->yconst += mv.y - ln->ycoeff*mv.z;
+	const SDL_Point *a = p1;
+	const SDL_Point *b = p2;
+	return (a->y > b->y) - (a->y < b->y);
 }
 
-SDL_Color displaycolor2sdl(int32_t displaycolor)
+// smin = source min etc
+static int linear_map(int smin, int smax, int dmin, int dmax, int val)
 {
-	assert(0 <= displaycolor && displaycolor <= 0xffffff);
-	return (SDL_Color){
-		.r = (uint8_t)((displaycolor & 0xff0000) >> 16),  // extract AB of 0xABCDEF
-		.g = (uint8_t)((displaycolor & 0x00ff00) >> 8),   // extract CD of 0xABCDEF
-		.b = (uint8_t)((displaycolor & 0x0000ff) >> 0),   // extract EF of 0xABCDEF
-		.a = 0xff,  // no transparency
+	return dmin + (dmax - dmin)*(val - smin)/(smax - smin);
+}
+
+static void swap(SDL_Point *a, SDL_Point *b)
+{
+	SDL_Point tmp = *a;
+	*a = *b;
+	*b = tmp;
+}
+
+static void draw_filled_triangle(SDL_Renderer *rnd, SDL_Point p1, SDL_Point p2, SDL_Point p3)
+{
+	if (abs(p2.x - p3.x) > abs(p3.y - p2.y)) {
+		if (p2.x > p3.x)
+			swap(&p2, &p3);
+		for (int x = p2.x; x <= p3.x; x++) {
+			int y = linear_map(p2.x, p3.x, p2.y, p3.y, x);
+			SDL_RenderDrawLine(rnd, p1.x, p1.y, x, y);
+		}
+	} else {
+		if (p2.y > p3.y)
+			swap(&p2, &p3);
+		for (int y = p2.y; y <= p3.y; y++) {
+			int x = linear_map(p2.y, p3.y, p2.x, p3.x, y);
+			SDL_RenderDrawLine(rnd, p1.x, p1.y, x, y);
+		}
+	}
+}
+
+#define min(a,b) ((a)<(b) ? (a) : (b))
+#define max(a,b) ((a)>(b) ? (a) : (b))
+#define min4(a,b,c,d) min(min(a,b),min(c,d))
+#define max4(a,b,c,d) max(max(a,b),max(c,d))
+
+void display_4gon(SDL_Renderer *rnd, struct Display4Gon gon)
+{
+	struct SDL_Point arr[] = {
+		display_point_to_sdl(gon.point1),
+		display_point_to_sdl(gon.point2),
+		display_point_to_sdl(gon.point3),
+		display_point_to_sdl(gon.point4),
 	};
+
+	//draw_filled_triangle(rnd, arr[0], arr[1], arr[2]);
+	//draw_filled_triangle(rnd, arr[3], arr[1], arr[2]);
+
+	int xmin = min4(arr[0].x, arr[1].x, arr[2].x, arr[3].x);
+	int xmax = max4(arr[0].x, arr[1].x, arr[2].x, arr[3].x);
+	int ymin = min4(arr[0].y, arr[1].y, arr[2].y, arr[3].y);
+	int ymax = max4(arr[0].y, arr[1].y, arr[2].y, arr[3].y);
+	SDL_RenderFillRect(rnd, &(SDL_Rect){ xmin, ymin, xmax-xmin, ymax-ymin });
 }
