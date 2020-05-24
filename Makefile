@@ -15,9 +15,11 @@ HEADERS := $(wildcard src/*.h)
 
 all: game
 
+# doesn't use .gitignore because it's sometimes handy to have files being
+# ignored but not cleaned on rebuild
 .PHONY: clean
 clean:
-	git clean -fXd
+	rm -rvf game obj
 
 obj/%.o: src/%.c $(HEADERS)
 	mkdir -p $(@D) && $(CC) -c -o $@ $< $(CFLAGS)

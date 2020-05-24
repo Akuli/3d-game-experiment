@@ -21,7 +21,7 @@ int main(void)
 	if (SDL_CreateWindowAndRenderer(DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, &win, &rnd) == -1)
 		fatal_sdl_error("SDL_CreateWindowAndRenderer");
 
-	struct Sphere sph = sphere_load("person.png", (struct Vec3){0,0,-100});
+	struct Sphere *sph = sphere_load("person.png", (struct Vec3){0,0,-100});
 
 	uint32_t time = 0;
 	while(1){
@@ -61,7 +61,7 @@ int main(void)
 	}
 
 exit:
-	sphere_destroy(sph);
+	free(sph);
 	SDL_DestroyWindow(win);
 	SDL_DestroyRenderer(rnd);
 	SDL_Quit();
