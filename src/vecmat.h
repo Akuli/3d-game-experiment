@@ -17,6 +17,9 @@ struct Vec3 vec3_neg(struct Vec3 v);
 // v-w
 struct Vec3 vec3_sub(struct Vec3 v, struct Vec3 w);
 
+// multiply each of x,y,z by number
+struct Vec3 vec3_mul_float(struct Vec3 v, float f);
+
 // dot product
 float vec3_dot(struct Vec3 v, struct Vec3 w);
 
@@ -41,8 +44,6 @@ struct Vec3 vec3_cross(struct Vec3 v, struct Vec3 w);
 struct Mat3 {
 	float rows[3][3];
 };
-
-const struct Mat3 mat3_id;
 
 // matrix times vector
 struct Vec3 mat3_mul_vec3(struct Mat3 M, struct Vec3 v);

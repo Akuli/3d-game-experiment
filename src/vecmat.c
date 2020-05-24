@@ -7,14 +7,19 @@ struct Vec3 vec3_add(struct Vec3 v, struct Vec3 w)
 	return (struct Vec3){ v.x+w.x, v.y+w.y, v.z+w.z };
 }
 
+struct Vec3 vec3_mul_float(struct Vec3 v, float f)
+{
+	return (struct Vec3){ v.x*f, v.y*f, v.z*f };
+}
+
 struct Vec3 vec3_neg(struct Vec3 v)
 {
-	return (struct Vec3){ -v.x, -v.y, -v.z };
+	return vec3_mul_float(v, -1);
 }
 
 struct Vec3 vec3_sub(struct Vec3 v, struct Vec3 w)
 {
-	return (struct Vec3){ v.x-w.x, v.y-w.y, v.z-w.z };
+	return vec3_add(v, vec3_neg(w));
 }
 
 float vec3_dot(struct Vec3 v, struct Vec3 w)
@@ -30,8 +35,7 @@ float vec3_lengthSQUARED(struct Vec3 v)
 struct Vec3 vec3_withlength(struct Vec3 v, float len)
 {
 	float oldlen = sqrtf(vec3_lengthSQUARED(v));
-	float r = len / oldlen;
-	return (struct Vec3){ v.x*r, v.y*r, v.z*r };
+	return vec3_mul_float(v, len / oldlen);
 }
 
 struct Vec3 vec3_cross(struct Vec3 v, struct Vec3 w)
@@ -51,12 +55,6 @@ struct Vec3 vec3_cross(struct Vec3 v, struct Vec3 w)
 	};
 }
 
-
-const struct Mat3 mat3_id = { .rows = {
-	{1,0,0},
-	{0,1,0},
-	{0,0,1},
-}};
 
 struct Vec3 mat3_mul_vec3(struct Mat3 M, struct Vec3 v)
 {

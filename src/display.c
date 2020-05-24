@@ -24,6 +24,7 @@ float display_screeny_to_yzr(float screeny) { return (screeny - DISPLAY_HEIGHT/2
 
 SDL_Point display_point_to_sdl(struct Vec3 pt)
 {
+	assert(pt.z < 0);
 	return (SDL_Point){
 		.x = (int)display_xzr_to_screenx(pt.x/pt.z),
 		.y = (int)display_yzr_to_screeny(pt.y/pt.z),
