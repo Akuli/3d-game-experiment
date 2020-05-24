@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <SDL2/SDL.h>
+#include "camera.h"
 #include "vecmat.h"
 
 #define DISPLAY_WIDTH 800
@@ -31,6 +32,9 @@ and we only need one number to represent these. The number here is
 	some number = x/z,
 
 so I call it the "x to z ratio", or xzr for short, and similarly yzr.
+
+For all this, we used coordinates with camera looking into the negative z
+direction. See also camera.h.
 */
 
 // Conversion between screen coordinates and plane x/z and y/z ratios
@@ -65,7 +69,7 @@ enum DisplayKind {
 	DISPLAY_RECT,     // fast
 };
 
-void display_4gon(SDL_Renderer *rnd, struct Display4Gon gon, SDL_Color col, enum DisplayKind dk);
+void display_4gon(const struct Camera *cam, struct Display4Gon gon, SDL_Color col, enum DisplayKind dk);
 
 
 #endif    // DISPLAY_H

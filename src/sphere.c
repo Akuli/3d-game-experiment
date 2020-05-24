@@ -5,20 +5,24 @@
 #include <stdio.h>
 #include <stb_image.h>
 #include <stb_image_resize.h>
+#include "camera.h"
 #include "common.h"
 #include "display.h"
 #include "vecmat.h"
 
 #define RADIUS 0.5f
 
-bool sphere_caminside(const struct Sphere *sph)
+bool sphere_contains(const struct Sphere *sph, struct Vec3 pt)
 {
-	return (vec3_lengthSQUARED(sph->center) <= RADIUS*RADIUS);
+	return (vec3_lengthSQUARED(vec3_sub(sph->center, pt)) <= RADIUS*RADIUS);
 }
 
-struct Plane sphere_visplane(const struct Sphere *sph)
+struct Plane sphere_visplane(const struct Sphere *sph, const struct Camera *cam)
 {
-	assert(!sphere_caminside(sph));
+	assert(!sphere_contains(sph, cam->location));
+
+	// switch to coordinates where camera is at (0,0,0)
+	struct Vec3 center = camera_point_world2cam(cam, sph->center);
 
 	/*
 	From the side, the sphere being split by visplane looks like this:
@@ -51,10 +55,11 @@ struct Plane sphere_visplane(const struct Sphere *sph)
 
 		(x,y,z) dot normal = RADIUS^2 - |sph.center|^2.
 	*/
-	return (struct Plane){
-		.normal = vec3_neg(sph->center),
-		.constant = RADIUS*RADIUS - vec3_lengthSQUARED(sph->center),
+	struct Plane res = {
+		.normal = vec3_neg(center),
+		.constant = RADIUS*RADIUS - vec3_lengthSQUARED(center),
 	};
+	return camera_plane_cam2world(cam, res);
 }
 
 #define IS_TRANSPARENT(color) ((color).a < 0x80)
@@ -178,17 +183,17 @@ static const VectorArray *get_relative_vectors(void)
 	return (const VectorArray *) &res;
 }
 
-void sphere_display(const struct Sphere *sph, struct SDL_Renderer *rnd)
+void sphere_display(const struct Sphere *sph, const struct Camera *cam)
 {
-	if (sphere_caminside(sph))
+	if (sphere_contains(sph, cam->location))
 		return;
 
-	struct Plane vplane = sphere_visplane(sph);
+	struct Plane vplane = sphere_visplane(sph, cam);
 	plane_move(&vplane, vec3_neg(sph->center));
 
 	// parts of image in front of this can be approximated with rectangles
 	struct Plane rectplane = vplane;
-	plane_move(&rectplane, vec3_withlength(rectplane.normal, 0.15f*RADIUS));
+	plane_move(&rectplane, vec3_withlength(vplane.normal, 0.15f*RADIUS));
 
 	const VectorArray *vecs = get_relative_vectors();
 
@@ -215,7 +220,7 @@ void sphere_display(const struct Sphere *sph, struct SDL_Renderer *rnd)
 			};
 			enum DisplayKind k = plane_whichside(rectplane, (*vecs)[v][a]) ? DISPLAY_RECT : DISPLAY_BORDER;
 
-			display_4gon(rnd, gon, col, k);
+			display_4gon(cam, gon, col, k);
 		}
 	}
 }

@@ -47,9 +47,14 @@ static void point_to_screen_floats(struct Vec3 pt, float *x, float *y)
 	*y = display_yzr_to_screeny(pt.y / pt.z);
 }
 
-void display_4gon(SDL_Renderer *rnd, struct Display4Gon gon, SDL_Color col, enum DisplayKind dk)
+void display_4gon(const struct Camera *cam, struct Display4Gon gon, SDL_Color col, enum DisplayKind dk)
 {
-	// must be in front of the player, i.e. negative z
+	gon.point1 = camera_point_world2cam(cam, gon.point1);
+	gon.point2 = camera_point_world2cam(cam, gon.point2);
+	gon.point3 = camera_point_world2cam(cam, gon.point3);
+	gon.point4 = camera_point_world2cam(cam, gon.point4);
+
+	// must be in front of the camera, i.e. negative z
 	if (gon.point1.z >= 0 || gon.point2.z >= 0 || gon.point3.z >= 0 || gon.point4.z >= 0)
 		return;
 
@@ -70,7 +75,7 @@ void display_4gon(SDL_Renderer *rnd, struct Display4Gon gon, SDL_Color col, enum
 
 	switch(dk) {
 	case DISPLAY_BORDER:
-		polygonColor(rnd, xarr, yarr, 4, convert_color_for_gfx(col));
+		polygonColor(cam->renderer, xarr, yarr, 4, convert_color_for_gfx(col));
 		break;
 
 	case DISPLAY_FILLED:
@@ -78,12 +83,12 @@ void display_4gon(SDL_Renderer *rnd, struct Display4Gon gon, SDL_Color col, enum
 		This function is VERY SLOW. I tried implementing it myself and my
 		implementation was even slower :D
 		*/
-		filledPolygonColor(rnd, xarr, yarr, 4, convert_color_for_gfx(col));
+		filledPolygonColor(cam->renderer, xarr, yarr, 4, convert_color_for_gfx(col));
 		break;
 
 	case DISPLAY_RECT:
-		SDL_SetRenderDrawColor(rnd, col.r, col.g, col.b, col.a);
-		SDL_RenderFillRect(rnd, &(SDL_Rect){
+		SDL_SetRenderDrawColor(cam->renderer, col.r, col.g, col.b, col.a);
+		SDL_RenderFillRect(cam->renderer, &(SDL_Rect){
 			(int)floorf(xmin),
 			(int)floorf(ymin),
 			(int)ceilf(xmax-xmin),

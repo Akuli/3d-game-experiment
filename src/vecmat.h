@@ -36,6 +36,27 @@ struct Vec3 vec3_withlength(struct Vec3 v, float len);
 // cross product
 struct Vec3 vec3_cross(struct Vec3 v, struct Vec3 w);
 
+
+// wrapped in a struct to make it possible to return a matrix
+struct Mat3 {
+	float rows[3][3];
+};
+
+const struct Mat3 mat3_id;
+
+// matrix times vector
+struct Vec3 mat3_mul_vec3(struct Mat3 M, struct Vec3 v);
+
+// multiply each entry of the matrix by a number
+struct Mat3 mat3_mul_float(struct Mat3 M, float f);
+
+// determinant
+float mat3_det(struct Mat3 M);
+
+// inverse matrix
+struct Mat3 mat3_inverse(struct Mat3 M);
+
+
 // any plane in 3D, behaves nicely no matter which way plane is oriented
 struct Plane {
 	// equation of plane represented as:  (x,y,z) dot normal = constant

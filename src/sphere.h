@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <SDL2/SDL.h>
+#include "camera.h"
 #include "display.h"
 #include "vecmat.h"
 
@@ -15,8 +16,8 @@ struct Sphere {
 	SDL_Color image[SPHERE_PIXELS_VERTICALLY][SPHERE_PIXELS_AROUND];
 };
 
-// Does the sphere contain the camera? If it does, don't try to draw the sphere.
-bool sphere_caminside(const struct Sphere *sph);
+// Does the sphere contain the point?
+bool sphere_contains(const struct Sphere *sph, struct Vec3 pt);
 
 /*
 A part of the sphere is visible to the camera at (0,0,0). The rest isn't. This
@@ -26,13 +27,13 @@ plane_whichside() returns whether a point on the sphere is visible.
 
 Don't call this function if the camera is inside the sphere.
 */
-struct Plane sphere_visplane(const struct Sphere *sph);
+struct Plane sphere_visplane(const struct Sphere *sph, const struct Camera *cam);
 
 // Load a sphere from an image file. Free it with malloc when done.
 struct Sphere *sphere_load(const char *filename, struct Vec3 center);
 
 // draw sphere to screen if camera is not inside sphere
-void sphere_display(const struct Sphere *sph, struct SDL_Renderer *rnd);
+void sphere_display(const struct Sphere *sph, const struct Camera *cam);
 
 
 #endif  // SPHERE_H
