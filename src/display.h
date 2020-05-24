@@ -7,7 +7,6 @@
 
 #define DISPLAY_WIDTH 800
 #define DISPLAY_HEIGHT 600
-#define DISPLAY_SCALING_FACTOR 20000.f
 
 /*
 When drawing a pixel of the screen, the 3D points that could be drawn to that pixel

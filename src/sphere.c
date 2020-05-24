@@ -27,8 +27,8 @@ struct Plane sphere_visplane(const struct Sphere *sph)
           \___
          //\  \
         /|  \  |
-	cam/  \__\/
-       ^^^^^^^\^^^^^^
+	   /  \__\/
+    cam^^^^^^^\^^^^^^
                \
                 \
 	         visplane
@@ -40,20 +40,20 @@ struct Plane sphere_visplane(const struct Sphere *sph)
 
 	The equation of the plane is
 
-		projection of (x,y,z) onto normal = D,
+		projection of (x,y,z) onto normal = -D,
 
-	where normal=-sph.center is a normal vector of the plane. By writing the
-	projection with dot product, we get
+	where normal=-sph.center is a normal vector of the plane pointing towards the
+	camera. By writing the projection with dot product, we get
 
-		((x,y,z) dot normal) / |normal| = D.
+		((x,y,z) dot normal) / |normal| = -D.
 
 	From here, we get
 
-		(x,y,z) dot normal = |sph.center|^2 - RADIUS^2.
+		(x,y,z) dot normal = RADIUS^2 - |sph.center|^2.
 	*/
 	return (struct Plane){
 		.normal = vec3_neg(sph->center),
-		.constant = vec3_lengthSQUARED(sph->center) - RADIUS*RADIUS,
+		.constant = RADIUS*RADIUS - vec3_lengthSQUARED(sph->center),
 	};
 }
 
@@ -76,7 +76,7 @@ static SDL_Color average_color(SDL_Color *pixels, size_t npixels)
 	}
 
 	if (count == 0) {
-		// just set it to something, avoid divide by zero
+		// just return something, avoid divide by zero
 		return (SDL_Color){ 0xff, 0xff, 0xff, 0xff };
 	}
 
@@ -163,12 +163,12 @@ static const VectorArray *get_relative_vectors(void)
 	float pi = acosf(-1);
 
 	for (size_t v = 0; v <= /* not < */ SPHERE_PIXELS_VERTICALLY; v++) {
-		float y = 2*RADIUS*(float)v/SPHERE_PIXELS_VERTICALLY - RADIUS;
+		float y = RADIUS - 2*RADIUS*(float)v/SPHERE_PIXELS_VERTICALLY;
 		float xzrad = sqrtf(RADIUS*RADIUS - y*y);  // radius on xz plane
 
 		for (size_t a = 0; a < SPHERE_PIXELS_AROUND; a++) {
 			float angle = (float)a/SPHERE_PIXELS_AROUND * 2*pi;
-			float x = xzrad*sinf(angle);
+			float x = -xzrad*sinf(angle);
 			float z = -xzrad*cosf(angle);
 			res[v][a] = (struct Vec3){ x, y, z };
 		}
@@ -184,7 +184,7 @@ void sphere_display(const struct Sphere *sph, struct SDL_Renderer *rnd)
 		return;
 
 	struct Plane vplane = sphere_visplane(sph);
-	plane_move(&vplane, sph->center);
+	plane_move(&vplane, vec3_neg(sph->center));
 
 	// parts of image in front of this can be approximated with rectangles
 	struct Plane rectplane = vplane;

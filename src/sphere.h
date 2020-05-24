@@ -6,10 +6,10 @@
 #include "display.h"
 #include "vecmat.h"
 
-#define SPHERE_PIXELS_AROUND 100
-#define SPHERE_PIXELS_VERTICALLY 100
+#define SPHERE_PIXELS_AROUND 200
+#define SPHERE_PIXELS_VERTICALLY 80
 
-// This struct is HUGE. Always use pointers. Makefile has -Werror=stack-usage=bla
+// This struct is BIG. Always use pointers. Makefile has -Werror=stack-usage=bla
 struct Sphere {
 	struct Vec3 center;
 	SDL_Color image[SPHERE_PIXELS_VERTICALLY][SPHERE_PIXELS_AROUND];
