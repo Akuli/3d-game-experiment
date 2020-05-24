@@ -72,5 +72,8 @@ bool plane_whichside(struct Plane pl, struct Vec3 pt);
 // Move plane by vector
 void plane_move(struct Plane *pl, struct Vec3 mv);
 
+// distance between plane and point, never negative
+float plane_point_distance(struct Plane pl, struct Vec3 pt);
+
 
 #endif   // VECMAT_H

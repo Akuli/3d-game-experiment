@@ -3,7 +3,7 @@ CFLAGS += -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Werror=incompatible-po
 CFLAGS += -Wno-unused-parameter -Wno-address
 CFLAGS += -Werror=stack-usage=1024   # BUFSIZ is 8192 on my system
 CFLAGS += -g
-CFLAGS += -O0
+CFLAGS += -O3
 CFLAGS += -Istb
 VENDOR_CFLAGS := $(CFLAGS:-W%=)   # no warnings from other people's code please
 LDFLAGS += -lSDL2 -lSDL2_gfx   # could also use:  pkg-config --libs SDL2_gfx

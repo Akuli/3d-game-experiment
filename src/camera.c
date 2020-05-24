@@ -45,5 +45,6 @@ struct Plane camera_plane_cam2world(const struct Camera *cam, struct Plane pl)
 	coordinates, so M^-1 is the world2cam matrix.
 	*/
 	pl.normal = mat3_mul_vec3(cam->world2cam, pl.normal);
+	plane_move(&pl, cam->location);
 	return pl;
 }

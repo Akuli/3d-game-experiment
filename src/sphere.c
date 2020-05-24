@@ -173,8 +173,8 @@ static const VectorArray *get_relative_vectors(void)
 
 		for (size_t a = 0; a < SPHERE_PIXELS_AROUND; a++) {
 			float angle = (float)a/SPHERE_PIXELS_AROUND * 2*pi;
-			float x = -xzrad*sinf(angle);
-			float z = -xzrad*cosf(angle);
+			float x = xzrad*sinf(angle);
+			float z = xzrad*cosf(angle);
 			res[v][a] = (struct Vec3){ x, y, z };
 		}
 	}

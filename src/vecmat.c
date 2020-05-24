@@ -126,3 +126,14 @@ void plane_move(struct Plane *pl, struct Vec3 mv)
 	*/
 	pl->constant += vec3_dot(mv, pl->normal);
 }
+
+float plane_point_distance(struct Plane pl, struct Vec3 pt)
+{
+	/*
+	3D version of this: https://akuli.github.io/math-derivations/analytic-plane-geometry/distance-line-point.html
+
+	Constant has minus sign because it's written to different side of equation
+	here than in the link.
+	*/
+	return fabsf(vec3_dot(pl.normal, pt) - pl.constant) / sqrtf(vec3_lengthSQUARED(pl.normal));
+}

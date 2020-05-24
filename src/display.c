@@ -4,7 +4,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfxPrimitives.h>   // sudo apt install libsdl2-gfx-dev
 
-#define SCALING_FACTOR 500.f
+#define SCALING_FACTOR 300.f
 
 /*
 The mapping from a 3D point (x,y,z) to a screen point (screenx,screeny) is:

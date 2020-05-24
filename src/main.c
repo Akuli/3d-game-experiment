@@ -22,12 +22,12 @@ int main(void)
 	if (SDL_CreateWindowAndRenderer(DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, &win, &rnd) == -1)
 		fatal_sdl_error("SDL_CreateWindowAndRenderer");
 
-	struct Sphere *sph = sphere_load("person.png", (struct Vec3){0,1,-2});
+	struct Sphere *sph = sphere_load("person.png", (struct Vec3){0,0.5f,-2});
 	struct Camera cam;
 	cam.location = (struct Vec3){ 0,1,0 };
 	cam.world2cam = (struct Mat3) { .rows = {
 		{1, 0, 0},
-		{0, 2, 0},
+		{0, 1, 0},
 		{0, 0, 1},
 	}};
 	cam.renderer = rnd;
