@@ -143,6 +143,7 @@ struct Sphere *sphere_load(const char *filename, struct Vec3 center)
 	if (!sph)
 		fatal_error_nomem();
 
+	sph->angle = 0.f;
 	sph->center = center;
 	read_image(filename, (SDL_Color*) sph->image);
 	return sph;
@@ -188,8 +189,11 @@ void sphere_display(const struct Sphere *sph, const struct Camera *cam)
 	if (sphere_contains(sph, cam->location))
 		return;
 
+	struct Mat3 rot = mat3_rotation_xz(sph->angle);
+
 	struct Plane vplane = sphere_visplane(sph, cam);
 	plane_move(&vplane, vec3_neg(sph->center));
+	plane_apply_mat3_INVERSE(&vplane, mat3_inverse(rot));
 
 	// parts of image in front of this can be approximated with rectangles
 	struct Plane rectplane = vplane;
@@ -213,10 +217,10 @@ void sphere_display(const struct Sphere *sph, const struct Camera *cam)
 
 			SDL_Color col = sph->image[v][a];
 			struct Display4Gon gon = {
-				vec3_add((*vecs)[v][a], sph->center),
-				vec3_add((*vecs)[v][a2], sph->center),
-				vec3_add((*vecs)[v2][a], sph->center),
-				vec3_add((*vecs)[v2][a2], sph->center),
+				vec3_add(mat3_mul_vec3(rot, (*vecs)[v][a]), sph->center),
+				vec3_add(mat3_mul_vec3(rot, (*vecs)[v][a2]), sph->center),
+				vec3_add(mat3_mul_vec3(rot, (*vecs)[v2][a]), sph->center),
+				vec3_add(mat3_mul_vec3(rot, (*vecs)[v2][a2]), sph->center),
 			};
 			enum DisplayKind k = plane_whichside(rectplane, (*vecs)[v][a]) ? DISPLAY_RECT : DISPLAY_BORDER;
 

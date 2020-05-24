@@ -13,6 +13,7 @@
 // This struct is BIG. Always use pointers. Makefile has -Werror=stack-usage=bla
 struct Sphere {
 	struct Vec3 center;
+	float angle;    // 0 = looking toward negative direction of z axis
 	SDL_Color image[SPHERE_PIXELS_VERTICALLY][SPHERE_PIXELS_AROUND];
 };
 

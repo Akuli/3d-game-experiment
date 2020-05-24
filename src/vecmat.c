@@ -51,11 +51,6 @@ struct Vec3 vec3_cross(struct Vec3 v, struct Vec3 w)
 	};
 }
 
-bool plane_whichside(struct Plane pl, struct Vec3 pt)
-{
-	return (vec3_dot(pl.normal, pt) > pl.constant);
-}
-
 
 const struct Mat3 mat3_id = { .rows = {
 	{1,0,0},
@@ -107,12 +102,57 @@ struct Mat3 mat3_inverse(struct Mat3 M)
 	);
 }
 
+struct Mat3 mat3_rotation_xz(float angle)
+{
+	/*
+	if you have understood 3blue1brown's linear transform stuff, then you should
+	be able to write this down without looking it up
+	*/
+	return (struct Mat3){ .rows = {
+		{ cosf(angle),  0, sinf(angle) },
+		{ 0,            1, 0           },
+		{ -sinf(angle), 0, cosf(angle) },
+	}};
+}
+
+
+void plane_apply_mat3_INVERSE(struct Plane *pl, struct Mat3 inverse)
+{
+	/*
+	The plane equation can be written as ax+by+cz = constant. By thinking of
+	numbers as 1x1 matrices, we can write that as
+
+		         _   _
+		        |  x  |
+		[a b c] |  y  | = constant.
+		        |_ z _|
+
+	How to apply a matrix to the plane? Consider the two planes that we should
+	have before and after applying the matrix. A point is on the plane after
+	applying the transform if and only if the INVERSE transformed point is on the
+	plane before applying the transform. This means that to apply a matrix M, we
+	should replace the equation with
+
+		              _   _
+		             |  x  |
+		[a b c] M^-1 |  y  | = constant,
+		             |_ z _|
+
+	and from linear algebra, we know that
+
+		                       _   _    T
+		               /      |  a  | \
+		[a b c] M^-1 = | M^-1 |  b  | |
+		               \      |_ c _| /
+	*/
+	pl->normal = mat3_mul_vec3(inverse, pl->normal);
+}
 
 void plane_move(struct Plane *pl, struct Vec3 mv)
 {
 	/*
 	Generally, moving foo means replacing (x,y,z) with (x,y,z)-mv in the equation
-	of foo. Our plane equation is
+	of foo (similarly to inverse matrix stuff above). Our plane equation is
 
 		(x,y,z) dot normal = constant
 
@@ -125,6 +165,11 @@ void plane_move(struct Plane *pl, struct Vec3 mv)
 		(x,y,z) dot normal = constant + (mv dot normal).
 	*/
 	pl->constant += vec3_dot(mv, pl->normal);
+}
+
+bool plane_whichside(struct Plane pl, struct Vec3 pt)
+{
+	return (vec3_dot(pl.normal, pt) > pl.constant);
 }
 
 float plane_point_distance(struct Plane pl, struct Vec3 pt)

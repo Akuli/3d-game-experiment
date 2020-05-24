@@ -23,6 +23,7 @@ int main(void)
 		fatal_sdl_error("SDL_CreateWindowAndRenderer");
 
 	struct Sphere *sph = sphere_load("person.png", (struct Vec3){0,0.5f,-2});
+	sph->angle = 1.57f;   // pi/2 radians = 90 degrees = look to the left
 	struct Camera cam;
 	cam.location = (struct Vec3){ 0,1,0 };
 	cam.world2cam = (struct Mat3) { .rows = {
@@ -58,13 +59,7 @@ int main(void)
 		if (curtime <= time) {
 			SDL_Delay(time - curtime);
 		} else {
-			fprintf(stderr,
-				"an iteration of the main loop is %dms late. "
-				"Each iteration should last %dms. "
-				"Game started %.2fs ago.\n",
-				(unsigned)(curtime - time),
-				1000/FPS,
-				(float)curtime/1000);
+			// its lagging
 			time = curtime;
 		}
 	}

@@ -56,6 +56,10 @@ float mat3_det(struct Mat3 M);
 // inverse matrix
 struct Mat3 mat3_inverse(struct Mat3 M);
 
+// slow to compute because uses trig funcs, so don't call this in a loop
+// angle is in radians, like everything
+struct Mat3 mat3_rotation_xz(float angle);
+
 
 // any plane in 3D, behaves nicely no matter which way plane is oriented
 struct Plane {
@@ -69,10 +73,14 @@ Is a point on the side of the plane pointed by the normal vector?
 */
 bool plane_whichside(struct Plane pl, struct Vec3 pt);
 
+// Apply the inverse of the given matrix to every point of the plane
+void plane_apply_mat3_INVERSE(struct Plane *pl, struct Mat3 inverse);
+
 // Move plane by vector
 void plane_move(struct Plane *pl, struct Vec3 mv);
 
 // distance between plane and point, never negative
+// Somewhat slow because calculates sqrt.
 float plane_point_distance(struct Plane pl, struct Vec3 pt);
 
 
