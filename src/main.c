@@ -63,6 +63,7 @@ int main(void)
 exit:
 	sphere_destroy(sph);
 	SDL_DestroyWindow(win);
+	SDL_DestroyRenderer(rnd);
 	SDL_Quit();
 	return 0;
 }

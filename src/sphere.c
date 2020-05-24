@@ -77,6 +77,7 @@ static SphereColorArray *read_image(const char *filename)
 		readbuf, tmpw, tmph, 0,
 		reszbuf, SPHERE_PIXELS_AROUND, SPHERE_PIXELS_VERTICALLY, 0,
 		3);
+	free(readbuf);
 	if (!ok)
 		fatal_error("stbir_resize_uint8", strerror(errno));
 
