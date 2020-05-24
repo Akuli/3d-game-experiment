@@ -90,6 +90,7 @@ static SphereColorArray *read_image(const char *filename)
 			(*colorarr)[y][ar].r = reszbuf[i++];
 			(*colorarr)[y][ar].g = reszbuf[i++];
 			(*colorarr)[y][ar].b = reszbuf[i++];
+			(*colorarr)[y][ar].a = 0xff;
 		}
 	}
 
@@ -129,9 +130,8 @@ void sphere_destroy(struct Sphere sph)
 	free(sph.colorarr);
 }
 
-// 2* because half of the sphere is background color
 // +1 because beginning and end are both needed
-#define VECTORS_IDX(V, A) ((V)*( 2*SPHERE_PIXELS_AROUND ) + (A))
+#define VECTORS_IDX(V, A) ((V)*SPHERE_PIXELS_AROUND + (A))
 #define N_VECTORS VECTORS_IDX(SPHERE_PIXELS_VERTICALLY+1, 0)
 
 /*
@@ -153,10 +153,10 @@ static const struct Vec3 *get_vectors(void)
 		float y = 2*RADIUS*(float)v/SPHERE_PIXELS_VERTICALLY - RADIUS;
 		float xzrad = sqrtf(RADIUS*RADIUS - y*y);  // radius on xz plane
 
-		for (size_t a = 0; a < 2*SPHERE_PIXELS_AROUND; a++) {
-			float angle = (float)a/SPHERE_PIXELS_AROUND * pi;
-			float x = -xzrad*cosf(angle);
-			float z = xzrad*sinf(angle);
+		for (size_t a = 0; a < SPHERE_PIXELS_AROUND; a++) {
+			float angle = (float)a/SPHERE_PIXELS_AROUND * 2*pi;
+			float x = xzrad*sinf(angle);
+			float z = -xzrad*cosf(angle);
 			res[VECTORS_IDX(v, a)] = (struct Vec3){ x, y, z };
 		}
 	}
@@ -185,25 +185,30 @@ void sphere_display(struct Sphere sph, struct SDL_Renderer *rnd)
 	struct Plane vplane = sphere_visplane(sph);
 	plane_move(&vplane, sph.center);
 
+	// parts of image in front of this can be approximated with rectangles
+	struct Plane rectplane = vplane;
+	plane_move(&rectplane, vec3_withlength(rectplane.normal, 0.2f*RADIUS));
+
 	const struct Vec3 *vecs = get_vectors();
 
-	for (size_t a = 0; a < 2*SPHERE_PIXELS_AROUND; a++) {
-		size_t a2 = (a+1) % (2*SPHERE_PIXELS_AROUND);
+	for (size_t a = 0; a < SPHERE_PIXELS_AROUND; a++) {
+		size_t a2 = (a+1) % SPHERE_PIXELS_AROUND;
 
 		for (size_t v = 0; v < SPHERE_PIXELS_VERTICALLY; v++) {
 			size_t v2 = v+1;
 
-			if (!plane_whichside(vplane, vecs[VECTORS_IDX(v, a)]) ||
-				!plane_whichside(vplane, vecs[VECTORS_IDX(v, a2)]) ||
-				!plane_whichside(vplane, vecs[VECTORS_IDX(v2, a)]) ||
+			if (!plane_whichside(vplane, vecs[VECTORS_IDX(v, a)]) &&
+				!plane_whichside(vplane, vecs[VECTORS_IDX(v, a2)]) &&
+				!plane_whichside(vplane, vecs[VECTORS_IDX(v2, a)]) &&
 				!plane_whichside(vplane, vecs[VECTORS_IDX(v2, a2)]))
 			{
 				continue;
 			}
 
+			struct Display4Gon gon = get_4gon(sph, vecs, v,v2,a,a2);
 			SDL_Color col = (a < SPHERE_PIXELS_AROUND) ? (*sph.colorarr)[v][a] : sph.bgcolor;
-			SDL_SetRenderDrawColor(rnd, col.r, col.g, col.b, col.a);
-			display_4gon(rnd, get_4gon(sph, vecs, v,v2,a,a2));
+			bool userects = plane_whichside(rectplane, vecs[VECTORS_IDX(v, a)]);
+			display_4gon(rnd, gon, col, userects);
 		}
 	}
 }

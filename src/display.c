@@ -27,43 +27,10 @@ SDL_Point display_point_to_sdl(struct Vec3 pt)
 	};
 }
 
-int compare_y_coords(const void *p1, const void *p2)
+static uint32_t convert_color_for_gfx(SDL_Color col)
 {
-	const SDL_Point *a = p1;
-	const SDL_Point *b = p2;
-	return (a->y > b->y) - (a->y < b->y);
-}
-
-// smin = source min etc
-static int linear_map(int smin, int smax, int dmin, int dmax, int val)
-{
-	return dmin + (dmax - dmin)*(val - smin)/(smax - smin);
-}
-
-static void swap(SDL_Point *a, SDL_Point *b)
-{
-	SDL_Point tmp = *a;
-	*a = *b;
-	*b = tmp;
-}
-
-static void draw_filled_triangle(SDL_Renderer *rnd, SDL_Point p1, SDL_Point p2, SDL_Point p3)
-{
-	if (abs(p2.x - p3.x) > abs(p3.y - p2.y)) {
-		if (p2.x > p3.x)
-			swap(&p2, &p3);
-		for (int x = p2.x; x <= p3.x; x++) {
-			int y = linear_map(p2.x, p3.x, p2.y, p3.y, x);
-			SDL_RenderDrawLine(rnd, p1.x, p1.y, x, y);
-		}
-	} else {
-		if (p2.y > p3.y)
-			swap(&p2, &p3);
-		for (int y = p2.y; y <= p3.y; y++) {
-			int x = linear_map(p2.y, p3.y, p2.x, p3.x, y);
-			SDL_RenderDrawLine(rnd, p1.x, p1.y, x, y);
-		}
-	}
+	// docs say that it's 0xRRGGBBAA but actual behaviour is 0xAABBGGRR... wtf
+	return ((uint32_t)col.a << 24) | ((uint32_t)col.b << 16) | ((uint32_t)col.g << 8) | ((uint32_t)col.r << 0);
 }
 
 #define min(a,b) ((a)<(b) ? (a) : (b))
@@ -71,21 +38,26 @@ static void draw_filled_triangle(SDL_Renderer *rnd, SDL_Point p1, SDL_Point p2, 
 #define min4(a,b,c,d) min(min(a,b),min(c,d))
 #define max4(a,b,c,d) max(max(a,b),max(c,d))
 
-void display_4gon(SDL_Renderer *rnd, struct Display4Gon gon)
+void display_4gon(SDL_Renderer *rnd, struct Display4Gon gon, SDL_Color col, bool rect)
 {
-	struct SDL_Point arr[] = {
-		display_point_to_sdl(gon.point1),
-		display_point_to_sdl(gon.point2),
-		display_point_to_sdl(gon.point3),
-		display_point_to_sdl(gon.point4),
-	};
+	struct SDL_Point p1 = display_point_to_sdl(gon.point1);
+	struct SDL_Point p2 = display_point_to_sdl(gon.point2);
+	struct SDL_Point p3 = display_point_to_sdl(gon.point3);
+	struct SDL_Point p4 = display_point_to_sdl(gon.point4);
 
-	//draw_filled_triangle(rnd, arr[0], arr[1], arr[2]);
-	//draw_filled_triangle(rnd, arr[3], arr[1], arr[2]);
-
-	int xmin = min4(arr[0].x, arr[1].x, arr[2].x, arr[3].x);
-	int xmax = max4(arr[0].x, arr[1].x, arr[2].x, arr[3].x);
-	int ymin = min4(arr[0].y, arr[1].y, arr[2].y, arr[3].y);
-	int ymax = max4(arr[0].y, arr[1].y, arr[2].y, arr[3].y);
-	SDL_RenderFillRect(rnd, &(SDL_Rect){ xmin, ymin, xmax-xmin, ymax-ymin });
+	if (rect){
+		int xmin = min4(p1.x, p2.x, p3.x, p4.x);
+		int xmax = max4(p1.x, p2.x, p3.x, p4.x);
+		int ymin = min4(p1.y, p2.y, p3.y, p4.y);
+		int ymax = max4(p1.y, p2.y, p3.y, p4.y);
+		SDL_SetRenderDrawColor(rnd, col.r, col.g, col.b, col.a);
+		SDL_RenderFillRect(rnd, &(SDL_Rect){ xmin, ymin, xmax-xmin, ymax-ymin });
+	}else{
+		filledPolygonColor(
+			rnd,
+			(int16_t[]){ (int16_t)p1.x, (int16_t)p2.x, (int16_t)p4.x, (int16_t)p3.x },
+			(int16_t[]){ (int16_t)p1.y, (int16_t)p2.y, (int16_t)p4.y, (int16_t)p3.y },
+			4,
+			convert_color_for_gfx(col));
+	}
 }

@@ -60,7 +60,11 @@ struct Display4Gon {
 	struct Vec3 point1, point2, point3, point4;
 };
 
-void display_4gon(SDL_Renderer *rnd, struct Display4Gon gon);
+/*
+If rect is true, then this draws a rectangle instead of actually drawing the
+4-gon. That's much faster.
+*/
+void display_4gon(SDL_Renderer *rnd, struct Display4Gon gon, SDL_Color col, bool rect);
 
 
 #endif    // DISPLAY_H

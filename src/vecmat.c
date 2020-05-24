@@ -1,5 +1,6 @@
 #include "vecmat.h"
 #include <assert.h>
+#include <math.h>
 
 struct Vec3 vec3_add(struct Vec3 v, struct Vec3 w)
 {
@@ -24,6 +25,13 @@ float vec3_dot(struct Vec3 v, struct Vec3 w)
 float vec3_lengthSQUARED(struct Vec3 v)
 {
 	return vec3_dot(v,v);
+}
+
+struct Vec3 vec3_withlength(struct Vec3 v, float len)
+{
+	float oldlen = sqrtf(vec3_lengthSQUARED(v));
+	float r = len / oldlen;
+	return (struct Vec3){ v.x*r, v.y*r, v.z*r };
 }
 
 struct Vec3 vec3_cross(struct Vec3 v, struct Vec3 w)

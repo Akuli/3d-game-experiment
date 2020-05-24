@@ -26,6 +26,13 @@ notice it. It's good to avoid square roots in performance critical code.
 */
 float vec3_lengthSQUARED(struct Vec3 v);
 
+/*
+Return a vector in same direction as v but with the given length.
+
+Somewhat slow because calculates sqrt.
+*/
+struct Vec3 vec3_withlength(struct Vec3 v, float len);
+
 // cross product
 struct Vec3 vec3_cross(struct Vec3 v, struct Vec3 w);
 
