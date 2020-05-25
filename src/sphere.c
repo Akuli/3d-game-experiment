@@ -46,7 +46,7 @@ struct Plane sphere_visplane(const struct Sphere *sph, const struct Camera *cam)
 
 		projection of (x,y,z) onto normal = -D,
 
-	where normal=-sph.center is a normal vector of the plane pointing towards the
+	where normal=-center is a normal vector of the plane pointing towards the
 	camera. By writing the projection with dot product, we get
 
 		((x,y,z) dot normal) / |normal| = -D.
@@ -198,10 +198,6 @@ void sphere_display(const struct Sphere *sph, const struct Camera *cam)
 	struct Vec3 center = camera_point_world2cam(cam, sph->center);
 	struct Plane vplane = sphere_visplane(sph, cam);
 
-	// parts of image in front of this can be approximated with rectangles
-	struct Plane rectplane = vplane;
-	plane_move(&rectplane, vec3_withlength(vplane.normal, 0.15f*RADIUS));
-
 	const VectorArray *vecs = get_relative_vectors();
 
 	for (size_t a = 0; a < SPHERE_PIXELS_AROUND; a++) {
@@ -225,9 +221,7 @@ void sphere_display(const struct Sphere *sph, const struct Camera *cam)
 				vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v2][a])),
 				vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v2][a2])),
 			};
-			enum DisplayKind k = plane_whichside(rectplane, (*vecs)[v][a]) ? DISPLAY_RECT : DISPLAY_BORDER;
-
-			display_4gon(cam, gon, col, k);
+			display_4gon(cam, gon, col, DISPLAY_RECT);
 		}
 	}
 }
