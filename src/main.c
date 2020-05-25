@@ -1,4 +1,4 @@
-#include <signal.h>
+#include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -19,6 +19,13 @@ struct GameState {
 	struct Player players[2];
 };
 
+static int compare_float_pointers(const void *a, const void *b)
+{
+	float x = *(const float *)a;
+	float y = *(const float *)b;
+	return (x>y) - (x<y);
+}
+
 static void show_everything(const struct GameState *gs, const struct Camera *cam)
 {
 	for (float x = -10; x <= 10; x += 1.f) {
@@ -34,8 +41,19 @@ static void show_everything(const struct GameState *gs, const struct Camera *cam
 		}
 	}
 
+	struct PlayerInfo {
+		float camcenterz;   // z coordinate of center in camera coordinates
+		const struct Player *player;
+	} arr[] = {
+		{ camera_point_world2cam(cam, gs->players[0].sphere->center).z, &gs->players[0] },
+		{ camera_point_world2cam(cam, gs->players[1].sphere->center).z, &gs->players[1] },
+	};
+
+	static_assert(offsetof(struct PlayerInfo, camcenterz) == 0, "weird padding");
+	qsort(arr, sizeof(arr)/sizeof(arr[0]), sizeof(arr[0]), compare_float_pointers);
+
 	for (int i = 0; i < 2; i++)
-		sphere_display(gs->players[i].sphere, cam);
+		sphere_display(arr[i].player->sphere, cam);
 }
 
 // returns whether to continue playing
