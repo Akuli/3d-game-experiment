@@ -15,6 +15,9 @@ struct Sphere {
 	struct Vec3 center;
 	float angle;    // 0 = looking toward negative direction of z axis
 	SDL_Color image[SPHERE_PIXELS_VERTICALLY][SPHERE_PIXELS_AROUND];
+
+	// this is meant only for sphere.c
+	struct Vec3 vectorcache[SPHERE_PIXELS_VERTICALLY][SPHERE_PIXELS_AROUND];
 };
 
 // Does the sphere contain the point?
@@ -35,7 +38,7 @@ struct Plane sphere_visplane(const struct Sphere *sph, const struct Camera *cam)
 struct Sphere *sphere_load(const char *filename, struct Vec3 center);
 
 // draw sphere to screen if camera is not inside sphere
-void sphere_display(const struct Sphere *sph, const struct Camera *cam);
+void sphere_display(struct Sphere *sph, const struct Camera *cam);
 
 
 #endif  // SPHERE_H

@@ -183,7 +183,7 @@ static const VectorArray *get_relative_vectors(void)
 	return (const VectorArray *) &res;
 }
 
-void sphere_display(const struct Sphere *sph, const struct Camera *cam)
+void sphere_display(struct Sphere *sph, const struct Camera *cam)
 {
 	if (sphere_contains(sph, cam->location))
 		return;
@@ -200,26 +200,30 @@ void sphere_display(const struct Sphere *sph, const struct Camera *cam)
 
 	const VectorArray *vecs = get_relative_vectors();
 
+	for (size_t v = 0; v < SPHERE_PIXELS_VERTICALLY; v++)
+		for (size_t a = 0; a < SPHERE_PIXELS_AROUND; a++)
+			sph->vectorcache[v][a] = vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v][a]));
+
 	for (size_t a = 0; a < SPHERE_PIXELS_AROUND; a++) {
 		size_t a2 = (a+1) % SPHERE_PIXELS_AROUND;
 
 		for (size_t v = 0; v < SPHERE_PIXELS_VERTICALLY; v++) {
 			size_t v2 = v+1;
 
-			if (!plane_whichside(vplane, vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v][a]))) &&
-				!plane_whichside(vplane, vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v][a2]))) &&
-				!plane_whichside(vplane, vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v2][a]))) &&
-				!plane_whichside(vplane, vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v2][a2]))))
+			if (!plane_whichside(vplane, sph->vectorcache[v][a]) &&
+				!plane_whichside(vplane, sph->vectorcache[v][a2]) &&
+				!plane_whichside(vplane, sph->vectorcache[v2][a]) &&
+				!plane_whichside(vplane, sph->vectorcache[v2][a2]))
 			{
 				continue;
 			}
 
 			SDL_Color col = sph->image[v][a];
 			struct Display4Gon gon = {
-				vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v][a])),
-				vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v][a2])),
-				vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v2][a])),
-				vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v2][a2])),
+				sph->vectorcache[v][a],
+				sph->vectorcache[v][a2],
+				sph->vectorcache[v2][a],
+				sph->vectorcache[v2][a2],
 			};
 			display_4gon(cam, gon, col, DISPLAY_RECT);
 		}
