@@ -17,50 +17,6 @@ bool sphere_contains(const struct Sphere *sph, struct Vec3 pt)
 	return (vec3_lengthSQUARED(vec3_sub(sph->center, pt)) <= RADIUS*RADIUS);
 }
 
-struct Plane sphere_visplane(const struct Sphere *sph, const struct Camera *cam)
-{
-	assert(!sphere_contains(sph, cam->location));
-
-	// switch to coordinates where camera is at (0,0,0)
-	struct Vec3 center = camera_point_world2cam(cam, sph->center);
-
-	/*
-	From the side, the sphere being split by visplane looks like this:
-
-         \ /
-          \___
-         //\  \
-        /|  \  |
-	   /  \__\/
-    cam^^^^^^^\^^^^^^
-               \
-                \
-	         visplane
-
-	Let D denote the (smallest) distance between visplane and camera. Recall that
-	the camera is at (0,0,0). With similar triangles, we get
-
-		D = |sph.center| - RADIUS^2/|sph.center|.
-
-	The equation of the plane is
-
-		projection of (x,y,z) onto normal = -D,
-
-	where normal=-center is a normal vector of the plane pointing towards the
-	camera. By writing the projection with dot product, we get
-
-		((x,y,z) dot normal) / |normal| = -D.
-
-	From here, we get
-
-		(x,y,z) dot normal = RADIUS^2 - |sph.center|^2.
-	*/
-	return (struct Plane) {
-		.normal = vec3_neg(center),
-		.constant = RADIUS*RADIUS - vec3_lengthSQUARED(center),
-	};
-}
-
 #define IS_TRANSPARENT(color) ((color).a < 0x80)
 
 static SDL_Color average_color(SDL_Color *pixels, size_t npixels)
@@ -148,6 +104,64 @@ struct Sphere *sphere_load(const char *filename, struct Vec3 center)
 	return sph;
 }
 
+/*
+A part of the sphere is visible to the camera. The rest isn't. The plane returned
+by this function divides the sphere into the visible part and the part behind the
+visible part. The normal vector of the plane points toward the visible side, so
+plane_whichside() returns whether a point on the sphere is visible.
+
+The returned plane is in camera coordinates.
+*/
+static struct Plane
+get_visibility_plane(const struct Sphere *sph, const struct Camera *cam)
+{
+	assert(!sphere_contains(sph, cam->location));
+
+	// switch to coordinates where camera is at (0,0,0)
+	struct Vec3 center = camera_point_world2cam(cam, sph->center);
+
+	/*
+	From the side, the sphere being split by the visibility plane looks like this:
+
+        \  /
+         \/___
+         /\   \
+        /| \o  |
+	   /  \_\_/
+    cam^^^^^^\^^^^^^^
+              \
+               \
+	       visibility
+	         plane
+
+	Note that the plane is closer to the camera than the sphere center. The center
+	is marked with 'o' above.
+
+	Let D denote the distance between visplane and camera. With similar triangles
+	and Pythagorean theorem, we get
+
+		D = |center| - RADIUS^2/|center|.
+
+	As a quick sanity check, D < |center|. The equation of the plane is
+
+		projection of (x,y,z) onto the center vector = D,
+
+	because center is a normal vector of the plane. By writing the projection with
+	dot product, we get
+
+		((x,y,z) dot center) / |center| = D.
+
+	We actually want the normal vector to point towards the camera, so we write the
+	plane equation using -center instead of center:
+
+		(x,y,z) dot (-center) = RADIUS^2 - |center|^2
+	*/
+	return (struct Plane) {
+		.normal = vec3_neg(center),
+		.constant = RADIUS*RADIUS - vec3_lengthSQUARED(center),
+	};
+}
+
 // +1 for vertical because we want to include both ends
 // no +1 for the other one because it wraps around instead
 typedef struct Vec3 VectorArray[SPHERE_PIXELS_VERTICALLY + 1][SPHERE_PIXELS_AROUND];
@@ -196,13 +210,12 @@ void sphere_display(struct Sphere *sph, const struct Camera *cam)
 	struct Mat3 mat = mat3_mul_mat3(cam->world2cam, mat3_rotation_xz(sph->angle));
 
 	struct Vec3 center = camera_point_world2cam(cam, sph->center);
-	struct Plane vplane = sphere_visplane(sph, cam);
+	struct Plane vplane = get_visibility_plane(sph, cam);
 
-	const VectorArray *vecs = get_relative_vectors();
-
+	const VectorArray *rvecs = get_relative_vectors();
 	for (size_t v = 0; v < SPHERE_PIXELS_VERTICALLY + 1; v++)
 		for (size_t a = 0; a < SPHERE_PIXELS_AROUND; a++)
-			sph->vectorcache[v][a] = vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v][a]));
+			sph->vectorcache[v][a] = vec3_add(center, mat3_mul_vec3(mat, (*rvecs)[v][a]));
 
 	for (size_t a = 0; a < SPHERE_PIXELS_AROUND; a++) {
 		size_t a2 = (a+1) % SPHERE_PIXELS_AROUND;
