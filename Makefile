@@ -40,7 +40,6 @@ game: src/main.c $(OBJ) $(HEADERS)
 	$(CC) $(CFLAGS) $< $(OBJ) -o $@ $(LDFLAGS)
 
 
-
 # profiling stuff
 #
 #	$ python3 -m pip install gprof2dot

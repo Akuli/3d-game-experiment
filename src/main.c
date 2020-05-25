@@ -7,7 +7,7 @@
 #include "camera.h"
 #include "common.h"
 #include "player.h"
-#include "sphere.h"
+#include "ball.h"
 #include "mathstuff.h"
 
 #include <SDL2/SDL.h>
@@ -45,15 +45,15 @@ static void show_everything(const struct GameState *gs, const struct Camera *cam
 		float camcenterz;   // z coordinate of center in camera coordinates
 		const struct Player *player;
 	} arr[] = {
-		{ camera_point_world2cam(cam, gs->players[0].sphere->center).z, &gs->players[0] },
-		{ camera_point_world2cam(cam, gs->players[1].sphere->center).z, &gs->players[1] },
+		{ camera_point_world2cam(cam, gs->players[0].ball->center).z, &gs->players[0] },
+		{ camera_point_world2cam(cam, gs->players[1].ball->center).z, &gs->players[1] },
 	};
 
 	static_assert(offsetof(struct PlayerInfo, camcenterz) == 0, "weird padding");
 	qsort(arr, sizeof(arr)/sizeof(arr[0]), sizeof(arr[0]), compare_float_pointers);
 
 	for (int i = 0; i < 2; i++)
-		sphere_display(arr[i].player->sphere, cam);
+		ball_display(arr[i].player->ball, cam);
 }
 
 // returns whether to continue playing
@@ -148,8 +148,8 @@ int main(void)
 		fatal_sdl_error("SDL_GetWindowSurface");
 
 	struct GameState gs = {0};
-	gs.players[0].sphere = sphere_load("person1.png", (Vec3){0,0.5f,-2});
-	gs.players[1].sphere = sphere_load("person2.png", (Vec3){2,0.5f,-2});
+	gs.players[0].ball = ball_load("player1.png", (Vec3){0,0.5f,-2});
+	gs.players[1].ball = ball_load("player2.png", (Vec3){2,0.5f,-2});
 
 	// This turned out to be much faster than blitting
 	gs.players[0].cam.surface = create_half_surface(winsurf, 0, winsurf->w/2);
@@ -192,8 +192,8 @@ int main(void)
 	}
 
 exit:
-	free(gs.players[0].sphere);
-	free(gs.players[1].sphere);
+	free(gs.players[0].ball);
+	free(gs.players[1].ball);
 	SDL_FreeSurface(gs.players[0].cam.surface);
 	SDL_FreeSurface(gs.players[1].cam.surface);
 	SDL_DestroyWindow(win);

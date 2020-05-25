@@ -1,6 +1,6 @@
 obj/
 game
-person1.png
-person2.png
+player1.png
+player2.png
 callgrind.out
 graph.*

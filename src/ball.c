@@ -1,4 +1,4 @@
-#include "sphere.h"
+#include "ball.h"
 #include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -11,7 +11,7 @@
 
 #define RADIUS 0.5f
 
-bool sphere_contains(const struct Sphere *sph, Vec3 pt)
+bool ball_contains(const struct Ball *sph, Vec3 pt)
 {
 	return (vec3_lengthSQUARED(vec3_sub(sph->center, pt)) <= RADIUS*RADIUS);
 }
@@ -84,16 +84,16 @@ static void read_image(const char *filename, SDL_Color *res)
 
 	int ok = stbir_resize_uint8(
 		(uint8_t*) filedata, filew, fileh, 0,
-		(uint8_t*) res, SPHERE_PIXELS_AROUND, SPHERE_PIXELS_VERTICALLY, 0,
+		(uint8_t*) res, BALL_PIXELS_AROUND, BALL_PIXELS_VERTICALLY, 0,
 		4);
 	stbi_image_free(filedata);
 	if (!ok)
 		fatal_error("stbir_resize_uint8", strerror(errno));
 }
 
-struct Sphere *sphere_load(const char *filename, Vec3 center)
+struct Ball *ball_load(const char *filename, Vec3 center)
 {
-	struct Sphere *sph = malloc(sizeof(*sph));
+	struct Ball *sph = malloc(sizeof(*sph));
 	if (!sph)
 		fatal_error_nomem();
 
@@ -104,23 +104,23 @@ struct Sphere *sphere_load(const char *filename, Vec3 center)
 }
 
 /*
-A part of the sphere is visible to the camera. The rest isn't. The plane returned
-by this function divides the sphere into the visible part and the part behind the
+A part of the ball is visible to the camera. The rest isn't. The plane returned
+by this function divides the ball into the visible part and the part behind the
 visible part. The normal vector of the plane points toward the visible side, so
-plane_whichside() returns whether a point on the sphere is visible.
+plane_whichside() returns whether a point on the ball is visible.
 
 The returned plane is in camera coordinates.
 */
 static struct Plane
-get_visibility_plane(const struct Sphere *sph, const struct Camera *cam)
+get_visibility_plane(const struct Ball *sph, const struct Camera *cam)
 {
-	assert(!sphere_contains(sph, cam->location));
+	assert(!ball_contains(sph, cam->location));
 
 	// switch to coordinates where camera is at (0,0,0)
 	Vec3 center = camera_point_world2cam(cam, sph->center);
 
 	/*
-	From the side, the sphere being split by the visibility plane looks like this:
+	From the side, the ball being split by the visibility plane looks like this:
 
         \  /
          \/___
@@ -133,7 +133,7 @@ get_visibility_plane(const struct Sphere *sph, const struct Camera *cam)
 	       visibility
 	         plane
 
-	Note that the plane is closer to the camera than the sphere center. The center
+	Note that the plane is closer to the camera than the ball center. The center
 	is marked with 'o' above.
 
 	Let D denote the distance between visplane and camera. With similar triangles
@@ -163,12 +163,12 @@ get_visibility_plane(const struct Sphere *sph, const struct Camera *cam)
 
 // +1 for vertical because we want to include both ends
 // no +1 for the other one because it wraps around instead
-typedef Vec3 VectorArray[SPHERE_PIXELS_VERTICALLY + 1][SPHERE_PIXELS_AROUND];
+typedef Vec3 VectorArray[BALL_PIXELS_VERTICALLY + 1][BALL_PIXELS_AROUND];
 
 /*
-Where on the sphere's surface will each pixel go? This function calculates vectors
-so that you don't need to call slow trig functions every time the sphere is drawn.
-The resulting vectors have (0,0,0) as the sphere center, hence "relative".
+Where on the ball's surface will each pixel go? This function calculates vectors
+so that you don't need to call slow trig functions every time the ball is drawn.
+The resulting vectors have (0,0,0) as the ball center, hence "relative".
 */
 static const VectorArray *get_relative_vectors(void)
 {
@@ -180,12 +180,12 @@ static const VectorArray *get_relative_vectors(void)
 
 	float pi = acosf(-1);
 
-	for (size_t v = 0; v < SPHERE_PIXELS_VERTICALLY+1; v++) {
-		float y = RADIUS - 2*RADIUS*(float)v/SPHERE_PIXELS_VERTICALLY;
+	for (size_t v = 0; v < BALL_PIXELS_VERTICALLY+1; v++) {
+		float y = RADIUS - 2*RADIUS*(float)v/BALL_PIXELS_VERTICALLY;
 		float xzrad = sqrtf(RADIUS*RADIUS - y*y);  // radius on xz plane
 
-		for (size_t a = 0; a < SPHERE_PIXELS_AROUND; a++) {
-			float angle = (float)a/SPHERE_PIXELS_AROUND * 2*pi;
+		for (size_t a = 0; a < BALL_PIXELS_AROUND; a++) {
+			float angle = (float)a/BALL_PIXELS_AROUND * 2*pi;
 			float x = xzrad*sinf(angle);
 			float z = xzrad*cosf(angle);
 			res[v][a] = (Vec3){ x, y, z };
@@ -196,9 +196,9 @@ static const VectorArray *get_relative_vectors(void)
 	return (const VectorArray *) &res;
 }
 
-void sphere_display(struct Sphere *sph, const struct Camera *cam)
+void ball_display(struct Ball *sph, const struct Camera *cam)
 {
-	if (sphere_contains(sph, cam->location))
+	if (ball_contains(sph, cam->location))
 		return;
 
 	/*
@@ -212,8 +212,8 @@ void sphere_display(struct Sphere *sph, const struct Camera *cam)
 	struct Plane vplane = get_visibility_plane(sph, cam);
 
 	const VectorArray *rvecs = get_relative_vectors();
-	for (size_t v = 0; v < SPHERE_PIXELS_VERTICALLY + 1; v++) {
-		for (size_t a = 0; a < SPHERE_PIXELS_AROUND; a++) {
+	for (size_t v = 0; v < BALL_PIXELS_VERTICALLY + 1; v++) {
+		for (size_t a = 0; a < BALL_PIXELS_AROUND; a++) {
 			// this is perf critical code
 			// turns out that in-place operations are measurably faster
 			sph->vectorcache[v][a] = (*rvecs)[v][a];
@@ -222,10 +222,10 @@ void sphere_display(struct Sphere *sph, const struct Camera *cam)
 		}
 	}
 
-	for (size_t a = 0; a < SPHERE_PIXELS_AROUND; a++) {
-		size_t a2 = (a+1) % SPHERE_PIXELS_AROUND;
+	for (size_t a = 0; a < BALL_PIXELS_AROUND; a++) {
+		size_t a2 = (a+1) % BALL_PIXELS_AROUND;
 
-		for (size_t v = 0; v < SPHERE_PIXELS_VERTICALLY; v++) {
+		for (size_t v = 0; v < BALL_PIXELS_VERTICALLY; v++) {
 			size_t v2 = v+1;
 
 			// this is perf critical code

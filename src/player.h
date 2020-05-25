@@ -2,10 +2,10 @@
 #define PLAYER_H
 
 #include "camera.h"
-#include "sphere.h"
+#include "ball.h"
 
 struct Player {
-	struct Sphere *sphere;
+	struct Ball *ball;
 	struct Camera cam;
 	int turning;   // +1 for left, -1 for right, 0 for nothing
 	bool moving;
