@@ -17,7 +17,7 @@ struct Sphere {
 	SDL_Color image[SPHERE_PIXELS_VERTICALLY][SPHERE_PIXELS_AROUND];
 
 	// this is meant only for sphere.c
-	struct Vec3 vectorcache[SPHERE_PIXELS_VERTICALLY][SPHERE_PIXELS_AROUND];
+	struct Vec3 vectorcache[SPHERE_PIXELS_VERTICALLY + 1][SPHERE_PIXELS_AROUND];
 };
 
 // Does the sphere contain the point?

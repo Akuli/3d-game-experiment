@@ -11,7 +11,7 @@ subtract camera.location and then multiply by word2camera matrix.
 struct Camera {
 	struct Vec3 location;
 	struct Mat3 world2cam;
-	SDL_Renderer *renderer;
+	SDL_Surface *surface;
 };
 
 /*

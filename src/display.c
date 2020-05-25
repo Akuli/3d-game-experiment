@@ -31,65 +31,37 @@ SDL_Point display_point_to_sdl(struct Vec3 pt)
 	};
 }
 
-static uint32_t convert_color_for_gfx(SDL_Color col)
+static void update_minmax(float *min, float *max, float val)
 {
-	// docs say that it's 0xRRGGBBAA but actual behaviour is 0xAABBGGRR... wtf
-	return ((uint32_t)col.a << 24) | ((uint32_t)col.b << 16) | ((uint32_t)col.g << 8) | ((uint32_t)col.r << 0);
+	if (val < *min)
+		*min = val;
+	if (val > *max)
+		*max = val;
 }
 
-#define min(a,b) ((a)<(b) ? (a) : (b))
-#define max(a,b) ((a)>(b) ? (a) : (b))
-#define min4(a,b,c,d) min(min(a,b),min(c,d))
-#define max4(a,b,c,d) max(max(a,b),max(c,d))
-
-static void point_to_screen_floats(struct Vec3 pt, float *x, float *y)
+void display_containing_rect(const struct Camera *cam, SDL_Color col, const struct Vec3 *points, unsigned npoints)
 {
-	*x = display_xzr_to_screenx(pt.x / pt.z);
-	*y = display_yzr_to_screeny(pt.y / pt.z);
-}
-
-void display_4gon(const struct Camera *cam, struct Display4Gon gon, SDL_Color col, enum DisplayKind dk)
-{
-	// must be in front of the camera, i.e. negative z
-	if (gon.point1.z >= 0 || gon.point2.z >= 0 || gon.point3.z >= 0 || gon.point4.z >= 0)
+	if (npoints == 0)
 		return;
 
-	float p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y;
-	point_to_screen_floats(gon.point1, &p1x, &p1y);
-	point_to_screen_floats(gon.point2, &p2x, &p2y);
-	point_to_screen_floats(gon.point3, &p3x, &p3y);
-	point_to_screen_floats(gon.point4, &p4x, &p4y);
-
-	float xmin = min4(p1x, p2x, p3x, p4x);
-	float xmax = max4(p1x, p2x, p3x, p4x);
-	float ymin = min4(p1y, p2y, p3y, p4y);
-	float ymax = max4(p1y, p2y, p3y, p4y);
-
-	// note the order 1,2,4,3, this is because sdl and my Display4Gon differ
-	int16_t xarr[] = { (int16_t)p1x, (int16_t)p2x, (int16_t)p4x, (int16_t)p3x };
-	int16_t yarr[] = { (int16_t)p1y, (int16_t)p2y, (int16_t)p4y, (int16_t)p3y };
-
-	switch(dk) {
-	case DISPLAY_BORDER:
-		polygonColor(cam->renderer, xarr, yarr, 4, convert_color_for_gfx(col));
-		break;
-
-	case DISPLAY_FILLED:
-		/*
-		This function is VERY SLOW. I tried implementing it myself and my
-		implementation was even slower :D
-		*/
-		filledPolygonColor(cam->renderer, xarr, yarr, 4, convert_color_for_gfx(col));
-		break;
-
-	case DISPLAY_RECT:
-		SDL_SetRenderDrawColor(cam->renderer, col.r, col.g, col.b, col.a);
-		SDL_RenderFillRect(cam->renderer, &(SDL_Rect){
-			(int)floorf(xmin),
-			(int)floorf(ymin),
-			(int)ceilf(xmax-xmin),
-			(int)ceilf(ymax-ymin),
-		});
-		break;
+	// must be in front of the camera, i.e. negative z
+	for (unsigned i = 0; i < npoints; i++) {
+		if (points[i].z >= 0)
+			return;
 	}
+
+	float xmin, xmax, ymin, ymax;
+	xmin = xmax = display_xzr_to_screenx(points[0].x / points[0].z);
+	ymin = ymax = display_yzr_to_screeny(points[0].y / points[0].z);
+	for (unsigned i = 1; i < npoints; i++) {
+		update_minmax(&xmin, &xmax, display_xzr_to_screenx(points[i].x / points[i].z));
+		update_minmax(&ymin, &ymax, display_yzr_to_screeny(points[i].y / points[i].z));
+	}
+
+	SDL_FillRect(cam->surface, &(SDL_Rect){
+		(int)floorf(xmin),
+		(int)floorf(ymin),
+		(int)ceilf(xmax-xmin),
+		(int)ceilf(ymax-ymin),
+	}, SDL_MapRGB(cam->surface->format, col.r, col.g, col.b));
 }

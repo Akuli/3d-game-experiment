@@ -69,8 +69,8 @@ enum DisplayKind {
 	DISPLAY_RECT,     // fast
 };
 
-// The 4-gon must be in camera coordinates
-void display_4gon(const struct Camera *cam, struct Display4Gon gon, SDL_Color col, enum DisplayKind dk);
+// Display smallest rectangle containing all points. Inputs in camera coordinates.
+void display_containing_rect(const struct Camera *cam, SDL_Color col, const struct Vec3 *points, unsigned npoints);
 
 
 #endif    // DISPLAY_H

@@ -200,7 +200,7 @@ void sphere_display(struct Sphere *sph, const struct Camera *cam)
 
 	const VectorArray *vecs = get_relative_vectors();
 
-	for (size_t v = 0; v < SPHERE_PIXELS_VERTICALLY; v++)
+	for (size_t v = 0; v < SPHERE_PIXELS_VERTICALLY + 1; v++)
 		for (size_t a = 0; a < SPHERE_PIXELS_AROUND; a++)
 			sph->vectorcache[v][a] = vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v][a]));
 
@@ -210,6 +210,8 @@ void sphere_display(struct Sphere *sph, const struct Camera *cam)
 		for (size_t v = 0; v < SPHERE_PIXELS_VERTICALLY; v++) {
 			size_t v2 = v+1;
 
+			// this is perf critical code
+
 			if (!plane_whichside(vplane, sph->vectorcache[v][a]) &&
 				!plane_whichside(vplane, sph->vectorcache[v][a2]) &&
 				!plane_whichside(vplane, sph->vectorcache[v2][a]) &&
@@ -218,14 +220,14 @@ void sphere_display(struct Sphere *sph, const struct Camera *cam)
 				continue;
 			}
 
-			SDL_Color col = sph->image[v][a];
-			struct Display4Gon gon = {
+			struct Vec3 vecs[] = {
 				sph->vectorcache[v][a],
 				sph->vectorcache[v][a2],
 				sph->vectorcache[v2][a],
 				sph->vectorcache[v2][a2],
 			};
-			display_4gon(cam, gon, col, DISPLAY_RECT);
+			display_containing_rect(
+				cam, sph->image[v][a], vecs, sizeof(vecs)/sizeof(vecs[0]));
 		}
 	}
 }

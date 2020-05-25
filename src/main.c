@@ -13,7 +13,7 @@
 
 #include <SDL2/SDL.h>
 
-#define FPS 30
+#define FPS 60
 
 // returns whether to continue playing
 static bool handle_event(SDL_Event event, struct Player *plr)
@@ -61,14 +61,17 @@ static bool handle_event(SDL_Event event, struct Player *plr)
 	return true;
 }
 
-
 int main(void)
 {
-	SDL_Window *win;
-	SDL_Renderer *rnd;
+	SDL_Window *win = SDL_CreateWindow(
+		"game",
+		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+		DISPLAY_WIDTH, DISPLAY_HEIGHT,
+		0);
+	if (!win)
+		fatal_sdl_error("SDL_CreateWindow");
 
-	if (SDL_CreateWindowAndRenderer(DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, &win, &rnd) == -1)
-		fatal_sdl_error("SDL_CreateWindowAndRenderer");
+	SDL_Surface *surf = SDL_GetWindowSurface(win);
 
 	struct Player plr = {
 		.sphere = sphere_load("person.png", (struct Vec3){0,0.5f,-2}),
@@ -79,7 +82,7 @@ int main(void)
 				{0, 1, 0},
 				{0, 0, 1},
 			}},
-			.renderer = rnd,
+			.surface = surf,
 		},
 		.turning = 0,
 	};
@@ -95,22 +98,23 @@ int main(void)
 		player_turn(&plr, FPS);
 		player_move(&plr, FPS);
 
-		SDL_SetRenderDrawColor(rnd, 0, 0, 0, 0xff);
-		SDL_RenderFillRect(rnd, NULL);
+		SDL_FillRect(surf, NULL, 0x000000UL);
 
-		SDL_SetRenderDrawColor(rnd, 0xff, 0xff, 0, 0xff);
 		for (float x = -10; x <= 10; x += 1.f) {
 			for (float z = -10; z <= 0; z += 0.3f) {
 				struct Vec3 worldvec = camera_point_world2cam(&plr.cam, (struct Vec3){ x, 0, z });
 				if (worldvec.z < 0) {
 					SDL_Point p = display_point_to_sdl(worldvec);
-					SDL_RenderDrawPoint(rnd, p.x, p.y);
+					SDL_FillRect(
+						surf,
+						&(SDL_Rect){ p.x, p.y, 1, 1 },
+						SDL_MapRGBA(surf->format, 0xff, 0xff, 0x00, 0xff));
 				}
 			}
 		}
 
 		sphere_display(plr.sphere, &plr.cam);
-		SDL_RenderPresent(rnd);
+		SDL_UpdateWindowSurface(win);
 
 		uint32_t curtime = SDL_GetTicks();
 		fprintf(stderr, "speed percentage thingy = %.1f%%\n",
@@ -128,7 +132,6 @@ int main(void)
 exit:
 	free(plr.sphere);
 	SDL_DestroyWindow(win);
-	SDL_DestroyRenderer(rnd);
 	SDL_Quit();
 	return 0;
 }
