@@ -10,8 +10,10 @@ LDFLAGS += -lSDL2
 LDFLAGS += -lm
 
 SRC := $(filter-out src/main.c, $(wildcard src/*.c))
-OBJ := obj/stb_image.o obj/stb_image_resize.o $(SRC:src/%.c=obj/%.o)
 HEADERS := $(wildcard src/*.h)
+
+# order matters, parallelizing make works best when slowly compiling things are first
+OBJ := obj/stb_image.o obj/stb_image_resize.o $(SRC:src/%.c=obj/%.o)
 
 all: game
 
