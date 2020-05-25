@@ -15,5 +15,11 @@ struct Player {
 void player_turn(struct Player *plr, unsigned int fps);
 void player_move(struct Player *plr, unsigned int fps);
 
+/*
+This is ran automatically by player_turn and player_move, but must be also called
+to set up some camera stuff when the game starts.
+*/
+void player_updatecam(struct Player *plr);
+
 
 #endif   // PLAYER_H

@@ -6,9 +6,6 @@
 #include "camera.h"
 #include "vecmat.h"
 
-#define DISPLAY_WIDTH 800
-#define DISPLAY_HEIGHT 600
-
 /*
 When drawing a pixel of the screen, the 3D points that could be drawn to that pixel
 form a line. We can write the equation of that line in the following form:
@@ -38,13 +35,13 @@ direction. See also camera.h.
 */
 
 // Conversion between screen coordinates and plane x/z and y/z ratios
-float display_screenx_to_xzr(float screenx);
-float display_screeny_to_yzr(float screeny);
-float display_xzr_to_screenx(float xzr);
-float display_yzr_to_screeny(float yzr);
+float display_screenx_to_xzr(SDL_Surface *surf, float screenx);
+float display_screeny_to_yzr(SDL_Surface *surf, float screeny);
+float display_xzr_to_screenx(SDL_Surface *surf, float xzr);
+float display_yzr_to_screeny(SDL_Surface *surf, float yzr);
 
 // Where on the screen should a 3D point be shown?
-SDL_Point display_point_to_sdl(struct Vec3 pt);
+SDL_Point display_point_to_sdl(SDL_Surface *surf, struct Vec3 pt);
 
 /*
 The points must be laid out something like this:

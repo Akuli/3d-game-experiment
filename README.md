@@ -1,7 +1,9 @@
 ## Setup
 
 Take a picture of someone's face and crop it so that you're left with a
-rectangle-shaped picture containing the face. Put that to `person.png`. Then:
+rectangle-shaped picture containing the face. Set everything except the
+face to transparent. Put that to `person1.png`. Create `person2.png`
+similarly. Then:
 
 ```
 $ git submodule init
