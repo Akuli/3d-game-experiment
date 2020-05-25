@@ -10,7 +10,7 @@ LDFLAGS += -lSDL2 -lSDL2_gfx   # could also use:  pkg-config --libs SDL2_gfx
 LDFLAGS += -lm
 
 SRC := $(filter-out src/main.c, $(wildcard src/*.c))
-OBJ := $(SRC:src/%.c=obj/%.o) obj/stb_image.o obj/stb_image_resize.o
+OBJ := obj/stb_image.o obj/stb_image_resize.o $(SRC:src/%.c=obj/%.o)
 HEADERS := $(wildcard src/*.h)
 
 all: game
