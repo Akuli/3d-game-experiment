@@ -10,7 +10,7 @@ Commands to compile and run:
 ```
 $ git submodule init
 $ git submodule update
-$ sudo apt install gcc make libsdl2-dev libsdl2-gfx-dev
+$ sudo apt install gcc make libsdl2-dev
 $ make -j2
 $ ./game
 ```
