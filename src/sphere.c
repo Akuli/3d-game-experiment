@@ -7,12 +7,11 @@
 #include <stb_image_resize.h>
 #include "camera.h"
 #include "common.h"
-#include "display.h"
-#include "vecmat.h"
+#include "mathstuff.h"
 
 #define RADIUS 0.5f
 
-bool sphere_contains(const struct Sphere *sph, struct Vec3 pt)
+bool sphere_contains(const struct Sphere *sph, Vec3 pt)
 {
 	return (vec3_lengthSQUARED(vec3_sub(sph->center, pt)) <= RADIUS*RADIUS);
 }
@@ -87,12 +86,12 @@ static void read_image(const char *filename, SDL_Color *res)
 		(uint8_t*) filedata, filew, fileh, 0,
 		(uint8_t*) res, SPHERE_PIXELS_AROUND, SPHERE_PIXELS_VERTICALLY, 0,
 		4);
-	free(filedata);
+	stbi_image_free(filedata);
 	if (!ok)
 		fatal_error("stbir_resize_uint8", strerror(errno));
 }
 
-struct Sphere *sphere_load(const char *filename, struct Vec3 center)
+struct Sphere *sphere_load(const char *filename, Vec3 center)
 {
 	struct Sphere *sph = malloc(sizeof(*sph));
 	if (!sph)
@@ -118,7 +117,7 @@ get_visibility_plane(const struct Sphere *sph, const struct Camera *cam)
 	assert(!sphere_contains(sph, cam->location));
 
 	// switch to coordinates where camera is at (0,0,0)
-	struct Vec3 center = camera_point_world2cam(cam, sph->center);
+	Vec3 center = camera_point_world2cam(cam, sph->center);
 
 	/*
 	From the side, the sphere being split by the visibility plane looks like this:
@@ -164,7 +163,7 @@ get_visibility_plane(const struct Sphere *sph, const struct Camera *cam)
 
 // +1 for vertical because we want to include both ends
 // no +1 for the other one because it wraps around instead
-typedef struct Vec3 VectorArray[SPHERE_PIXELS_VERTICALLY + 1][SPHERE_PIXELS_AROUND];
+typedef Vec3 VectorArray[SPHERE_PIXELS_VERTICALLY + 1][SPHERE_PIXELS_AROUND];
 
 /*
 Where on the sphere's surface will each pixel go? This function calculates vectors
@@ -189,7 +188,7 @@ static const VectorArray *get_relative_vectors(void)
 			float angle = (float)a/SPHERE_PIXELS_AROUND * 2*pi;
 			float x = xzrad*sinf(angle);
 			float z = xzrad*cosf(angle);
-			res[v][a] = (struct Vec3){ x, y, z };
+			res[v][a] = (Vec3){ x, y, z };
 		}
 	}
 
@@ -207,9 +206,9 @@ void sphere_display(struct Sphere *sph, const struct Camera *cam)
 	coordinates. This matrix is the thing to use when it's tempting to rotate
 	by sph->angle.
 	*/
-	struct Mat3 mat = mat3_mul_mat3(cam->world2cam, mat3_rotation_xz(sph->angle));
+	Mat3 mat = mat3_mul_mat3(cam->world2cam, mat3_rotation_xz(sph->angle));
 
-	struct Vec3 center = camera_point_world2cam(cam, sph->center);
+	Vec3 center = camera_point_world2cam(cam, sph->center);
 	struct Plane vplane = get_visibility_plane(sph, cam);
 
 	const VectorArray *rvecs = get_relative_vectors();
@@ -233,14 +232,15 @@ void sphere_display(struct Sphere *sph, const struct Camera *cam)
 				continue;
 			}
 
-			struct Vec3 vecs[] = {
+			Vec3 vecs[] = {
 				sph->vectorcache[v][a],
 				sph->vectorcache[v][a2],
 				sph->vectorcache[v2][a],
 				sph->vectorcache[v2][a2],
 			};
-			display_containing_rect(
-				cam, sph->image[v][a], vecs, sizeof(vecs)/sizeof(vecs[0]));
+			SDL_Rect rect;
+			if (camera_containing_rect(cam, vecs, sizeof(vecs)/sizeof(vecs[0]), &rect))
+				SDL_FillRect(cam->surface, &rect, convert_color(cam->surface, sph->image[v][a]));
 		}
 	}
 }

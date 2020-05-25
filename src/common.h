@@ -12,4 +12,8 @@ noreturn void fatal_error_internal(
 
 int iclamp(int val, int min, int max);
 
+// why does sdl2 make this so complicated
+#define convert_color(SURF, COL) \
+	SDL_MapRGBA((SURF)->format, (COL).r, (COL).g, (COL).b, (COL.a))
+
 #endif   // COMMON_H

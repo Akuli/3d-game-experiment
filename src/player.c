@@ -1,6 +1,6 @@
 #include "player.h"
 #include "sphere.h"
-#include "vecmat.h"
+#include "mathstuff.h"
 
 #define MOVE_UNITS_PER_SECOND 10.f
 #define RADIANS_PER_SECOND 5.0f
@@ -12,9 +12,9 @@ void player_updatecam(struct Player *plr)
 {
 	plr->cam.world2cam = mat3_rotation_xz(-plr->sphere->angle);
 
-	struct Vec3 diff = mat3_mul_vec3(
+	Vec3 diff = mat3_mul_vec3(
 		mat3_inverse(plr->cam.world2cam),
-		(struct Vec3){ 0, CAMERA_ABOVE_PLAYER, CAMERA_BEHIND_PLAYER });
+		(Vec3){ 0, CAMERA_ABOVE_PLAYER, CAMERA_BEHIND_PLAYER });
 	plr->cam.location = vec3_add(plr->sphere->center, diff);
 }
 
@@ -31,9 +31,9 @@ void player_move(struct Player *plr, unsigned int fps)
 	if (!plr->moving)
 		return;
 
-	struct Vec3 diff = mat3_mul_vec3(
+	Vec3 diff = mat3_mul_vec3(
 		mat3_inverse(plr->cam.world2cam),
-		(struct Vec3){ 0, 0, -MOVE_UNITS_PER_SECOND/(float)fps });
+		(Vec3){ 0, 0, -MOVE_UNITS_PER_SECOND/(float)fps });
 	plr->sphere->center = vec3_add(plr->sphere->center, diff);
 	player_updatecam(plr);
 }

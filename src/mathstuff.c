@@ -1,44 +1,44 @@
-#include "vecmat.h"
+#include "mathstuff.h"
 #include <assert.h>
 #include <math.h>
 
-struct Vec3 vec3_add(struct Vec3 v, struct Vec3 w)
+Vec3 vec3_add(Vec3 v, Vec3 w)
 {
-	return (struct Vec3){ v.x+w.x, v.y+w.y, v.z+w.z };
+	return (Vec3){ v.x+w.x, v.y+w.y, v.z+w.z };
 }
 
-struct Vec3 vec3_mul_float(struct Vec3 v, float f)
+Vec3 vec3_mul_float(Vec3 v, float f)
 {
-	return (struct Vec3){ v.x*f, v.y*f, v.z*f };
+	return (Vec3){ v.x*f, v.y*f, v.z*f };
 }
 
-struct Vec3 vec3_neg(struct Vec3 v)
+Vec3 vec3_neg(Vec3 v)
 {
 	return vec3_mul_float(v, -1);
 }
 
-struct Vec3 vec3_sub(struct Vec3 v, struct Vec3 w)
+Vec3 vec3_sub(Vec3 v, Vec3 w)
 {
 	return vec3_add(v, vec3_neg(w));
 }
 
-float vec3_dot(struct Vec3 v, struct Vec3 w)
+float vec3_dot(Vec3 v, Vec3 w)
 {
 	return v.x*w.x + v.y*w.y + v.z*w.z;
 }
 
-float vec3_lengthSQUARED(struct Vec3 v)
+float vec3_lengthSQUARED(Vec3 v)
 {
 	return vec3_dot(v,v);
 }
 
-struct Vec3 vec3_withlength(struct Vec3 v, float len)
+Vec3 vec3_withlength(Vec3 v, float len)
 {
 	float oldlen = sqrtf(vec3_lengthSQUARED(v));
 	return vec3_mul_float(v, len / oldlen);
 }
 
-struct Vec3 vec3_cross(struct Vec3 v, struct Vec3 w)
+Vec3 vec3_cross(Vec3 v, Vec3 w)
 {
 	/*
 	| i j k |    | b c |    | a c |    | a b |
@@ -48,7 +48,7 @@ struct Vec3 vec3_cross(struct Vec3 v, struct Vec3 w)
 	*/
 	float a = v.x, b = v.y, c = v.z;
 	float d = w.x, e = w.y, f = w.z;
-	return (struct Vec3) {
+	return (Vec3) {
 		.x = b*f - c*e,
 		.y = -(a*f - c*d),
 		.z = a*e - b*d,
@@ -56,34 +56,34 @@ struct Vec3 vec3_cross(struct Vec3 v, struct Vec3 w)
 }
 
 
-struct Vec3 mat3_mul_vec3(struct Mat3 M, struct Vec3 v)
+Vec3 mat3_mul_vec3(Mat3 M, Vec3 v)
 {
-	return (struct Vec3) {
+	return (Vec3) {
 		v.x*M.rows[0][0] + v.y*M.rows[0][1] + v.z*M.rows[0][2],
 		v.x*M.rows[1][0] + v.y*M.rows[1][1] + v.z*M.rows[1][2],
 		v.x*M.rows[2][0] + v.y*M.rows[2][1] + v.z*M.rows[2][2],
 	};
 }
 
-struct Mat3 mat3_mul_mat3(struct Mat3 A, struct Mat3 B)
+Mat3 mat3_mul_mat3(Mat3 A, Mat3 B)
 {
+	Vec3 i = {1,0,0};
+	Vec3 j = {0,1,0};
+	Vec3 k = {0,0,1};
+
 	// calculate columns in 3blue1brown style
-	struct Vec3 i = {1,0,0};
-	struct Vec3 j = {0,1,0};
-	struct Vec3 k = {0,0,1};
+	Vec3 col1 = mat3_mul_vec3(A, mat3_mul_vec3(B, i));
+	Vec3 col2 = mat3_mul_vec3(A, mat3_mul_vec3(B, j));
+	Vec3 col3 = mat3_mul_vec3(A, mat3_mul_vec3(B, k));
 
-	struct Vec3 col1 = mat3_mul_vec3(A, mat3_mul_vec3(B, i));
-	struct Vec3 col2 = mat3_mul_vec3(A, mat3_mul_vec3(B, j));
-	struct Vec3 col3 = mat3_mul_vec3(A, mat3_mul_vec3(B, k));
-
-	return (struct Mat3) { .rows = {
+	return (Mat3){ .rows = {
 		{ col1.x, col2.x, col3.x },
 		{ col1.y, col2.y, col3.y },
 		{ col1.z, col2.z, col3.z },
 	}};
 }
 
-struct Mat3 mat3_mul_float(struct Mat3 M, float f)
+Mat3 mat3_mul_float(Mat3 M, float f)
 {
 	for (int i = 0; i < 3; i++)
 		for (int j = 0; j < 3; j++)
@@ -92,15 +92,15 @@ struct Mat3 mat3_mul_float(struct Mat3 M, float f)
 	return M;
 }
 
-float mat3_det(struct Mat3 M)
+float mat3_det(Mat3 M)
 {
-	struct Vec3 row1 = { M.rows[0][0], M.rows[0][1], M.rows[0][2] };
-	struct Vec3 row2 = { M.rows[1][0], M.rows[1][1], M.rows[1][2] };
-	struct Vec3 row3 = { M.rows[2][0], M.rows[2][1], M.rows[2][2] };
+	Vec3 row1 = { M.rows[0][0], M.rows[0][1], M.rows[0][2] };
+	Vec3 row2 = { M.rows[1][0], M.rows[1][1], M.rows[1][2] };
+	Vec3 row3 = { M.rows[2][0], M.rows[2][1], M.rows[2][2] };
 	return vec3_dot(row1, vec3_cross(row2, row3));
 }
 
-struct Mat3 mat3_inverse(struct Mat3 M)
+Mat3 mat3_inverse(Mat3 M)
 {
 	// https://ardoris.wordpress.com/2008/07/18/general-formula-for-the-inverse-of-a-3x3-matrix/
 	float
@@ -109,7 +109,7 @@ struct Mat3 mat3_inverse(struct Mat3 M)
 		g=M.rows[2][0], h=M.rows[2][1], i=M.rows[2][2];
 
 	return mat3_mul_float(
-		(struct Mat3){ .rows = {
+		(Mat3){ .rows = {
 			{ e*i-f*h, c*h-b*i, f*b-c*e },
 			{ f*g-d*i, a*i-c*g, c*d-a*f },
 			{ d*h-e*g, b*g-a*h, a*e-b*d },
@@ -118,13 +118,13 @@ struct Mat3 mat3_inverse(struct Mat3 M)
 	);
 }
 
-struct Mat3 mat3_rotation_xz(float angle)
+Mat3 mat3_rotation_xz(float angle)
 {
 	/*
 	if you have understood 3blue1brown's linear transform stuff, then you should
 	be able to write this down without looking it up
 	*/
-	return (struct Mat3){ .rows = {
+	return (Mat3){ .rows = {
 		{ cosf(angle),  0, sinf(angle) },
 		{ 0,            1, 0           },
 		{ -sinf(angle), 0, cosf(angle) },
@@ -132,7 +132,7 @@ struct Mat3 mat3_rotation_xz(float angle)
 }
 
 
-void plane_apply_mat3_INVERSE(struct Plane *pl, struct Mat3 inverse)
+void plane_apply_mat3_INVERSE(struct Plane *pl, Mat3 inverse)
 {
 	/*
 	The plane equation can be written as ax+by+cz = constant. By thinking of
@@ -164,7 +164,7 @@ void plane_apply_mat3_INVERSE(struct Plane *pl, struct Mat3 inverse)
 	pl->normal = mat3_mul_vec3(inverse, pl->normal);
 }
 
-void plane_move(struct Plane *pl, struct Vec3 mv)
+void plane_move(struct Plane *pl, Vec3 mv)
 {
 	/*
 	Generally, moving foo means replacing (x,y,z) with (x,y,z)-mv in the equation
@@ -183,12 +183,12 @@ void plane_move(struct Plane *pl, struct Vec3 mv)
 	pl->constant += vec3_dot(mv, pl->normal);
 }
 
-bool plane_whichside(struct Plane pl, struct Vec3 pt)
+bool plane_whichside(struct Plane pl, Vec3 pt)
 {
 	return (vec3_dot(pl.normal, pt) > pl.constant);
 }
 
-float plane_point_distance(struct Plane pl, struct Vec3 pt)
+float plane_point_distance(struct Plane pl, Vec3 pt)
 {
 	/*
 	3D version of this: https://akuli.github.io/math-derivations/analytic-plane-geometry/distance-line-point.html

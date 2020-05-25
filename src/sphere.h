@@ -4,27 +4,26 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 #include "camera.h"
-#include "display.h"
-#include "vecmat.h"
+#include "mathstuff.h"
 
 #define SPHERE_PIXELS_AROUND 200
 #define SPHERE_PIXELS_VERTICALLY 80
 
 // This struct is BIG. Always use pointers. Makefile has -Werror=stack-usage=bla
 struct Sphere {
-	struct Vec3 center;
+	Vec3 center;
 	float angle;    // 0 = looking toward negative direction of z axis
 	SDL_Color image[SPHERE_PIXELS_VERTICALLY][SPHERE_PIXELS_AROUND];
 
 	// this is meant only for sphere.c
-	struct Vec3 vectorcache[SPHERE_PIXELS_VERTICALLY + 1][SPHERE_PIXELS_AROUND];
+	Vec3 vectorcache[SPHERE_PIXELS_VERTICALLY + 1][SPHERE_PIXELS_AROUND];
 };
 
 // Does the sphere contain the point?
-bool sphere_contains(const struct Sphere *sph, struct Vec3 pt);
+bool sphere_contains(const struct Sphere *sph, Vec3 pt);
 
 // Load a sphere from an image file. Free it with malloc when done.
-struct Sphere *sphere_load(const char *filename, struct Vec3 center);
+struct Sphere *sphere_load(const char *filename, Vec3 center);
 
 // draw sphere to screen if camera is not inside sphere
 void sphere_display(struct Sphere *sph, const struct Camera *cam);

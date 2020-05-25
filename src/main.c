@@ -6,10 +6,9 @@
 
 #include "camera.h"
 #include "common.h"
-#include "display.h"
 #include "player.h"
 #include "sphere.h"
-#include "vecmat.h"
+#include "mathstuff.h"
 
 #include <SDL2/SDL.h>
 
@@ -24,9 +23,9 @@ static void show_everything(const struct GameState *gs, const struct Camera *cam
 {
 	for (float x = -10; x <= 10; x += 1.f) {
 		for (float z = -10; z <= 0; z += 0.3f) {
-			struct Vec3 worldvec = camera_point_world2cam(cam, (struct Vec3){ x, 0, z });
+			Vec3 worldvec = camera_point_world2cam(cam, (Vec3){ x, 0, z });
 			if (worldvec.z < 0) {
-				SDL_Point p = display_point_to_sdl(cam->surface, worldvec);
+				SDL_Point p = camera_point_to_sdl(cam, worldvec);
 				SDL_FillRect(
 					cam->surface,
 					&(SDL_Rect){ p.x, p.y, 1, 1 },
@@ -131,8 +130,8 @@ int main(void)
 		fatal_sdl_error("SDL_GetWindowSurface");
 
 	struct GameState gs = {0};
-	gs.players[0].sphere = sphere_load("person1.png", (struct Vec3){0,0.5f,-2});
-	gs.players[1].sphere = sphere_load("person2.png", (struct Vec3){2,0.5f,-2});
+	gs.players[0].sphere = sphere_load("person1.png", (Vec3){0,0.5f,-2});
+	gs.players[1].sphere = sphere_load("person2.png", (Vec3){2,0.5f,-2});
 
 	// This turned out to be much faster than blitting
 	gs.players[0].cam.surface = create_half_surface(winsurf, 0, winsurf->w/2);
