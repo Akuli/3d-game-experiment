@@ -42,7 +42,7 @@ static void show_everything(const struct GameState *gs, struct Camera *cam)
 	}
 
 	struct PlayerInfo {
-		float camcenterz;   // z coordinate of center in camera coordinates
+		float camcenterz; // z coordinate of center in camera coordinates
 		const struct Player *player;
 	} arr[] = {
 		{ camera_point_world2cam(cam, gs->players[0].ball->center).z, &gs->players[0] },
@@ -59,58 +59,26 @@ static void show_everything(const struct GameState *gs, struct Camera *cam)
 // returns whether to continue playing
 static bool handle_event(SDL_Event event, struct GameState *gs)
 {
+	bool down = (event.type == SDL_KEYDOWN);
+
 	switch(event.type) {
 	case SDL_QUIT:
 		return false;
 
 	case SDL_KEYDOWN:
-		switch(event.key.keysym.scancode) {
-		case SDL_SCANCODE_ESCAPE:
-			return false;
-
-		case SDL_SCANCODE_A:
-			gs->players[0].turning = 1;
-			break;
-		case SDL_SCANCODE_D:
-			gs->players[0].turning = -1;
-			break;
-		case SDL_SCANCODE_W:
-			gs->players[0].moving = true;
-			break;
-
-		case SDL_SCANCODE_LEFT:
-			gs->players[1].turning = 1;
-			break;
-		case SDL_SCANCODE_RIGHT:
-			gs->players[1].turning = -1;
-			break;
-		case SDL_SCANCODE_UP:
-			gs->players[1].moving = true;
-			break;
-
-		default:
-			break;
-		}
-		break;
-
 	case SDL_KEYUP:
 		switch(event.key.keysym.scancode) {
+		case SDL_SCANCODE_ESCAPE: return false;
 
-		case SDL_SCANCODE_A:
-		case SDL_SCANCODE_D:
-			gs->players[0].turning = 0;
-			break;
-		case SDL_SCANCODE_W:
-			gs->players[0].moving = false;
-			break;
+		case SDL_SCANCODE_A: player_set_turning(&gs->players[0], 1, down); break;
+		case SDL_SCANCODE_D: player_set_turning(&gs->players[0], -1, down); break;
+		case SDL_SCANCODE_W: player_set_moving(&gs->players[0], down); break;
+		case SDL_SCANCODE_S: player_set_flat(&gs->players[0], down); break;
 
-		case SDL_SCANCODE_RIGHT:
-		case SDL_SCANCODE_LEFT:
-			gs->players[1].turning = 0;
-			break;
-		case SDL_SCANCODE_UP:
-			gs->players[1].moving = false;
-			break;
+		case SDL_SCANCODE_LEFT: player_set_turning(&gs->players[1], 1, down); break;
+		case SDL_SCANCODE_RIGHT: player_set_turning(&gs->players[1], -1, down); break;
+		case SDL_SCANCODE_UP: player_set_moving(&gs->players[1], down); break;
+		case SDL_SCANCODE_DOWN: player_set_flat(&gs->players[1], down); break;
 
 		default:
 			break;
@@ -157,9 +125,6 @@ int main(void)
 	if (!gs.players[0].cam.surface || !gs.players[1].cam.surface)
 		fatal_sdl_error("SDL_CreateRGBSurface");
 
-	player_update(&gs.players[0]);
-	player_update(&gs.players[1]);
-
 	uint32_t time = 0;
 	while(1){
 		SDL_Event event;
@@ -168,10 +133,8 @@ int main(void)
 				goto exit;
 		}
 
-		player_turn(&gs.players[0], FPS);
-		player_move(&gs.players[0], FPS);
-		player_turn(&gs.players[1], FPS);
-		player_move(&gs.players[1], FPS);
+		player_eachframe(&gs.players[0], FPS);
+		player_eachframe(&gs.players[1], FPS);
 
 		SDL_FillRect(winsurf, NULL, 0x000000UL);
 		show_everything(&gs, &gs.players[0].cam);

@@ -10,17 +10,18 @@ struct Player {
 	float angle;
 	int turning;   // +1 for left, -1 for right, 0 for nothing
 	bool moving;
+	bool flat;
+	bool jumping;
+	float yvelocity;
 };
 
-// run these once per frame
-void player_turn(struct Player *plr, unsigned int fps);
-void player_move(struct Player *plr, unsigned int fps);
+// run before showing stuff to user
+void player_eachframe(struct Player *plr, unsigned int fps);
 
-/*
-This is ran automatically by player_turn and player_move, but must be also called
-to set up stuff when the game starts.
-*/
-void player_update(struct Player *plr);
+// key press callbacks. dir values: +1 for left, -1 for right
+void player_set_turning(struct Player *plr, int dir, bool turn);
+void player_set_moving(struct Player *plr, bool mv);
+void player_set_flat(struct Player *plr, bool flat);
 
 
 #endif   // PLAYER_H
