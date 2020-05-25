@@ -40,13 +40,16 @@ struct Vec3 vec3_withlength(struct Vec3 v, float len);
 struct Vec3 vec3_cross(struct Vec3 v, struct Vec3 w);
 
 
-// wrapped in a struct to make it possible to return a matrix
+// wrapped in a struct to make it possible to return or assign a matrix
 struct Mat3 {
 	float rows[3][3];
 };
 
 // matrix times vector
 struct Vec3 mat3_mul_vec3(struct Mat3 M, struct Vec3 v);
+
+// matrix times matrix
+struct Mat3 mat3_mul_mat3(struct Mat3 A, struct Mat3 B);
 
 // multiply each entry of the matrix by a number
 struct Mat3 mat3_mul_float(struct Mat3 M, float f);

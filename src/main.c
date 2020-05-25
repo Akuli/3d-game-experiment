@@ -13,7 +13,7 @@
 
 #include <SDL2/SDL.h>
 
-#define FPS 60
+#define FPS 30
 
 // returns whether to continue playing
 static bool handle_event(SDL_Event event, struct Player *plr)

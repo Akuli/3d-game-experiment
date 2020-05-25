@@ -50,11 +50,6 @@ static void point_to_screen_floats(struct Vec3 pt, float *x, float *y)
 
 void display_4gon(const struct Camera *cam, struct Display4Gon gon, SDL_Color col, enum DisplayKind dk)
 {
-	gon.point1 = camera_point_world2cam(cam, gon.point1);
-	gon.point2 = camera_point_world2cam(cam, gon.point2);
-	gon.point3 = camera_point_world2cam(cam, gon.point3);
-	gon.point4 = camera_point_world2cam(cam, gon.point4);
-
 	// must be in front of the camera, i.e. negative z
 	if (gon.point1.z >= 0 || gon.point2.z >= 0 || gon.point3.z >= 0 || gon.point4.z >= 0)
 		return;

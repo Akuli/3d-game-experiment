@@ -69,6 +69,7 @@ enum DisplayKind {
 	DISPLAY_RECT,     // fast
 };
 
+// The 4-gon must be in camera coordinates
 void display_4gon(const struct Camera *cam, struct Display4Gon gon, SDL_Color col, enum DisplayKind dk);
 
 

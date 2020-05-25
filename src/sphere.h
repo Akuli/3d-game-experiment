@@ -21,12 +21,13 @@ struct Sphere {
 bool sphere_contains(const struct Sphere *sph, struct Vec3 pt);
 
 /*
-A part of the sphere is visible to the camera at (0,0,0). The rest isn't. This
+A part of the sphere is visible to the camera. The rest isn't. This
 plane divides the sphere into the visible part and the part behind the visible
 part. The normal vector of the plane points toward the visible side, so
 plane_whichside() returns whether a point on the sphere is visible.
 
-Don't call this function if the camera is inside the sphere.
+Returned plane is in camera coordinates. Don't call this function if the camera is
+inside the sphere.
 */
 struct Plane sphere_visplane(const struct Sphere *sph, const struct Camera *cam);
 

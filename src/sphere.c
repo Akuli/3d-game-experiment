@@ -55,11 +55,10 @@ struct Plane sphere_visplane(const struct Sphere *sph, const struct Camera *cam)
 
 		(x,y,z) dot normal = RADIUS^2 - |sph.center|^2.
 	*/
-	struct Plane res = {
+	return (struct Plane) {
 		.normal = vec3_neg(center),
 		.constant = RADIUS*RADIUS - vec3_lengthSQUARED(center),
 	};
-	return camera_plane_cam2world(cam, res);
 }
 
 #define IS_TRANSPARENT(color) ((color).a < 0x80)
@@ -168,7 +167,7 @@ static const VectorArray *get_relative_vectors(void)
 
 	float pi = acosf(-1);
 
-	for (size_t v = 0; v <= /* not < */ SPHERE_PIXELS_VERTICALLY; v++) {
+	for (size_t v = 0; v < SPHERE_PIXELS_VERTICALLY+1; v++) {
 		float y = RADIUS - 2*RADIUS*(float)v/SPHERE_PIXELS_VERTICALLY;
 		float xzrad = sqrtf(RADIUS*RADIUS - y*y);  // radius on xz plane
 
@@ -189,11 +188,15 @@ void sphere_display(const struct Sphere *sph, const struct Camera *cam)
 	if (sphere_contains(sph, cam->location))
 		return;
 
-	struct Mat3 rot = mat3_rotation_xz(sph->angle);
+	/*
+	sph->angle is in world coordinates. We want to do everything in camera
+	coordinates. This matrix is the thing to use when it's tempting to rotate
+	by sph->angle.
+	*/
+	struct Mat3 mat = mat3_mul_mat3(cam->world2cam, mat3_rotation_xz(sph->angle));
 
+	struct Vec3 center = camera_point_world2cam(cam, sph->center);
 	struct Plane vplane = sphere_visplane(sph, cam);
-	plane_move(&vplane, vec3_neg(sph->center));
-	plane_apply_mat3_INVERSE(&vplane, mat3_inverse(rot));
 
 	// parts of image in front of this can be approximated with rectangles
 	struct Plane rectplane = vplane;
@@ -207,20 +210,20 @@ void sphere_display(const struct Sphere *sph, const struct Camera *cam)
 		for (size_t v = 0; v < SPHERE_PIXELS_VERTICALLY; v++) {
 			size_t v2 = v+1;
 
-			if (!plane_whichside(vplane, (*vecs)[v][a]) &&
-				!plane_whichside(vplane, (*vecs)[v][a2]) &&
-				!plane_whichside(vplane, (*vecs)[v2][a]) &&
-				!plane_whichside(vplane, (*vecs)[v2][a2]))
+			if (!plane_whichside(vplane, vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v][a]))) &&
+				!plane_whichside(vplane, vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v][a2]))) &&
+				!plane_whichside(vplane, vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v2][a]))) &&
+				!plane_whichside(vplane, vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v2][a2]))))
 			{
 				continue;
 			}
 
 			SDL_Color col = sph->image[v][a];
 			struct Display4Gon gon = {
-				vec3_add(mat3_mul_vec3(rot, (*vecs)[v][a]), sph->center),
-				vec3_add(mat3_mul_vec3(rot, (*vecs)[v][a2]), sph->center),
-				vec3_add(mat3_mul_vec3(rot, (*vecs)[v2][a]), sph->center),
-				vec3_add(mat3_mul_vec3(rot, (*vecs)[v2][a2]), sph->center),
+				vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v][a])),
+				vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v][a2])),
+				vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v2][a])),
+				vec3_add(center, mat3_mul_vec3(mat, (*vecs)[v2][a2])),
 			};
 			enum DisplayKind k = plane_whichside(rectplane, (*vecs)[v][a]) ? DISPLAY_RECT : DISPLAY_BORDER;
 

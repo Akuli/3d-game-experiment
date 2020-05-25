@@ -65,6 +65,24 @@ struct Vec3 mat3_mul_vec3(struct Mat3 M, struct Vec3 v)
 	};
 }
 
+struct Mat3 mat3_mul_mat3(struct Mat3 A, struct Mat3 B)
+{
+	// calculate columns in 3blue1brown style
+	struct Vec3 i = {1,0,0};
+	struct Vec3 j = {0,1,0};
+	struct Vec3 k = {0,0,1};
+
+	struct Vec3 col1 = mat3_mul_vec3(A, mat3_mul_vec3(B, i));
+	struct Vec3 col2 = mat3_mul_vec3(A, mat3_mul_vec3(B, j));
+	struct Vec3 col3 = mat3_mul_vec3(A, mat3_mul_vec3(B, k));
+
+	return (struct Mat3) { .rows = {
+		{ col1.x, col2.x, col3.x },
+		{ col1.y, col2.y, col3.y },
+		{ col1.z, col2.z, col3.z },
+	}};
+}
+
 struct Mat3 mat3_mul_float(struct Mat3 M, float f)
 {
 	for (int i = 0; i < 3; i++)
