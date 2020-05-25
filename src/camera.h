@@ -49,13 +49,15 @@ of the player.
 */
 SDL_Point camera_point_to_sdl(const struct Camera *cam, Vec3 pt);
 
-/* Find the smallest rectangle containing the given points.
+/* Find the smallest rectangle containing the given 4 points
 
-All points are assumed to be in camera coordinates.
-This returns false if a point is behind the camera.
-You must give at least one point. 
+Why 4? Because hard-coding 4 turned out to be faster, and this needs to be fast.
+
+All points are assumed to be in camera coordinates. This returns false if a point
+is behind the camera. You must give at least one point.
 */
-bool camera_containing_rect(const struct Camera *cam, const Vec3 *pts, size_t npts, SDL_Rect *res);
+bool camera_get_containing_rect(
+	const struct Camera *cam, SDL_Rect *res, Vec3 p1, Vec3 p2, Vec3 p3, Vec3 p4);
 
 
 #endif   // CAMERA_H

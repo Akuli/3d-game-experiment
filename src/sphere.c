@@ -212,9 +212,15 @@ void sphere_display(struct Sphere *sph, const struct Camera *cam)
 	struct Plane vplane = get_visibility_plane(sph, cam);
 
 	const VectorArray *rvecs = get_relative_vectors();
-	for (size_t v = 0; v < SPHERE_PIXELS_VERTICALLY + 1; v++)
-		for (size_t a = 0; a < SPHERE_PIXELS_AROUND; a++)
-			sph->vectorcache[v][a] = vec3_add(center, mat3_mul_vec3(mat, (*rvecs)[v][a]));
+	for (size_t v = 0; v < SPHERE_PIXELS_VERTICALLY + 1; v++) {
+		for (size_t a = 0; a < SPHERE_PIXELS_AROUND; a++) {
+			// this is perf critical code
+			// turns out that in-place operations are measurably faster
+			sph->vectorcache[v][a] = (*rvecs)[v][a];
+			vec3_apply_matrix(&sph->vectorcache[v][a], mat);
+			vec3_add_inplace(&sph->vectorcache[v][a], center);
+		}
+	}
 
 	for (size_t a = 0; a < SPHERE_PIXELS_AROUND; a++) {
 		size_t a2 = (a+1) % SPHERE_PIXELS_AROUND;
@@ -232,15 +238,18 @@ void sphere_display(struct Sphere *sph, const struct Camera *cam)
 				continue;
 			}
 
-			Vec3 vecs[] = {
-				sph->vectorcache[v][a],
-				sph->vectorcache[v][a2],
-				sph->vectorcache[v2][a],
-				sph->vectorcache[v2][a2],
-			};
 			SDL_Rect rect;
-			if (camera_containing_rect(cam, vecs, sizeof(vecs)/sizeof(vecs[0]), &rect))
-				SDL_FillRect(cam->surface, &rect, convert_color(cam->surface, sph->image[v][a]));
+			if (camera_get_containing_rect(
+					cam, &rect,
+					sph->vectorcache[v][a],
+					sph->vectorcache[v][a2],
+					sph->vectorcache[v2][a],
+					sph->vectorcache[v2][a2]))
+			{
+				SDL_FillRect(
+					cam->surface, &rect,
+					convert_color(cam->surface, sph->image[v][a]));
+			}
 		}
 	}
 }

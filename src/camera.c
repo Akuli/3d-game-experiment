@@ -39,35 +39,36 @@ SDL_Point camera_point_to_sdl(const struct Camera *cam, Vec3 pt)
 	};
 }
 
-static void update_minmax(float *min, float *max, float val)
+#define min(a,b) ((a)<(b) ? (a) : (b))
+#define max(a,b) ((a)>(b) ? (a) : (b))
+#define min4(a,b,c,d) min(min(a,b),min(c,d))
+#define max4(a,b,c,d) max(max(a,b),max(c,d))
+
+bool camera_get_containing_rect(
+	const struct Camera *cam, SDL_Rect *res,
+	Vec3 p1, Vec3 p2, Vec3 p3, Vec3 p4)
 {
-	if (val < *min)
-		*min = val;
-	if (val > *max)
-		*max = val;
-}
+	if (p1.z >= 0 || p2.z >= 0 || p3.z >= 0 || p4.z >= 0)
+		return false;
 
-bool camera_containing_rect(const struct Camera *cam, const Vec3 *pts, size_t npts, SDL_Rect *res)
-{
-	assert(npts >= 1);
+	float x1 = camera_xzr_to_screenx(cam, p1.x / p1.z);
+	float x2 = camera_xzr_to_screenx(cam, p2.x / p2.z);
+	float x3 = camera_xzr_to_screenx(cam, p3.x / p3.z);
+	float x4 = camera_xzr_to_screenx(cam, p4.x / p4.z);
 
-	// must be in front of the camera, i.e. negative z
-	for (unsigned i = 0; i < npts; i++) {
-		if (pts[i].z >= 0)
-			return false;
-	}
+	float y1 = camera_yzr_to_screeny(cam, p1.y / p1.z);
+	float y2 = camera_yzr_to_screeny(cam, p2.y / p2.z);
+	float y3 = camera_yzr_to_screeny(cam, p3.y / p3.z);
+	float y4 = camera_yzr_to_screeny(cam, p4.y / p4.z);
 
-	float xmin, xmax, ymin, ymax;
-	xmin = xmax = camera_xzr_to_screenx(cam, pts[0].x / pts[0].z);
-	ymin = ymax = camera_yzr_to_screeny(cam, pts[0].y / pts[0].z);
-	for (unsigned i = 1; i < npts; i++) {
-		update_minmax(&xmin, &xmax, camera_xzr_to_screenx(cam, pts[i].x / pts[i].z));
-		update_minmax(&ymin, &ymax, camera_yzr_to_screeny(cam, pts[i].y / pts[i].z));
-	}
+	float xmin = min4(x1,x2,x3,x4);
+	float xmax = max4(x1,x2,x3,x4);
+	float ymin = min4(y1,y2,y3,y4);
+	float ymax = max4(y1,y2,y3,y4);
 
-	res->x = (int) floorf(xmin);
-	res->y = (int) floorf(ymin);
-	res->w = (int) ceilf(xmax - xmin);
-	res->h = (int) ceilf(ymax - ymin);
+	res->x = (int) xmin;
+	res->y = (int) ymin;
+	res->w = (int) (xmax - xmin + 1.);
+	res->h = (int) (ymax - ymin + 1.);
 	return true;
 }

@@ -2,9 +2,19 @@
 #include <assert.h>
 #include <math.h>
 
+// guideline: make in-place stuff fast, because that is used in perf-critical code
+
+void vec3_add_inplace(Vec3 *v, Vec3 w)
+{
+	v->x += w.x;
+	v->y += w.y;
+	v->z += w.z;
+}
+
 Vec3 vec3_add(Vec3 v, Vec3 w)
 {
-	return (Vec3){ v.x+w.x, v.y+w.y, v.z+w.z };
+	vec3_add_inplace(&v, w);
+	return v;
 }
 
 Vec3 vec3_mul_float(Vec3 v, float f)
@@ -62,6 +72,15 @@ Vec3 mat3_mul_vec3(Mat3 M, Vec3 v)
 		v.x*M.rows[0][0] + v.y*M.rows[0][1] + v.z*M.rows[0][2],
 		v.x*M.rows[1][0] + v.y*M.rows[1][1] + v.z*M.rows[1][2],
 		v.x*M.rows[2][0] + v.y*M.rows[2][1] + v.z*M.rows[2][2],
+	};
+}
+
+void vec3_apply_matrix(Vec3 *v, Mat3 M)
+{
+	*v = (Vec3){
+		v->x*M.rows[0][0] + v->y*M.rows[0][1] + v->z*M.rows[0][2],
+		v->x*M.rows[1][0] + v->y*M.rows[1][1] + v->z*M.rows[1][2],
+		v->x*M.rows[2][0] + v->y*M.rows[2][1] + v->z*M.rows[2][2],
 	};
 }
 

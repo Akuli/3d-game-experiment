@@ -6,9 +6,13 @@
 #include <stdbool.h>
 
 typedef struct { float x,y,z; } Vec3;
+typedef struct { float rows[3][3]; } Mat3;   // struct because returning matrices
 
 // v+w
 Vec3 vec3_add(Vec3 v, Vec3 w);
+
+// *v += w
+void vec3_add_inplace(Vec3 *v, Vec3 w);
 
 // -v
 Vec3 vec3_neg(Vec3 v);
@@ -38,11 +42,7 @@ Vec3 vec3_withlength(Vec3 v, float len);
 // cross product
 Vec3 vec3_cross(Vec3 v, Vec3 w);
 
-
-// wrapped in a struct to make it possible to return or assign a matrix
-typedef struct {
-	float rows[3][3];
-} Mat3;
+void vec3_apply_matrix(Vec3 *v, Mat3 M);
 
 // matrix times vector
 Vec3 mat3_mul_vec3(Mat3 M, Vec3 v);

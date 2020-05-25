@@ -2,3 +2,5 @@ obj/
 game
 person1.png
 person2.png
+callgrind.out
+graph.*

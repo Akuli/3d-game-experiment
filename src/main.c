@@ -192,8 +192,8 @@ int main(void)
 	}
 
 exit:
-	for (unsigned i = 0; i < 2; i++)
-		free(gs.players[i].sphere);
+	free(gs.players[0].sphere);
+	free(gs.players[1].sphere);
 	SDL_FreeSurface(gs.players[0].cam.surface);
 	SDL_FreeSurface(gs.players[1].cam.surface);
 	SDL_DestroyWindow(win);

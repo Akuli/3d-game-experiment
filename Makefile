@@ -19,7 +19,7 @@ all: game
 # ignored but not cleaned on rebuild
 .PHONY: clean
 clean:
-	rm -rvf game obj
+	rm -rvf game obj callgrind.out graph.*
 
 obj/%.o: src/%.c $(HEADERS)
 	mkdir -p $(@D) && $(CC) -c -o $@ $< $(CFLAGS)
@@ -38,3 +38,19 @@ obj/stb_image_resize.o: $(wildcard stb/*.h)
 
 game: src/main.c $(OBJ) $(HEADERS)
 	$(CC) $(CFLAGS) $< $(OBJ) -o $@ $(LDFLAGS)
+
+
+
+# profiling stuff
+#
+#	$ python3 -m pip install gprof2dot
+#	$ make graph.png
+
+callgrind.out: game
+	valgrind --tool=callgrind --callgrind-out-file=$@ ./game $<
+
+graph.gv: callgrind.out
+	gprof2dot $< --format=callgrind --output=$@
+
+graph.png: graph.gv
+	dot -Tpng $< -o $@
