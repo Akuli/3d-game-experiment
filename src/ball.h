@@ -17,6 +17,7 @@ struct Ball {
 
 	// this is meant only for ball.c
 	Vec3 vectorcache[BALL_PIXELS_VERTICALLY + 1][BALL_PIXELS_AROUND];
+	bool sidecache[BALL_PIXELS_VERTICALLY + 1][BALL_PIXELS_AROUND];
 };
 
 // Does the ball contain the point?

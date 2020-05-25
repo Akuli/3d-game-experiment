@@ -219,6 +219,8 @@ void ball_display(struct Ball *sph, const struct Camera *cam)
 			sph->vectorcache[v][a] = (*rvecs)[v][a];
 			vec3_apply_matrix(&sph->vectorcache[v][a], mat);
 			vec3_add_inplace(&sph->vectorcache[v][a], center);
+
+			sph->sidecache[v][a] = plane_whichside(vplane, sph->vectorcache[v][a]);
 		}
 	}
 
@@ -230,10 +232,10 @@ void ball_display(struct Ball *sph, const struct Camera *cam)
 
 			// this is perf critical code
 
-			if (!plane_whichside(vplane, sph->vectorcache[v][a]) &&
-				!plane_whichside(vplane, sph->vectorcache[v][a2]) &&
-				!plane_whichside(vplane, sph->vectorcache[v2][a]) &&
-				!plane_whichside(vplane, sph->vectorcache[v2][a2]))
+			if (!sph->sidecache[v][a] &&
+				!sph->sidecache[v][a2] &&
+				!sph->sidecache[v2][a] &&
+				!sph->sidecache[v2][a2])
 			{
 				continue;
 			}
