@@ -7,6 +7,7 @@
 struct Player {
 	struct Ball *ball;
 	struct Camera cam;
+	float angle;
 	int turning;   // +1 for left, -1 for right, 0 for nothing
 	bool moving;
 };
@@ -17,9 +18,9 @@ void player_move(struct Player *plr, unsigned int fps);
 
 /*
 This is ran automatically by player_turn and player_move, but must be also called
-to set up some camera stuff when the game starts.
+to set up stuff when the game starts.
 */
-void player_updatecam(struct Player *plr);
+void player_update(struct Player *plr);
 
 
 #endif   // PLAYER_H

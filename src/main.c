@@ -26,7 +26,7 @@ static int compare_float_pointers(const void *a, const void *b)
 	return (x>y) - (x<y);
 }
 
-static void show_everything(const struct GameState *gs, const struct Camera *cam)
+static void show_everything(const struct GameState *gs, struct Camera *cam)
 {
 	for (float x = -10; x <= 10; x += 1.f) {
 		for (float z = -10; z <= 0; z += 0.3f) {
@@ -52,8 +52,8 @@ static void show_everything(const struct GameState *gs, const struct Camera *cam
 	static_assert(offsetof(struct PlayerInfo, camcenterz) == 0, "weird padding");
 	qsort(arr, sizeof(arr)/sizeof(arr[0]), sizeof(arr[0]), compare_float_pointers);
 
-	for (int i = 0; i < 2; i++)
-		ball_display(arr[i].player->ball, cam);
+	ball_display(arr[0].player->ball, cam);
+	ball_display(arr[1].player->ball, cam);
 }
 
 // returns whether to continue playing
@@ -157,8 +157,8 @@ int main(void)
 	if (!gs.players[0].cam.surface || !gs.players[1].cam.surface)
 		fatal_sdl_error("SDL_CreateRGBSurface");
 
-	player_updatecam(&gs.players[0]);
-	player_updatecam(&gs.players[1]);
+	player_update(&gs.players[0]);
+	player_update(&gs.players[1]);
 
 	uint32_t time = 0;
 	while(1){

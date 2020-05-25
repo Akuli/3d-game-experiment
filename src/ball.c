@@ -9,13 +9,6 @@
 #include "common.h"
 #include "mathstuff.h"
 
-#define RADIUS 0.5f
-
-bool ball_contains(const struct Ball *sph, Vec3 pt)
-{
-	return (vec3_lengthSQUARED(vec3_sub(sph->center, pt)) <= RADIUS*RADIUS);
-}
-
 #define IS_TRANSPARENT(color) ((color).a < 0x80)
 
 static SDL_Color average_color(SDL_Color *pixels, size_t npixels)
@@ -93,14 +86,59 @@ static void read_image(const char *filename, SDL_Color *res)
 
 struct Ball *ball_load(const char *filename, Vec3 center)
 {
-	struct Ball *sph = malloc(sizeof(*sph));
-	if (!sph)
+	struct Ball *ball = malloc(sizeof(*ball));
+	if (!ball)
 		fatal_error_nomem();
 
-	sph->angle = 0.f;
-	sph->center = center;
-	read_image(filename, (SDL_Color*) sph->image);
-	return sph;
+	ball->center = center;
+	read_image(filename, (SDL_Color*) ball->image);
+	ball->transform = (Mat3){ .rows = {
+		{1, 0, 0},
+		{0, 1, 0},
+		{0, 0, 1},
+	}};
+	return ball;
+}
+
+/*
+We introduce third type of coordinates: untransformed ball coordinates. These
+coordinates have (0,0,0) as ball center, and ball->transform and cam->world2cam
+haven't been applied yet.
+*/
+
+// +1 for vertical because we want to include both ends
+// no +1 for the other one because it wraps around instead
+typedef Vec3 VectorArray[BALL_PIXELS_VERTICALLY + 1][BALL_PIXELS_AROUND];
+
+/*
+Where on the ball's surface will each pixel go? This function calculates vectors
+so that we don't need to call slow trig functions every time the ball is drawn.
+Returns untransformed ball coordinates.
+*/
+static const VectorArray *get_untransformed_surface_vectors(void)
+{
+	static VectorArray res;
+	static bool ready = false;
+
+	if (ready)
+		return (const VectorArray *) &res;
+
+	float pi = acosf(-1);
+
+	for (size_t v = 0; v < BALL_PIXELS_VERTICALLY+1; v++) {
+		float y = BALL_RADIUS - 2*BALL_RADIUS*(float)v/BALL_PIXELS_VERTICALLY;
+		float xzrad = sqrtf(BALL_RADIUS*BALL_RADIUS - y*y);  // radius on xz plane
+
+		for (size_t a = 0; a < BALL_PIXELS_AROUND; a++) {
+			float angle = (float)a/BALL_PIXELS_AROUND * 2*pi;
+			float x = xzrad*sinf(angle);
+			float z = xzrad*cosf(angle);
+			res[v][a] = (Vec3){ x, y, z };
+		}
+	}
+
+	ready = true;
+	return (const VectorArray *) &res;
 }
 
 /*
@@ -109,15 +147,28 @@ by this function divides the ball into the visible part and the part behind the
 visible part. The normal vector of the plane points toward the visible side, so
 plane_whichside() returns whether a point on the ball is visible.
 
-The returned plane is in camera coordinates.
+The returned plane is in untransformed ball coordinates.
+
+This assumes that the ball is round in both coordinates, even though it might not
+be the case. This still seems to be "close enough".
 */
 static struct Plane
-get_visibility_plane(const struct Ball *sph, const struct Camera *cam)
+get_visibility_plane(const struct Ball *ball, const struct Camera *cam)
 {
-	assert(!ball_contains(sph, cam->location));
+	assert(!ball_contains(ball, cam->location));
 
-	// switch to coordinates where camera is at (0,0,0)
-	Vec3 center = camera_point_world2cam(cam, sph->center);
+	/*
+	Calculate camera location in untransformed ball coordinates. This must work
+	so that once the resulting camera vector is
+		1. transformed with ball->transform
+		2. transformed with cam->world2cam
+		3. added with ball->center
+	then we get the camera location in camera coordinates, i.e. (0,0,0).
+	*/
+	Vec3 cam2center = camera_point_world2cam(cam, ball->center);
+	Vec3 center2cam = vec3_neg(cam2center);
+	vec3_apply_matrix(&center2cam, mat3_inverse(cam->world2cam));
+	vec3_apply_matrix(&center2cam, mat3_inverse(ball->transform));
 
 	/*
 	From the side, the ball being split by the visibility plane looks like this:
@@ -134,93 +185,61 @@ get_visibility_plane(const struct Ball *sph, const struct Camera *cam)
 	         plane
 
 	Note that the plane is closer to the camera than the ball center. The center
-	is marked with 'o' above.
+	is marked with o above. Note that we are using untransformed ball coordinates,
+	so we have o=(0,0,0).
 
-	Let D denote the distance between visplane and camera. With similar triangles
-	and Pythagorean theorem, we get
+	Let D denote the distance between visibility plane and the ball center. With
+	similar triangles and Pythagorean theorem, we get
 
-		D = |center| - RADIUS^2/|center|.
+		D = BALL_RADIUS^2/|center2cam|.
 
-	As a quick sanity check, D < |center|. The equation of the plane is
+	The equation of the plane is
 
-		projection of (x,y,z) onto the center vector = D,
+		projection of (x,y,z) onto center2cam = D,
 
-	because center is a normal vector of the plane. By writing the projection with
-	dot product, we get
+	because center2cam is a normal vector of the plane. By writing the projection
+	with dot product, we get
 
-		((x,y,z) dot center) / |center| = D.
+		((x,y,z) dot center2cam) / |center2cam| = D.
 
-	We actually want the normal vector to point towards the camera, so we write the
-	plane equation using -center instead of center:
+	This simplifies:
 
-		(x,y,z) dot (-center) = RADIUS^2 - |center|^2
+		(x,y,z) dot center2cam = BALL_RADIUS^2
 	*/
 	return (struct Plane) {
-		.normal = vec3_neg(center),
-		.constant = RADIUS*RADIUS - vec3_lengthSQUARED(center),
+		.normal = center2cam,
+		.constant = BALL_RADIUS*BALL_RADIUS,
 	};
 }
 
-// +1 for vertical because we want to include both ends
-// no +1 for the other one because it wraps around instead
-typedef Vec3 VectorArray[BALL_PIXELS_VERTICALLY + 1][BALL_PIXELS_AROUND];
-
-/*
-Where on the ball's surface will each pixel go? This function calculates vectors
-so that you don't need to call slow trig functions every time the ball is drawn.
-The resulting vectors have (0,0,0) as the ball center, hence "relative".
-*/
-static const VectorArray *get_relative_vectors(void)
+void ball_display(struct Ball *ball, const struct Camera *cam)
 {
-	static VectorArray res;
-	static bool ready = false;
-
-	if (ready)
-		return (const VectorArray *) &res;
-
-	float pi = acosf(-1);
-
-	for (size_t v = 0; v < BALL_PIXELS_VERTICALLY+1; v++) {
-		float y = RADIUS - 2*RADIUS*(float)v/BALL_PIXELS_VERTICALLY;
-		float xzrad = sqrtf(RADIUS*RADIUS - y*y);  // radius on xz plane
-
-		for (size_t a = 0; a < BALL_PIXELS_AROUND; a++) {
-			float angle = (float)a/BALL_PIXELS_AROUND * 2*pi;
-			float x = xzrad*sinf(angle);
-			float z = xzrad*cosf(angle);
-			res[v][a] = (Vec3){ x, y, z };
-		}
-	}
-
-	ready = true;
-	return (const VectorArray *) &res;
-}
-
-void ball_display(struct Ball *sph, const struct Camera *cam)
-{
-	if (ball_contains(sph, cam->location))
+	if (ball_contains(ball, cam->location))
 		return;
 
+	// ball center vector as camera coordinates
+	Vec3 center = camera_point_world2cam(cam, ball->center);
+
+	// vplane is in untransformed ball coordinates
+	struct Plane vplane = get_visibility_plane(ball, cam);
+
 	/*
-	sph->angle is in world coordinates. We want to do everything in camera
-	coordinates. This matrix is the thing to use when it's tempting to rotate
-	by sph->angle.
+	To convert from untransformed ball coordinates to camera coordinates, apply
+	this and then add the ball center vector as camera coordinates
 	*/
-	Mat3 mat = mat3_mul_mat3(cam->world2cam, mat3_rotation_xz(sph->angle));
+	Mat3 ball2cam = mat3_mul_mat3(cam->world2cam, ball->transform);
 
-	Vec3 center = camera_point_world2cam(cam, sph->center);
-	struct Plane vplane = get_visibility_plane(sph, cam);
-
-	const VectorArray *rvecs = get_relative_vectors();
+	const VectorArray *usvecs = get_untransformed_surface_vectors();
 	for (size_t v = 0; v < BALL_PIXELS_VERTICALLY + 1; v++) {
 		for (size_t a = 0; a < BALL_PIXELS_AROUND; a++) {
 			// this is perf critical code
 			// turns out that in-place operations are measurably faster
-			sph->vectorcache[v][a] = (*rvecs)[v][a];
-			vec3_apply_matrix(&sph->vectorcache[v][a], mat);
-			vec3_add_inplace(&sph->vectorcache[v][a], center);
 
-			sph->sidecache[v][a] = plane_whichside(vplane, sph->vectorcache[v][a]);
+			ball->sidecache[v][a] = plane_whichside(vplane, (*usvecs)[v][a]);
+
+			ball->vectorcache[v][a] = (*usvecs)[v][a];
+			vec3_apply_matrix(&ball->vectorcache[v][a], ball2cam);
+			vec3_add_inplace(&ball->vectorcache[v][a], center);
 		}
 	}
 
@@ -232,10 +251,10 @@ void ball_display(struct Ball *sph, const struct Camera *cam)
 
 			// this is perf critical code
 
-			if (!sph->sidecache[v][a] &&
-				!sph->sidecache[v][a2] &&
-				!sph->sidecache[v2][a] &&
-				!sph->sidecache[v2][a2])
+			if (!ball->sidecache[v][a] &&
+				!ball->sidecache[v][a2] &&
+				!ball->sidecache[v2][a] &&
+				!ball->sidecache[v2][a2])
 			{
 				continue;
 			}
@@ -243,15 +262,21 @@ void ball_display(struct Ball *sph, const struct Camera *cam)
 			SDL_Rect rect;
 			if (camera_get_containing_rect(
 					cam, &rect,
-					sph->vectorcache[v][a],
-					sph->vectorcache[v][a2],
-					sph->vectorcache[v2][a],
-					sph->vectorcache[v2][a2]))
+					ball->vectorcache[v][a],
+					ball->vectorcache[v][a2],
+					ball->vectorcache[v2][a],
+					ball->vectorcache[v2][a2]))
 			{
 				SDL_FillRect(
 					cam->surface, &rect,
-					convert_color(cam->surface, sph->image[v][a]));
+					convert_color(cam->surface, ball->image[v][a]));
 			}
 		}
 	}
+}
+
+bool ball_contains(const struct Ball *ball, Vec3 pt)
+{
+	// TODO: figure out how to do this
+	return false;
 }

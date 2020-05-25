@@ -151,6 +151,20 @@ Mat3 mat3_rotation_xz(float angle)
 }
 
 
+static void swap(float *a, float *b)
+{
+	float tmp = *a;
+	*a = *b;
+	*b = tmp;
+}
+
+static void transpose(Mat3 *M)
+{
+	for (int i = 0; i < 3; i++)
+		for (int k = 0; k < i; k++)
+			swap(&M->rows[i][k], &M->rows[k][i]);
+}
+
 void plane_apply_mat3_INVERSE(struct Plane *pl, Mat3 inverse)
 {
 	/*
@@ -162,11 +176,18 @@ void plane_apply_mat3_INVERSE(struct Plane *pl, Mat3 inverse)
 		[a b c] |  y  | = constant.
 		        |_ z _|
 
+	Here we have
+
+		            _   _
+		       T   |  a  |
+		[a b c]  = |  b  | = pl->normal.
+		           |_ c _|
+
 	How to apply a matrix to the plane? Consider the two planes that we should
 	have before and after applying the matrix. A point is on the plane after
 	applying the transform if and only if the INVERSE transformed point is on the
-	plane before applying the transform. This means that to apply a matrix M, we
-	should replace the equation with
+	plane before applying the transform. This means that the plane we have after
+	the transform has the equation
 
 		              _   _
 		             |  x  |
@@ -175,11 +196,12 @@ void plane_apply_mat3_INVERSE(struct Plane *pl, Mat3 inverse)
 
 	and from linear algebra, we know that
 
-		                       _   _    T
-		               /      |  a  | \
-		[a b c] M^-1 = | M^-1 |  b  | |
-		               \      |_ c _| /
+		                           _   _    T
+		               /       T  |  a  | \
+		[a b c] M^-1 = | (M^-1)   |  b  | |
+		               \          |_ c _| /
 	*/
+	transpose(&inverse);
 	pl->normal = mat3_mul_vec3(inverse, pl->normal);
 }
 
