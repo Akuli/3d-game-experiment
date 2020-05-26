@@ -9,14 +9,26 @@
 #define CAMERA_BEHIND_PLAYER 3.0f
 #define CAMERA_HEIGHT 2.0f
 
-#define GRAVITY 0.03f
-#define INITIAL_VELOCITY 0.5f
+#define JUMP_MAX_HEIGHT 3.0f
+#define JUMP_DURATION_SEC 0.6f
+
+static float get_jump_height(unsigned int jumpframe, unsigned int fps)
+{
+	float time = (float)jumpframe / (float)fps;
+
+	/*
+	Parabola that intersects time axis at time=0 and time=JUMP_DURATION_SEC, having
+	max value of JUMP_MAX_HEIGHT
+	*/
+	float a = (-4*JUMP_MAX_HEIGHT)/(JUMP_DURATION_SEC*JUMP_DURATION_SEC);
+	return a*(time - 0)*(time - JUMP_DURATION_SEC);
+}
 
 static float get_stretch(const struct Player *plr)
 {
 	if (plr->flat)   // if flat and jumping, then do this
 		return 0.2f;
-	if (plr->jumping)
+	if (plr->jumpframe != 0)
 		return 3;
 	return 1.5f;
 }
@@ -33,18 +45,16 @@ void player_eachframe(struct Player *plr, unsigned int fps)
 		plr->ball->center = vec3_add(plr->ball->center, diff);
 	}
 
-	if (plr->jumping) {
-		plr->yvelocity -= GRAVITY;
-		plr->ball->center.y += plr->yvelocity;
-		if (plr->yvelocity < 0 && plr->ball->center.y < BALL_RADIUS*get_stretch(plr)) {
+	float y = 0;
+	if (plr->jumpframe != 0) {
+		y = get_jump_height(plr->jumpframe++, fps);
+		if (y < 0) {
 			// land
-			plr->jumping = false;   // changes get_stretch() value
-			plr->ball->center.y = BALL_RADIUS*get_stretch(plr);
+			plr->jumpframe = 0;
+			y = 0;
 		}
-	} else {
-		// make sure it touches ground, ignore yvelocity
-		plr->ball->center.y = BALL_RADIUS*get_stretch(plr);
 	}
+	plr->ball->center.y = y + BALL_RADIUS*get_stretch(plr);
 
 	Mat3 rot = mat3_rotation_xz(plr->angle);
 	Mat3 antirot = mat3_rotation_xz(-plr->angle);
@@ -81,17 +91,8 @@ void player_set_flat(struct Player *plr, bool flat)
 {
 	if (plr->flat == flat)
 		return;
-	plr->flat = flat;
 
-	if (!plr->jumping) {
-		if (plr->flat) {
-			// make sure that player stays touching the ground
-			plr->ball->center.y = BALL_RADIUS*get_stretch(plr);
-		} else {
-			// jump
-			plr->jumping = true;
-			plr->ball->center.y += get_stretch(plr)*BALL_RADIUS;
-			plr->yvelocity = INITIAL_VELOCITY;
-		}
-	}
+	plr->flat = flat;
+	if (plr->jumpframe == 0 && !plr->flat)
+		plr->jumpframe = 1;
 }

@@ -11,8 +11,7 @@ struct Player {
 	int turning;   // +1 for left, -1 for right, 0 for nothing
 	bool moving;
 	bool flat;
-	bool jumping;
-	float yvelocity;
+	unsigned int jumpframe;   // how many frames since jump started, 0 for not jumping
 };
 
 // run before showing stuff to user
