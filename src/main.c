@@ -68,8 +68,6 @@ static bool handle_event(SDL_Event event, struct GameState *gs)
 	case SDL_KEYDOWN:
 	case SDL_KEYUP:
 		switch(event.key.keysym.scancode) {
-		case SDL_SCANCODE_ESCAPE: return false;
-
 		case SDL_SCANCODE_A: player_set_turning(&gs->players[0], 1, down); break;
 		case SDL_SCANCODE_D: player_set_turning(&gs->players[0], -1, down); break;
 		case SDL_SCANCODE_W: player_set_moving(&gs->players[0], down); break;
