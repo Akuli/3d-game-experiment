@@ -1,12 +1,12 @@
 #CFLAGS += -fsanitize=undefined -fsanitize=address
 CFLAGS += -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Werror=incompatible-pointer-types -Werror=implicit-function-declaration -Werror=int-conversion -Werror=discarded-qualifiers
 CFLAGS += -Wno-unused-parameter -Wno-address
-CFLAGS += -Werror=stack-usage=2048
+CFLAGS += -Werror=stack-usage=3000
 CFLAGS += -g
 CFLAGS += -O3
 CFLAGS += -Istb
 VENDOR_CFLAGS := $(CFLAGS:-W%=)   # no warnings from other people's code please
-LDFLAGS += -lSDL2
+LDFLAGS += -lSDL2 -lSDL2_mixer
 LDFLAGS += -lm
 
 SRC := $(filter-out src/main.c, $(wildcard src/*.c))

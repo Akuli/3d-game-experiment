@@ -4,11 +4,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "ball.h"
 #include "camera.h"
 #include "common.h"
-#include "player.h"
-#include "ball.h"
 #include "mathstuff.h"
+#include "player.h"
+#include "sound.h"
 
 #include <SDL2/SDL.h>
 
@@ -68,6 +69,8 @@ static bool handle_event(SDL_Event event, struct GameState *gs)
 	case SDL_KEYDOWN:
 	case SDL_KEYUP:
 		switch(event.key.keysym.scancode) {
+		case SDL_SCANCODE_ESCAPE: return false;
+
 		case SDL_SCANCODE_A: player_set_turning(&gs->players[0], 1, down); break;
 		case SDL_SCANCODE_D: player_set_turning(&gs->players[0], -1, down); break;
 		case SDL_SCANCODE_W: player_set_moving(&gs->players[0], down); break;
@@ -104,6 +107,8 @@ static SDL_Surface *create_half_surface(SDL_Surface *surf, int xoffset, int widt
 
 int main(void)
 {
+	sound_init();
+
 	SDL_Window *win = SDL_CreateWindow(
 		"TODO: title here", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 800, 600, 0);
 	if (!win)
@@ -140,8 +145,8 @@ int main(void)
 		SDL_UpdateWindowSurface(win);
 
 		uint32_t curtime = SDL_GetTicks();
-		fprintf(stderr, "speed percentage thingy = %.1f%%\n",
-			(float)(curtime - time) / (1000/FPS) * 100.f);
+		/*fprintf(stderr, "speed percentage thingy = %.1f%%\n",
+			(float)(curtime - time) / (1000/FPS) * 100.f);*/
 
 		time += 1000/FPS;
 		if (curtime <= time) {
@@ -158,6 +163,7 @@ exit:
 	SDL_FreeSurface(gs.players[0].cam.surface);
 	SDL_FreeSurface(gs.players[1].cam.surface);
 	SDL_DestroyWindow(win);
+	sound_deinit();
 	SDL_Quit();
 	return 0;
 }

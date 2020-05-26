@@ -2,5 +2,6 @@ obj/
 game
 player1.png
 player2.png
+sounds/
 callgrind.out
 graph.*

@@ -1,7 +1,9 @@
 #include "player.h"
 #include <assert.h>
 #include "ball.h"
+#include "common.h"
 #include "mathstuff.h"
+#include "sound.h"
 
 #define MOVE_UNITS_PER_SECOND 10.f
 #define RADIANS_PER_SECOND 5.0f
@@ -94,6 +96,14 @@ void player_set_flat(struct Player *plr, bool flat)
 		return;
 
 	plr->flat = flat;
-	if (plr->jumpframe == 0 && !plr->flat)
-		plr->jumpframe = 1;
+
+	if (plr->flat)
+		sound_play(SOUND_SQUEEZE);
+	else {
+		sound_play(SOUND_POP);
+		if (plr->jumpframe == 0) {
+			sound_play(SOUND_JUMP);
+			plr->jumpframe = 1;
+		}
+	}
 }

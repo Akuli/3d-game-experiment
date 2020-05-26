@@ -4,15 +4,20 @@
 #include <stdlib.h>
 #include <SDL2/SDL.h>
 
-noreturn void fatal_error_internal(const char *file, long lineno, const char *whatfailed, const char *msg)
+void nonfatal_error_internal(const char *file, long lineno, const char *whatfailed, const char *msg)
 {
 	// TODO: write to log somewhere?
 	fprintf(stderr, "%s:%ld: ", file, lineno);
-
 	if (msg)
 		fprintf(stderr, "%s failed: %s\n", whatfailed, msg);
 	else
 		fprintf(stderr, "%s failed\n", whatfailed);
+}
+
+noreturn void fatal_error_internal(
+	const char *file, long lineno, const char *whatfailed, const char *msg)
+{
+	nonfatal_error_internal(file, lineno, whatfailed, msg);
 	abort();
 }
 
