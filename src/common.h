@@ -1,22 +1,15 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include <stdnoreturn.h>
+#include <stdio.h>
 #include <SDL2/SDL.h>
 
-noreturn void fatal_error_internal(
-	const char *file, long lineno, const char *whatfailed, const char *msg);
-#define fatal_error(WHATFAILED, MSG) fatal_error_internal(__FILE__, __LINE__, (WHATFAILED), (MSG))
-#define fatal_sdl_error(WHATFAILED) fatal_error(WHATFAILED, SDL_GetError())
-#define fatal_error_nomem() fatal_error("allocating memory", NULL)
+#define nonfatal_error_printf(FMT, ...) fprintf(stderr, "%s:%d: " FMT "\n", __FILE__, __LINE__, __VA_ARGS__)
+#define nonfatal_error(MESSAGE) nonfatal_error_printf("%s", (MESSAGE))
 
-// there is no fatal_mix_error() because sound errors shouldn't be fatal
-
-void nonfatal_error_internal(
-	const char *file, long lineno, const char *whatfailed, const char *msg);
-#define nonfatal_error(WHATFAILED, MSG) nonfatal_error_internal(__FILE__, __LINE__, (WHATFAILED), (MSG))
-#define nonfatal_sdl_error(WHATFAILED) nonfatal_error(WHATFAILED, SDL_GetError())
-#define nonfatal_error_nomem() nonfatal_error("allocating memory", NULL)
+#define fatal_error_printf(...) do{ nonfatal_error_printf(__VA_ARGS__); abort(); } while(0)
+#define fatal_error(MESSAGE) fatal_error_printf("%s", MESSAGE)
+#define fatal_sdl_error(MESSAGE) fatal_error_printf("%s: %s", (MESSAGE), SDL_GetError())
 
 int iclamp(int val, int min, int max);
 

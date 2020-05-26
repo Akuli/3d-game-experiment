@@ -99,10 +99,13 @@ returned surface actually draws to the surface given as argument.
 */
 static SDL_Surface *create_half_surface(SDL_Surface *surf, int xoffset, int width)
 {
-	return SDL_CreateRGBSurfaceFrom(
+	SDL_Surface *res = SDL_CreateRGBSurfaceFrom(
 		(uint32_t *)surf->pixels + xoffset,
 		width, surf->h,
 		32, surf->pitch, 0, 0, 0, 0);
+	if (!res)
+		fatal_sdl_error("SDL_CreateRGBSurfaceFROM failed");
+	return res;
 }
 
 int main(void)
@@ -112,11 +115,11 @@ int main(void)
 	SDL_Window *win = SDL_CreateWindow(
 		"TODO: title here", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 800, 600, 0);
 	if (!win)
-		fatal_sdl_error("SDL_CreateWindow");
+		fatal_sdl_error("SDL_CreateWindow failed");
 
 	SDL_Surface *winsurf = SDL_GetWindowSurface(win);
 	if (!winsurf)
-		fatal_sdl_error("SDL_GetWindowSurface");
+		fatal_sdl_error("SDL_GetWindowSurface failed");
 
 	struct GameState gs = {0};
 	gs.players[0].ball = ball_load("player1.png", (Vec3){0,0.5f,-2});
@@ -125,8 +128,6 @@ int main(void)
 	// This turned out to be much faster than blitting
 	gs.players[0].cam.surface = create_half_surface(winsurf, 0, winsurf->w/2);
 	gs.players[1].cam.surface = create_half_surface(winsurf, winsurf->w/2, winsurf->w/2);
-	if (!gs.players[0].cam.surface || !gs.players[1].cam.surface)
-		fatal_sdl_error("SDL_CreateRGBSurface");
 
 	uint32_t time = 0;
 	while(1){

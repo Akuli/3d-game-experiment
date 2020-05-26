@@ -55,7 +55,7 @@ static void read_image(const char *filename, SDL_Color *res)
 {
 	FILE *f = fopen(filename, "rb");
 	if (!f)
-		fatal_error("fopen", strerror(errno));
+		fatal_error_printf("fopen failed: %s", strerror(errno));
 
 	/*
 	On a "typical" system, we can convert between SDL_Color arrays and uint8_t
@@ -71,7 +71,7 @@ static void read_image(const char *filename, SDL_Color *res)
 	SDL_Color *filedata = (SDL_Color*) stbi_load_from_file(f, &filew, &fileh, &chansinfile, 4);
 	fclose(f);
 	if (!filedata)
-		fatal_error("stbi_load_from_file", strerror(errno));
+		fatal_error_printf("stbi_load_from_file failed: %s", stbi_failure_reason());
 
 	replace_alpha_with_average(filedata, (size_t)filew*(size_t)fileh);
 
@@ -81,14 +81,14 @@ static void read_image(const char *filename, SDL_Color *res)
 		4);
 	stbi_image_free(filedata);
 	if (!ok)
-		fatal_error("stbir_resize_uint8", strerror(errno));
+		fatal_error_printf("stbir_resize_uint8 failed: %s", stbi_failure_reason());
 }
 
 struct Ball *ball_load(const char *filename, Vec3 center)
 {
 	struct Ball *ball = malloc(sizeof(*ball));
 	if (!ball)
-		fatal_error_nomem();
+		fatal_error("not enough memory");
 
 	ball->center = center;
 	read_image(filename, (SDL_Color*) ball->image);

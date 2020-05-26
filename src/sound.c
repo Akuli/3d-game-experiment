@@ -4,13 +4,14 @@
 #include <SDL2/SDL_mixer.h>
 #include "common.h"
 
-#define nonfatal_mix_error(WHATFAILED) nonfatal_error(WHATFAILED, Mix_GetError())
+#define nonfatal_sdl_error(MESSAGE) nonfatal_error_printf("%s: %s", MESSAGE, SDL_GetError())
+#define nonfatal_mix_error_printf(FMT, ...) nonfatal_error_printf(FMT ": %s", __VA_ARGS__, Mix_GetError())
 
 struct {
 	const char *filename;
 	int volume_percents;
 } const sound_infos[] = {
-	[SOUND_JUMP] = { "jump.wav", 100 },
+	[SOUND_JUMP] = { "boing.wav", 100 },
 	[SOUND_SQUEEZE] = {"squeeze.wav", 100 },
 	[SOUND_POP] = { "pop.wav", 100 },
 };
@@ -22,7 +23,7 @@ static Mix_Chunk *samples[HOW_MANY_SOUNDS] = {0};
 void sound_init(void)
 {
 	if (SDL_Init(SDL_INIT_AUDIO) == -1) {
-		nonfatal_sdl_error("SDL_Init(SDL_INIT_AUDIO)");
+		nonfatal_sdl_error("SDL_Init(SDL_INIT_AUDIO) failed");
 		return;
 	}
 
@@ -35,7 +36,7 @@ void sound_init(void)
 
 	if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, 2, CHUNK_SIZE) == -1)
 	{
-		nonfatal_sdl_error("Mix_OpenAudio");
+		nonfatal_sdl_error("Mix_OpenAudio failed");
 		return;
 	}
 
@@ -46,10 +47,7 @@ void sound_init(void)
 		char path[1024];
 		snprintf(path, sizeof path, "sounds/%s", sound_infos[i].filename);
 		if (!( samples[i] = Mix_LoadWAV(path) )) {
-			// TODO: add printf formatting to common.h error functions
-			char msg[sizeof path + 100];
-			snprintf(msg, sizeof msg, "Mix_LoadWAV(\"%s\")", path);
-			nonfatal_mix_error(msg);
+			nonfatal_mix_error_printf("Mix_LoadWav(\"%s\") failed", path);
 			continue;
 		}
 
@@ -60,18 +58,12 @@ void sound_init(void)
 void sound_play(enum Sound snd)
 {
 	if (samples[snd] == NULL) {
-		// TODO: add printf formatting to common.h error functions
-		char msg[100];
-		snprintf(msg, sizeof msg, "loading sound from '%s' has failed", sound_infos[snd].filename);
-		nonfatal_error("sound_play", msg);
+		nonfatal_error_printf("loading sound from '%s' has failed", sound_infos[snd].filename);
 		return;
 	}
 
-	if (Mix_PlayChannel(-1, samples[snd], 0) == -1) {
-		char msg[100];
-		snprintf(msg, sizeof msg, "Mix_PlayChannel for sound '%s'", sound_infos[snd].filename);
-		nonfatal_mix_error(msg);
-	}
+	if (Mix_PlayChannel(-1, samples[snd], 0) == -1)
+		nonfatal_mix_error_printf("Mix_PlayChannel for sound '%s' failed", sound_infos[snd].filename);
 }
 
 void sound_deinit(void)
