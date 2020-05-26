@@ -24,13 +24,11 @@ static float get_jump_height(unsigned int jumpframe, unsigned int fps)
 	return a*(time - 0)*(time - JUMP_DURATION_SEC);
 }
 
-static float get_stretch(const struct Player *plr)
+static float get_stretch(const struct Player *plr, unsigned int fps)
 {
 	if (plr->flat)   // if flat and jumping, then do this
 		return 0.2f;
-	if (plr->jumpframe != 0)
-		return 3;
-	return 1.5f;
+	return 1.5f + get_jump_height(plr->jumpframe, fps);
 }
 
 void player_eachframe(struct Player *plr, unsigned int fps)
@@ -47,21 +45,24 @@ void player_eachframe(struct Player *plr, unsigned int fps)
 
 	float y = 0;
 	if (plr->jumpframe != 0) {
-		y = get_jump_height(plr->jumpframe++, fps);
+		plr->jumpframe++;
+		y = get_jump_height(plr->jumpframe, fps);
 		if (y < 0) {
 			// land
 			plr->jumpframe = 0;
 			y = 0;
 		}
 	}
-	plr->ball->center.y = y + BALL_RADIUS*get_stretch(plr);
+
+	float stretch = get_stretch(plr, fps);
+	plr->ball->center.y = y + BALL_RADIUS*stretch;
 
 	Mat3 rot = mat3_rotation_xz(plr->angle);
 	Mat3 antirot = mat3_rotation_xz(-plr->angle);
 
 	plr->ball->transform = mat3_mul_mat3(rot, (Mat3){.rows= {
 		{ 1, 0, 0 },
-		{ 0, get_stretch(plr), 0 },
+		{ 0, stretch, 0 },
 		{ 0, 0, 1 },
 	}});
 	plr->cam.world2cam = antirot;
