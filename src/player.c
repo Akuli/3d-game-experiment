@@ -98,11 +98,11 @@ void player_set_flat(struct Player *plr, bool flat)
 	plr->flat = flat;
 
 	if (plr->flat)
-		sound_play(SOUND_SQUEEZE);
+		sound_play("lemonsqueeze.wav");
 	else {
-		sound_play(SOUND_POP);
+		sound_play("pop.wav");
 		if (plr->jumpframe == 0) {
-			sound_play(SOUND_JUMP);
+			sound_play("boing.wav");
 			plr->jumpframe = 1;
 		}
 	}

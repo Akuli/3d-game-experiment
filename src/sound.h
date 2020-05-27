@@ -7,15 +7,8 @@ SDL_Mixer, and that's all globals. It's also handy to not pass around a sound
 effect playing state everywhere.
 */
 
-enum Sound {
-	SOUND_JUMP,
-	SOUND_SQUEEZE,
-	SOUND_POP,
-};
-
 void sound_init(void);
+void sound_play(const char *filename);
 void sound_deinit(void);
-
-void sound_play(enum Sound snd);
 
 #endif   // SOUND_H
