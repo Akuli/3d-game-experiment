@@ -12,7 +12,7 @@ struct {
 	int volume_percents;
 } const sound_infos[] = {
 	[SOUND_JUMP] = { "boing.wav", 100 },
-	[SOUND_SQUEEZE] = {"squeeze.wav", 100 },
+	[SOUND_SQUEEZE] = {"lemonsqueeze.wav", 100 },
 	[SOUND_POP] = { "pop.wav", 100 },
 };
 #define HOW_MANY_SOUNDS ( sizeof(sound_infos)/sizeof(sound_infos[0]) )

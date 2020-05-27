@@ -5,9 +5,6 @@ rectangle-shaped picture containing the face. Set everything except the
 face to transparent. Put that to `player1.png`. Create `player2.png`
 similarly.
 
-If you want to, you can also put some wav files to `sounds/`. You can
-adjust their volumes in `src/sound.c`.
-
 Commands to compile and run:
 
 ```
