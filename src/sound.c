@@ -40,6 +40,13 @@ void sound_init(void)
 		return;
 	}
 
+	/*
+	Make sure that there is enough channels, even when smashing buttons. With 20
+	channels, I could barely smash buttons fast enough to run out of channels, but
+	I couldn't do that anymore with 25 channels.
+	*/
+	Mix_AllocateChannels(32);
+
 	for (size_t i = 0; i < HOW_MANY_SOUNDS; i++) {
 		assert(sound_infos[i].filename);
 		assert(!samples[i]);
