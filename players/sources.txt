@@ -1,0 +1,2 @@
+Tux.png: http://www.home.unix-ag.org/simon/penguin/
+Chick.png: from a picture taken by a relative

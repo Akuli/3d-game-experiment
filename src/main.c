@@ -122,8 +122,8 @@ int main(void)
 		fatal_sdl_error("SDL_GetWindowSurface failed");
 
 	struct GameState gs = {0};
-	gs.players[0].ball = ball_load("player1.png", (Vec3){0,0.5f,-2});
-	gs.players[1].ball = ball_load("player2.png", (Vec3){2,0.5f,-2});
+	gs.players[0].ball = ball_load("players/Tux.png", (Vec3){0,0.5f,-2});
+	gs.players[1].ball = ball_load("players/Chick.png", (Vec3){2,0.5f,-2});
 
 	// This turned out to be much faster than blitting
 	gs.players[0].cam.surface = create_half_surface(winsurf, 0, winsurf->w/2);
