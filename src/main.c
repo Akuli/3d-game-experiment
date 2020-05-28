@@ -14,7 +14,7 @@
 
 #include <SDL2/SDL.h>
 
-#define FPS 60
+#define FPS 30
 
 #define ArrayLen(arr) ( sizeof(arr)/sizeof((arr)[0]) )
 

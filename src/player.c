@@ -6,7 +6,7 @@
 #include "sound.h"
 #include "wall.h"
 
-#define MOVE_UNITS_PER_SECOND 10.f
+#define MOVE_UNITS_PER_SECOND 8.f
 #define RADIANS_PER_SECOND 5.0f
 
 #define CAMERA_BEHIND_PLAYER 3.0f
