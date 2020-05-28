@@ -45,5 +45,11 @@ void wall_bumps_ball(const struct Wall *w, struct Ball *ball);
 
 void wall_show(const struct Wall *w, const struct Camera *cam);
 
+// center point of wall in world coordinates
+Vec3 wall_center(const struct Wall *w);
+
+// Return a plane that the wall is a part of
+struct Plane wall_getplane(const struct Wall *w);
+
 
 #endif    // WALL_H

@@ -16,22 +16,91 @@
 
 #define FPS 60
 
-// includes all the objects that all players should see
+#define ArrayLen(arr) ( sizeof(arr)/sizeof((arr)[0]) )
+
+// includes all the GameObjects that all players should see
 struct GameState {
 	struct Player players[2];
 	struct Wall walls[4];
 };
 
-static int compare_float_pointers(const void *a, const void *b)
+struct GameObj {
+	enum { PLAYER, WALL } kind;
+	union { const struct Player *player; const struct Wall *wall; } ptr;
+	const struct Camera *camera;   // passing data to qsort without global vars
+};
+
+
+// returns -1 if a in front of b, +1 if b in front of a
+static int compare_gameobj_pointers_by_centerz(const void *aptr, const void *bptr)
 {
-	float x = *(const float *)a;
-	float y = *(const float *)b;
-	return (x>y) - (x<y);
+	const struct GameObj *a = aptr, *b = bptr;
+	const struct Camera *cam = a->camera;
+
+	if (a->kind == b->kind) {
+		// initializing to 0 just to avoid compiler warning, lol
+		Vec3 acenter = {0}, bcenter = {0};
+		switch(a->kind) {
+		case PLAYER:
+			acenter = a->ptr.player->ball->center;
+			bcenter = b->ptr.player->ball->center;
+			break;
+		case WALL:
+			acenter = wall_center(a->ptr.wall);
+			bcenter = wall_center(b->ptr.wall);
+			break;
+		}
+
+		float az = camera_point_world2cam(cam, acenter).z;
+		float bz = camera_point_world2cam(cam, bcenter).z;
+		return (az > bz) - (az < bz);
+	}
+
+	if (a->kind == WALL && b->kind == PLAYER) {
+		struct Plane pl = wall_getplane(a->ptr.wall);
+
+		bool playerfront = plane_whichside(pl, b->ptr.player->ball->center);
+		if (mat3_mul_vec3(cam->world2cam, pl.normal).z > 0)
+			playerfront = !playerfront;
+		return playerfront ? 1 : -1;
+	}
+
+	assert(a->kind == PLAYER && b->kind == WALL);
+	return -compare_gameobj_pointers_by_centerz(bptr, aptr);
 }
 
 static void show_everything(const struct GameState *gs, struct Camera *cam)
 {
-	for (float x = -10; x <= 10; x += 1.f) {
+	struct GameObj all[ArrayLen(gs->players) + ArrayLen(gs->walls)];
+	struct GameObj *allplayers = &all[0];
+	struct GameObj *allwalls = &all[ArrayLen(gs->players)];
+
+	for (unsigned i = 0; i < ArrayLen(all); i++)
+		all[i].camera = cam;
+
+	for (unsigned i = 0; i < ArrayLen(gs->players); i++) {
+		allplayers[i].kind = PLAYER;
+		allplayers[i].ptr.player = &gs->players[i];
+	}
+
+	for (unsigned i = 0; i < ArrayLen(gs->walls); i++) {
+		allwalls[i].kind = WALL;
+		allwalls[i].ptr.wall = &gs->walls[i];
+	}
+
+	qsort(all, ArrayLen(all), sizeof(all[0]), compare_gameobj_pointers_by_centerz);
+	for (unsigned i = 0; i < ArrayLen(all); i++) {
+		switch(all[i].kind) {
+		case PLAYER:
+			ball_display(all[i].ptr.player->ball, cam);
+			break;
+		case WALL:
+			wall_show(all[i].ptr.wall, cam);
+			break;
+		}
+	}
+
+	/*for (float x = -10; x <= 10; x += 1.f) {
 		for (float z = -10; z <= 0; z += 0.3f) {
 			Vec3 worldvec = camera_point_world2cam(cam, (Vec3){ x, 0, z });
 			if (worldvec.z < 0) {
@@ -42,24 +111,7 @@ static void show_everything(const struct GameState *gs, struct Camera *cam)
 					SDL_MapRGBA(cam->surface->format, 0xff, 0xff, 0x00, 0xff));
 			}
 		}
-	}
-
-	struct PlayerInfo {
-		float camcenterz; // z coordinate of center in camera coordinates
-		const struct Player *player;
-	} arr[] = {
-		{ camera_point_world2cam(cam, gs->players[0].ball->center).z, &gs->players[0] },
-		{ camera_point_world2cam(cam, gs->players[1].ball->center).z, &gs->players[1] },
-	};
-
-	static_assert(offsetof(struct PlayerInfo, camcenterz) == 0, "weird padding");
-	qsort(arr, sizeof(arr)/sizeof(arr[0]), sizeof(arr[0]), compare_float_pointers);
-
-	ball_display(arr[0].player->ball, cam);
-	ball_display(arr[1].player->ball, cam);
-
-	for (unsigned i = 0; i < sizeof(gs->walls)/sizeof(gs->walls[0]); i++)
-		wall_show(&gs->walls[i], cam);
+	}*/
 }
 
 // returns whether to continue playing

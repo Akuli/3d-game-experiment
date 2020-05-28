@@ -190,3 +190,40 @@ void wall_show(const struct Wall *w, const struct Camera *cam)
 	for (int y = icor[2].y; y < icor[3].y; y++)
 		draw_hline(cam->surface, line_x(icor[1], icor[3], y), line_x(icor[2], icor[3], y), y);
 }
+
+Vec3 wall_center(const struct Wall *w)
+{
+	float x = (float)w->startx;
+	float y = (PLAYER_HEIGHT_FLAT + WALL_HEIGHT)/2;
+	float z = (float)w->startz;
+
+	switch(w->dir) {
+	case WALL_DIR_X:
+		x += 0.5f;
+		break;
+	case WALL_DIR_Z:
+		z += 0.5f;
+		break;
+	}
+
+	return (Vec3){x,y,z};
+}
+
+static struct Plane plane_from_normal_and_point(Vec3 normal, Vec3 point)
+{
+	// plane equation: (x,y,z) dot normal = constant
+	// must be satisfied when (x,y,z) = point
+	return (struct Plane){ .normal = normal, .constant = vec3_dot(normal, point) };
+}
+
+struct Plane wall_getplane(const struct Wall *w)
+{
+	Vec3 normal = {0,0,0};
+	switch(w->dir) {
+		case WALL_DIR_X: normal.z = 1; break;
+		case WALL_DIR_Z: normal.x = 1; break;
+	}
+
+	Vec3 point = { (float)w->startx, 0, (float)w->startz };
+	return plane_from_normal_and_point(normal, point);
+}
