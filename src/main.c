@@ -209,9 +209,10 @@ int main(void)
 		player_eachframe(&gs->players[0], FPS, gs->walls, sizeof(gs->walls)/sizeof(gs->walls[0]));
 		player_eachframe(&gs->players[1], FPS, gs->walls, sizeof(gs->walls)/sizeof(gs->walls[0]));
 
-		SDL_FillRect(winsurf, NULL, 0x000000UL);
+		SDL_FillRect(winsurf, NULL, 0);
 		show_everything(gs, &gs->players[0].cam);
 		show_everything(gs, &gs->players[1].cam);
+		SDL_FillRect(winsurf, &(SDL_Rect){ winsurf->w/2, 0, 1, winsurf->h }, SDL_MapRGB(winsurf->format, 0xff, 0xff, 0xff));
 		SDL_UpdateWindowSurface(win);
 
 		uint32_t curtime = SDL_GetTicks();
