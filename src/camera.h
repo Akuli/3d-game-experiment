@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <SDL2/SDL.h>
+#include "common.h"
 #include "mathstuff.h"
 
 /*
@@ -41,13 +42,10 @@ This function loses some precision when it rounds the coordinates to nearest
 integer values. I saw SDL_FPoint in SDL's source code, but it's not documented
 anywhere and might not even be available in SDL.h.
 
-To avoid the precision loss, use camera_xzr_to_screenx() and
-camera_yzr_to_screeny() instead of this convenience function.
-
 This asserts that pt.z is negative because otherwise the point is not in front
 of the player.
 */
-SDL_Point camera_point_to_sdl(const struct Camera *cam, Vec3 pt);
+struct FPoint camera_point_cam2fpoint(const struct Camera *cam, Vec3 pt);
 
 /* Find the smallest rectangle containing the given 4 points
 

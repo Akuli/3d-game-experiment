@@ -17,4 +17,7 @@ int iclamp(int val, int min, int max);
 #define convert_color(SURF, COL) \
 	SDL_MapRGBA((SURF)->format, (COL).r, (COL).g, (COL).b, (COL.a))
 
+// and why doesn't sdl2 expose its internal struct SDL_FPoint
+struct FPoint { float x, y; };
+
 #endif   // COMMON_H

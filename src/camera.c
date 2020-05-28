@@ -30,12 +30,12 @@ float camera_yzr_to_screeny(const struct Camera *cam, float yzr) { return (float
 float camera_screenx_to_xzr(const struct Camera *cam, float screenx) { return (-screenx + (float)cam->surface->w/2)/SCALING_FACTOR; }
 float camera_screeny_to_yzr(const struct Camera *cam, float screeny) { return (screeny - (float)cam->surface->h/2)/SCALING_FACTOR; }
 
-SDL_Point camera_point_to_sdl(const struct Camera *cam, Vec3 pt)
+struct FPoint camera_point_cam2fpoint(const struct Camera *cam, Vec3 pt)
 {
 	assert(pt.z < 0);
-	return (SDL_Point){
-		.x = (int) roundf(camera_xzr_to_screenx(cam, pt.x/pt.z)),
-		.y = (int) roundf(camera_yzr_to_screeny(cam, pt.y/pt.z)),
+	return (struct FPoint){
+		.x = camera_xzr_to_screenx(cam, pt.x/pt.z),
+		.y = camera_yzr_to_screeny(cam, pt.y/pt.z),
 	};
 }
 

@@ -35,17 +35,14 @@ static void show_everything(const struct GameState *gs, struct Camera *cam)
 		for (float z = -10; z <= 0; z += 0.3f) {
 			Vec3 worldvec = camera_point_world2cam(cam, (Vec3){ x, 0, z });
 			if (worldvec.z < 0) {
-				SDL_Point p = camera_point_to_sdl(cam, worldvec);
+				struct FPoint p = camera_point_cam2fpoint(cam, worldvec);
 				SDL_FillRect(
 					cam->surface,
-					&(SDL_Rect){ p.x, p.y, 1, 1 },
+					&(SDL_Rect){ (int)p.x, (int)p.y, 1, 1 },
 					SDL_MapRGBA(cam->surface->format, 0xff, 0xff, 0x00, 0xff));
 			}
 		}
 	}
-
-	for (unsigned i = 0; i < sizeof(gs->walls)/sizeof(gs->walls[0]); i++)
-		wall_show(&gs->walls[i], cam);
 
 	struct PlayerInfo {
 		float camcenterz; // z coordinate of center in camera coordinates
@@ -60,6 +57,9 @@ static void show_everything(const struct GameState *gs, struct Camera *cam)
 
 	ball_display(arr[0].player->ball, cam);
 	ball_display(arr[1].player->ball, cam);
+
+	for (unsigned i = 0; i < sizeof(gs->walls)/sizeof(gs->walls[0]); i++)
+		wall_show(&gs->walls[i], cam);
 }
 
 // returns whether to continue playing
@@ -99,7 +99,7 @@ static bool handle_event(SDL_Event event, struct GameState *gs)
 }
 
 /*
-Create a surface that manipulates the data of another surface. So, drawing to the
+Create a surface that refers to another another surface. So, drawing to the
 returned surface actually draws to the surface given as argument.
 */
 static SDL_Surface *create_half_surface(SDL_Surface *surf, int xoffset, int width)
