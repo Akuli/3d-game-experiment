@@ -126,15 +126,51 @@ static int line_x(SDL_Point p1, SDL_Point p2, int y)
 
 #define min(a,b) ((a)<(b) ? (a) : (b))
 
-static void draw_hline(SDL_Surface *surf, int x1, int x2, int y, uint32_t col)
+/*
+Transparent walls are implemented in a shitty way because I couldn't get SDL's
+transparency stuff to work correctly. I can't use SDL_FillRect because it
+doesn't support transparency.
+*/
+#define R_INCREMENT 100
+#define G_INCREMENT 0
+#define B_INCREMENT 0
+
+static void draw_hline(SDL_Surface *surf, int x1, int x2, int y)
 {
-	SDL_FillRect(surf, &(SDL_Rect){ min(x1, x2), y, abs(x1-x2), 1 }, col);
+	if (y < 0 || y >= surf->h)
+		return;
+
+	if (x1 > x2) {
+		int tmp = x1;
+		x1 = x2;
+		x2 = tmp;
+	}
+
+	if (x1 < 0)
+		x1 = 0;
+	if (x2 >= surf->w)
+		x2 = surf->w - 1;
+
+	// small optimization
+	uint32_t blackturns2 = SDL_MapRGB(surf->format, R_INCREMENT, G_INCREMENT, B_INCREMENT);
+
+	uint32_t *rowptr = (uint32_t*)((uint8_t *)surf->pixels + y*surf->pitch);
+	for (int x = x1; x <= x2; x++) {
+		if (rowptr[x] == 0)
+			rowptr[x] = blackturns2;
+		else {
+			uint8_t r, g, b;
+			SDL_GetRGB(rowptr[x], surf->format, &r, &g, &b);
+			rowptr[x] = SDL_MapRGB(surf->format,
+				(uint8_t) min(0xff, (int)r + R_INCREMENT),
+				(uint8_t) min(0xff, (int)g + G_INCREMENT),
+				(uint8_t) min(0xff, (int)b + B_INCREMENT));
+		}
+	}
 }
 
 void wall_show(const struct Wall *w, const struct Camera *cam)
 {
-	uint32_t col = SDL_MapRGB(cam->surface->format, 0, 0xff, 0);
-
 	struct FPoint fcor[4];
 	if (!get_corners(w, cam, fcor))
 		return;
@@ -148,9 +184,9 @@ void wall_show(const struct Wall *w, const struct Camera *cam)
 	}
 
 	for (int y = icor[0].y; y < icor[1].y; y++)
-		draw_hline(cam->surface, line_x(icor[0], icor[1], y), line_x(icor[0], icor[2], y), y, col);
+		draw_hline(cam->surface, line_x(icor[0], icor[1], y), line_x(icor[0], icor[2], y), y);
 	for (int y = icor[1].y; y < icor[2].y; y++)
-		draw_hline(cam->surface, line_x(icor[1], icor[3], y), line_x(icor[0], icor[2], y), y, col);
+		draw_hline(cam->surface, line_x(icor[1], icor[3], y), line_x(icor[0], icor[2], y), y);
 	for (int y = icor[2].y; y < icor[3].y; y++)
-		draw_hline(cam->surface, line_x(icor[1], icor[3], y), line_x(icor[2], icor[3], y), y, col);
+		draw_hline(cam->surface, line_x(icor[1], icor[3], y), line_x(icor[2], icor[3], y), y);
 }
