@@ -10,6 +10,7 @@
 #include "mathstuff.h"
 #include "player.h"
 #include "sound.h"
+#include "wall.h"
 
 #include <SDL2/SDL.h>
 
@@ -18,6 +19,7 @@
 // includes all the objects that all players should see
 struct GameState {
 	struct Player players[2];
+	struct Wall walls[4];
 };
 
 static int compare_float_pointers(const void *a, const void *b)
@@ -41,6 +43,9 @@ static void show_everything(const struct GameState *gs, struct Camera *cam)
 			}
 		}
 	}
+
+	for (unsigned i = 0; i < sizeof(gs->walls)/sizeof(gs->walls[0]); i++)
+		wall_show(&gs->walls[i], cam);
 
 	struct PlayerInfo {
 		float camcenterz; // z coordinate of center in camera coordinates
@@ -121,33 +126,45 @@ int main(void)
 	if (!winsurf)
 		fatal_sdl_error("SDL_GetWindowSurface failed");
 
-	struct GameState gs = {0};
-	gs.players[0].ball = ball_load("players/Tux.png", (Vec3){0,0.5f,-2});
-	gs.players[1].ball = ball_load("players/Chick.png", (Vec3){2,0.5f,-2});
+	struct GameState *gs = malloc(sizeof(*gs));
+	if (!gs)
+		fatal_error("not enough memory");
+
+	memset(gs, 0, sizeof(*gs));
+
+	gs->players[0].ball = ball_load("players/Tux.png", (Vec3){0,0.5f,-2});
+	gs->players[1].ball = ball_load("players/Chick.png", (Vec3){2,0.5f,-2});
 
 	// This turned out to be much faster than blitting
-	gs.players[0].cam.surface = create_half_surface(winsurf, 0, winsurf->w/2);
-	gs.players[1].cam.surface = create_half_surface(winsurf, winsurf->w/2, winsurf->w/2);
+	gs->players[0].cam.surface = create_half_surface(winsurf, 0, winsurf->w/2);
+	gs->players[1].cam.surface = create_half_surface(winsurf, winsurf->w/2, winsurf->w/2);
+
+	for (unsigned i = 0; i < sizeof(gs->walls)/sizeof(gs->walls[0]); i++) {
+		gs->walls[i].dir = WALL_DIR_Z;
+		gs->walls[i].startx = 1;
+		gs->walls[i].startz = 2 + (int)i;
+		wall_initcaches(&gs->walls[i]);
+	}
 
 	uint32_t time = 0;
 	while(1){
 		SDL_Event event;
 		while(SDL_PollEvent(&event)) {
-			if (!handle_event(event, &gs))
+			if (!handle_event(event, gs))
 				goto exit;
 		}
 
-		player_eachframe(&gs.players[0], FPS);
-		player_eachframe(&gs.players[1], FPS);
+		player_eachframe(&gs->players[0], FPS, gs->walls, sizeof(gs->walls)/sizeof(gs->walls[0]));
+		player_eachframe(&gs->players[1], FPS, gs->walls, sizeof(gs->walls)/sizeof(gs->walls[0]));
 
 		SDL_FillRect(winsurf, NULL, 0x000000UL);
-		show_everything(&gs, &gs.players[0].cam);
-		show_everything(&gs, &gs.players[1].cam);
+		show_everything(gs, &gs->players[0].cam);
+		show_everything(gs, &gs->players[1].cam);
 		SDL_UpdateWindowSurface(win);
 
 		uint32_t curtime = SDL_GetTicks();
-		/*fprintf(stderr, "speed percentage thingy = %.1f%%\n",
-			(float)(curtime - time) / (1000/FPS) * 100.f);*/
+		fprintf(stderr, "speed percentage thingy = %.1f%%\n",
+			(float)(curtime - time) / (1000/FPS) * 100.f);
 
 		time += 1000/FPS;
 		if (curtime <= time) {
@@ -159,12 +176,13 @@ int main(void)
 	}
 
 exit:
-	free(gs.players[0].ball);
-	free(gs.players[1].ball);
-	SDL_FreeSurface(gs.players[0].cam.surface);
-	SDL_FreeSurface(gs.players[1].cam.surface);
-	SDL_DestroyWindow(win);
+	free(gs->players[0].ball);
+	free(gs->players[1].ball);
+	SDL_FreeSurface(gs->players[0].cam.surface);
+	SDL_FreeSurface(gs->players[1].cam.surface);
+	free(gs);
 	sound_deinit();
+	SDL_DestroyWindow(win);
 	SDL_Quit();
 	return 0;
 }

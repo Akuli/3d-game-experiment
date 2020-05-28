@@ -4,6 +4,7 @@
 #include "common.h"
 #include "mathstuff.h"
 #include "sound.h"
+#include "wall.h"
 
 #define MOVE_UNITS_PER_SECOND 10.f
 #define RADIANS_PER_SECOND 5.0f
@@ -29,11 +30,11 @@ static float get_jump_height(unsigned int jumpframe, unsigned int fps)
 static float get_stretch(const struct Player *plr, unsigned int fps)
 {
 	if (plr->flat)   // if flat and jumping, then do this
-		return 0.2f;
+		return PLAYER_HEIGHT_FLAT / (2*BALL_RADIUS);
 	return 1.5f + get_jump_height(plr->jumpframe, fps);
 }
 
-void player_eachframe(struct Player *plr, unsigned int fps)
+void player_eachframe(struct Player *plr, unsigned int fps, const struct Wall *walls, size_t nwalls)
 {
 	if (plr->turning != 0)
 		plr->angle += (RADIANS_PER_SECOND / (float)fps) * (float)plr->turning;
@@ -68,6 +69,9 @@ void player_eachframe(struct Player *plr, unsigned int fps)
 		{ 0, 0, 1 },
 	}});
 	plr->cam.world2cam = antirot;
+
+	for (size_t i = 0; i < nwalls; i++)
+		wall_bumps_ball(&walls[i], plr->ball);
 
 	Vec3 diff = { 0, 0, CAMERA_BEHIND_PLAYER };
 	vec3_apply_matrix(&diff, rot);

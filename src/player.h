@@ -3,6 +3,10 @@
 
 #include "camera.h"
 #include "ball.h"
+#include "wall.h"
+
+// smallest possible height of the player
+#define PLAYER_HEIGHT_FLAT (BALL_RADIUS*0.4f)
 
 struct Player {
 	struct Ball *ball;
@@ -15,7 +19,7 @@ struct Player {
 };
 
 // run before showing stuff to user
-void player_eachframe(struct Player *plr, unsigned int fps);
+void player_eachframe(struct Player *plr, unsigned int fps, const struct Wall *walls, size_t nwalls);
 
 // key press callbacks. dir values: +1 for left, -1 for right
 void player_set_turning(struct Player *plr, int dir, bool turn);

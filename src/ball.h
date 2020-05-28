@@ -8,7 +8,7 @@
 
 #define BALL_PIXELS_AROUND 200
 #define BALL_PIXELS_VERTICALLY 80
-#define BALL_RADIUS 0.5f
+#define BALL_RADIUS 0.3f
 
 // This struct is BIG. Always use pointers. Makefile has -Werror=stack-usage=bla
 struct Ball {
