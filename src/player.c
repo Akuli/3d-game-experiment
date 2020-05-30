@@ -40,8 +40,9 @@ void player_eachframe(struct Player *plr, unsigned int fps, const struct Wall *w
 		plr->angle += (RADIANS_PER_SECOND / (float)fps) * (float)plr->turning;
 
 	if (plr->moving) {
+		Mat3 cam2world = mat3_inverse(plr->cam.world2cam);
 		Vec3 diff = mat3_mul_vec3(
-			mat3_inverse(plr->cam.world2cam),
+			cam2world,
 			(Vec3){ 0, 0, -MOVE_UNITS_PER_SECOND/(float)fps });
 		plr->ball->center = vec3_add(plr->ball->center, diff);
 	}
@@ -68,6 +69,7 @@ void player_eachframe(struct Player *plr, unsigned int fps, const struct Wall *w
 		{ 0, stretch, 0 },
 		{ 0, 0, 1 },
 	}});
+	plr->ball->transform_inverse = mat3_inverse(plr->ball->transform);
 	plr->cam.world2cam = antirot;
 
 	for (size_t i = 0; i < nwalls; i++)

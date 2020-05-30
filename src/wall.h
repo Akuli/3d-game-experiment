@@ -51,5 +51,11 @@ Vec3 wall_center(const struct Wall *w);
 // Return a plane that the wall is a part of
 struct Plane wall_getplane(const struct Wall *w);
 
+// Get all corners of the wall, in camera coordinates
+void wall_getcamcorners(const struct Wall *w, const struct Camera *cam, Vec3 *res);
+
+// Find intersection point of wall and line, return false if no intersection
+bool wall_intersect_line(const struct Wall *w, struct Line ln, Vec3 *res);
+
 
 #endif    // WALL_H

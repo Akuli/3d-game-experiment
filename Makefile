@@ -3,13 +3,13 @@ CFLAGS += -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Werror=incompatible-po
 CFLAGS += -Wno-unused-parameter -Wno-address
 CFLAGS += -Werror=stack-usage=3000
 CFLAGS += -g
-CFLAGS += -O3
+CFLAGS += -O2
 CFLAGS += -Istb
 VENDOR_CFLAGS := $(CFLAGS:-W%=)   # no warnings from other people's code please
 LDFLAGS += -lSDL2 -lSDL2_mixer
 LDFLAGS += -lm
 
-SRC := $(filter-out src/main.c, $(wildcard src/*.c))
+SRC := $(wildcard src/*.c)
 HEADERS := $(wildcard src/*.h)
 
 # order matters, parallelizing make works best when slowly compiling things are first
@@ -38,8 +38,8 @@ obj/stb_image_resize.o: $(wildcard stb/*.h)
 	$(CC) -c -o $@ -x c \
 	-DSTB_IMAGE_RESIZE_IMPLEMENTATION stb/stb_image_resize.h $(VENDOR_CFLAGS)
 
-game: src/main.c $(OBJ) $(HEADERS)
-	$(CC) $(CFLAGS) $< $(OBJ) -o $@ $(LDFLAGS)
+game: $(OBJ) $(HEADERS)
+	$(CC) $(CFLAGS) $(OBJ) -o $@ $(LDFLAGS)
 
 
 # profiling stuff
@@ -48,7 +48,7 @@ game: src/main.c $(OBJ) $(HEADERS)
 #	$ make graph.png
 
 callgrind.out: game
-	valgrind --tool=callgrind --callgrind-out-file=$@ ./game $<
+	valgrind --tool=callgrind --callgrind-out-file=$@ ./$< --no-sound
 
 graph.gv: callgrind.out
 	gprof2dot $< --format=callgrind --output=$@

@@ -97,6 +97,7 @@ struct Ball *ball_load(const char *filename, Vec3 center)
 		{0, 1, 0},
 		{0, 0, 1},
 	}};
+	ball->transform_inverse = mat3_inverse(ball->transform);
 	return ball;
 }
 
@@ -155,8 +156,6 @@ be the case. This still seems to be "close enough".
 static struct Plane
 get_visibility_plane(const struct Ball *ball, const struct Camera *cam)
 {
-	assert(!ball_contains(ball, cam->location));
-
 	/*
 	Calculate camera location in untransformed ball coordinates. This must work
 	so that once the resulting camera vector is
@@ -168,7 +167,7 @@ get_visibility_plane(const struct Ball *ball, const struct Camera *cam)
 	Vec3 cam2center = camera_point_world2cam(cam, ball->center);
 	Vec3 center2cam = vec3_neg(cam2center);
 	vec3_apply_matrix(&center2cam, mat3_inverse(cam->world2cam));
-	vec3_apply_matrix(&center2cam, mat3_inverse(ball->transform));
+	vec3_apply_matrix(&center2cam, ball->transform_inverse);
 
 	/*
 	From the side, the ball being split by the visibility plane looks like this:
@@ -214,9 +213,6 @@ get_visibility_plane(const struct Ball *ball, const struct Camera *cam)
 
 void ball_display(struct Ball *ball, const struct Camera *cam)
 {
-	if (ball_contains(ball, cam->location))
-		return;
-
 	// ball center vector as camera coordinates
 	Vec3 center = camera_point_world2cam(cam, ball->center);
 
@@ -275,8 +271,19 @@ void ball_display(struct Ball *ball, const struct Camera *cam)
 	}
 }
 
-bool ball_contains(const struct Ball *ball, Vec3 pt)
+bool ball_intersect_line(const struct Ball *ball, struct Line ln, Vec3 *res)
 {
-	// TODO: figure out how to do this
-	return false;
+	// switch to coordinates with ball->transform unapplied
+	vec3_apply_matrix(&ln.dir, ball->transform_inverse);
+	vec3_apply_matrix(&ln.point, ball->transform_inverse);
+	Vec3 center = mat3_mul_vec3(ball->transform_inverse, ball->center);
+
+	if (line_point_distanceSQUARED(ln, center) > BALL_RADIUS*BALL_RADIUS)
+		return false;
+
+	Vec3 line2center = vec3_sub(center, ln.point);
+	Vec3 line2res = vec3_project(line2center, ln.dir);
+	*res = vec3_add(line2res, ln.point);
+	vec3_apply_matrix(res, ball->transform);
+	return true;
 }

@@ -20,4 +20,9 @@ int iclamp(int val, int min, int max);
 // and why doesn't sdl2 expose its internal struct SDL_FPoint
 struct FPoint { float x, y; };
 
+#define min(a,b) ((a)<(b) ? (a) : (b))
+#define max(a,b) ((a)>(b) ? (a) : (b))
+#define min4(a,b,c,d) min(min(a,b),min(c,d))
+#define max4(a,b,c,d) max(max(a,b),max(c,d))
+
 #endif   // COMMON_H

@@ -14,9 +14,7 @@
 
 #include <SDL2/SDL.h>
 
-#define FPS 30
-
-#define ArrayLen(arr) ( sizeof(arr)/sizeof((arr)[0]) )
+#define FPS 60
 
 // includes all the GameObjects that all players should see
 struct GameState {
@@ -24,81 +22,60 @@ struct GameState {
 	struct Wall walls[4];
 };
 
+#if 0
 struct GameObj {
-	enum { PLAYER, WALL } kind;
-	union { const struct Player *player; const struct Wall *wall; } ptr;
-	const struct Camera *camera;   // passing data to qsort without global vars
+	enum { BALL, WALL } kind;
+	union { struct Ball *ball; const struct Wall *wall; } ptr;
+	float sortz;  // z coordinate in camera coordinates, for sorting
 };
 
-
 // returns -1 if a in front of b, +1 if b in front of a
-static int compare_gameobj_pointers_by_centerz(const void *aptr, const void *bptr)
+static int compare_gameobj_pointers(const void *aptr, const void *bptr)
 {
-	const struct GameObj *a = aptr, *b = bptr;
-	const struct Camera *cam = a->camera;
-
-	if (a->kind == b->kind) {
-		// initializing to 0 just to avoid compiler warning, lol
-		Vec3 acenter = {0}, bcenter = {0};
-		switch(a->kind) {
-		case PLAYER:
-			acenter = a->ptr.player->ball->center;
-			bcenter = b->ptr.player->ball->center;
-			break;
-		case WALL:
-			acenter = wall_center(a->ptr.wall);
-			bcenter = wall_center(b->ptr.wall);
-			break;
-		}
-
-		float az = camera_point_world2cam(cam, acenter).z;
-		float bz = camera_point_world2cam(cam, bcenter).z;
-		return (az > bz) - (az < bz);
-	}
-
-	if (a->kind == WALL && b->kind == PLAYER) {
-		struct Plane pl = wall_getplane(a->ptr.wall);
-
-		bool playerfront = plane_whichside(pl, b->ptr.player->ball->center);
-		if (mat3_mul_vec3(cam->world2cam, pl.normal).z > 0)
-			playerfront = !playerfront;
-		return playerfront ? 1 : -1;
-	}
-
-	assert(a->kind == PLAYER && b->kind == WALL);
-	return -compare_gameobj_pointers_by_centerz(bptr, aptr);
+	float az = ((const struct GameObj *) aptr)->sortz;
+	float bz = ((const struct GameObj *) bptr)->sortz;
+	return (az > bz) - (az < bz);
 }
 
 static void show_everything(const struct GameState *gs, struct Camera *cam)
 {
+#define ArrayLen(arr) ( sizeof(arr)/sizeof((arr)[0]) )
 	struct GameObj all[ArrayLen(gs->players) + ArrayLen(gs->walls)];
-	struct GameObj *allplayers = &all[0];
+	struct GameObj *allballs = &all[0];
 	struct GameObj *allwalls = &all[ArrayLen(gs->players)];
 
-	for (unsigned i = 0; i < ArrayLen(all); i++)
-		all[i].camera = cam;
-
 	for (unsigned i = 0; i < ArrayLen(gs->players); i++) {
-		allplayers[i].kind = PLAYER;
-		allplayers[i].ptr.player = &gs->players[i];
+		allballs[i].kind = BALL;
+		allballs[i].ptr.ball = gs->players[i].ball;
+		allballs[i].sortz = camera_point_world2cam(cam, gs->players[i].ball->center).z;
 	}
 
 	for (unsigned i = 0; i < ArrayLen(gs->walls); i++) {
 		allwalls[i].kind = WALL;
 		allwalls[i].ptr.wall = &gs->walls[i];
+
+		/*
+		Use the z coordinate that is most far away from camera. This should
+		make sure that it works well enough when comparing walls and balls.
+		*/
+		Vec3 corners[4];
+		wall_getcamcorners(&gs->walls[i], cam, corners);
+		allwalls[i].sortz = min4(corners[0].z, corners[1].z, corners[2].z, corners[3].z);
 	}
 
-	qsort(all, ArrayLen(all), sizeof(all[0]), compare_gameobj_pointers_by_centerz);
+	qsort(all, ArrayLen(all), sizeof(all[0]), compare_gameobj_pointers);
+
 	for (unsigned i = 0; i < ArrayLen(all); i++) {
 		switch(all[i].kind) {
-		case PLAYER:
-			ball_display(all[i].ptr.player->ball, cam);
+		case BALL:
+			ball_display(all[i].ptr.ball, cam);
 			break;
 		case WALL:
 			wall_show(all[i].ptr.wall, cam);
 			break;
 		}
 	}
+#undef ArrayLen
 
 	/*for (float x = -10; x <= 10; x += 1.f) {
 		for (float z = -10; z <= 0; z += 0.3f) {
@@ -113,6 +90,43 @@ static void show_everything(const struct GameState *gs, struct Camera *cam)
 		}
 	}*/
 }
+#endif
+
+#define RAYCAST_PIXEL_SIZE 2
+
+static inline void handle_intersection(Vec3 inter, struct Camera *cam, int x, int y, uint32_t col)
+{
+	if (camera_point_world2cam(cam, inter).z < 0)
+		SDL_FillRect(cam->surface, &(SDL_Rect){ x, y, RAYCAST_PIXEL_SIZE, RAYCAST_PIXEL_SIZE }, col);
+}
+
+static void show_everything(const struct GameState *gs, struct Camera *cam)
+{
+	Mat3 cam2world = mat3_inverse(cam->world2cam);
+	SDL_Color colobj = { 0xff, 0xff, 0xff, 0xff };
+	uint32_t col = convert_color(cam->surface, colobj);
+
+	for (int x = 0; x < cam->surface->w; x += RAYCAST_PIXEL_SIZE) {
+		for (int y = 0; y < cam->surface->h; y += RAYCAST_PIXEL_SIZE) {
+			// raycasting
+			float xzr = camera_screenx_to_xzr(cam, (float)x);
+			float yzr = camera_screeny_to_yzr(cam, (float)y);
+			struct Line ray = {
+				.point = cam->location,
+				.dir = mat3_mul_vec3(cam2world, (Vec3){xzr, yzr, 1}),
+			};
+
+			Vec3 inter;
+			for (unsigned i = 0; i < sizeof(gs->walls)/sizeof(gs->walls[0]); i++)
+				if (wall_intersect_line(&gs->walls[i], ray, &inter))
+					handle_intersection(inter, cam, x, y, col);
+			for (unsigned i = 0; i < sizeof(gs->players)/sizeof(gs->players[0]); i++)
+				if (ball_intersect_line(gs->players[i].ball, ray, &inter))
+					handle_intersection(inter, cam, x, y, col);
+		}
+	}
+}
+
 
 // returns whether to continue playing
 static bool handle_event(SDL_Event event, struct GameState *gs)
@@ -165,9 +179,11 @@ static SDL_Surface *create_half_surface(SDL_Surface *surf, int xoffset, int widt
 	return res;
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
-	sound_init();
+	// TODO: avoid errors caused by not doing sound_init()
+	if (!( argc == 2 && strcmp(argv[1], "--no-sound") == 0 ))
+		sound_init();
 
 	SDL_Window *win = SDL_CreateWindow(
 		"TODO: title here", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 800, 600, 0);
@@ -178,11 +194,9 @@ int main(void)
 	if (!winsurf)
 		fatal_sdl_error("SDL_GetWindowSurface failed");
 
-	struct GameState *gs = malloc(sizeof(*gs));
+	struct GameState *gs = calloc(1, sizeof(*gs));
 	if (!gs)
 		fatal_error("not enough memory");
-
-	memset(gs, 0, sizeof(*gs));
 
 	gs->players[0].ball = ball_load("players/Tux.png", (Vec3){0,0.5f,-2});
 	gs->players[1].ball = ball_load("players/Chick.png", (Vec3){2,0.5f,-2});

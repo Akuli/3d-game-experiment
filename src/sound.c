@@ -49,7 +49,8 @@ void sound_init(void)
 	/*
 	Make sure that we can play all the needed sounds at the same time, even
 	when smashing buttons. With 20 channels, I could barely smash buttons fast
-	enough to run out of channels, but I couldn't do that with 25 channels.
+	enough to run out of channels, but I couldn't do that with 25 channels. The
+	default seems to be 16 channels.
 	*/
 	Mix_AllocateChannels(32);
 

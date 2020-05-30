@@ -42,12 +42,11 @@ void wall_initcaches(struct Wall *w)
 void wall_bumps_ball(const struct Wall *w, struct Ball *ball)
 {
 	// Switch to coordinates where the ball is round and we can use BALL_RADIUS
-	Mat3 invtrans = mat3_inverse(ball->transform);
-	Vec3 center = mat3_mul_vec3(invtrans, ball->center);
+	Vec3 center = mat3_mul_vec3(ball->transform_inverse, ball->center);
 
 	for (int xznum = 0; xznum < WALL_CP_COUNT; xznum++) {
 		for (int ynum = 0; ynum < WALL_CP_COUNT; ynum++) {
-			Vec3 collpoint = mat3_mul_vec3(invtrans, w->collpoint_cache[xznum][ynum]);
+			Vec3 collpoint = mat3_mul_vec3(ball->transform_inverse, w->collpoint_cache[xznum][ynum]);
 			Vec3 diff = vec3_sub(center, collpoint);
 
 			float distSQUARED = vec3_lengthSQUARED(diff);
@@ -70,20 +69,16 @@ void wall_bumps_ball(const struct Wall *w, struct Ball *ball)
 			}
 
 			vec3_add_inplace(&ball->center, diff);
-			center = mat3_mul_vec3(invtrans, ball->center);   // cache invalidation
+			center = mat3_mul_vec3(ball->transform_inverse, ball->center);   // cache invalidation
 		}
 	}
 }
 
-static int compare_point_y(const void *a, const void *b)
+void wall_getcamcorners(const struct Wall *w, const struct Camera *cam, Vec3 *res)
 {
-	const SDL_Point *p1 = a, *p2 = b;
-	return (p1->y > p2->y) - (p1->y < p2->y);
-}
+	// initial values never used, but they make compiler happy
+	int endx = 0, endz = 0;
 
-static bool get_corners(const struct Wall *w, const struct Camera *cam, struct FPoint *res)
-{
-	int endx, endz;
 	switch(w->dir) {
 	case WALL_DIR_X:
 		endx = w->startx + 1;
@@ -93,28 +88,14 @@ static bool get_corners(const struct Wall *w, const struct Camera *cam, struct F
 		endx = w->startx;
 		endz = w->startz + 1;
 		break;
-	default:
-		// never actually happens, make compiler happy
-		assert(0);
-		endx = endz = 0;
 	}
 
-	Vec3 tmp[] = {
 #define f(x,y,z) camera_point_world2cam(cam, (Vec3){ (float)x, (float)y, (float)z })
-		f(w->startx, 0, w->startz),
-		f(w->startx, 1, w->startz),
-		f(endx,      0, endz),
-		f(endx,      1, endz),
+	res[0] = f(w->startx, 0, w->startz);
+	res[1] = f(w->startx, 1, w->startz);
+	res[2] = f(endx,      0, endz);
+	res[3] = f(endx,      1, endz);
 #undef f
-	};
-
-	for (unsigned i = 0; i < sizeof(tmp)/sizeof(tmp[0]); i++) {
-		if (tmp[i].z >= 0)  // behind camera
-			return false;
-		res[i] = camera_point_cam2fpoint(cam, tmp[i]);
-	}
-
-	return true;
 }
 
 static int line_x(SDL_Point p1, SDL_Point p2, int y)
@@ -123,8 +104,6 @@ static int line_x(SDL_Point p1, SDL_Point p2, int y)
 		return p1.x;   // avoid division by zero
 	return linear_map_int(p1.y, p2.y, p1.x, p2.x, y);
 }
-
-#define min(a,b) ((a)<(b) ? (a) : (b))
 
 /*
 Transparent walls are implemented in a shitty way because I couldn't get SDL's
@@ -169,15 +148,31 @@ static void draw_hline(SDL_Surface *surf, int x1, int x2, int y)
 	}
 }
 
+static int compare_point_y(const void *a, const void *b)
+{
+	const SDL_Point *p1 = a, *p2 = b;
+	return (p1->y > p2->y) - (p1->y < p2->y);
+}
+
 void wall_show(const struct Wall *w, const struct Camera *cam)
 {
+	Vec3 vcor[4];
+	wall_getcamcorners(w, cam, vcor);
+
+	/*
+	Not using floats here caused funny bugs that happened because sorting
+	rounded values.
+	*/
 	struct FPoint fcor[4];
-	if (!get_corners(w, cam, fcor))
-		return;
+	for (int i = 0; i < 4; i++) {
+		if (vcor[i].z >= 0)  // behind camera
+			return;
+		fcor[i] = camera_point_cam2fpoint(cam, vcor[i]);
+	}
 
 	qsort(fcor, 4, sizeof(fcor[0]), compare_point_y);
 
-	struct SDL_Point icor[sizeof(fcor)/sizeof(fcor[0])];
+	struct SDL_Point icor[4];
 	for (unsigned i = 0; i < sizeof(fcor)/sizeof(fcor[0]); i++){
 		icor[i].x = (int) roundf(fcor[i].x);
 		icor[i].y = (int) roundf(fcor[i].y);
@@ -209,21 +204,45 @@ Vec3 wall_center(const struct Wall *w)
 	return (Vec3){x,y,z};
 }
 
-static struct Plane plane_from_normal_and_point(Vec3 normal, Vec3 point)
-{
-	// plane equation: (x,y,z) dot normal = constant
-	// must be satisfied when (x,y,z) = point
-	return (struct Plane){ .normal = normal, .constant = vec3_dot(normal, point) };
-}
-
 struct Plane wall_getplane(const struct Wall *w)
 {
-	Vec3 normal = {0,0,0};
 	switch(w->dir) {
-		case WALL_DIR_X: normal.z = 1; break;
-		case WALL_DIR_Z: normal.x = 1; break;
+	case WALL_DIR_X:
+		// plane equation: z = w->startz
+		return (struct Plane){ .normal = {0,0,1}, .constant = (float)w->startz };
+	case WALL_DIR_Z:
+		return (struct Plane){ .normal = {1,0,0}, .constant = (float)w->startx };
+	}
+	assert(0);   // make compiler happy
+}
+
+bool wall_intersect_line(const struct Wall *w, struct Line ln, Vec3 *res)
+{
+	float number;
+
+	switch(w->dir) {
+	case WALL_DIR_X:
+		/*
+		plane equation: z = w->startz
+		line equation: (x,y,z) = ln.point + number*ln.dir
+
+		Comparing z on both sides of line equation gives the unknown number.
+		Then we can use the number to calculate x and y.
+		*/
+		number = ((float)w->startz - ln.point.z)/ln.dir.z;
+		res->x = ln.point.x + number*ln.dir.x;
+		res->y = ln.point.y + number*ln.dir.y;
+		res->z = (float)w->startz;
+		return PLAYER_HEIGHT_FLAT < res->y && res->y < WALL_HEIGHT &&
+			(float)w->startx < res->x && res->x < (float)(w->startx + 1);
+	case WALL_DIR_Z:
+		number = ((float)w->startx - ln.point.x)/ln.dir.x;
+		res->x = (float)w->startx;
+		res->y = ln.point.y + number*ln.dir.y;
+		res->z = ln.point.z + number*ln.dir.z;
+		return PLAYER_HEIGHT_FLAT < res->y && res->y < WALL_HEIGHT &&
+			(float)w->startz < res->z && res->z < (float)(w->startz + 1);
 	}
 
-	Vec3 point = { (float)w->startx, 0, (float)w->startz };
-	return plane_from_normal_and_point(normal, point);
+	assert(0);   // make compiler happy
 }

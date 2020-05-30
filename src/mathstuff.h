@@ -26,6 +26,9 @@ Vec3 vec3_mul_float(Vec3 v, float f);
 // dot product
 float vec3_dot(Vec3 v, Vec3 w);
 
+// Vector projection
+Vec3 vec3_project(Vec3 projectme, Vec3 onto);
+
 /*
 Returns |v|^2. Function name has SQUARED in capital letters to make sure you
 notice it. It's good to avoid square roots in performance critical code.
@@ -71,9 +74,7 @@ struct Plane {
 	float constant;
 };
 
-/*
-Is a point on the side of the plane pointed by the normal vector?
-*/
+// Is a point on the side of the plane pointed by the normal vector?
 bool plane_whichside(struct Plane pl, Vec3 pt);
 
 // Apply the inverse of the given matrix to every point of the plane
@@ -82,9 +83,23 @@ void plane_apply_mat3_INVERSE(struct Plane *pl, Mat3 inverse);
 // Move plane by vector
 void plane_move(struct Plane *pl, Vec3 mv);
 
-// distance between plane and point, never negative
-// Somewhat slow because calculates sqrt.
-float plane_point_distance(struct Plane pl, Vec3 pt);
+// distance between plane and point, ^2 to avoid slow sqrt
+float plane_point_distanceSQUARED(struct Plane pl, Vec3 pt);
+
+
+struct Line {
+	Vec3 point;       // any point on the line
+	Vec3 dir;         // nonzero vector going in direction of the line
+};
+
+/*
+If line and plane are parallel, returns false. Otherwise returns true and sets *res
+to the intersection point.
+*/
+bool line_intersect_plane(struct Line ln, struct Plane pl, Vec3 *res);
+
+// distance between line and point, ^2 to avoid slow sqrt
+float line_point_distanceSQUARED(struct Line ln, Vec3 pt);
 
 
 #endif   // MATHSTUFF_H

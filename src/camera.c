@@ -39,11 +39,6 @@ struct FPoint camera_point_cam2fpoint(const struct Camera *cam, Vec3 pt)
 	};
 }
 
-#define min(a,b) ((a)<(b) ? (a) : (b))
-#define max(a,b) ((a)>(b) ? (a) : (b))
-#define min4(a,b,c,d) min(min(a,b),min(c,d))
-#define max4(a,b,c,d) max(max(a,b),max(c,d))
-
 bool camera_get_containing_rect(
 	const struct Camera *cam, SDL_Rect *res,
 	Vec3 p1, Vec3 p2, Vec3 p3, Vec3 p4)

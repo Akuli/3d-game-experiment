@@ -42,6 +42,20 @@ float vec3_lengthSQUARED(Vec3 v)
 	return vec3_dot(v,v);
 }
 
+Vec3 vec3_project(Vec3 projectme, Vec3 onto)
+{
+	/*
+	(projection length) * |onto| = projectme dot onto
+	projection vector = (unit vector in direction of onto)*(projection length)
+	unit vector in direction of onto = onto / |onto|
+
+	Putting all that together gives:
+
+	projection vector = onto*((projectme dot onto) / |onto|^2)
+	*/
+	return vec3_mul_float(onto, vec3_dot(projectme, onto)/vec3_lengthSQUARED(onto));
+}
+
 Vec3 vec3_withlength(Vec3 v, float len)
 {
 	float oldlen = sqrtf(vec3_lengthSQUARED(v));
@@ -229,7 +243,9 @@ bool plane_whichside(struct Plane pl, Vec3 pt)
 	return (vec3_dot(pl.normal, pt) > pl.constant);
 }
 
-float plane_point_distance(struct Plane pl, Vec3 pt)
+static inline float square(float f){ return f*f; }
+
+float plane_point_distanceSQUARED(struct Plane pl, Vec3 pt)
 {
 	/*
 	3D version of this: https://akuli.github.io/math-derivations/analytic-plane-geometry/distance-line-point.html
@@ -237,5 +253,39 @@ float plane_point_distance(struct Plane pl, Vec3 pt)
 	Constant has minus sign because it's written to different side of equation
 	here than in the link.
 	*/
-	return fabsf(vec3_dot(pl.normal, pt) - pl.constant) / sqrtf(vec3_lengthSQUARED(pl.normal));
+	return square(vec3_dot(pl.normal, pt) - pl.constant) / vec3_lengthSQUARED(pl.normal);
+}
+
+
+bool line_intersect_plane(struct Line ln, struct Plane pl, Vec3 *res)
+{
+	float dot = vec3_dot(ln.dir, pl.normal);
+	//if (fabsf(dot) < 1e-5f) {
+	if (dot == 0) {
+		// ln.normal and pl.dir perpendicular, so line and plane are parallel
+		return false;
+	}
+
+	/*
+	ln equation: (x,y,z) = ln.point + number*ln.dir
+	pl equation: (x,y,z) dot pl.normal = pl.constant
+
+	Plugging equations into each other and solving gives this
+	*/
+	*res = ln.point;
+	float number = (pl.constant - vec3_dot(ln.point, pl.normal))/dot;
+	*res = vec3_add(ln.point, vec3_mul_float(ln.dir, number));
+	return true;
+}
+
+float line_point_distanceSQUARED(struct Line ln, Vec3 pt)
+{
+	// any vector from line to pt
+	Vec3 line2point = vec3_sub(pt, ln.point);
+
+	// calculate area of parallelogram with line2point and ln.dir as sides
+	float areaSQUARED = vec3_lengthSQUARED(vec3_cross(line2point, ln.dir));
+
+	// area = base * height = |ln.dir| * distance
+	return areaSQUARED / vec3_lengthSQUARED(ln.dir);
 }
