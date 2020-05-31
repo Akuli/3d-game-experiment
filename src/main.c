@@ -9,6 +9,7 @@
 #include "common.h"
 #include "mathstuff.h"
 #include "player.h"
+#include "showall.h"
 #include "sound.h"
 #include "wall.h"
 
@@ -16,138 +17,12 @@
 
 #define FPS 60
 
-#define PLAYER_COUNT 2
-#define WALL_COUNT 4
-#define GAMEOBJ_COUNT (PLAYER_COUNT + WALL_COUNT)
-
 // includes all the GameObjects that all players should see
 struct GameState {
-	struct Player players[PLAYER_COUNT];
-	struct Wall walls[WALL_COUNT];
+	struct Player players[2];
+	struct Wall walls[4];
 };
 
-struct GameObj {
-	enum GameObjKind { BALL, WALL } kind;
-	union GameObjPtr { struct Ball *ball; const struct Wall *wall; } ptr;
-
-	// all "dependency" GameObjs are drawn to screen first
-	struct GameObj *deps[GAMEOBJ_COUNT];
-	size_t ndeps;
-
-	float centerz;   // z coordinate of center in camera coordinates
-	bool shown;
-};
-
-static int compare_gameobj_ptrs_by_centerz(const void *aptr, const void *bptr)
-{
-	float az = (*(const struct GameObj **)aptr)->centerz;
-	float bz = (*(const struct GameObj **)bptr)->centerz;
-	return (az > bz) - (az < bz);
-}
-
-// Make sure that dep is shown before obj
-// TODO: can be slow with many gameobjs, does it help to keep array always sorted and binsearch?
-static void add_dependency(struct GameObj *obj, struct GameObj *dep)
-{
-	for (size_t i = 0; i < obj->ndeps; i++)
-		if (obj->deps[i] == dep)
-			return;
-	obj->deps[obj->ndeps++] = dep;
-}
-
-static void figure_out_deps_for_balls_behind_walls(
-	struct GameObj *walls, size_t nwalls,
-	struct GameObj *balls, size_t nballs,
-	struct Camera *cam)
-{
-	for (size_t w = 0; w < nwalls; w++) {
-		bool camside = wall_side(walls[w].ptr.wall, cam->location);
-
-		for (size_t b = 0; b < nballs; b++) {
-			if (wall_side(walls[w].ptr.wall, balls[b].ptr.ball->center) == camside)
-				add_dependency(&balls[b], &walls[w]);
-			else
-				add_dependency(&walls[w], &balls[b]);
-		}
-	}
-}
-
-static void show(struct GameObj *gobj, struct Camera *cam, unsigned int depth)
-{
-	if (gobj->shown)
-		return;
-
-	/*
-	Without the sanity check, this recurses infinitely when there is a dependency
-	cycle. I don't know whether it's possible to create one, and I want to avoid
-	random crashes.
-	*/
-	if (depth <= GAMEOBJ_COUNT) {
-		for (size_t i = 0; i < gobj->ndeps; i++)
-			show(gobj->deps[i], cam, depth+1);
-	} else {
-		nonfatal_error("hitting recursion depth limit");
-	}
-
-	switch(gobj->kind) {
-	case BALL:
-		ball_display(gobj->ptr.ball, cam);
-		break;
-	case WALL:
-		wall_show(gobj->ptr.wall, cam);
-		break;
-	}
-	gobj->shown = true;
-}
-
-static void add_gameobj_to_array_if_visible(
-	struct GameObj *arr, size_t *len,
-	const struct Camera *cam,
-	Vec3 center, enum GameObjKind kind, union GameObjPtr ptr)
-{
-	float centerz = camera_point_world2cam(cam, center).z;
-	if (centerz < 0) {   // in front of camera
-		arr[*len].kind = kind;
-		arr[*len].ptr = ptr;
-		arr[*len].centerz = centerz;
-		(*len)++;
-	}
-}
-
-static void get_sorted_gameobj_pointers(
-	struct GameObj *walls, size_t nwalls,
-	struct GameObj *balls, size_t nballs,
-	struct GameObj **res)
-{
-	for (size_t i = 0; i < nwalls; i++)
-		res[i] = &walls[i];
-	for (size_t i = 0; i < nballs; i++)
-		res[nwalls + i] = &balls[i];
-	qsort(res, nwalls + nballs, sizeof(res[0]), compare_gameobj_ptrs_by_centerz);
-}
-
-static void show_everything(const struct GameState *gs, struct Camera *cam)
-{
-	struct GameObj walls[WALL_COUNT] = {0}, balls[PLAYER_COUNT] = {0};
-	size_t nwalls = 0, nballs = 0;
-
-	for (size_t i = 0; i < WALL_COUNT; i++)
-		add_gameobj_to_array_if_visible(
-			walls, &nwalls, cam,
-			wall_center(&gs->walls[i]), WALL, (union GameObjPtr){ .wall = &gs->walls[i] });
-
-	for (size_t i = 0; i < PLAYER_COUNT; i++)
-		add_gameobj_to_array_if_visible(
-			balls, &nballs, cam,
-			gs->players[i].ball->center, BALL, (union GameObjPtr){ .ball = gs->players[i].ball });
-
-	struct GameObj *sorted[GAMEOBJ_COUNT];
-	figure_out_deps_for_balls_behind_walls(walls, nwalls, balls, nballs, cam);
-	get_sorted_gameobj_pointers(walls, nwalls, balls, nballs, sorted);
-
-	for (size_t i = 0; i < nwalls + nballs; i++)
-		show(sorted[i], cam, 0);
-}
 
 // returns whether to continue playing
 static bool handle_event(SDL_Event event, struct GameState *gs)
@@ -226,8 +101,10 @@ int main(int argc, char **argv)
 	gs->players[0].cam.surface = create_half_surface(winsurf, 0, winsurf->w/2);
 	gs->players[1].cam.surface = create_half_surface(winsurf, winsurf->w/2, winsurf->w/2);
 
+	struct Ball *balls[] = { gs->players[0].ball, gs->players[1].ball };
+
 	for (unsigned i = 0; i < sizeof(gs->walls)/sizeof(gs->walls[0]); i++) {
-		gs->walls[i].dir = WALL_DIR_Z;
+		gs->walls[i].dir = WALL_DIR_ZY;
 		gs->walls[i].startx = 1;
 		gs->walls[i].startz = 2 + (int)i;
 		wall_initcaches(&gs->walls[i]);
@@ -245,8 +122,13 @@ int main(int argc, char **argv)
 		player_eachframe(&gs->players[1], FPS, gs->walls, sizeof(gs->walls)/sizeof(gs->walls[0]));
 
 		SDL_FillRect(winsurf, NULL, 0);
-		show_everything(gs, &gs->players[0].cam);
-		show_everything(gs, &gs->players[1].cam);
+
+		for (int i = 0; i < 2; i++)
+			show_all(
+				gs->walls, sizeof(gs->walls)/sizeof(gs->walls[0]),
+				balls, 2,
+				&gs->players[i].cam);
+
 		SDL_FillRect(winsurf, &(SDL_Rect){ winsurf->w/2, 0, 1, winsurf->h }, SDL_MapRGB(winsurf->format, 0xff, 0xff, 0xff));
 		SDL_UpdateWindowSurface(win);
 

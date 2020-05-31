@@ -27,11 +27,12 @@ static float get_jump_height(unsigned int jumpframe, unsigned int fps)
 	return a*(time - 0)*(time - JUMP_DURATION_SEC);
 }
 
-static float get_stretch(const struct Player *plr, unsigned int fps)
+static float get_y_radius(const struct Player *plr, unsigned int fps)
 {
 	if (plr->flat)   // if flat and jumping, then do this
-		return PLAYER_HEIGHT_FLAT / (2*BALL_RADIUS);
-	return 1.5f + get_jump_height(plr->jumpframe, fps);
+		return PLAYER_HEIGHT_FLAT / 2;
+
+	return 1.5f*PLAYER_RADIUS_XZ + 0.3f*get_jump_height(plr->jumpframe, fps);
 }
 
 void player_eachframe(struct Player *plr, unsigned int fps, const struct Wall *walls, size_t nwalls)
@@ -58,16 +59,16 @@ void player_eachframe(struct Player *plr, unsigned int fps, const struct Wall *w
 		}
 	}
 
-	float stretch = get_stretch(plr, fps);
-	plr->ball->center.y = y + BALL_RADIUS*stretch;
+	float yrad = get_y_radius(plr, fps);
+	plr->ball->center.y = y + yrad;
 
 	Mat3 rot = mat3_rotation_xz(plr->angle);
 	Mat3 antirot = mat3_rotation_xz(-plr->angle);
 
 	plr->ball->transform = mat3_mul_mat3(rot, (Mat3){.rows= {
-		{ 1, 0, 0 },
-		{ 0, stretch, 0 },
-		{ 0, 0, 1 },
+		{ PLAYER_RADIUS_XZ, 0,    0                },
+		{ 0,                yrad, 0                },
+		{ 0,                0,    PLAYER_RADIUS_XZ },
 	}});
 	plr->ball->transform_inverse = mat3_inverse(plr->ball->transform);
 	plr->cam.world2cam = antirot;

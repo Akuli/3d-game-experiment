@@ -6,10 +6,10 @@
 #include "mathstuff.h"
 
 /*
-Walls always start and end in integer x and z coordinates
+Walls always start and end in integer x and z coordinates and go 1 unit to
+x or z direction from there, as specified by this.
 */
-#define WALL_HEIGHT 1.0f
-enum WallDirection { WALL_DIR_X, WALL_DIR_Z };
+enum WallDirection { WALL_DIR_XY, WALL_DIR_ZY };
 
 /*
 I thought about doing collision checking by dividing it into these cases:
@@ -48,17 +48,8 @@ void wall_show(const struct Wall *w, const struct Camera *cam);
 // center point of wall in world coordinates
 Vec3 wall_center(const struct Wall *w);
 
-// Return a plane that the wall is a part of
-struct Plane wall_getplane(const struct Wall *w);
-
-// Get all corners of the wall, in camera coordinates
-void wall_getcamcorners(const struct Wall *w, const struct Camera *cam, Vec3 *res);
-
 // same for any two points on same side of the wall
 bool wall_side(const struct Wall *wall, Vec3 pt);
-
-// Find intersection point of wall and line, return false if no intersection
-bool wall_intersect_line(const struct Wall *w, struct Line ln, Vec3 *res);
 
 
 #endif    // WALL_H

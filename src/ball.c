@@ -3,12 +3,14 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stb_image.h>
 #include <stb_image_resize.h>
 #include "camera.h"
 #include "common.h"
 #include "mathstuff.h"
 
+#define CLAMP_TO_U8(val) ( (uint8_t) min(max(val, 0), 0xff) )
 #define IS_TRANSPARENT(color) ((color).a < 0x80)
 
 static SDL_Color average_color(SDL_Color *pixels, size_t npixels)
@@ -33,9 +35,9 @@ static SDL_Color average_color(SDL_Color *pixels, size_t npixels)
 	}
 
 	return (SDL_Color){
-		(uint8_t) iclamp((int)(rsum / count), 0, 0xff),
-		(uint8_t) iclamp((int)(gsum / count), 0, 0xff),
-		(uint8_t) iclamp((int)(bsum / count), 0, 0xff),
+		CLAMP_TO_U8(rsum / count),
+		CLAMP_TO_U8(gsum / count),
+		CLAMP_TO_U8(bsum / count),
 		0xff,
 	};
 }
@@ -102,9 +104,10 @@ struct Ball *ball_load(const char *filename, Vec3 center)
 }
 
 /*
-We introduce third type of coordinates: untransformed ball coordinates. These
-coordinates have (0,0,0) as ball center, and ball->transform and cam->world2cam
-haven't been applied yet.
+We introduce third type of coordinates: untransformed ball coordinates
+- ball center is at (0,0,0)
+- ball radius is 1
+- ball->transform and cam->world2cam haven't been applied yet
 */
 
 // +1 for vertical because we want to include both ends
@@ -127,8 +130,8 @@ static const VectorArray *get_untransformed_surface_vectors(void)
 	float pi = acosf(-1);
 
 	for (size_t v = 0; v < BALL_PIXELS_VERTICALLY+1; v++) {
-		float y = BALL_RADIUS - 2*BALL_RADIUS*(float)v/BALL_PIXELS_VERTICALLY;
-		float xzrad = sqrtf(BALL_RADIUS*BALL_RADIUS - y*y);  // radius on xz plane
+		float y = 1 - 2*(float)v/BALL_PIXELS_VERTICALLY;
+		float xzrad = sqrtf(1 - y*y);  // radius on xz plane
 
 		for (size_t a = 0; a < BALL_PIXELS_AROUND; a++) {
 			float angle = (float)a/BALL_PIXELS_AROUND * 2*pi;
@@ -190,9 +193,9 @@ get_visibility_plane(const struct Ball *ball, const struct Camera *cam)
 	Let D denote the distance between visibility plane and the ball center. With
 	similar triangles and Pythagorean theorem, we get
 
-		D = BALL_RADIUS^2/|center2cam|.
+		D = 1/|center2cam|,
 
-	The equation of the plane is
+	where 1 = 1^2 = (ball radius)^2. The equation of the plane is
 
 		projection of (x,y,z) onto center2cam = D,
 
@@ -203,13 +206,16 @@ get_visibility_plane(const struct Ball *ball, const struct Camera *cam)
 
 	This simplifies:
 
-		(x,y,z) dot center2cam = BALL_RADIUS^2
+		(x,y,z) dot center2cam = 1
 	*/
 	return (struct Plane) {
 		.normal = center2cam,
-		.constant = BALL_RADIUS*BALL_RADIUS,
+		.constant = 1,
 	};
 }
+
+#define convert_color(SURF, COL) \
+	SDL_MapRGBA((SURF)->format, (COL).r, (COL).g, (COL).b, (COL.a))
 
 void ball_display(struct Ball *ball, const struct Camera *cam)
 {
@@ -269,32 +275,4 @@ void ball_display(struct Ball *ball, const struct Camera *cam)
 			}
 		}
 	}
-}
-
-bool ball_intersect_line(const struct Ball *ball, struct Line ln, Vec3 *res1, Vec3 *res2)
-{
-	// switch to coordinates with ball->transform unapplied
-	vec3_apply_matrix(&ln.dir, ball->transform_inverse);
-	vec3_apply_matrix(&ln.point, ball->transform_inverse);
-	Vec3 center = mat3_mul_vec3(ball->transform_inverse, ball->center);
-
-	float distSQUARED = line_point_distanceSQUARED(ln, center);
-	if (distSQUARED > BALL_RADIUS*BALL_RADIUS)
-		return false;
-
-	// now we are entering a less common case, and calculating sqrt isn't too bad
-
-	Vec3 line2center = vec3_sub(center, ln.point);
-	Vec3 line2mid = vec3_project(line2center, ln.dir);
-	Vec3 mid = vec3_add(ln.point, line2mid);
-
-	// pythagorean theorem gives distance along line
-	float linedist = sqrtf(BALL_RADIUS*BALL_RADIUS - distSQUARED);
-	Vec3 mid2res = vec3_withlength(ln.dir, linedist);
-	*res1 = vec3_add(mid, mid2res);
-	*res2 = vec3_sub(mid, mid2res);
-
-	vec3_apply_matrix(res1, ball->transform);
-	vec3_apply_matrix(res2, ball->transform);
-	return true;
 }

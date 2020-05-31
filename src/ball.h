@@ -8,7 +8,6 @@
 
 #define BALL_PIXELS_AROUND 200
 #define BALL_PIXELS_VERTICALLY 80
-#define BALL_RADIUS 0.3f
 
 // This struct is BIG. Always use pointers. Makefile has -Werror=stack-usage=bla
 struct Ball {
@@ -17,7 +16,8 @@ struct Ball {
 
 	/*
 	Transform is applied to the ball before camera transform so that (0,0,0)
-	is ball center. Remember to keep transform_inverse up to date.
+	is ball center. If this is the identity transform, then the ball is round
+	and it has radius 1. Remember to keep transform_inverse up to date.
 	*/
 	Mat3 transform, transform_inverse;
 
@@ -34,14 +34,6 @@ struct Ball *ball_load(const char *filename, Vec3 center);
 
 // draw ball to screen if camera is not inside ball
 void ball_display(struct Ball *ball, const struct Camera *cam);
-
-/*
-Find intersection point of ball and line, returning false if no intersection.
-
-Typically the line enters the ball somewhere and exits the ball at some other
-point. Those are the two result pointers that this function takes.
-*/
-bool ball_intersect_line(const struct Ball *ball, struct Line ln, Vec3 *res1, Vec3 *res2);
 
 
 #endif  // BALL_H

@@ -13,11 +13,7 @@
 
 int iclamp(int val, int min, int max);
 
-// why does sdl2 make this so complicated
-#define convert_color(SURF, COL) \
-	SDL_MapRGBA((SURF)->format, (COL).r, (COL).g, (COL).b, (COL.a))
-
-// and why doesn't sdl2 expose its internal struct SDL_FPoint
+// why doesn't sdl2 expose its internal struct SDL_FPoint, lol
 struct FPoint { float x, y; };
 
 #define min(a,b) ((a)<(b) ? (a) : (b))
