@@ -39,10 +39,9 @@ void ball_display(struct Ball *ball, const struct Camera *cam);
 Find intersection point of ball and line, returning false if no intersection.
 
 Typically the line enters the ball somewhere and exits the ball at some other
-point. This gives the "average point" (i.e. point in the middle) of the entering
-and exiting points in that case.
+point. Those are the two result pointers that this function takes.
 */
-bool ball_intersect_line(const struct Ball *ball, struct Line ln, Vec3 *res);
+bool ball_intersect_line(const struct Ball *ball, struct Line ln, Vec3 *res1, Vec3 *res2);
 
 
 #endif  // BALL_H

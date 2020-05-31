@@ -114,8 +114,11 @@ doesn't support transparency.
 #define G_INCREMENT 0
 #define B_INCREMENT 0
 
+#define USE_TRANSPARENCY 0
+
 static void draw_hline(SDL_Surface *surf, int x1, int x2, int y)
 {
+#if USE_TRANSPARENCY
 	if (y < 0 || y >= surf->h)
 		return;
 
@@ -146,6 +149,11 @@ static void draw_hline(SDL_Surface *surf, int x1, int x2, int y)
 				(uint8_t) min(0xff, (int)b + B_INCREMENT));
 		}
 	}
+#else
+	SDL_FillRect(
+		surf, &(SDL_Rect){ min(x1,x2), y, abs(x1-x2), 1 },
+		SDL_MapRGB(surf->format, R_INCREMENT, G_INCREMENT, B_INCREMENT));
+#endif
 }
 
 static int compare_point_y(const void *a, const void *b)

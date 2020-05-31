@@ -271,19 +271,30 @@ void ball_display(struct Ball *ball, const struct Camera *cam)
 	}
 }
 
-bool ball_intersect_line(const struct Ball *ball, struct Line ln, Vec3 *res)
+bool ball_intersect_line(const struct Ball *ball, struct Line ln, Vec3 *res1, Vec3 *res2)
 {
 	// switch to coordinates with ball->transform unapplied
 	vec3_apply_matrix(&ln.dir, ball->transform_inverse);
 	vec3_apply_matrix(&ln.point, ball->transform_inverse);
 	Vec3 center = mat3_mul_vec3(ball->transform_inverse, ball->center);
 
-	if (line_point_distanceSQUARED(ln, center) > BALL_RADIUS*BALL_RADIUS)
+	float distSQUARED = line_point_distanceSQUARED(ln, center);
+	if (distSQUARED > BALL_RADIUS*BALL_RADIUS)
 		return false;
 
+	// now we are entering a less common case, and calculating sqrt isn't too bad
+
 	Vec3 line2center = vec3_sub(center, ln.point);
-	Vec3 line2res = vec3_project(line2center, ln.dir);
-	*res = vec3_add(line2res, ln.point);
-	vec3_apply_matrix(res, ball->transform);
+	Vec3 line2mid = vec3_project(line2center, ln.dir);
+	Vec3 mid = vec3_add(ln.point, line2mid);
+
+	// pythagorean theorem gives distance along line
+	float linedist = sqrtf(BALL_RADIUS*BALL_RADIUS - distSQUARED);
+	Vec3 mid2res = vec3_withlength(ln.dir, linedist);
+	*res1 = vec3_add(mid, mid2res);
+	*res2 = vec3_sub(mid, mid2res);
+
+	vec3_apply_matrix(res1, ball->transform);
+	vec3_apply_matrix(res2, ball->transform);
 	return true;
 }
