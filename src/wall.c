@@ -226,3 +226,12 @@ Vec3 wall_center(const struct Wall *w)
 
 	return (Vec3){x,y,z};
 }
+
+bool wall_aligned_with_point(const struct Wall *w, Vec3 pt, float offmax)
+{
+	switch(w->dir) {
+		case WALL_DIR_XY: return (float)w->startx - offmax < pt.x && pt.x < (float)(w->startx + 1) + offmax;
+		case WALL_DIR_ZY: return (float)w->startz - offmax < pt.z && pt.z < (float)(w->startz + 1) + offmax;
+	}
+	return false;   // never runs, make compiler happy
+}

@@ -1,5 +1,6 @@
 #include "showall.h"
 #include <assert.h>
+#include <math.h>
 
 
 struct GameObj {
@@ -37,11 +38,33 @@ static void figure_out_deps_for_balls_behind_walls(
 	struct GameObj *balls, size_t nballs,
 	struct Camera *cam)
 {
-	for (size_t w = 0; w < nwalls; w++) {
-		bool camside = wall_side(walls[w].ptr.wall, cam->location);
+	for (size_t b = 0; b < nballs; b++) {
+		Vec3 center = balls[b].ptr.ball->center;
 
-		for (size_t b = 0; b < nballs; b++) {
-			if (wall_side(walls[w].ptr.wall, balls[b].ptr.ball->center) == camside)
+		for (size_t w = 0; w < nwalls; w++) {
+			/*
+			What's the radius of the ball in the direction along the wall?
+
+			If the radius is r, then ball->transform maps some vector of length 1
+			to a vector of length r going in wall direction. For the inverse
+			transform, a vector of length r going in wall direction would get
+			mapped to a vector of length 1. By linearity, the inverse maps a
+			vector of length 1 in wall direction to a vector of length 1/r.
+			*/
+			Vec3 vec = {0,0,0};
+			switch(walls[w].ptr.wall->dir) {
+				case WALL_DIR_XY: vec.x = 1; break;
+				case WALL_DIR_ZY: vec.z = 1; break;
+			}
+			vec3_apply_matrix(&vec, balls[b].ptr.ball->transform_inverse);
+			float radius = 1/sqrtf(vec3_lengthSQUARED(vec));
+
+			// avoid funny issues near ends of the wall
+			if (!wall_aligned_with_point(walls[w].ptr.wall, center, radius/2))
+				continue;
+
+			bool camside = wall_side(walls[w].ptr.wall, cam->location);
+			if (wall_side(walls[w].ptr.wall, center) == camside)
 				add_dependency(&balls[b], &walls[w]);
 			else
 				add_dependency(&walls[w], &balls[b]);

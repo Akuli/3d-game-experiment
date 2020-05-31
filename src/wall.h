@@ -51,5 +51,23 @@ Vec3 wall_center(const struct Wall *w);
 // same for any two points on same side of the wall
 bool wall_side(const struct Wall *wall, Vec3 pt);
 
+/*
+Is a point directly in front of or behind the wall? below pic is viewing from
+above, and the return values of this function are denoted with T for true, and
+F for false:
+
+	F F T T T T T T T T T T F F
+	F F T T T T T T T T T T F F
+	F F T T T T T T T T T T F F
+	F F T T =========== T T F F
+	F F T T T T T T T T T T F F
+	F F T T T T T T T T T T F F
+	   |___|           |___|
+	   offmax          offmax
+
+Nothing is checked in y direction, aka "up/down" direction.
+*/
+bool wall_aligned_with_point(const struct Wall *w, Vec3 pt, float offmax);
+
 
 #endif    // WALL_H

@@ -123,11 +123,12 @@ int main(int argc, char **argv)
 
 		SDL_FillRect(winsurf, NULL, 0);
 
-		for (int i = 0; i < 2; i++)
+		for (int i = 0; i < 2; i++) {
 			show_all(
 				gs->walls, sizeof(gs->walls)/sizeof(gs->walls[0]),
 				balls, 2,
 				&gs->players[i].cam);
+		}
 
 		SDL_FillRect(winsurf, &(SDL_Rect){ winsurf->w/2, 0, 1, winsurf->h }, SDL_MapRGB(winsurf->format, 0xff, 0xff, 0xff));
 		SDL_UpdateWindowSurface(win);
