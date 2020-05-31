@@ -91,10 +91,10 @@ void wall_getcamcorners(const struct Wall *w, const struct Camera *cam, Vec3 *re
 	}
 
 #define f(x,y,z) camera_point_world2cam(cam, (Vec3){ (float)x, (float)y, (float)z })
-	res[0] = f(w->startx, 0, w->startz);
-	res[1] = f(w->startx, 1, w->startz);
-	res[2] = f(endx,      0, endz);
-	res[3] = f(endx,      1, endz);
+	res[0] = f(w->startx, PLAYER_HEIGHT_FLAT, w->startz);
+	res[1] = f(w->startx, WALL_HEIGHT,        w->startz);
+	res[2] = f(endx,      PLAYER_HEIGHT_FLAT, endz);
+	res[3] = f(endx,      WALL_HEIGHT,        endz);
 #undef f
 }
 
@@ -160,6 +160,18 @@ static int compare_point_y(const void *a, const void *b)
 {
 	const SDL_Point *p1 = a, *p2 = b;
 	return (p1->y > p2->y) - (p1->y < p2->y);
+}
+
+bool wall_side(const struct Wall *w, Vec3 pt)
+{
+	Vec3 center = wall_center(w);
+	switch(w->dir) {
+		case WALL_DIR_X: return (center.z < pt.z);
+		case WALL_DIR_Z: return (center.x < pt.x);
+	}
+
+	// never actually runs, but makes compiler happy
+	return false;
 }
 
 void wall_show(const struct Wall *w, const struct Camera *cam)

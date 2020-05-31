@@ -14,7 +14,7 @@
 
 #include <SDL2/SDL.h>
 
-#define FPS 30
+#define FPS 60
 
 #define PLAYER_COUNT 2
 #define WALL_COUNT 4
@@ -35,119 +35,54 @@ struct GameObj {
 	size_t ndeps;
 
 	float centerz;   // z coordinate of center in camera coordinates
-	float sortz;     // either centerz or z coordinate from ray casting
-
 	bool shown;
 };
 
-// return the intersection of gobj and ray closest to camera, 0 for no intersect
-static float intersect(const struct GameObj *gobj, struct Line ray, const struct Camera *cam)
+static int compare_gameobj_ptrs_by_centerz(const void *aptr, const void *bptr)
 {
-	switch(gobj->kind) {
-		case WALL:
-		{
-			Vec3 inter;
-			if (!wall_intersect_line(gobj->ptr.wall, ray, &inter))
-				return 0;
-			return camera_point_world2cam(cam, inter).z;
-		}
-
-		case BALL:
-		{
-			Vec3 inter1, inter2;
-			if (!ball_intersect_line(gobj->ptr.ball, ray, &inter1, &inter2))
-				return 0;
-			float z1 = camera_point_world2cam(cam, inter1).z;
-			float z2 = camera_point_world2cam(cam, inter2).z;
-			return (z1 + z2)/2;
-			return min(z1, z2);
-		}
-	}
-
-	return 0;    // never runs but makes compiler happy
-}
-
-static int compare_gameobj_double_pointers(const void *aptr, const void *bptr)
-{
-	float az = (*(const struct GameObj **)aptr)->sortz;
-	float bz = (*(const struct GameObj **)bptr)->sortz;
+	float az = (*(const struct GameObj **)aptr)->centerz;
+	float bz = (*(const struct GameObj **)bptr)->centerz;
 	return (az > bz) - (az < bz);
 }
 
-static void swap(struct GameObj **a, struct GameObj **b)
+// Make sure that dep is shown before obj
+// TODO: can be slow with many gameobjs, does it help to keep array always sorted and binsearch?
+static void add_dependency(struct GameObj *obj, struct GameObj *dep)
 {
-	struct GameObj *tmp = *a;
-	*a = *b;
-	*b = tmp;
-}
-
-// TODO: can be slow with many gameobjs, does it help to keep it always sorted?
-static void add_to_pointer_list(struct GameObj **ptrlist, size_t *len, struct GameObj *ptr)
-{
-	for (size_t i = 0; i < *len; i++)
-		if (ptrlist[i] == ptr)
+	for (size_t i = 0; i < obj->ndeps; i++)
+		if (obj->deps[i] == dep)
 			return;
-	ptrlist[(*len)++] = ptr;
+	obj->deps[obj->ndeps++] = dep;
 }
 
-/*
-Most of the time sorting the objects by their centers is enough to get the correct
-drawing order, but sometimes it isn't. To catch those corner cases, we think of
-rays, which are 3D lines corresponding to each pixel of the screen. We don't
-actually need to do this for every pixel because we also sort by center, which
-handles most cases.
-
-Comment out the raycasting code to see an example of a case that sorting by center
-doesn't handle alone.
-*/
-#define PIXELS_PER_RAY_X 10
-#define PIXELS_PER_RAY_Y 10
-
-static void get_deps_by_raycasting(struct GameObj **ptrs, size_t nptrs, struct Camera *cam)
+static void figure_out_deps_for_balls_behind_walls(
+	struct GameObj *walls, size_t nwalls,
+	struct GameObj *balls, size_t nballs,
+	struct Camera *cam)
 {
-	Mat3 cam2world = mat3_inverse(cam->world2cam);
+	for (size_t w = 0; w < nwalls; w++) {
+		bool camside = wall_side(walls[w].ptr.wall, cam->location);
 
-	for (int x = 0; x < cam->surface->w; x += PIXELS_PER_RAY_X) {
-		for (int y = 0; y < cam->surface->h; y += PIXELS_PER_RAY_Y) {
-			float xzr = camera_screenx_to_xzr(cam, (float)x);
-			float yzr = camera_screeny_to_yzr(cam, (float)y);
-			struct Line ray = {
-				.point = cam->location,
-				.dir = mat3_mul_vec3(cam2world, (Vec3){xzr, yzr, 1}),
-			};
-
-			size_t i = 0, n = nptrs;
-			while (i < n) {
-				float z = intersect(ptrs[i], ray, cam);
-				if (z < 0) {
-					ptrs[i++]->sortz = z;
-				} else {
-					// object doesn't hit ray, ignore for rest of iteration
-					swap(&ptrs[--n], &ptrs[i]);
-				}
-			}
-
-			qsort(ptrs, n, sizeof(ptrs[0]), compare_gameobj_double_pointers);
-			for (i = 1; i < n; i++)
-				add_to_pointer_list(ptrs[i]->deps, &ptrs[i]->ndeps, ptrs[i-1]);
+		for (size_t b = 0; b < nballs; b++) {
+			if (wall_side(walls[w].ptr.wall, balls[b].ptr.ball->center) == camside)
+				add_dependency(&balls[b], &walls[w]);
+			else
+				add_dependency(&walls[w], &balls[b]);
 		}
 	}
-}
-
-static void sort_by_centerz(struct GameObj **ptrs, size_t nptrs)
-{
-	for (size_t i = 0; i < nptrs; i++)
-		ptrs[i]->sortz = ptrs[i]->centerz;
-	qsort(ptrs, nptrs, sizeof(ptrs[0]), compare_gameobj_double_pointers);
 }
 
 static void show(struct GameObj *gobj, struct Camera *cam, unsigned int depth)
 {
 	if (gobj->shown)
 		return;
-	gobj->shown = true;   // setting this early prevents infinite recursion
 
-	if (depth <= GAMEOBJ_COUNT) {   // some sanity because funny corner cases
+	/*
+	Without the sanity check, this recurses infinitely when there is a dependency
+	cycle. I don't know whether it's possible to create one, and I want to avoid
+	random crashes.
+	*/
+	if (depth <= GAMEOBJ_COUNT) {
 		for (size_t i = 0; i < gobj->ndeps; i++)
 			show(gobj->deps[i], cam, depth+1);
 	} else {
@@ -162,6 +97,7 @@ static void show(struct GameObj *gobj, struct Camera *cam, unsigned int depth)
 		wall_show(gobj->ptr.wall, cam);
 		break;
 	}
+	gobj->shown = true;
 }
 
 static void add_gameobj_to_array_if_visible(
@@ -178,35 +114,39 @@ static void add_gameobj_to_array_if_visible(
 	}
 }
 
+static void get_sorted_gameobj_pointers(
+	struct GameObj *walls, size_t nwalls,
+	struct GameObj *balls, size_t nballs,
+	struct GameObj **res)
+{
+	for (size_t i = 0; i < nwalls; i++)
+		res[i] = &walls[i];
+	for (size_t i = 0; i < nballs; i++)
+		res[nwalls + i] = &balls[i];
+	qsort(res, nwalls + nballs, sizeof(res[0]), compare_gameobj_ptrs_by_centerz);
+}
+
 static void show_everything(const struct GameState *gs, struct Camera *cam)
 {
-	struct GameObj objs[GAMEOBJ_COUNT] = {0};
-	size_t n = 0;
-	for (size_t i = 0; i < PLAYER_COUNT; i++)
-		add_gameobj_to_array_if_visible(
-			objs, &n, cam,
-			gs->players[i].ball->center, BALL, (union GameObjPtr){ .ball = gs->players[i].ball });
+	struct GameObj walls[WALL_COUNT] = {0}, balls[PLAYER_COUNT] = {0};
+	size_t nwalls = 0, nballs = 0;
+
 	for (size_t i = 0; i < WALL_COUNT; i++)
 		add_gameobj_to_array_if_visible(
-			objs, &n, cam,
+			walls, &nwalls, cam,
 			wall_center(&gs->walls[i]), WALL, (union GameObjPtr){ .wall = &gs->walls[i] });
 
-	struct GameObj *ptrs[GAMEOBJ_COUNT];
-	for (size_t i = 0; i < n; i++)
-		ptrs[i] = &objs[i];
+	for (size_t i = 0; i < PLAYER_COUNT; i++)
+		add_gameobj_to_array_if_visible(
+			balls, &nballs, cam,
+			gs->players[i].ball->center, BALL, (union GameObjPtr){ .ball = gs->players[i].ball });
 
-	get_deps_by_raycasting(ptrs, n, cam);
-	sort_by_centerz(ptrs, n);
+	struct GameObj *sorted[GAMEOBJ_COUNT];
+	figure_out_deps_for_balls_behind_walls(walls, nwalls, balls, nballs, cam);
+	get_sorted_gameobj_pointers(walls, nwalls, balls, nballs, sorted);
 
-	for (size_t i = 0; i < n; i++)
-		show(ptrs[i], cam, 0);
-
-	for (int x = 0; x < cam->surface->w; x += PIXELS_PER_RAY_X)
-		for (int y = 0; y < cam->surface->h; y += PIXELS_PER_RAY_Y)
-			SDL_FillRect(
-				cam->surface,
-				&(SDL_Rect){ x, y, 1, 1 },
-				SDL_MapRGBA(cam->surface->format, 0xff, 0xff, 0x00, 0xff));
+	for (size_t i = 0; i < nwalls + nballs; i++)
+		show(sorted[i], cam, 0);
 }
 
 // returns whether to continue playing

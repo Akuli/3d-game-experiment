@@ -54,6 +54,9 @@ struct Plane wall_getplane(const struct Wall *w);
 // Get all corners of the wall, in camera coordinates
 void wall_getcamcorners(const struct Wall *w, const struct Camera *cam, Vec3 *res);
 
+// same for any two points on same side of the wall
+bool wall_side(const struct Wall *wall, Vec3 pt);
+
 // Find intersection point of wall and line, return false if no intersection
 bool wall_intersect_line(const struct Wall *w, struct Line ln, Vec3 *res);
 
