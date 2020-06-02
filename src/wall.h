@@ -1,7 +1,7 @@
 #ifndef WALL_H
 #define WALL_H
 
-#include "ball.h"
+#include "ellipsoid.h"
 #include "camera.h"
 #include "mathstuff.h"
 
@@ -13,10 +13,10 @@ enum WallDirection { WALL_DIR_XY, WALL_DIR_ZY };
 
 /*
 I thought about doing collision checking by dividing it into these cases:
-- The ball could touch the corner points of the wall.
-- The ball could touch any edge of the wall so that it touches between the corners,
+- The ellipsoid could touch the corner points of the wall.
+- The ellipsoid could touch any edge of the wall so that it touches between the corners,
   and doesn't touch the corners.
-- The ball could touch the "center part" of the wall without touching any edges or
+- The ellipsoid could touch the "center part" of the wall without touching any edges or
   corners.
 
 Handling all this would be a lot of code, so instead we just spread some points
@@ -29,19 +29,15 @@ struct Wall {
 	int startz;
 	enum WallDirection dir;
 
-	/*
-	To check collision between a wall and a player, we need to switch to
-	linear-transformed coordinates where the player is a ball (as in an actual
-	ball, not a stretched ball).
-	*/
+	// don't use outside wall.c
 	Vec3 collpoint_cache[WALL_CP_COUNT][WALL_CP_COUNT];
 };
 
 // Call this after creating a new Wall
 void wall_initcaches(struct Wall *w);
 
-// moves ball so that it doesn't bump
-void wall_bumps_ball(const struct Wall *w, struct Ball *ball);
+// moves el so that it doesn't bump
+void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el);
 
 void wall_show(const struct Wall *w, const struct Camera *cam);
 

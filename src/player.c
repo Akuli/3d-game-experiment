@@ -1,6 +1,6 @@
 #include "player.h"
 #include <assert.h>
-#include "ball.h"
+#include "ellipsoid.h"
 #include "common.h"
 #include "mathstuff.h"
 #include "sound.h"
@@ -32,20 +32,22 @@ static float get_y_radius(const struct Player *plr, unsigned int fps)
 	if (plr->flat)   // if flat and jumping, then do this
 		return PLAYER_HEIGHT_FLAT / 2;
 
-	return 1.5f*PLAYER_RADIUS_XZ + 0.3f*get_jump_height(plr->jumpframe, fps);
+	return 1.5f*plr->ellipsoid->xzradius + 0.3f*get_jump_height(plr->jumpframe, fps);
 }
 
 void player_eachframe(struct Player *plr, unsigned int fps, const struct Wall *walls, size_t nwalls)
 {
-	if (plr->turning != 0)
-		plr->angle += (RADIANS_PER_SECOND / (float)fps) * (float)plr->turning;
+	if (plr->turning != 0) {
+		plr->ellipsoid->angle += (RADIANS_PER_SECOND / (float)fps) * (float)plr->turning;
+		// ellipsoid_update_transforms() called below
+	}
 
 	if (plr->moving) {
 		Mat3 cam2world = mat3_inverse(plr->cam.world2cam);
 		Vec3 diff = mat3_mul_vec3(
 			cam2world,
 			(Vec3){ 0, 0, -MOVE_UNITS_PER_SECOND/(float)fps });
-		plr->ball->center = vec3_add(plr->ball->center, diff);
+		plr->ellipsoid->center = vec3_add(plr->ellipsoid->center, diff);
 	}
 
 	float y = 0;
@@ -59,26 +61,22 @@ void player_eachframe(struct Player *plr, unsigned int fps, const struct Wall *w
 		}
 	}
 
-	float yrad = get_y_radius(plr, fps);
-	plr->ball->center.y = y + yrad;
+	plr->ellipsoid->xzradius = 0.3f;
+	plr->ellipsoid->yradius = get_y_radius(plr, fps);
+	plr->ellipsoid->center.y = y + plr->ellipsoid->yradius;
+	ellipsoid_update_transforms(plr->ellipsoid);
 
-	Mat3 rot = mat3_rotation_xz(plr->angle);
-	Mat3 antirot = mat3_rotation_xz(-plr->angle);
+	Mat3 rot = mat3_rotation_xz(plr->ellipsoid->angle);
+	Mat3 antirot = mat3_rotation_xz(-plr->ellipsoid->angle);
 
-	plr->ball->transform = mat3_mul_mat3(rot, (Mat3){.rows= {
-		{ PLAYER_RADIUS_XZ, 0,    0                },
-		{ 0,                yrad, 0                },
-		{ 0,                0,    PLAYER_RADIUS_XZ },
-	}});
-	plr->ball->transform_inverse = mat3_inverse(plr->ball->transform);
 	plr->cam.world2cam = antirot;
 
 	for (size_t i = 0; i < nwalls; i++)
-		wall_bumps_ball(&walls[i], plr->ball);
+		wall_bumps_ellipsoid(&walls[i], plr->ellipsoid);
 
 	Vec3 diff = { 0, 0, CAMERA_BEHIND_PLAYER };
 	vec3_apply_matrix(&diff, rot);
-	plr->cam.location = vec3_add(plr->ball->center, diff);
+	plr->cam.location = vec3_add(plr->ellipsoid->center, diff);
 	plr->cam.location.y = CAMERA_HEIGHT;
 }
 

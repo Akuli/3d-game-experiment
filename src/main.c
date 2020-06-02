@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "ball.h"
+#include "ellipsoid.h"
 #include "camera.h"
 #include "common.h"
 #include "mathstuff.h"
@@ -94,14 +94,14 @@ int main(int argc, char **argv)
 	if (!gs)
 		fatal_error("not enough memory");
 
-	gs->players[0].ball = ball_load("players/Tux.png", (Vec3){0,0.5f,-2});
-	gs->players[1].ball = ball_load("players/Chick.png", (Vec3){2,0.5f,-2});
+	gs->players[0].ellipsoid = ellipsoid_load("players/Tux.png", (Vec3){0,0.5f,-2});
+	gs->players[1].ellipsoid = ellipsoid_load("players/Chick.png", (Vec3){2,0.5f,-2});
 
 	// This turned out to be much faster than blitting
 	gs->players[0].cam.surface = create_half_surface(winsurf, 0, winsurf->w/2);
 	gs->players[1].cam.surface = create_half_surface(winsurf, winsurf->w/2, winsurf->w/2);
 
-	struct Ball *balls[] = { gs->players[0].ball, gs->players[1].ball };
+	struct Ellipsoid *els[] = { gs->players[0].ellipsoid, gs->players[1].ellipsoid };
 
 	for (unsigned i = 0; i < sizeof(gs->walls)/sizeof(gs->walls[0]); i++) {
 		gs->walls[i].dir = WALL_DIR_ZY;
@@ -126,7 +126,7 @@ int main(int argc, char **argv)
 		for (int i = 0; i < 2; i++) {
 			show_all(
 				gs->walls, sizeof(gs->walls)/sizeof(gs->walls[0]),
-				balls, 2,
+				els, 2,
 				&gs->players[i].cam);
 		}
 
@@ -147,8 +147,8 @@ int main(int argc, char **argv)
 	}
 
 exit:
-	free(gs->players[0].ball);
-	free(gs->players[1].ball);
+	free(gs->players[0].ellipsoid);
+	free(gs->players[1].ellipsoid);
 	SDL_FreeSurface(gs->players[0].cam.surface);
 	SDL_FreeSurface(gs->players[1].cam.surface);
 	free(gs);

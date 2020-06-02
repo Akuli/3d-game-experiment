@@ -2,22 +2,15 @@
 #define PLAYER_H
 
 #include "camera.h"
-#include "ball.h"
+#include "ellipsoid.h"
 #include "wall.h"
 
-/*
-The radius of the player in the horizontal xz plane is always this, even when
-the player is flat or jumping
-*/
-#define PLAYER_RADIUS_XZ 0.3f
-
-// smallest possible height of the player
+// smallest possible height of the player (then ellipsoid->yradius is half of this)
 #define PLAYER_HEIGHT_FLAT 0.1f
 
 struct Player {
-	struct Ball *ball;
+	struct Ellipsoid *ellipsoid;
 	struct Camera cam;
-	float angle;
 	int turning;   // see player_set_turning()
 	bool moving;
 	bool flat;

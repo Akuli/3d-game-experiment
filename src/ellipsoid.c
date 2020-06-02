@@ -1,4 +1,4 @@
-#include "ball.h"
+#include "ellipsoid.h"
 #include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -79,45 +79,45 @@ static void read_image(const char *filename, SDL_Color *res)
 
 	int ok = stbir_resize_uint8(
 		(uint8_t*) filedata, filew, fileh, 0,
-		(uint8_t*) res, BALL_PIXELS_AROUND, BALL_PIXELS_VERTICALLY, 0,
+		(uint8_t*) res, ELLIPSOID_PIXELS_AROUND, ELLIPSOID_PIXELS_VERTICALLY, 0,
 		4);
 	stbi_image_free(filedata);
 	if (!ok)
 		fatal_error_printf("stbir_resize_uint8 failed: %s", stbi_failure_reason());
 }
 
-struct Ball *ball_load(const char *filename, Vec3 center)
+struct Ellipsoid *ellipsoid_load(const char *filename, Vec3 center)
 {
-	struct Ball *ball = malloc(sizeof(*ball));
-	if (!ball)
+	struct Ellipsoid *el = malloc(sizeof(*el));
+	if (!el)
 		fatal_error("not enough memory");
 
-	ball->center = center;
-	read_image(filename, (SDL_Color*) ball->image);
-	ball->transform = (Mat3){ .rows = {
-		{1, 0, 0},
-		{0, 1, 0},
-		{0, 0, 1},
-	}};
-	ball->transform_inverse = mat3_inverse(ball->transform);
-	return ball;
+	el->center = center;
+	read_image(filename, (SDL_Color*) el->image);
+
+	el->angle = 0;
+	el->xzradius = 1;
+	el->yradius = 1;
+	ellipsoid_update_transforms(el);
+
+	return el;
 }
 
 /*
-We introduce third type of coordinates: untransformed ball coordinates
-- ball center is at (0,0,0)
-- ball radius is 1
-- ball->transform and cam->world2cam haven't been applied yet
+We introduce third type of coordinates: unit ball coordinates
+- ellipsoid center is at (0,0,0)
+- ellipsoid radius is 1
+- cam->world2cam transform hasn't been applied yet
 */
 
 // +1 for vertical because we want to include both ends
 // no +1 for the other one because it wraps around instead
-typedef Vec3 VectorArray[BALL_PIXELS_VERTICALLY + 1][BALL_PIXELS_AROUND];
+typedef Vec3 VectorArray[ELLIPSOID_PIXELS_VERTICALLY + 1][ELLIPSOID_PIXELS_AROUND];
 
 /*
-Where on the ball's surface will each pixel go? This function calculates vectors
-so that we don't need to call slow trig functions every time the ball is drawn.
-Returns untransformed ball coordinates.
+Where on the ellipsoid's surface will each pixel go? This function calculates vectors
+so that we don't need to call slow trig functions every time an ellipsoid is drawn.
+Returns unit ball coordinates.
 */
 static const VectorArray *get_untransformed_surface_vectors(void)
 {
@@ -129,12 +129,12 @@ static const VectorArray *get_untransformed_surface_vectors(void)
 
 	float pi = acosf(-1);
 
-	for (size_t v = 0; v < BALL_PIXELS_VERTICALLY+1; v++) {
-		float y = 1 - 2*(float)v/BALL_PIXELS_VERTICALLY;
+	for (size_t v = 0; v < ELLIPSOID_PIXELS_VERTICALLY+1; v++) {
+		float y = 1 - 2*(float)v/ELLIPSOID_PIXELS_VERTICALLY;
 		float xzrad = sqrtf(1 - y*y);  // radius on xz plane
 
-		for (size_t a = 0; a < BALL_PIXELS_AROUND; a++) {
-			float angle = (float)a/BALL_PIXELS_AROUND * 2*pi;
+		for (size_t a = 0; a < ELLIPSOID_PIXELS_AROUND; a++) {
+			float angle = (float)a/ELLIPSOID_PIXELS_AROUND * 2*pi;
 			float x = xzrad*sinf(angle);
 			float z = xzrad*cosf(angle);
 			res[v][a] = (Vec3){ x, y, z };
@@ -146,34 +146,31 @@ static const VectorArray *get_untransformed_surface_vectors(void)
 }
 
 /*
-A part of the ball is visible to the camera. The rest isn't. The plane returned
-by this function divides the ball into the visible part and the part behind the
+A part of the ellipsoid is visible to the camera. The rest isn't. The plane returned
+by this function divides the ellipsoid into the visible part and the part behind the
 visible part. The normal vector of the plane points toward the visible side, so
-plane_whichside() returns whether a point on the ball is visible.
+plane_whichside() returns whether a point on the ellipsoid is visible.
 
-The returned plane is in untransformed ball coordinates.
-
-This assumes that the ball is round in both coordinates, even though it might not
-be the case. This still seems to be "close enough".
+The returned plane is in unit ball coordinates.
 */
 static struct Plane
-get_visibility_plane(const struct Ball *ball, const struct Camera *cam)
+get_visibility_plane(const struct Ellipsoid *el, const struct Camera *cam)
 {
 	/*
-	Calculate camera location in untransformed ball coordinates. This must work
+	Calculate camera location in unit ball coordinates. This must work
 	so that once the resulting camera vector is
-		1. transformed with ball->transform
+		1. transformed with el->transform
 		2. transformed with cam->world2cam
-		3. added with ball->center
+		3. added with el->center
 	then we get the camera location in camera coordinates, i.e. (0,0,0).
 	*/
-	Vec3 cam2center = camera_point_world2cam(cam, ball->center);
+	Vec3 cam2center = camera_point_world2cam(cam, el->center);
 	Vec3 center2cam = vec3_neg(cam2center);
 	vec3_apply_matrix(&center2cam, mat3_inverse(cam->world2cam));
-	vec3_apply_matrix(&center2cam, ball->transform_inverse);
+	vec3_apply_matrix(&center2cam, el->transform_inverse);
 
 	/*
-	From the side, the ball being split by the visibility plane looks like this:
+	From the side, the el being split by the visibility plane looks like this:
 
         \  /
          \/___
@@ -186,16 +183,16 @@ get_visibility_plane(const struct Ball *ball, const struct Camera *cam)
 	       visibility
 	         plane
 
-	Note that the plane is closer to the camera than the ball center. The center
-	is marked with o above. Note that we are using untransformed ball coordinates,
+	Note that the plane is closer to the camera than the el center. The center
+	is marked with o above. Note that we are using unit ball coordinates,
 	so we have o=(0,0,0).
 
-	Let D denote the distance between visibility plane and the ball center. With
+	Let D denote the distance between visibility plane and the el center. With
 	similar triangles and Pythagorean theorem, we get
 
 		D = 1/|center2cam|,
 
-	where 1 = 1^2 = (ball radius)^2. The equation of the plane is
+	where 1 = 1^2 = (unit ball radius)^2. The equation of the plane is
 
 		projection of (x,y,z) onto center2cam = D,
 
@@ -217,46 +214,46 @@ get_visibility_plane(const struct Ball *ball, const struct Camera *cam)
 #define convert_color(SURF, COL) \
 	SDL_MapRGBA((SURF)->format, (COL).r, (COL).g, (COL).b, (COL.a))
 
-void ball_display(struct Ball *ball, const struct Camera *cam)
+void ellipsoid_show(struct Ellipsoid *el, const struct Camera *cam)
 {
-	// ball center vector as camera coordinates
-	Vec3 center = camera_point_world2cam(cam, ball->center);
+	// vplane is in unit ball coordinates
+	struct Plane vplane = get_visibility_plane(el, cam);
 
-	// vplane is in untransformed ball coordinates
-	struct Plane vplane = get_visibility_plane(ball, cam);
+	// center vector as camera coordinates
+	Vec3 center = camera_point_world2cam(cam, el->center);
 
 	/*
-	To convert from untransformed ball coordinates to camera coordinates, apply
-	this and then add the ball center vector as camera coordinates
+	To convert from unit ball coordinates to camera coordinates, apply
+	this and then add center
 	*/
-	Mat3 ball2cam = mat3_mul_mat3(cam->world2cam, ball->transform);
+	Mat3 unitball2cam = mat3_mul_mat3(cam->world2cam, el->transform);
 
 	const VectorArray *usvecs = get_untransformed_surface_vectors();
-	for (size_t v = 0; v < BALL_PIXELS_VERTICALLY + 1; v++) {
-		for (size_t a = 0; a < BALL_PIXELS_AROUND; a++) {
+	for (size_t v = 0; v < ELLIPSOID_PIXELS_VERTICALLY + 1; v++) {
+		for (size_t a = 0; a < ELLIPSOID_PIXELS_AROUND; a++) {
 			// this is perf critical code
 			// turns out that in-place operations are measurably faster
 
-			ball->sidecache[v][a] = plane_whichside(vplane, (*usvecs)[v][a]);
+			el->sidecache[v][a] = plane_whichside(vplane, (*usvecs)[v][a]);
 
-			ball->vectorcache[v][a] = (*usvecs)[v][a];
-			vec3_apply_matrix(&ball->vectorcache[v][a], ball2cam);
-			vec3_add_inplace(&ball->vectorcache[v][a], center);
+			el->vectorcache[v][a] = (*usvecs)[v][a];
+			vec3_apply_matrix(&el->vectorcache[v][a], unitball2cam);
+			vec3_add_inplace(&el->vectorcache[v][a], center);
 		}
 	}
 
-	for (size_t a = 0; a < BALL_PIXELS_AROUND; a++) {
-		size_t a2 = (a+1) % BALL_PIXELS_AROUND;
+	for (size_t a = 0; a < ELLIPSOID_PIXELS_AROUND; a++) {
+		size_t a2 = (a+1) % ELLIPSOID_PIXELS_AROUND;
 
-		for (size_t v = 0; v < BALL_PIXELS_VERTICALLY; v++) {
+		for (size_t v = 0; v < ELLIPSOID_PIXELS_VERTICALLY; v++) {
 			size_t v2 = v+1;
 
 			// this is perf critical code
 
-			if (!ball->sidecache[v][a] &&
-				!ball->sidecache[v][a2] &&
-				!ball->sidecache[v2][a] &&
-				!ball->sidecache[v2][a2])
+			if (!el->sidecache[v][a] &&
+				!el->sidecache[v][a2] &&
+				!el->sidecache[v2][a] &&
+				!el->sidecache[v2][a2])
 			{
 				continue;
 			}
@@ -264,15 +261,32 @@ void ball_display(struct Ball *ball, const struct Camera *cam)
 			SDL_Rect rect;
 			if (camera_get_containing_rect(
 					cam, &rect,
-					ball->vectorcache[v][a],
-					ball->vectorcache[v][a2],
-					ball->vectorcache[v2][a],
-					ball->vectorcache[v2][a2]))
+					el->vectorcache[v][a],
+					el->vectorcache[v][a2],
+					el->vectorcache[v2][a],
+					el->vectorcache[v2][a2]))
 			{
 				SDL_FillRect(
 					cam->surface, &rect,
-					convert_color(cam->surface, ball->image[v][a]));
+					convert_color(cam->surface, el->image[v][a]));
 			}
 		}
 	}
+}
+
+static Mat3 diag(float a, float b, float c)
+{
+	return (Mat3){ .rows = {
+		{ a, 0, 0 },
+		{ 0, b, 0 },
+		{ 0, 0, c },
+	}};
+}
+
+void ellipsoid_update_transforms(struct Ellipsoid *el)
+{
+	el->transform = mat3_mul_mat3(
+		diag(el->xzradius, el->yradius, el->xzradius),
+		mat3_rotation_xz(el->angle));
+	el->transform_inverse = mat3_inverse(el->transform);
 }

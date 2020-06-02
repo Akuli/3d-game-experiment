@@ -4,7 +4,7 @@
 #define SHOWALL_H
 
 #include <stddef.h>
-#include "ball.h"
+#include "ellipsoid.h"
 #include "wall.h"
 
 #define SHOWALL_MAX_BALLS 2
@@ -13,7 +13,7 @@
 
 void show_all(
 	const struct Wall *walls, size_t nwalls,
-	struct Ball **balls, size_t nballs,
+	struct Ellipsoid **els, size_t nels,
 	struct Camera *cam);
 
 

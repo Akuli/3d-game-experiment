@@ -5,7 +5,7 @@
 
 struct GameObj {
 	enum GameObjKind { BALL, WALL } kind;
-	union GameObjPtr { struct Ball *ball; const struct Wall *wall; } ptr;
+	union GameObjPtr { struct Ellipsoid *ellipsoid; const struct Wall *wall; } ptr;
 
 	// all "dependency" GameObjs are drawn to screen first
 	struct GameObj *deps[SHOWALL_MAX_OBJECTS];
@@ -33,41 +33,29 @@ static void add_dependency(struct GameObj *obj, struct GameObj *dep)
 	obj->deps[obj->ndeps++] = dep;
 }
 
-static void figure_out_deps_for_balls_behind_walls(
+static void figure_out_deps_for_ellipsoids_behind_walls(
 	struct GameObj *walls, size_t nwalls,
-	struct GameObj *balls, size_t nballs,
+	struct GameObj *els, size_t nels,
 	struct Camera *cam)
 {
-	for (size_t b = 0; b < nballs; b++) {
-		Vec3 center = balls[b].ptr.ball->center;
+	for (size_t e = 0; e < nels; e++) {
+		Vec3 center = els[e].ptr.ellipsoid->center;
 
 		for (size_t w = 0; w < nwalls; w++) {
 			/*
-			What's the radius of the ball in the direction along the wall?
-
-			If the radius is r, then ball->transform maps some vector of length 1
-			to a vector of length r going in wall direction. For the inverse
-			transform, a vector of length r going in wall direction would get
-			mapped to a vector of length 1. By linearity, the inverse maps a
-			vector of length 1 in wall direction to a vector of length 1/r.
+			Avoid funny issues near ends of the wall. Here 0.5 is a
+			constant found with trial and error, so 0.5*radius is
+			not a failed attempt at converting between a radius and
+			a diameter.
 			*/
-			Vec3 vec = {0,0,0};
-			switch(walls[w].ptr.wall->dir) {
-				case WALL_DIR_XY: vec.x = 1; break;
-				case WALL_DIR_ZY: vec.z = 1; break;
-			}
-			vec3_apply_matrix(&vec, balls[b].ptr.ball->transform_inverse);
-			float radius = 1/sqrtf(vec3_lengthSQUARED(vec));
-
-			// avoid funny issues near ends of the wall
-			if (!wall_aligned_with_point(walls[w].ptr.wall, center, radius/2))
+			if (!wall_aligned_with_point(walls[w].ptr.wall, center, 0.5f * els[e].ptr.ellipsoid->xzradius))
 				continue;
 
 			bool camside = wall_side(walls[w].ptr.wall, cam->location);
 			if (wall_side(walls[w].ptr.wall, center) == camside)
-				add_dependency(&balls[b], &walls[w]);
+				add_dependency(&els[e], &walls[w]);
 			else
-				add_dependency(&walls[w], &balls[b]);
+				add_dependency(&walls[w], &els[e]);
 		}
 	}
 }
@@ -88,14 +76,14 @@ static void add_gameobj_to_array_if_visible(
 
 static void get_sorted_gameobj_pointers(
 	struct GameObj *walls, size_t nwalls,
-	struct GameObj *balls, size_t nballs,
+	struct GameObj *els, size_t nels,
 	struct GameObj **res)
 {
 	for (size_t i = 0; i < nwalls; i++)
 		res[i] = &walls[i];
-	for (size_t i = 0; i < nballs; i++)
-		res[nwalls + i] = &balls[i];
-	qsort(res, nwalls + nballs, sizeof(res[0]), compare_gameobj_ptrs_by_centerz);
+	for (size_t i = 0; i < nels; i++)
+		res[nwalls + i] = &els[i];
+	qsort(res, nwalls + nels, sizeof(res[0]), compare_gameobj_ptrs_by_centerz);
 }
 
 static void show(struct GameObj *gobj, struct Camera *cam, unsigned int depth)
@@ -117,7 +105,7 @@ static void show(struct GameObj *gobj, struct Camera *cam, unsigned int depth)
 
 	switch(gobj->kind) {
 	case BALL:
-		ball_display(gobj->ptr.ball, cam);
+		ellipsoid_show(gobj->ptr.ellipsoid, cam);
 		break;
 	case WALL:
 		wall_show(gobj->ptr.wall, cam);
@@ -128,33 +116,33 @@ static void show(struct GameObj *gobj, struct Camera *cam, unsigned int depth)
 
 void show_all(
 	const struct Wall *walls, size_t nwalls,
-	      struct Ball **balls, size_t nballs,
+	      struct Ellipsoid **els, size_t nels,
 	struct Camera *cam)
 {
 	assert(nwalls <= SHOWALL_MAX_WALLS);
-	assert(nballs <= SHOWALL_MAX_BALLS);
+	assert(nels <= SHOWALL_MAX_BALLS);
 
 	// these are static to keep stack usage down
-	static struct GameObj wallobjs[SHOWALL_MAX_WALLS], ballobjs[SHOWALL_MAX_BALLS];
+	static struct GameObj wallobjs[SHOWALL_MAX_WALLS], elobjs[SHOWALL_MAX_BALLS];
 
 	memset(wallobjs, 0, sizeof(wallobjs));
-	memset(ballobjs, 0, sizeof(ballobjs));
-	size_t nwallobjs = 0, nballobjs = 0;
+	memset(elobjs, 0, sizeof(elobjs));
+	size_t nwallobjs = 0, nelobjs = 0;
 
 	for (size_t i = 0; i < nwalls; i++)
 		add_gameobj_to_array_if_visible(
 			wallobjs, &nwallobjs, cam,
 			wall_center(&walls[i]), WALL, (union GameObjPtr){ .wall = &walls[i] });
 
-	for (size_t i = 0; i < nballs; i++)
+	for (size_t i = 0; i < nels; i++)
 		add_gameobj_to_array_if_visible(
-			ballobjs, &nballobjs, cam,
-			balls[i]->center, BALL, (union GameObjPtr){ .ball = balls[i] });
+			elobjs, &nelobjs, cam,
+			els[i]->center, BALL, (union GameObjPtr){ .ellipsoid = els[i] });
 
 	struct GameObj *sorted[SHOWALL_MAX_OBJECTS];
-	figure_out_deps_for_balls_behind_walls(wallobjs, nwallobjs, ballobjs, nballobjs, cam);
-	get_sorted_gameobj_pointers(wallobjs, nwallobjs, ballobjs, nballobjs, sorted);
+	figure_out_deps_for_ellipsoids_behind_walls(wallobjs, nwallobjs, elobjs, nelobjs, cam);
+	get_sorted_gameobj_pointers(wallobjs, nwallobjs, elobjs, nelobjs, sorted);
 
-	for (size_t i = 0; i < nwallobjs + nballobjs; i++)
+	for (size_t i = 0; i < nwallobjs + nelobjs; i++)
 		show(sorted[i], cam, 0);
 }
