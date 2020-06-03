@@ -121,6 +121,10 @@ int main(int argc, char **argv)
 		player_eachframe(&gs->players[0], FPS, gs->walls, sizeof(gs->walls)/sizeof(gs->walls[0]));
 		player_eachframe(&gs->players[1], FPS, gs->walls, sizeof(gs->walls)/sizeof(gs->walls[0]));
 
+		float bump = ellipsoid_bump_amount(els[0], els[1]);
+		if (bump != 0)
+			ellipsoid_move_apart(els[0], els[1], bump);
+
 		SDL_FillRect(winsurf, NULL, 0);
 
 		for (int i = 0; i < 2; i++) {

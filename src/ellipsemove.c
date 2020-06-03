@@ -1,0 +1,234 @@
+#include <assert.h>
+#include <math.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "common.h"
+#include "mathstuff.h"
+
+/*
+With 1e-7f, tests sometimes hit the max number of iterations. This didn't happen
+when I tried 1e-6f. I'm setting this to even less demanding to be on the safe side.
+*/
+#define PRECISION_REQUIREMENT 1e-5f
+
+/*
+Solves the equation f(x)=0 for -1 <= x <= 1, where
+
+	f(x) = (Ax + B) sqrt(Cx^2 + D) + Ex.
+*/
+static float solve_the_equation(float A, float B, float C, float D, float E)
+{
+	/*
+	This initial guessing thing is very important. I didn't have much luck without:
+	- If I squared both sides to make it a 4th degree polynomial, then squaring
+	  both sides gave me "fake solutions". This is why your math teacher wants you
+	  to be careful when you ^2 both sides.
+	- Without squaring both sides, I got sqrt(x^2 - bla) type thing which
+	  wasn't defined for all x. Sometimes Newton's method wanted to suggest a value
+	  outside the interval where it was defined.
+	*/
+
+	float xguess = 0;   // initial value never used, but makes compiler happy
+	float absmin = HUGE_VALF;
+
+	for (float x = -1; x <= 1; x += 0.1f) {
+		float f = (A*x + B)*sqrtf(C*x*x + D) + E*x;
+		assert(isfinite(f));
+
+		float absval = fabsf(f);
+		if (absval < absmin) {
+			absmin = absval;
+			xguess = x;
+		}
+	}
+
+	/*
+	Now newton's method to refine our guess quickly. Works well most of the time,
+	but some special cases occur if you jump a lot with both players by smashing
+	buttons on keyboard.
+	*/
+	float x = xguess;
+	int iter = 0;
+	float sub;
+	do {
+
+#define LOG(MSG) nonfatal_error_printf( \
+	MSG" (iter=%d x=%.10f xguess=%.10f A=%.10f B=%.10f C=%.10f D=%.10f E=%.10f)", \
+	iter, x, xguess, A, B, C, D, E)
+
+		/*
+		Could use a squared-both-sides version of the equation here to avoid
+		calculating square roots, but this works quickly enough
+		*/
+		float sqrtstuff = sqrtf(C*x*x + D);
+		float sqrtstuff_derivative = C*x/sqrtstuff;
+		float f = (A*x + B)*sqrtstuff + E*x;
+		float f_derivative = A*sqrtstuff + (A*x + B)*sqrtstuff_derivative + E;
+		if (f_derivative == 0) {
+			LOG("derivative is zero");
+			return xguess;
+		}
+
+		// newton's method formula from high school: x_(n+1) = x_n - f(x_n)/f'(x_n)
+		// this doesn't behave nicely if derivative is zero or small
+		sub = f / f_derivative;
+		if (!isfinite(sub)) {
+			LOG("division by nonzero derivative gave something weird");
+			return xguess;
+		}
+		x -= sub;
+
+		if (fabs(x - xguess) > 0.3f) {
+			LOG("x value is far away from guess");
+			return xguess;
+		}
+		if (fabsf(x) > 1) {
+			LOG("x value not between -1 and 1");
+			return xguess;
+		}
+
+		// it typically takes 3 or 4 iterations to make it precise, so this limit is plenty
+		if (++iter == 20) {
+			LOG("hitting max number of iterations");
+			break;
+		}
+#undef LOG
+	} while (fabsf(sub) > PRECISION_REQUIREMENT);
+
+	return x;
+}
+
+/*
+Find the x coordinates of the points that are distance 1 away from the
+origin-centered ellipse
+
+	(x/a)^2 + (y/b)^2 = 1
+
+given the y coordinate of the points. This returns false if there are no points.
+When this returns true, you always get *pointx1 <= 0 and *pointx2 >= 0.
+*/
+static bool origin_centered_ellipse_distance1_points_with_given_y(
+	float a, float b, float pointy, float *pointx1, float *pointx2)
+{
+	assert(a > 0);
+	assert(b > 0);
+
+	// Ensure that solution exists: b+1 is how far up or down from x axis the points can be
+	if (fabsf(pointy) > b+1)
+		return false;
+
+	/*
+	We parametrize the ellipse as (x,y) = E(t), where
+
+		E(t) = (a cos(t), b sin(t)).
+
+	As t goes from 0 to 2pi, this point goes around the ellipse counter-clockwise.
+	With a=b=1, this is the high-school unit circle, and here a and b are just
+	stretching that.
+
+	We measure the distance from ellipse to (pointx,pointy) perpendicularly to the
+	ellipse. A vector going counter-clockwise along the ellipse is given by
+
+		E'(t) = (-a sin(t), b cos(t)).
+
+	Consider the rotation
+
+		rotate90clockwise(x, y) = (y, -x).
+
+	The vector
+
+		A(t) = rotate90clockwise(E'(t)) = (b cos(t), a sin(t))
+
+	is pointing away from the ellipse perpendicularly. Now we want
+
+		E(t) + A(t)/|A(t)| = (pointx, pointy)
+
+	where A(t)/|A(t)| is a vector of length 1 pointing away from the ellipse.
+	Comparing y coordinates of the vectors and simplifying gives
+
+		(A sin(t) + B) sqrt(C sin^2(t) + D) + E sin(t) = 0
+
+	with the following constants:
+	*/
+	float A = -b;
+	float B = pointy;
+	float C = a*a - b*b;
+	float D = b*b;
+	float E = -a;
+	float sint = solve_the_equation(A, B, C, D, E);
+
+	/*
+	Above we had an equation of vectors, and so far we used only the y coordinates
+	part of it. The x coordinate part gives
+
+		pointx = ( a + b/sqrt(a^2 sin^2(t) + b^2 cos^2(t)) ) cos(t).
+
+	We have cos(t) = +- sqrt(1 - sin^2(t)), with two choices, and hence we get two
+	different x coordinates symmetrically as expected.
+	*/
+	float costSQUARED = 1 - sint*sint;
+	*pointx2 = ( a + b/sqrtf(a*a*sint*sint + b*b*costSQUARED) )*sqrtf(costSQUARED);
+	*pointx1 = -*pointx2;
+	return true;
+}
+
+/*
+How much should the ellipse move in x direction to make it not intersect the
+origin-centered unit circle?
+*/
+static float ellipse_move_amount_x_for_origin_centered_unit_circle(
+	float a, float b, Vec2 center)
+{
+	// If 0 is between these, then the unit circle and ellipse intersect
+	float xmin, xmax;
+
+	/*
+	For calling this function, we need to shift coordinates so that ellipse is at
+	origin. The unit circle's location is (-center.x, -center.y) in those
+	coordinates.
+	*/
+	if (!origin_centered_ellipse_distance1_points_with_given_y(
+			a, b, -center.y, &xmin, &xmax))
+	{
+		return 0;
+	}
+	assert(xmin <= xmax);
+
+	// Convert back to original coordinates
+	xmin += center.x;
+	xmax += center.x;
+	assert(xmin <= xmax);
+
+	if (!( xmin < 0 && 0 < xmax ))
+		return 0;
+
+	// Ellipse should move
+	if (center.x > 0) {
+		// Ellipse should move right
+		assert(xmin < 0);
+		return fabsf(xmin);
+	} else {
+		// Ellipse should move left
+		assert(xmax > 0);
+		return xmax;
+	}
+}
+
+float ellipse_move_amount_x(
+	float a1, float b1, Vec2 center1,
+	float a2, float b2, Vec2 center2)
+{
+	/*
+	Shift coordinates so that ellipse 2 is centered, and then stretch so that
+	ellipse2 becomes a unit circle
+	*/
+	float a1new = a1 / a2;
+	float b1new = b1 / b2;
+	Vec2 center1new = { (center1.x - center2.x)/a2, (center1.y - center2.y)/b2 };
+
+	float xdiff = ellipse_move_amount_x_for_origin_centered_unit_circle(a1new, b1new, center1new);
+
+	// Result is difference of x coords, unaffected by shifting, but must be unstretched
+	return xdiff * a2;
+}

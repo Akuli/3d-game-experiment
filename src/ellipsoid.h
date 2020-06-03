@@ -52,5 +52,19 @@ struct Ellipsoid *ellipsoid_load(const char *filename, Vec3 center);
 // draw ellipsoid to screen if camera is not inside ellipsoid
 void ellipsoid_show(struct Ellipsoid *el, const struct Camera *cam);
 
+/*
+Returns how much ellipsoids should be moved apart from each other to make them not
+intersect. The moving should happen in xz plane direction (no moving vertically).
+Never returns negative. If this returns 0, then the ellipsoids don't intersect
+each other.
+*/
+float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid *el2);
+
+/*
+Move each ellipsoid away from the other one by half of the given amount without
+changing y coordinate of location
+*/
+void ellipsoid_move_apart(struct Ellipsoid *el1, struct Ellipsoid *el2, float mv);
+
 
 #endif  // ELLIPSOID_H

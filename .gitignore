@@ -2,3 +2,4 @@ obj/
 game
 callgrind.out
 graph.*
+testrunner

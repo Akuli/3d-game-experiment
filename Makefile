@@ -10,12 +10,13 @@ LDFLAGS += -lSDL2 -lSDL2_mixer
 LDFLAGS += -lm
 
 SRC := $(wildcard src/*.c)
+TESTS_SRC := $(wildcard tests/*.c)
 HEADERS := $(wildcard src/*.h)
 
 # order matters, parallelizing make works best when slowly compiling things are first
 OBJ := obj/stb_image.o obj/stb_image_resize.o $(SRC:src/%.c=obj/%.o)
 
-all: game
+all: game test
 
 # doesn't use .gitignore because it's sometimes handy to have files being
 # ignored but not cleaned on rebuild
@@ -40,6 +41,14 @@ obj/stb_image_resize.o: $(wildcard stb/*.h)
 
 game: $(OBJ) $(HEADERS)
 	$(CC) $(CFLAGS) $(OBJ) -o $@ $(LDFLAGS)
+
+# this will need to be changed if i add more than one file of tests
+testrunner: $(TESTS_SRC) $(SRC)
+	$(CC) -o $@ $(TESTS_SRC) $(CFLAGS) $(LDFLAGS)
+
+.PHONY: test
+test: testrunner
+	./$<
 
 
 # profiling stuff

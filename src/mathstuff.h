@@ -1,12 +1,19 @@
-// 3d geometry stuff
+// geometry stuff, mostly 3d and cartesian coordinates
 
 #ifndef MATHSTUFF_H
 #define MATHSTUFF_H
 
 #include <stdbool.h>
 
+#define min(a,b) ((a)<(b) ? (a) : (b))
+#define max(a,b) ((a)>(b) ? (a) : (b))
+#define min4(a,b,c,d) min(min(a,b),min(c,d))
+#define max4(a,b,c,d) max(max(a,b),max(c,d))
+
+// matrices are structs because that way it's easier to return them and stuff
+typedef struct { float x,y; } Vec2;
 typedef struct { float x,y,z; } Vec3;
-typedef struct { float rows[3][3]; } Mat3;   // struct because returning matrices
+typedef struct { float rows[3][3]; } Mat3;
 
 // v+w
 Vec3 vec3_add(Vec3 v, Vec3 w);
@@ -65,6 +72,13 @@ Mat3 mat3_inverse(Mat3 M);
 // slow to compute because uses trig funcs, so don't call this in a loop
 // angle is in radians, like everything
 Mat3 mat3_rotation_xz(float angle);
+
+/*
+Like mat3_rotation_xz, but takes cos(angle) and sin(angle) instead of angle. Useful
+if you have cos and sin but you don't want to compute the angle. (If you really
+need to, you can use atan2 for computing the angle anyway.)
+*/
+Mat3 mat3_rotation_xz_sincos(float sin, float cos);
 
 
 // any plane in 3D, behaves nicely no matter which way plane is oriented

@@ -151,17 +151,22 @@ Mat3 mat3_inverse(Mat3 M)
 	);
 }
 
-Mat3 mat3_rotation_xz(float angle)
+Mat3 mat3_rotation_xz_sincos(float sin, float cos)
 {
 	/*
 	if you have understood 3blue1brown's linear transform stuff, then you should
 	be able to write this down without looking it up
 	*/
 	return (Mat3){ .rows = {
-		{ cosf(angle),  0, sinf(angle) },
-		{ 0,            1, 0           },
-		{ -sinf(angle), 0, cosf(angle) },
+		{ cos,  0, sin },
+		{ 0,    1, 0   },
+		{ -sin, 0, cos },
 	}};
+}
+
+Mat3 mat3_rotation_xz(float angle)
+{
+	return mat3_rotation_xz_sincos(sinf(angle), cosf(angle));
 }
 
 
