@@ -129,7 +129,7 @@ doesn't support transparency.
 #define G_INCREMENT 0
 #define B_INCREMENT 0
 
-#define USE_TRANSPARENCY 0
+#define USE_TRANSPARENCY 1
 
 static void draw_hline(SDL_Surface *surf, int x1, int x2, int y)
 {

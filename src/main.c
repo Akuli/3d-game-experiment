@@ -8,6 +8,7 @@
 #include "camera.h"
 #include "common.h"
 #include "mathstuff.h"
+#include "place.h"
 #include "player.h"
 #include "showall.h"
 #include "sound.h"
@@ -20,7 +21,7 @@
 // includes all the GameObjects that all players should see
 struct GameState {
 	struct Player players[2];
-	struct Wall walls[4];
+	const struct Place *place;
 };
 
 
@@ -94,6 +95,8 @@ int main(int argc, char **argv)
 	if (!gs)
 		fatal_error("not enough memory");
 
+	gs->place = &place_list()[0];
+
 	gs->players[0].ellipsoid = ellipsoid_load("players/Tux.png", (Vec3){0,0.5f,-2});
 	gs->players[1].ellipsoid = ellipsoid_load("players/Chick.png", (Vec3){2,0.5f,-2});
 
@@ -103,13 +106,6 @@ int main(int argc, char **argv)
 
 	struct Ellipsoid *els[] = { gs->players[0].ellipsoid, gs->players[1].ellipsoid };
 
-	for (unsigned i = 0; i < sizeof(gs->walls)/sizeof(gs->walls[0]); i++) {
-		gs->walls[i].dir = WALL_DIR_ZY;
-		gs->walls[i].startx = 1;
-		gs->walls[i].startz = 2 + (int)i;
-		wall_initcaches(&gs->walls[i]);
-	}
-
 	uint32_t time = 0;
 	while(1){
 		SDL_Event event;
@@ -118,8 +114,8 @@ int main(int argc, char **argv)
 				goto exit;
 		}
 
-		player_eachframe(&gs->players[0], FPS, gs->walls, sizeof(gs->walls)/sizeof(gs->walls[0]));
-		player_eachframe(&gs->players[1], FPS, gs->walls, sizeof(gs->walls)/sizeof(gs->walls[0]));
+		for(int i=0; i < 2; i++)
+			player_eachframe(&gs->players[i], FPS, gs->place->walls, gs->place->nwalls);
 
 		float bump = ellipsoid_bump_amount(els[0], els[1]);
 		if (bump != 0)
@@ -129,8 +125,7 @@ int main(int argc, char **argv)
 
 		for (int i = 0; i < 2; i++) {
 			show_all(
-				gs->walls, sizeof(gs->walls)/sizeof(gs->walls[0]),
-				els, 2,
+				gs->place->walls, gs->place->nwalls, els, 2,
 				&gs->players[i].cam);
 		}
 

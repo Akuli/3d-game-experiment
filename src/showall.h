@@ -5,11 +5,11 @@
 
 #include <stddef.h>
 #include "ellipsoid.h"
+#include "place.h"
 #include "wall.h"
 
 #define SHOWALL_MAX_BALLS 2
-#define SHOWALL_MAX_WALLS 50
-#define SHOWALL_MAX_OBJECTS (SHOWALL_MAX_BALLS + SHOWALL_MAX_WALLS)
+#define SHOWALL_MAX_OBJECTS (SHOWALL_MAX_BALLS + PLACE_MAX_WALLS)
 
 void show_all(
 	const struct Wall *walls, size_t nwalls,

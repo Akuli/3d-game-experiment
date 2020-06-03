@@ -67,41 +67,41 @@ static void add_gameobj_to_array_if_visible(
 {
 	float centerz = camera_point_world2cam(cam, center).z;
 	if (centerz < 0) {   // in front of camera
-		arr[*len].kind = kind;
-		arr[*len].ptr = ptr;
-		arr[*len].centerz = centerz;
-		(*len)++;
+		arr[(*len)++] = (struct GameObj){
+			.kind = kind,
+			.ptr = ptr,
+			.centerz = centerz,
+			0,   // rest zeroed, SO MUCH FASTER than memset
+		};
 	}
 }
 
-static void get_sorted_gameobj_pointers(
+static struct GameObj **get_sorted_gameobj_pointers(
 	struct GameObj *walls, size_t nwalls,
-	struct GameObj *els, size_t nels,
-	struct GameObj **res)
+	struct GameObj *els, size_t nels)
 {
+	static struct GameObj *res[SHOWALL_MAX_OBJECTS];
 	for (size_t i = 0; i < nwalls; i++)
 		res[i] = &walls[i];
 	for (size_t i = 0; i < nels; i++)
 		res[nwalls + i] = &els[i];
 	qsort(res, nwalls + nels, sizeof(res[0]), compare_gameobj_ptrs_by_centerz);
+	return res;
 }
 
-static void show(struct GameObj *gobj, struct Camera *cam, unsigned int depth)
+static void show(struct GameObj *gobj, struct Camera *cam)
 {
 	if (gobj->shown)
 		return;
 
 	/*
-	Without the sanity check, this recurses infinitely when there is a dependency
-	cycle. I don't know whether it's possible to create one, and I want to avoid
-	random crashes.
+	prevent infinite recursion on dependency cycle by setting this early.
+	I don't know what causes dependency cycles, but they happen sometimes.
 	*/
-	if (depth <= SHOWALL_MAX_OBJECTS) {
-		for (size_t i = 0; i < gobj->ndeps; i++)
-			show(gobj->deps[i], cam, depth+1);
-	} else {
-		nonfatal_error("hitting recursion depth limit");
-	}
+	gobj->shown = true;
+
+	for (size_t i = 0; i < gobj->ndeps; i++)
+		show(gobj->deps[i], cam);
 
 	switch(gobj->kind) {
 	case BALL:
@@ -119,14 +119,11 @@ void show_all(
 	      struct Ellipsoid **els, size_t nels,
 	struct Camera *cam)
 {
-	assert(nwalls <= SHOWALL_MAX_WALLS);
+	assert(nwalls <= PLACE_MAX_WALLS);
 	assert(nels <= SHOWALL_MAX_BALLS);
 
 	// these are static to keep stack usage down
-	static struct GameObj wallobjs[SHOWALL_MAX_WALLS], elobjs[SHOWALL_MAX_BALLS];
-
-	memset(wallobjs, 0, sizeof(wallobjs));
-	memset(elobjs, 0, sizeof(elobjs));
+	static struct GameObj wallobjs[PLACE_MAX_WALLS], elobjs[SHOWALL_MAX_BALLS];
 	size_t nwallobjs = 0, nelobjs = 0;
 
 	for (size_t i = 0; i < nwalls; i++)
@@ -139,10 +136,9 @@ void show_all(
 			elobjs, &nelobjs, cam,
 			els[i]->center, BALL, (union GameObjPtr){ .ellipsoid = els[i] });
 
-	struct GameObj *sorted[SHOWALL_MAX_OBJECTS];
 	figure_out_deps_for_ellipsoids_behind_walls(wallobjs, nwallobjs, elobjs, nelobjs, cam);
-	get_sorted_gameobj_pointers(wallobjs, nwallobjs, elobjs, nelobjs, sorted);
+	struct GameObj **sorted = get_sorted_gameobj_pointers(wallobjs, nwallobjs, elobjs, nelobjs);
 
 	for (size_t i = 0; i < nwallobjs + nelobjs; i++)
-		show(sorted[i], cam, 0);
+		show(sorted[i], cam);
 }
