@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "common.h"
+#include "log.h"
 #include "mathstuff.h"
 
 /*
@@ -32,7 +32,8 @@ static float solve_the_equation(float A, float B, float C, float D, float E)
 	float xguess = 0;   // initial value never used, but makes compiler happy
 	float absmin = HUGE_VALF;
 
-	for (float x = -1; x <= 1; x += 0.1f) {
+	float guessingstep = 0.1f;
+	for (float x = -1; x <= 1; x += guessingstep) {
 		float f = (A*x + B)*sqrtf(C*x*x + D) + E*x;
 		assert(isfinite(f));
 
@@ -53,9 +54,9 @@ static float solve_the_equation(float A, float B, float C, float D, float E)
 	float sub;
 	do {
 
-#define LOG(MSG) nonfatal_error_printf( \
-	MSG" (iter=%d x=%.10f xguess=%.10f A=%.10f B=%.10f C=%.10f D=%.10f E=%.10f)", \
-	iter, x, xguess, A, B, C, D, E)
+#define LOG(MSG) \
+	log_printf("%s (iter=%d x=%.10f xguess=%.10f A=%.10f B=%.10f C=%.10f D=%.10f E=%.10f)", \
+	(MSG), iter, x, xguess, A, B, C, D, E)
 
 		/*
 		Could use a squared-both-sides version of the equation here to avoid
@@ -79,7 +80,7 @@ static float solve_the_equation(float A, float B, float C, float D, float E)
 		}
 		x -= sub;
 
-		if (fabs(x - xguess) > 0.3f) {
+		if (fabs(x - xguess) > 2*guessingstep) {
 			LOG("x value is far away from guess");
 			return xguess;
 		}

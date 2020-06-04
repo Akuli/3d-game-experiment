@@ -1,7 +1,7 @@
 #include "player.h"
 #include <assert.h>
 #include "ellipsoid.h"
-#include "common.h"
+#include "log.h"
 #include "mathstuff.h"
 #include "sound.h"
 #include "wall.h"
@@ -63,8 +63,9 @@ void player_eachframe(struct Player *plr, unsigned int fps, const struct Wall *w
 
 	plr->ellipsoid->xzradius = 0.3f;
 	plr->ellipsoid->yradius = get_y_radius(plr, fps);
-	plr->ellipsoid->center.y = y + plr->ellipsoid->yradius;
 	ellipsoid_update_transforms(plr->ellipsoid);
+
+	plr->ellipsoid->center.y = y + plr->ellipsoid->yradius;
 
 	Mat3 rot = mat3_rotation_xz(plr->ellipsoid->angle);
 	Mat3 antirot = mat3_rotation_xz(-plr->ellipsoid->angle);

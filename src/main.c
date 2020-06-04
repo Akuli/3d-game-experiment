@@ -6,7 +6,7 @@
 
 #include "ellipsoid.h"
 #include "camera.h"
-#include "common.h"
+#include "log.h"
 #include "mathstuff.h"
 #include "place.h"
 #include "player.h"
@@ -72,7 +72,7 @@ static SDL_Surface *create_half_surface(SDL_Surface *surf, int xoffset, int widt
 		width, surf->h,
 		32, surf->pitch, 0, 0, 0, 0);
 	if (!res)
-		fatal_sdl_error("SDL_CreateRGBSurfaceFROM failed");
+		log_printf_abort("SDL_CreateRGBSurfaceFROM failed: %s", SDL_GetError());
 	return res;
 }
 
@@ -85,20 +85,20 @@ int main(int argc, char **argv)
 	SDL_Window *win = SDL_CreateWindow(
 		"TODO: title here", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 800, 600, 0);
 	if (!win)
-		fatal_sdl_error("SDL_CreateWindow failed");
+		log_printf_abort("SDL_CreateWindow failed: %s", SDL_GetError());
 
 	SDL_Surface *winsurf = SDL_GetWindowSurface(win);
 	if (!winsurf)
-		fatal_sdl_error("SDL_GetWindowSurface failed");
+		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 
 	struct GameState *gs = calloc(1, sizeof(*gs));
 	if (!gs)
-		fatal_error("not enough memory");
+		log_printf_abort("not enough memory");
 
 	gs->place = &place_list()[0];
 
-	gs->players[0].ellipsoid = ellipsoid_load("players/Tux.png", (Vec3){0,0.5f,-2});
-	gs->players[1].ellipsoid = ellipsoid_load("players/Chick.png", (Vec3){2,0.5f,-2});
+	gs->players[0].ellipsoid = ellipsoid_load("players/Tux.png",   (Vec3){0.5f, 0.5f, 0.5f});
+	gs->players[1].ellipsoid = ellipsoid_load("players/Chick.png", (Vec3){1.5f, 0.5f, 0.5f});
 
 	// This turned out to be much faster than blitting
 	gs->players[0].cam.surface = create_half_surface(winsurf, 0, winsurf->w/2);
@@ -107,6 +107,9 @@ int main(int argc, char **argv)
 	struct Ellipsoid *els[] = { gs->players[0].ellipsoid, gs->players[1].ellipsoid };
 
 	uint32_t time = 0;
+	int counter = 0;
+	float percentsum = 0;
+
 	while(1){
 		SDL_Event event;
 		while(SDL_PollEvent(&event)) {
@@ -133,8 +136,13 @@ int main(int argc, char **argv)
 		SDL_UpdateWindowSurface(win);
 
 		uint32_t curtime = SDL_GetTicks();
-		fprintf(stderr, "speed percentage thingy = %.1f%%\n",
-			(float)(curtime - time) / (1000/FPS) * 100.f);
+
+		percentsum += (float)(curtime - time) / (1000/FPS) * 100.f;
+		if (++counter == FPS) {
+			fprintf(stderr, "speed percentage average = %.2f%%\n", percentsum / (float)counter);
+			counter = 0;
+			percentsum = 0;
+		}
 
 		time += 1000/FPS;
 		if (curtime <= time) {

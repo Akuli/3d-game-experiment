@@ -7,7 +7,7 @@
 #include <stb_image.h>
 #include <stb_image_resize.h>
 #include "camera.h"
-#include "common.h"
+#include "log.h"
 #include "ellipsemove.h"
 #include "mathstuff.h"
 
@@ -58,7 +58,7 @@ static void read_image(const char *filename, SDL_Color *res)
 {
 	FILE *f = fopen(filename, "rb");
 	if (!f)
-		fatal_error_printf("fopen failed: %s", strerror(errno));
+		log_printf_abort("fopen failed: %s", strerror(errno));
 
 	/*
 	On a "typical" system, we can convert between SDL_Color arrays and uint8_t
@@ -74,7 +74,7 @@ static void read_image(const char *filename, SDL_Color *res)
 	SDL_Color *filedata = (SDL_Color*) stbi_load_from_file(f, &filew, &fileh, &chansinfile, 4);
 	fclose(f);
 	if (!filedata)
-		fatal_error_printf("stbi_load_from_file failed: %s", stbi_failure_reason());
+		log_printf_abort("stbi_load_from_file failed: %s", stbi_failure_reason());
 
 	replace_alpha_with_average(filedata, (size_t)filew*(size_t)fileh);
 
@@ -84,14 +84,14 @@ static void read_image(const char *filename, SDL_Color *res)
 		4);
 	stbi_image_free(filedata);
 	if (!ok)
-		fatal_error_printf("stbir_resize_uint8 failed: %s", stbi_failure_reason());
+		log_printf_abort("stbir_resize_uint8 failed: %s", stbi_failure_reason());
 }
 
 struct Ellipsoid *ellipsoid_load(const char *filename, Vec3 center)
 {
 	struct Ellipsoid *el = malloc(sizeof(*el));
 	if (!el)
-		fatal_error("not enough memory");
+		log_printf_abort("not enough memory");
 
 	el->center = center;
 	read_image(filename, (SDL_Color*) el->image);
@@ -217,6 +217,14 @@ get_visibility_plane(const struct Ellipsoid *el, const struct Camera *cam)
 
 void ellipsoid_show(struct Ellipsoid *el, const struct Camera *cam)
 {
+	/*
+	static to keep stack usage down, also turns out to be quite a bit faster than
+	placing these caches into el. I also tried putting these to stack and that was
+	about same speed as static.
+	*/
+	static Vec3 vectorcache[ELLIPSOID_PIXELS_VERTICALLY + 1][ELLIPSOID_PIXELS_AROUND];
+	static bool sidecache[ELLIPSOID_PIXELS_VERTICALLY + 1][ELLIPSOID_PIXELS_AROUND];
+
 	// vplane is in unit ball coordinates
 	struct Plane vplane = get_visibility_plane(el, cam);
 
@@ -233,13 +241,13 @@ void ellipsoid_show(struct Ellipsoid *el, const struct Camera *cam)
 	for (size_t v = 0; v < ELLIPSOID_PIXELS_VERTICALLY + 1; v++) {
 		for (size_t a = 0; a < ELLIPSOID_PIXELS_AROUND; a++) {
 			// this is perf critical code
+
+			sidecache[v][a] = plane_whichside(vplane, (*usvecs)[v][a]);
+
 			// turns out that in-place operations are measurably faster
-
-			el->sidecache[v][a] = plane_whichside(vplane, (*usvecs)[v][a]);
-
-			el->vectorcache[v][a] = (*usvecs)[v][a];
-			vec3_apply_matrix(&el->vectorcache[v][a], unitball2cam);
-			vec3_add_inplace(&el->vectorcache[v][a], center);
+			vectorcache[v][a] = (*usvecs)[v][a];
+			vec3_apply_matrix(&vectorcache[v][a], unitball2cam);
+			vec3_add_inplace(&vectorcache[v][a], center);
 		}
 	}
 
@@ -251,10 +259,10 @@ void ellipsoid_show(struct Ellipsoid *el, const struct Camera *cam)
 
 			// this is perf critical code
 
-			if (!el->sidecache[v][a] &&
-				!el->sidecache[v][a2] &&
-				!el->sidecache[v2][a] &&
-				!el->sidecache[v2][a2])
+			if (!sidecache[v][a] &&
+				!sidecache[v][a2] &&
+				!sidecache[v2][a] &&
+				!sidecache[v2][a2])
 			{
 				continue;
 			}
@@ -262,10 +270,10 @@ void ellipsoid_show(struct Ellipsoid *el, const struct Camera *cam)
 			SDL_Rect rect;
 			if (camera_get_containing_rect(
 					cam, &rect,
-					el->vectorcache[v][a],
-					el->vectorcache[v][a2],
-					el->vectorcache[v2][a],
-					el->vectorcache[v2][a2]))
+					vectorcache[v][a],
+					vectorcache[v][a2],
+					vectorcache[v2][a],
+					vectorcache[v2][a2]))
 			{
 				SDL_FillRect(
 					cam->surface, &rect,

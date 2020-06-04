@@ -71,7 +71,7 @@ static void add_gameobj_to_array_if_visible(
 			.kind = kind,
 			.ptr = ptr,
 			.centerz = centerz,
-			0,   // rest zeroed, SO MUCH FASTER than memset
+			0,   // rest zeroed, measurably faster than memset
 		};
 	}
 }
@@ -89,10 +89,16 @@ static struct GameObj **get_sorted_gameobj_pointers(
 	return res;
 }
 
-static void show(struct GameObj *gobj, struct Camera *cam)
+static void show(struct GameObj *gobj, struct Camera *cam, unsigned int depth)
 {
 	if (gobj->shown)
 		return;
+
+	if (depth > SHOWALL_MAX_OBJECTS) {
+		// don't know when this could happen
+		log_printf("hitting recursion depth limit");
+		return;
+	}
 
 	/*
 	prevent infinite recursion on dependency cycle by setting this early.
@@ -101,7 +107,7 @@ static void show(struct GameObj *gobj, struct Camera *cam)
 	gobj->shown = true;
 
 	for (size_t i = 0; i < gobj->ndeps; i++)
-		show(gobj->deps[i], cam);
+		show(gobj->deps[i], cam, depth+1);
 
 	switch(gobj->kind) {
 	case BALL:
@@ -111,7 +117,6 @@ static void show(struct GameObj *gobj, struct Camera *cam)
 		wall_show(gobj->ptr.wall, cam);
 		break;
 	}
-	gobj->shown = true;
 }
 
 void show_all(
@@ -140,5 +145,5 @@ void show_all(
 	struct GameObj **sorted = get_sorted_gameobj_pointers(wallobjs, nwallobjs, elobjs, nelobjs);
 
 	for (size_t i = 0; i < nwallobjs + nelobjs; i++)
-		show(sorted[i], cam);
+		show(sorted[i], cam, 0);
 }

@@ -1,6 +1,6 @@
 #include "place.h"
 #include <assert.h>
-#include "common.h"
+#include "log.h"
 
 /*
 Small language for specifying places as strings:
@@ -37,7 +37,7 @@ static void add_wall(struct Place *pl, unsigned int x, unsigned int z, enum Wall
 	w->startx = (int)x;
 	w->startz = (int)z;
 	w->dir = dir;
-	wall_initcaches(w);
+	wall_init(w);
 }
 
 static void init_place(struct Place *pl)
@@ -70,7 +70,7 @@ static void init_place(struct Place *pl)
 		for (unsigned x = 0; x < pl->xsize; x++) {
 			char c = pl->spec[z][x];
 			if (c != '|' && c != '_' && c != 'L' && c != ' ')
-				fatal_error_printf("bad wall character '%c'", c);
+				log_printf_abort("bad wall character '%c'", c);
 
 			// walls for x=0 are added later
 			if ((c == '|' || c == 'L') && (x != 0))

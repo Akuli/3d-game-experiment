@@ -30,10 +30,10 @@ float camera_yzr_to_screeny(const struct Camera *cam, float yzr) { return (float
 float camera_screenx_to_xzr(const struct Camera *cam, float screenx) { return (-screenx + (float)cam->surface->w/2)/SCALING_FACTOR; }
 float camera_screeny_to_yzr(const struct Camera *cam, float screeny) { return (screeny - (float)cam->surface->h/2)/SCALING_FACTOR; }
 
-struct FPoint camera_point_cam2fpoint(const struct Camera *cam, Vec3 pt)
+Vec2 camera_point_cam2screen(const struct Camera *cam, Vec3 pt)
 {
 	assert(pt.z < 0);
-	return (struct FPoint){
+	return (Vec2){
 		.x = camera_xzr_to_screenx(cam, pt.x/pt.z),
 		.y = camera_yzr_to_screeny(cam, pt.y/pt.z),
 	};

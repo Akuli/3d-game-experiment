@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 #include <SDL2/SDL.h>
-#include "common.h"
+#include "log.h"
 #include "mathstuff.h"
 
 /*
@@ -38,14 +38,10 @@ float camera_xzr_to_screenx(const struct Camera *cam, float xzr);
 float camera_yzr_to_screeny(const struct Camera *cam, float yzr);
 
 /*
-This function loses some precision when it rounds the coordinates to nearest
-integer values. I saw SDL_FPoint in SDL's source code, but it's not documented
-anywhere and might not even be available in SDL.h.
-
 This asserts that pt.z is negative because otherwise the point is not in front
 of the player.
 */
-struct FPoint camera_point_cam2fpoint(const struct Camera *cam, Vec3 pt);
+Vec2 camera_point_cam2screen(const struct Camera *cam, Vec3 pt);
 
 /* Find the smallest rectangle containing the given 4 points
 

@@ -21,11 +21,11 @@ static int linear_map_int(int srcmin, int srcmax, int dstmin, int dstmax, int va
 	return (int)linear_map((float)srcmin, (float)srcmax, (float)dstmin, (float)dstmax, (float)val);
 }
 
-void wall_initcaches(struct Wall *w)
+void wall_init(struct Wall *w)
 {
 	for (int xznum = 0; xznum < WALL_CP_COUNT; xznum++) {
 		for (int ynum = 0; ynum < WALL_CP_COUNT; ynum++) {
-			Vec3 *ptr = &w->collpoint_cache[xznum][ynum];
+			Vec3 *ptr = &w->collpoints[xznum][ynum];
 			ptr->x = (float)w->startx;
 			ptr->y = linear_map(0, WALL_CP_COUNT-1, Y_MIN, Y_MAX, (float)ynum);
 			ptr->z = (float)w->startz;
@@ -49,7 +49,7 @@ void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el)
 
 	for (int xznum = 0; xznum < WALL_CP_COUNT; xznum++) {
 		for (int ynum = 0; ynum < WALL_CP_COUNT; ynum++) {
-			Vec3 collpoint = mat3_mul_vec3(el->transform_inverse, w->collpoint_cache[xznum][ynum]);
+			Vec3 collpoint = mat3_mul_vec3(el->transform_inverse, w->collpoints[xznum][ynum]);
 			Vec3 diff = vec3_sub(center, collpoint);
 
 			float distSQUARED = vec3_lengthSQUARED(diff);
@@ -131,27 +131,30 @@ doesn't support transparency.
 
 #define USE_TRANSPARENCY 1
 
+static void swap(int *a, int *b)
+{
+	int tmp = *a;
+	*a = *b;
+	*b = tmp;
+}
+
 static void draw_hline(SDL_Surface *surf, int x1, int x2, int y)
 {
-#if USE_TRANSPARENCY
 	if (y < 0 || y >= surf->h)
 		return;
+	if (x1 > x2)
+		swap(&x1, &x2);
 
-	if (x1 > x2) {
-		int tmp = x1;
-		x1 = x2;
-		x2 = tmp;
-	}
-
-	if (x1 < 0)
-		x1 = 0;
-	if (x2 >= surf->w)
-		x2 = surf->w - 1;
+#if USE_TRANSPARENCY
+	x1 = max(x1, 0);
+	x2 = max(x2, 0);
+	x1 = min(x1, surf->w - 1);
+	x2 = min(x2, surf->w - 1);
 
 	// small optimization
 	uint32_t blackturns2 = SDL_MapRGB(surf->format, R_INCREMENT, G_INCREMENT, B_INCREMENT);
 
-	uint32_t *rowptr = (uint32_t*)((uint8_t *)surf->pixels + y*surf->pitch);
+	uint32_t *rowptr = (uint32_t*)((char *)surf->pixels + y*surf->pitch);
 	for (int x = x1; x <= x2; x++) {
 		if (rowptr[x] == 0)
 			rowptr[x] = blackturns2;
@@ -166,8 +169,10 @@ static void draw_hline(SDL_Surface *surf, int x1, int x2, int y)
 	}
 #else
 	SDL_FillRect(
-		surf, &(SDL_Rect){ min(x1,x2), y, abs(x1-x2), 1 },
+		surf, &(SDL_Rect){ x1, y, x2-x1, 1 },
 		SDL_MapRGB(surf->format, R_INCREMENT, G_INCREMENT, B_INCREMENT));
+	SDL_FillRect(surf, &(SDL_Rect){ x1, y, 1, 1 }, SDL_MapRGB(surf->format, 0, 0, 0));
+	SDL_FillRect(surf, &(SDL_Rect){ x2, y, 1, 1 }, SDL_MapRGB(surf->format, 0, 0, 0));
 #endif
 }
 
@@ -186,11 +191,11 @@ void wall_show(const struct Wall *w, const struct Camera *cam)
 	Not using floats here caused funny bugs that happened because sorting
 	rounded values.
 	*/
-	struct FPoint fcor[4];
+	Vec2 fcor[4];
 	for (int i = 0; i < 4; i++) {
 		if (vcor[i].z >= 0)  // behind camera
 			return;
-		fcor[i] = camera_point_cam2fpoint(cam, vcor[i]);
+		fcor[i] = camera_point_cam2screen(cam, vcor[i]);
 	}
 
 	qsort(fcor, 4, sizeof(fcor[0]), compare_point_y);

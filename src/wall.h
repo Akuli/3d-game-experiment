@@ -30,11 +30,11 @@ struct Wall {
 	enum WallDirection dir;
 
 	// don't use outside wall.c
-	Vec3 collpoint_cache[WALL_CP_COUNT][WALL_CP_COUNT];
+	Vec3 collpoints[WALL_CP_COUNT][WALL_CP_COUNT];
 };
 
-// Call this after creating a new Wall
-void wall_initcaches(struct Wall *w);
+// Call this after setting startx, startz and dir of a new Wall
+void wall_init(struct Wall *w);
 
 // moves el so that it doesn't bump
 void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el);

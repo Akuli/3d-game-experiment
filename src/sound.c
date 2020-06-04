@@ -1,11 +1,9 @@
 #include "sound.h"
 #include <assert.h>
 #include <stdlib.h>
+#include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
-#include "common.h"
-
-#define nonfatal_mix_error_printf(FMT, ...) nonfatal_error_printf(FMT ": %s", __VA_ARGS__, Mix_GetError())
-#define nonfatal_mix_error(MESSAGE) nonfatal_mix_error_printf("%s", (MESSAGE))
+#include "log.h"
 
 struct Sound {
 	const char *filename;
@@ -29,7 +27,7 @@ void sound_init(void)
 		assert(strcmp(sounds[i].filename, sounds[i+1].filename) < 0);
 
 	if (SDL_Init(SDL_INIT_AUDIO) == -1) {
-		nonfatal_error_printf("SDL_Init(SDL_INIT_AUDIO) failed: %s", SDL_GetError());
+		log_printf("SDL_Init(SDL_INIT_AUDIO) failed: %s", SDL_GetError());
 		return;
 	}
 
@@ -42,7 +40,7 @@ void sound_init(void)
 
 	if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, 2, CHUNK_SIZE) == -1)
 	{
-		nonfatal_mix_error("Mix_OpenAudio failed");
+		log_printf("Mix_OpenAudio failed: %s", Mix_GetError());
 		return;
 	}
 
@@ -60,7 +58,7 @@ void sound_init(void)
 
 		assert(!sounds[i].chunk);
 		if (!( sounds[i].chunk = Mix_LoadWAV(path) )) {
-			nonfatal_mix_error_printf("Mix_LoadWav(\"%s\") failed", path);
+			log_printf("Mix_LoadWav(\"%s\") failed: %s", path, Mix_GetError());
 			continue;
 		}
 		Mix_VolumeChunk(sounds[i].chunk, MIX_MAX_VOLUME * sounds[i].volume_percents / 100);
@@ -79,11 +77,11 @@ void sound_play(const char *filename)
 		compare_sound_filename);
 
 	if (snd == NULL)
-		nonfatal_error_printf("sound '%s' not found", filename);
+		log_printf("sound '%s' not found", filename);
 	else if (snd->chunk == NULL)
-		nonfatal_error_printf("loading sound '%s' has failed", filename);
+		log_printf("loading sound '%s' has failed", filename);
 	else if (Mix_PlayChannel(-1, snd->chunk, 0) == -1)
-		nonfatal_mix_error_printf("Mix_PlayChannel for sound '%s' failed", filename);
+		log_printf("Mix_PlayChannel for sound '%s' failed: %s", filename, Mix_GetError());
 }
 
 void sound_deinit(void)

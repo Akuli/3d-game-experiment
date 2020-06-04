@@ -17,5 +17,6 @@ $ ./game
   of the wall before the each-frame-running collision check. Current
   workaround is to not make the players go so fast that this would
   happen at 30fps. (Yes, I know that 30fps is really slow for any gamer)
-- Drawing order is sometimes wrong. Try bringing the player next to a wall and
-  spinning. Try both sides of the wall.
+- Sometimes walls get drawn with an X shape rather than the correct shape. To
+  make this bug happen more frequently for debugging, replace `Vec2` with
+  `SDL_Point` (i.e. integer coordinates) for all the wall related code.

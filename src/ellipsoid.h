@@ -34,13 +34,6 @@ struct Ellipsoid {
 	centered at the origin (you still need to add the center vector).
 	*/
 	Mat3 transform, transform_inverse;
-
-	/*
-	These are meant only for ellipsoid.c. They are here because it's handy to allocate
-	them along with rest of the ellipsoid.
-	*/
-	Vec3 vectorcache[ELLIPSOID_PIXELS_VERTICALLY + 1][ELLIPSOID_PIXELS_AROUND];
-	bool sidecache[ELLIPSOID_PIXELS_VERTICALLY + 1][ELLIPSOID_PIXELS_AROUND];
 };
 
 // calculate el->transform and el->transform_inverse
