@@ -58,7 +58,7 @@ static void read_image(const char *filename, SDL_Color *res)
 {
 	FILE *f = fopen(filename, "rb");
 	if (!f)
-		log_printf_abort("fopen failed: %s", strerror(errno));
+		log_printf_abort("opening '%s' failed: %s", filename, strerror(errno));
 
 	/*
 	On a "typical" system, we can convert between SDL_Color arrays and uint8_t
@@ -87,21 +87,15 @@ static void read_image(const char *filename, SDL_Color *res)
 		log_printf_abort("stbir_resize_uint8 failed: %s", stbi_failure_reason());
 }
 
-struct Ellipsoid *ellipsoid_load(const char *filename, Vec3 center)
+void ellipsoid_load(struct Ellipsoid *el, const char *filename)
 {
-	struct Ellipsoid *el = malloc(sizeof(*el));
-	if (!el)
-		log_printf_abort("not enough memory");
-
-	el->center = center;
+	memset(el, 0, sizeof(*el));
 	read_image(filename, (SDL_Color*) el->image);
 
 	el->angle = 0;
 	el->xzradius = 1;
 	el->yradius = 1;
 	ellipsoid_update_transforms(el);
-
-	return el;
 }
 
 /*
@@ -215,7 +209,7 @@ get_visibility_plane(const struct Ellipsoid *el, const struct Camera *cam)
 #define convert_color(SURF, COL) \
 	SDL_MapRGBA((SURF)->format, (COL).r, (COL).g, (COL).b, (COL.a))
 
-void ellipsoid_show(struct Ellipsoid *el, const struct Camera *cam)
+void ellipsoid_show(const struct Ellipsoid *el, const struct Camera *cam)
 {
 	/*
 	static to keep stack usage down, also turns out to be quite a bit faster than
@@ -251,10 +245,14 @@ void ellipsoid_show(struct Ellipsoid *el, const struct Camera *cam)
 		}
 	}
 
+	size_t vmax = ELLIPSOID_PIXELS_VERTICALLY;
+	if (el->hidelowerhalf)
+		vmax /= 2;
+
 	for (size_t a = 0; a < ELLIPSOID_PIXELS_AROUND; a++) {
 		size_t a2 = (a+1) % ELLIPSOID_PIXELS_AROUND;
 
-		for (size_t v = 0; v < ELLIPSOID_PIXELS_VERTICALLY; v++) {
+		for (size_t v = 0; v < vmax; v++) {
 			size_t v2 = v+1;
 
 			// this is perf critical code

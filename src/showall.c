@@ -1,11 +1,12 @@
 #include "showall.h"
 #include <assert.h>
 #include <math.h>
+#include "player.h"
 
 
 struct GameObj {
-	enum GameObjKind { BALL, WALL } kind;
-	union GameObjPtr { struct Ellipsoid *ellipsoid; const struct Wall *wall; } ptr;
+	enum GameObjKind { ELLIPSOID, WALL } kind;
+	union GameObjPtr { const struct Ellipsoid *ellipsoid; const struct Wall *wall; } ptr;
 
 	// all "dependency" GameObjs are drawn to screen first
 	struct GameObj *deps[SHOWALL_MAX_OBJECTS];
@@ -36,7 +37,7 @@ static void add_dependency(struct GameObj *obj, struct GameObj *dep)
 static void figure_out_deps_for_ellipsoids_behind_walls(
 	struct GameObj *walls, size_t nwalls,
 	struct GameObj *els, size_t nels,
-	struct Camera *cam)
+	const struct Camera *cam)
 {
 	for (size_t e = 0; e < nels; e++) {
 		Vec3 center = els[e].ptr.ellipsoid->center;
@@ -89,7 +90,7 @@ static struct GameObj **get_sorted_gameobj_pointers(
 	return res;
 }
 
-static void show(struct GameObj *gobj, struct Camera *cam, unsigned int depth)
+static void show(struct GameObj *gobj, const struct Camera *cam, unsigned int depth)
 {
 	if (gobj->shown)
 		return;
@@ -110,7 +111,7 @@ static void show(struct GameObj *gobj, struct Camera *cam, unsigned int depth)
 		show(gobj->deps[i], cam, depth+1);
 
 	switch(gobj->kind) {
-	case BALL:
+	case ELLIPSOID:
 		ellipsoid_show(gobj->ptr.ellipsoid, cam);
 		break;
 	case WALL:
@@ -121,25 +122,26 @@ static void show(struct GameObj *gobj, struct Camera *cam, unsigned int depth)
 
 void show_all(
 	const struct Wall *walls, size_t nwalls,
-	      struct Ellipsoid **els, size_t nels,
-	struct Camera *cam)
+	const struct Player *plrs, size_t nplrs,
+	const struct Camera *cam)
 {
 	assert(nwalls <= PLACE_MAX_WALLS);
-	assert(nels <= SHOWALL_MAX_BALLS);
+	assert(nplrs <= SHOWALL_MAX_PLAYERS);
 
 	// these are static to keep stack usage down
-	static struct GameObj wallobjs[PLACE_MAX_WALLS], elobjs[SHOWALL_MAX_BALLS];
+	static struct GameObj wallobjs[PLACE_MAX_WALLS], elobjs[SHOWALL_MAX_ELLIPSOIDS];
 	size_t nwallobjs = 0, nelobjs = 0;
 
-	for (size_t i = 0; i < nwalls; i++)
-		add_gameobj_to_array_if_visible(
-			wallobjs, &nwallobjs, cam,
-			wall_center(&walls[i]), WALL, (union GameObjPtr){ .wall = &walls[i] });
+#define add_wall(w)      add_gameobj_to_array_if_visible(wallobjs, &nwallobjs, cam, wall_center(w), WALL,      (union GameObjPtr){ .wall      = (w) })
+#define add_ellipsoid(e) add_gameobj_to_array_if_visible(elobjs,   &nelobjs,   cam, (e)->center,    ELLIPSOID, (union GameObjPtr){ .ellipsoid = (e) })
 
-	for (size_t i = 0; i < nels; i++)
-		add_gameobj_to_array_if_visible(
-			elobjs, &nelobjs, cam,
-			els[i]->center, BALL, (union GameObjPtr){ .ellipsoid = els[i] });
+	for (size_t i = 0; i < nwalls; i++)
+		add_wall(&walls[i]);
+	for (size_t i = 0; i < nplrs; i++)
+		add_ellipsoid(&plrs[i].ellipsoid);
+
+#undef add_wall
+#undef add_ellipsoid
 
 	figure_out_deps_for_ellipsoids_behind_walls(wallobjs, nwallobjs, elobjs, nelobjs, cam);
 	struct GameObj **sorted = get_sorted_gameobj_pointers(wallobjs, nwallobjs, elobjs, nelobjs);

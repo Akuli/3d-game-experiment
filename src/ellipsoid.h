@@ -34,16 +34,19 @@ struct Ellipsoid {
 	centered at the origin (you still need to add the center vector).
 	*/
 	Mat3 transform, transform_inverse;
+
+	// if true, then only the upper half of the ellipsoid is visible
+	bool hidelowerhalf;
 };
 
 // calculate el->transform and el->transform_inverse
 void ellipsoid_update_transforms(struct Ellipsoid *el);
 
-// Load a ellipsoid from an image file. Free it with malloc when done.
-struct Ellipsoid *ellipsoid_load(const char *filename, Vec3 center);
+// Load a ellipsoid from an image file (el may be uninitialized)
+void ellipsoid_load(struct Ellipsoid *el, const char *filename);
 
 // draw ellipsoid to screen if camera is not inside ellipsoid
-void ellipsoid_show(struct Ellipsoid *el, const struct Camera *cam);
+void ellipsoid_show(const struct Ellipsoid *el, const struct Camera *cam);
 
 /*
 Returns how much ellipsoids should be moved apart from each other to make them not

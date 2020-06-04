@@ -4,8 +4,8 @@
 #include "wall.h"
 
 // real programmers (tm) make stuff fit their terminals, and write the (tm) sign in ascii
-#define PLACE_XSIZE_MAX 80
-#define PLACE_ZSIZE_MAX 24
+#define PLACE_XSIZE_MAX 25
+#define PLACE_ZSIZE_MAX 25
 
 /*
 How many walls can there be?

@@ -5,11 +5,11 @@
 #include "ellipsoid.h"
 #include "wall.h"
 
-// smallest possible height of the player (then ellipsoid->yradius is half of this)
+// smallest possible height of the player (then ellipsoid.yradius is half of this)
 #define PLAYER_HEIGHT_FLAT 0.1f
 
 struct Player {
-	struct Ellipsoid *ellipsoid;
+	struct Ellipsoid ellipsoid;
 	struct Camera cam;
 	int turning;   // see player_set_turning()
 	bool moving;

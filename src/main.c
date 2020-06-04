@@ -76,6 +76,13 @@ static SDL_Surface *create_half_surface(SDL_Surface *surf, int xoffset, int widt
 	return res;
 }
 
+static void bump_players(struct Player *plr1, struct Player *plr2)
+{
+	float bump = ellipsoid_bump_amount(&plr1->ellipsoid, &plr2->ellipsoid);
+	if (bump != 0)
+		ellipsoid_move_apart(&plr1->ellipsoid, &plr2->ellipsoid, bump);
+}
+
 int main(int argc, char **argv)
 {
 	// TODO: avoid errors caused by not doing sound_init()
@@ -97,14 +104,15 @@ int main(int argc, char **argv)
 
 	gs->place = &place_list()[0];
 
-	gs->players[0].ellipsoid = ellipsoid_load("players/Tux.png",   (Vec3){0.5f, 0.5f, 0.5f});
-	gs->players[1].ellipsoid = ellipsoid_load("players/Chick.png", (Vec3){1.5f, 0.5f, 0.5f});
+	ellipsoid_load(&gs->players[0].ellipsoid, "players/Tux.png");
+	ellipsoid_load(&gs->players[1].ellipsoid, "players/Chick.png");
+
+	gs->players[0].ellipsoid.center = (Vec3){ 2.5f, 0, 1.5f };
+	gs->players[1].ellipsoid.center = (Vec3){ 1.5f, 0, 1.5f };
 
 	// This turned out to be much faster than blitting
 	gs->players[0].cam.surface = create_half_surface(winsurf, 0, winsurf->w/2);
 	gs->players[1].cam.surface = create_half_surface(winsurf, winsurf->w/2, winsurf->w/2);
-
-	struct Ellipsoid *els[] = { gs->players[0].ellipsoid, gs->players[1].ellipsoid };
 
 	uint32_t time = 0;
 	int counter = 0;
@@ -119,18 +127,12 @@ int main(int argc, char **argv)
 
 		for(int i=0; i < 2; i++)
 			player_eachframe(&gs->players[i], FPS, gs->place->walls, gs->place->nwalls);
-
-		float bump = ellipsoid_bump_amount(els[0], els[1]);
-		if (bump != 0)
-			ellipsoid_move_apart(els[0], els[1], bump);
+		bump_players(&gs->players[0], &gs->players[1]);
 
 		SDL_FillRect(winsurf, NULL, 0);
 
-		for (int i = 0; i < 2; i++) {
-			show_all(
-				gs->place->walls, gs->place->nwalls, els, 2,
-				&gs->players[i].cam);
-		}
+		for (int i = 0; i < 2; i++)
+			show_all(gs->place->walls, gs->place->nwalls, gs->players, 2, &gs->players[i].cam);
 
 		SDL_FillRect(winsurf, &(SDL_Rect){ winsurf->w/2, 0, 1, winsurf->h }, SDL_MapRGB(winsurf->format, 0xff, 0xff, 0xff));
 		SDL_UpdateWindowSurface(win);
@@ -154,8 +156,6 @@ int main(int argc, char **argv)
 	}
 
 exit:
-	free(gs->players[0].ellipsoid);
-	free(gs->players[1].ellipsoid);
 	SDL_FreeSurface(gs->players[0].cam.surface);
 	SDL_FreeSurface(gs->players[1].cam.surface);
 	free(gs);

@@ -32,13 +32,13 @@ static float get_y_radius(const struct Player *plr, unsigned int fps)
 	if (plr->flat)   // if flat and jumping, then do this
 		return PLAYER_HEIGHT_FLAT / 2;
 
-	return 1.5f*plr->ellipsoid->xzradius + 0.3f*get_jump_height(plr->jumpframe, fps);
+	return 1.5f*plr->ellipsoid.xzradius + 0.3f*get_jump_height(plr->jumpframe, fps);
 }
 
 void player_eachframe(struct Player *plr, unsigned int fps, const struct Wall *walls, size_t nwalls)
 {
 	if (plr->turning != 0) {
-		plr->ellipsoid->angle += (RADIANS_PER_SECOND / (float)fps) * (float)plr->turning;
+		plr->ellipsoid.angle += (RADIANS_PER_SECOND / (float)fps) * (float)plr->turning;
 		// ellipsoid_update_transforms() called below
 	}
 
@@ -47,7 +47,7 @@ void player_eachframe(struct Player *plr, unsigned int fps, const struct Wall *w
 		Vec3 diff = mat3_mul_vec3(
 			cam2world,
 			(Vec3){ 0, 0, -MOVE_UNITS_PER_SECOND/(float)fps });
-		plr->ellipsoid->center = vec3_add(plr->ellipsoid->center, diff);
+		plr->ellipsoid.center = vec3_add(plr->ellipsoid.center, diff);
 	}
 
 	float y = 0;
@@ -61,23 +61,23 @@ void player_eachframe(struct Player *plr, unsigned int fps, const struct Wall *w
 		}
 	}
 
-	plr->ellipsoid->xzradius = 0.3f;
-	plr->ellipsoid->yradius = get_y_radius(plr, fps);
-	ellipsoid_update_transforms(plr->ellipsoid);
+	plr->ellipsoid.xzradius = 0.3f;
+	plr->ellipsoid.yradius = get_y_radius(plr, fps);
+	ellipsoid_update_transforms(&plr->ellipsoid);
 
-	plr->ellipsoid->center.y = y + plr->ellipsoid->yradius;
+	plr->ellipsoid.center.y = y + plr->ellipsoid.yradius;
 
-	Mat3 rot = mat3_rotation_xz(plr->ellipsoid->angle);
-	Mat3 antirot = mat3_rotation_xz(-plr->ellipsoid->angle);
+	Mat3 rot = mat3_rotation_xz(plr->ellipsoid.angle);
+	Mat3 antirot = mat3_rotation_xz(-plr->ellipsoid.angle);
 
 	plr->cam.world2cam = antirot;
 
 	for (size_t i = 0; i < nwalls; i++)
-		wall_bumps_ellipsoid(&walls[i], plr->ellipsoid);
+		wall_bumps_ellipsoid(&walls[i], &plr->ellipsoid);
 
 	Vec3 diff = { 0, 0, CAMERA_BEHIND_PLAYER };
 	vec3_apply_matrix(&diff, rot);
-	plr->cam.location = vec3_add(plr->ellipsoid->center, diff);
+	plr->cam.location = vec3_add(plr->ellipsoid.center, diff);
 	plr->cam.location.y = CAMERA_HEIGHT;
 }
 
