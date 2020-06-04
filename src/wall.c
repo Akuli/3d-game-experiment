@@ -140,8 +140,7 @@ static void swap(int *a, int *b)
 
 static void draw_hline(SDL_Surface *surf, int x1, int x2, int y)
 {
-	if (y < 0 || y >= surf->h)
-		return;
+	assert(0 <= y && y < surf->h);
 	if (x1 > x2)
 		swap(&x1, &x2);
 
@@ -159,6 +158,7 @@ static void draw_hline(SDL_Surface *surf, int x1, int x2, int y)
 		if (rowptr[x] == 0)
 			rowptr[x] = blackturns2;
 		else {
+			// TODO: avoid SDL_GetRGB and SDL_MapRGB, they seem to be surprisingly slow
 			uint8_t r, g, b;
 			SDL_GetRGB(rowptr[x], surf->format, &r, &g, &b);
 			rowptr[x] = SDL_MapRGB(surf->format,
@@ -206,11 +206,23 @@ void wall_show(const struct Wall *w, const struct Camera *cam)
 		icor[i].y = (int) roundf(fcor[i].y);
 	}
 
-	for (int y = icor[0].y; y < icor[1].y; y++)
+	/*
+	The y coordinates can be way out of view, which sometimes caused a lot of
+	unnecessary for looping before these things were here.
+	*/
+	int start01 = max(icor[0].y, 0);
+	int start12 = max(icor[1].y, 0);
+	int start23 = max(icor[2].y, 0);
+	int end01 = min(icor[1].y, cam->surface->h);
+	int end12 = min(icor[2].y, cam->surface->h);
+	int end23 = min(icor[3].y, cam->surface->h);
+
+	// draw_hline asserts 0 <= y && y < cam->surface->h
+	for (int y = start01; y < end01; y++)
 		draw_hline(cam->surface, line_x(icor[0], icor[1], y), line_x(icor[0], icor[2], y), y);
-	for (int y = icor[1].y; y < icor[2].y; y++)
+	for (int y = start12; y < end12; y++)
 		draw_hline(cam->surface, line_x(icor[1], icor[3], y), line_x(icor[0], icor[2], y), y);
-	for (int y = icor[2].y; y < icor[3].y; y++)
+	for (int y = start23; y < end23; y++)
 		draw_hline(cam->surface, line_x(icor[1], icor[3], y), line_x(icor[2], icor[3], y), y);
 }
 
