@@ -79,8 +79,9 @@ static void read_image(const char *filename, SDL_Color *res)
 	replace_alpha_with_average(filedata, (size_t)filew*(size_t)fileh);
 
 	int ok = stbir_resize_uint8(
-		(uint8_t*) filedata, filew, fileh, 0,
-		(uint8_t*) res, ELLIPSOID_PIXELS_AROUND, ELLIPSOID_PIXELS_VERTICALLY, 0,
+		// afaik unsigned char works better with strict aliasing rules than uint8_t
+		(unsigned char *) filedata, filew, fileh, 0,
+		(unsigned char *) res, ELLIPSOID_PIXELS_AROUND, ELLIPSOID_PIXELS_VERTICALLY, 0,
 		4);
 	stbi_image_free(filedata);
 	if (!ok)
@@ -299,17 +300,23 @@ void ellipsoid_update_transforms(struct Ellipsoid *el)
 }
 
 // Return rotation matrix that rotates given vector to have no z coordinate
-static Mat3 z_canceling_rotation(Vec3 v)
+static Mat3 z_canceling_rotation(Vec3 v, float len)
 {
-	float len = hypotf(v.x, v.z);   // ignore v.y
 	// TODO: make rotation matrix rotate in different direction to get rid of minus sign here
 	return mat3_inverse(mat3_rotation_xz_sincos(-v.z/len, v.x/len));
 }
 
 float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid *el2)
 {
+	Vec3 diff = vec3_sub(el1->center, el2->center);
+	float difflen = hypotf(diff.x, diff.z);   // ignore diff.y
+	if (difflen < 1e-5f) {
+		// ellipses very near each other
+		return el1->xzradius + el2->xzradius;
+	}
+
 	// Rotate centers so that ellipsoid centers have same z coordinate
-	Mat3 rot = z_canceling_rotation(vec3_sub(el1->center, el2->center));
+	Mat3 rot = z_canceling_rotation(diff, difflen);
 	Vec3 center1 = mat3_mul_vec3(rot, el1->center);
 	Vec3 center2 = mat3_mul_vec3(rot, el2->center);
 	assert(fabsf(center1.z - center2.z) < 1e-5f);

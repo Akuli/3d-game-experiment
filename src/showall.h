@@ -4,8 +4,8 @@
 #define SHOWALL_H
 
 #include <stddef.h>
-#include "ellipsoid.h"
-#include "place.h"
+#include "camera.h"
+#include "enemy.h"
 #include "player.h"
 #include "wall.h"
 
@@ -17,6 +17,7 @@
 void show_all(
 	const struct Wall *walls, size_t nwalls,
 	const struct Player *plrs, size_t nplrs,
+	const struct Enemy *ens, size_t nens,
 	const struct Camera *cam);
 
 

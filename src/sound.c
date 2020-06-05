@@ -1,5 +1,6 @@
 #include "sound.h"
 #include <assert.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
@@ -14,6 +15,17 @@ struct Sound {
 static struct Sound sounds[] = {
 	// must be sorted by filename, that's used for binary searching the list
 	{ "boing.wav", 100, NULL },
+	{ "farts/fart1.wav", 100, NULL },
+	{ "farts/fart10.wav", 100, NULL },
+	{ "farts/fart11.wav", 100, NULL },
+	{ "farts/fart2.wav", 100, NULL },
+	{ "farts/fart3.wav", 100, NULL },
+	{ "farts/fart4.wav", 100, NULL },
+	{ "farts/fart5.wav", 100, NULL },
+	{ "farts/fart6.wav", 100, NULL },
+	{ "farts/fart7.wav", 100, NULL },
+	{ "farts/fart8.wav", 100, NULL },
+	{ "farts/fart9.wav", 100, NULL },
 	{ "lemonsqueeze.wav", 100, NULL },
 	{ "pop.wav", 100, NULL },
 };
@@ -65,23 +77,60 @@ void sound_init(void)
 	}
 }
 
+static bool string_starts_with(const char *s, const char *pre, size_t prelen)
+{
+	return (strncmp(s, pre, prelen) == 0);
+}
+
+static bool string_ends_with(const char *s, const char *suff)
+{
+	if (strlen(s) < strlen(suff))
+		return false;
+	return (strcmp(s + strlen(s) - strlen(suff), suff) == 0);
+}
+
 static int compare_sound_filename(const void *a, const void *b)
 {
 	return strcmp(a, ((const struct Sound *)b)->filename);
 }
 
-void sound_play(const char *filename)
+static const struct Sound *choose_sound(const char *pattern)
 {
-	const struct Sound *snd = bsearch(
-		filename, sounds, sizeof(sounds)/sizeof(sounds[0]), sizeof(sounds[0]),
-		compare_sound_filename);
+	const char *star = strchr(pattern, '*');
+	if (!star) {
+		// no wildcard being used, binary search with filename
+		return bsearch(
+			pattern, sounds, sizeof(sounds)/sizeof(sounds[0]), sizeof(sounds[0]),
+			compare_sound_filename);
+	}
+	assert(strrchr(pattern, '*') == star);   // no more than 1 wildcard
+
+	const struct Sound *matching[sizeof(sounds)/sizeof(sounds[0])];
+	int nmatching = 0;
+
+	for (size_t i = 0; i < sizeof(sounds)/sizeof(sounds[0]); i++) {
+		if (string_starts_with(sounds[i].filename, pattern, (size_t)(star - pattern)) &&
+			string_ends_with(sounds[i].filename, star+1))
+		{
+			matching[nmatching++] = &sounds[i];
+		}
+	}
+
+	if (nmatching == 0)
+		return NULL;
+	return matching[rand() % nmatching];
+}
+
+void sound_play(const char *fnpattern)
+{
+	const struct Sound *snd = choose_sound(fnpattern);
 
 	if (snd == NULL)
-		log_printf("sound '%s' not found", filename);
+		log_printf("no sounds match the pattern '%s'", fnpattern);
 	else if (snd->chunk == NULL)
-		log_printf("loading sound '%s' has failed", filename);
+		log_printf("loading sound '%s' has failed", snd->filename);
 	else if (Mix_PlayChannel(-1, snd->chunk, 0) == -1)
-		log_printf("Mix_PlayChannel for sound '%s' failed: %s", filename, Mix_GetError());
+		log_printf("Mix_PlayChannel for sound '%s' failed: %s", snd->filename, Mix_GetError());
 }
 
 void sound_deinit(void)

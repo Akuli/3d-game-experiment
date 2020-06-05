@@ -123,6 +123,7 @@ static void show(struct GameObj *gobj, const struct Camera *cam, unsigned int de
 void show_all(
 	const struct Wall *walls, size_t nwalls,
 	const struct Player *plrs, size_t nplrs,
+	const struct Enemy *ens, size_t nens,
 	const struct Camera *cam)
 {
 	assert(nwalls <= PLACE_MAX_WALLS);
@@ -139,6 +140,8 @@ void show_all(
 		add_wall(&walls[i]);
 	for (size_t i = 0; i < nplrs; i++)
 		add_ellipsoid(&plrs[i].ellipsoid);
+	for (size_t i = 0; i < nens; i++)
+		add_ellipsoid(&ens[i].ellipsoid);
 
 #undef add_wall
 #undef add_ellipsoid

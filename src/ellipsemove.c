@@ -29,13 +29,17 @@ static float solve_the_equation(float A, float B, float C, float D, float E)
 	  outside the interval where it was defined.
 	*/
 
-	float xguess = 0;   // initial value never used, but makes compiler happy
+	float xguess = 0;   // should be never actually used, makes compiler happy
 	float absmin = HUGE_VALF;
 
 	float guessingstep = 0.1f;
 	for (float x = -1; x <= 1; x += guessingstep) {
 		float f = (A*x + B)*sqrtf(C*x*x + D) + E*x;
-		assert(isfinite(f));
+		if(!isfinite(f)) {
+			log_printf("got f(x) = %.10f. Arguments: A=%.10f B=%.10f C=%.10f D=%.10f E=%.10f",
+				f, A, B, C, D, E);
+			continue;
+		}
 
 		float absval = fabsf(f);
 		if (absval < absmin) {
@@ -220,6 +224,11 @@ float ellipse_move_amount_x(
 	float a1, float b1, Vec2 center1,
 	float a2, float b2, Vec2 center2)
 {
+	assert(a1 > 0);
+	assert(b1 > 0);
+	assert(a2 > 0);
+	assert(b2 > 0);
+
 	/*
 	Shift coordinates so that ellipse 2 is centered, and then stretch so that
 	ellipse2 becomes a unit circle

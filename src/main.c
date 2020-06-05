@@ -3,9 +3,11 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
-#include "ellipsoid.h"
 #include "camera.h"
+#include "ellipsoid.h"
+#include "enemy.h"
 #include "log.h"
 #include "mathstuff.h"
 #include "place.h"
@@ -21,6 +23,8 @@
 // includes all the GameObjects that all players should see
 struct GameState {
 	struct Player players[2];
+	struct Enemy enemies[SHOWALL_MAX_ENEMIES];
+	size_t nenemies;
 	const struct Place *place;
 };
 
@@ -76,16 +80,30 @@ static SDL_Surface *create_half_surface(SDL_Surface *surf, int xoffset, int widt
 	return res;
 }
 
-static void bump_players(struct Player *plr1, struct Player *plr2)
+static void handle_players_bumping_each_other(struct Player *plr1, struct Player *plr2)
 {
 	float bump = ellipsoid_bump_amount(&plr1->ellipsoid, &plr2->ellipsoid);
 	if (bump != 0)
 		ellipsoid_move_apart(&plr1->ellipsoid, &plr2->ellipsoid, bump);
 }
 
+static void handle_players_bumping_enemies(struct GameState *gs)
+{
+	for (int p = 0; p < 2; p++) {
+		for (size_t e = 0; e < gs->nenemies; e++) {
+			if (ellipsoid_bump_amount(&gs->players[p].ellipsoid, &gs->enemies[e].ellipsoid) == 0)
+				continue;
+
+			memmove(&gs->enemies[e], &gs->enemies[--gs->nenemies], sizeof(gs->enemies[0]));
+			sound_play("farts/fart*.wav");
+		}
+	}
+}
+
 int main(int argc, char **argv)
 {
-	// TODO: avoid errors caused by not doing sound_init()
+	srand((unsigned) time(NULL));
+
 	if (!( argc == 2 && strcmp(argv[1], "--no-sound") == 0 ))
 		sound_init();
 
@@ -107,12 +125,21 @@ int main(int argc, char **argv)
 	ellipsoid_load(&gs->players[0].ellipsoid, "players/Tux.png");
 	ellipsoid_load(&gs->players[1].ellipsoid, "players/Chick.png");
 
-	gs->players[0].ellipsoid.center = (Vec3){ 2.5f, 0, 1.5f };
-	gs->players[1].ellipsoid.center = (Vec3){ 1.5f, 0, 1.5f };
+	gs->players[0].ellipsoid.center = (Vec3){ 2.5f, 0, 0.5f };
+	gs->players[1].ellipsoid.center = (Vec3){ 1.5f, 0, 0.5f };
 
 	// This turned out to be much faster than blitting
 	gs->players[0].cam.surface = create_half_surface(winsurf, 0, winsurf->w/2);
 	gs->players[1].cam.surface = create_half_surface(winsurf, winsurf->w/2, winsurf->w/2);
+
+	gs->nenemies = 10;
+	for (size_t i = 0; i < gs->nenemies; i++) {
+		enemy_init(&gs->enemies[i]);
+		gs->enemies[i].ellipsoid.center.x += 1;
+		gs->enemies[i].ellipsoid.center.z += 1;
+		gs->enemies[i].ellipsoid.angle += i/acosf(-1);
+		ellipsoid_update_transforms(&gs->enemies[i].ellipsoid);
+	}
 
 	uint32_t time = 0;
 	int counter = 0;
@@ -125,14 +152,18 @@ int main(int argc, char **argv)
 				goto exit;
 		}
 
-		for(int i=0; i < 2; i++)
+		for (size_t i = 0; i < gs->nenemies; i++)
+			enemy_eachframe(&gs->enemies[i], FPS, gs->place);
+		for (int i=0; i < 2; i++)
 			player_eachframe(&gs->players[i], FPS, gs->place->walls, gs->place->nwalls);
-		bump_players(&gs->players[0], &gs->players[1]);
+
+		handle_players_bumping_each_other(&gs->players[0], &gs->players[1]);
+		handle_players_bumping_enemies(gs);
 
 		SDL_FillRect(winsurf, NULL, 0);
 
 		for (int i = 0; i < 2; i++)
-			show_all(gs->place->walls, gs->place->nwalls, gs->players, 2, &gs->players[i].cam);
+			show_all(gs->place->walls, gs->place->nwalls, gs->players, 2, gs->enemies, gs->nenemies, &gs->players[i].cam);
 
 		SDL_FillRect(winsurf, &(SDL_Rect){ winsurf->w/2, 0, 1, winsurf->h }, SDL_MapRGB(winsurf->format, 0xff, 0xff, 0xff));
 		SDL_UpdateWindowSurface(win);
