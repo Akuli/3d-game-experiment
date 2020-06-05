@@ -4,7 +4,6 @@
 #include "camera.h"
 #include "mathstuff.h"
 #include "player.h"
-#include <SDL2/SDL2_gfxPrimitives.h>
 
 #define Y_MIN PLAYER_HEIGHT_FLAT   // allow players to go under the wall
 #define Y_MAX 1.0f
