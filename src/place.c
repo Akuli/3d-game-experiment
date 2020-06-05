@@ -23,6 +23,7 @@ static struct Place places[] = {
 		"_____|L_________",
 		"_L___ _________L",
 		"     ||         ",
+		NULL,
 	}},
 };
 
