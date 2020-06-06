@@ -69,8 +69,18 @@ float mat3_det(Mat3 M);
 // inverse matrix
 Mat3 mat3_inverse(Mat3 M);
 
-// slow to compute because uses trig funcs, so don't call this in a loop
-// angle is in radians, like everything
+/*
+Slow-ish to compute because uses trig funcs, so don't call this in a loop.
+
+The angle is in radians. If x axis is right, y is up, and z is back, then this
+works so that a bigger angle means clockwise if viewed from above. If viewed from
+below, then it rotates counter-clockwise instead, so it's just like unit circle
+trig in high school, except that you have z axis instead of y axis. For example:
+- angle=-pi/2 means that (1,0,0) gets rotated to (0,0,-1)
+- angle=0 gives identity matrix
+- angle=pi/2 means that (1,0,0) gets rotated to (0,0,1)
+- angle=pi means that (1,0,0) gets rotated to (-1,0,0)
+*/
 Mat3 mat3_rotation_xz(float angle);
 
 /*

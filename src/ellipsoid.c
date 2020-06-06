@@ -130,9 +130,14 @@ static const VectorArray *get_untransformed_surface_vectors(void)
 		float xzrad = sqrtf(1 - y*y);  // radius on xz plane
 
 		for (size_t a = 0; a < ELLIPSOID_PIXELS_AROUND; a++) {
-			float angle = (float)a/ELLIPSOID_PIXELS_AROUND * 2*pi;
-			float x = xzrad*sinf(angle);
-			float z = xzrad*cosf(angle);
+			/*
+			+pi sets the angle of the back of the player, corresponding to a=0.
+			This way, the player looks into the angle=0 direction.
+			Minus sign is needed to avoid mirror imaging the pic for some reason.
+			*/
+			float angle = -(float)a/ELLIPSOID_PIXELS_AROUND * 2*pi + pi;
+			float x = xzrad*cosf(angle);
+			float z = xzrad*sinf(angle);
 			res[v][a] = (Vec3){ x, y, z };
 		}
 	}
@@ -317,13 +322,6 @@ void ellipsoid_update_transforms(struct Ellipsoid *el)
 	el->transform_inverse = mat3_inverse(el->transform);
 }
 
-// Return rotation matrix that rotates given vector to have no z coordinate
-static Mat3 z_canceling_rotation(Vec3 v, float len)
-{
-	// TODO: make rotation matrix rotate in different direction to get rid of minus sign here
-	return mat3_inverse(mat3_rotation_xz_sincos(-v.z/len, v.x/len));
-}
-
 float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid *el2)
 {
 	Vec3 diff = vec3_sub(el1->center, el2->center);
@@ -334,13 +332,12 @@ float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid 
 	}
 
 	// Rotate centers so that ellipsoid centers have same z coordinate
-	Mat3 rot = z_canceling_rotation(diff, difflen);
+	Mat3 rot = mat3_inverse(mat3_rotation_xz_sincos(diff.z/difflen, diff.x/difflen));
 	Vec3 center1 = mat3_mul_vec3(rot, el1->center);
 	Vec3 center2 = mat3_mul_vec3(rot, el2->center);
 	assert(fabsf(center1.z - center2.z) < 1e-5f);
 
 	// Now this is a 2D problem on the xy plane (or some other plane parallel to xy plane)
-
 	Vec2 center1_xy = { center1.x, center1.y };
 	Vec2 center2_xy = { center2.x, center2.y };
 	return ellipse_move_amount_x(

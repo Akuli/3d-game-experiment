@@ -194,16 +194,9 @@ static bool turn(float *angle, float incr, float destangle)
 
 static float dir_to_angle(enum EnemyDir dir)
 {
-	float pi = acosf(-1);
-	switch(dir) {
-		// created with trial and error, lol
-		case ENEMY_DIR_XPOS: return -pi/2;
-		case ENEMY_DIR_XNEG: return pi/2;
-		case ENEMY_DIR_ZPOS: return pi;
-		case ENEMY_DIR_ZNEG: return 0;
-	}
-
-	assert(0);   // silence compiler warning
+	int xdiff = (dir == ENEMY_DIR_XPOS) - (dir == ENEMY_DIR_XNEG);
+	int zdiff = (dir == ENEMY_DIR_ZPOS) - (dir == ENEMY_DIR_ZNEG);
+	return atan2f((float)zdiff, (float)xdiff);
 }
 
 void enemy_eachframe(struct Enemy *en, unsigned int fps, const struct Place *pl)
