@@ -39,6 +39,35 @@ Vec2 camera_point_cam2screen(const struct Camera *cam, Vec3 pt)
 	};
 }
 
+void camera_update_caches(struct Camera *cam)
+{
+	struct Plane pl[] = {
+		// z=0, with normal vector to negative side (that's where camera is looking)
+		{ .normal = {0, 0, -1}, .constant = 0 },
+
+		// left side of view: x/z = xzr, aka 1x + 0y + (-xzr)z = 0, normal vector to positive x direction
+		{ .normal = {1, 0, -camera_screenx_to_xzr(cam, 0)}, .constant = 0 },
+
+		// right side of view, normal vector to negative x direction
+		{ .normal = {-1, 0, camera_screenx_to_xzr(cam, (float)cam->surface->w)}, .constant = 0 },
+
+		// top, normal vector to negative y direction
+		{ .normal = {0, -1, camera_screeny_to_yzr(cam, 0)}, .constant = 0 },
+
+		// bottom, normal vector to positive y direction
+		{ .normal = {0, 1, -camera_screeny_to_yzr(cam, (float)cam->surface->h)}, .constant = 0 },
+	};
+
+	// Convert from camera coordinates to world coordinates
+	for (unsigned i = 0; i < sizeof(pl)/sizeof(pl[0]); i++) {
+		plane_apply_mat3_INVERSE(&pl[i], cam->world2cam);
+		plane_move(&pl[i], cam->location);
+	}
+
+	static_assert(sizeof(pl) == sizeof(cam->visibilityplanes), "");
+	memcpy(cam->visibilityplanes, pl, sizeof(pl));
+}
+
 bool camera_get_containing_rect(
 	const struct Camera *cam, SDL_Rect *res,
 	Vec3 p1, Vec3 p2, Vec3 p3, Vec3 p4)

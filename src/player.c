@@ -79,6 +79,8 @@ void player_eachframe(struct Player *plr, unsigned int fps, const struct Wall *w
 	vec3_apply_matrix(&diff, rot);
 	plr->cam.location = vec3_add(plr->ellipsoid.center, diff);
 	plr->cam.location.y = CAMERA_HEIGHT;
+
+	camera_update_caches(&plr->cam);
 }
 
 void player_set_turning(struct Player *plr, int dir, bool turn)

@@ -76,30 +76,6 @@ void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el)
 	}
 }
 
-static void get_corners_in_camera_coordinates(const struct Wall *w, const struct Camera *cam, Vec3 *res)
-{
-	// initial values never used, but they make compiler happy
-	int endx = 0, endz = 0;
-
-	switch(w->dir) {
-	case WALL_DIR_XY:
-		endx = w->startx + 1;
-		endz = w->startz;
-		break;
-	case WALL_DIR_ZY:
-		endx = w->startx;
-		endz = w->startz + 1;
-		break;
-	}
-
-#define f(x,y,z) camera_point_world2cam(cam, (Vec3){ (float)(x), (float)(y), (float)(z) })
-	res[0] = f(w->startx, Y_MIN, w->startz);
-	res[1] = f(w->startx, Y_MAX, w->startz);
-	res[2] = f(endx,      Y_MIN, endz);
-	res[3] = f(endx,      Y_MAX, endz);
-#undef f
-}
-
 bool wall_side(const struct Wall *w, Vec3 pt)
 {
 	Vec3 center = wall_center(w);
@@ -109,6 +85,42 @@ bool wall_side(const struct Wall *w, Vec3 pt)
 	}
 
 	// never actually runs, but makes compiler happy
+	return false;
+}
+
+static void get_corners_in_world_coordinates(const struct Wall *w, Vec3 *corners)
+{
+	corners[0] = (Vec3){ (float)w->startx, Y_MIN, (float)w->startz };
+	corners[1] = (Vec3){ (float)w->startx, Y_MAX, (float)w->startz };
+
+	Vec3 diff = {0};
+	switch(w->dir) {
+		case WALL_DIR_XY: diff.x = 1; break;
+		case WALL_DIR_ZY: diff.z = 1; break;
+	}
+
+	corners[2] = vec3_add(corners[0], diff);
+	corners[3] = vec3_add(corners[1], diff);
+}
+
+bool wall_visible(const struct Wall *w, const struct Camera *cam)
+{
+	Vec3 corners[4];
+	get_corners_in_world_coordinates(w, corners);
+
+	// check if any corner is visible
+	for (int c = 0; c < 4; c++) {
+		bool cornervisible = true;
+		for (unsigned v = 0; v < sizeof(cam->visibilityplanes)/sizeof(cam->visibilityplanes[0]); v++) {
+			if (!plane_whichside(cam->visibilityplanes[v], corners[c])) {
+				cornervisible = false;
+				break;
+			}
+		}
+
+		if (cornervisible)
+			return true;
+	}
 	return false;
 }
 
@@ -184,18 +196,15 @@ static int compare_point_y(const void *a, const void *b)
 void wall_show(const struct Wall *w, const struct Camera *cam)
 {
 	Vec3 vcor[4];
-	get_corners_in_camera_coordinates(w, cam, vcor);
+	get_corners_in_world_coordinates(w, vcor);
 
 	/*
 	Not using floats here caused funny bugs that happened because sorting
 	rounded values.
 	*/
 	Vec2 fcor[4];
-	for (int i = 0; i < 4; i++) {
-		if (vcor[i].z >= 0)  // behind camera
-			return;
-		fcor[i] = camera_point_cam2screen(cam, vcor[i]);
-	}
+	for (int i = 0; i < 4; i++)
+		fcor[i] = camera_point_cam2screen(cam, camera_point_world2cam(cam, vcor[i]));
 
 	qsort(fcor, 4, sizeof(fcor[0]), compare_point_y);
 
@@ -205,10 +214,6 @@ void wall_show(const struct Wall *w, const struct Camera *cam)
 		icor[i].y = (int) roundf(fcor[i].y);
 	}
 
-	/*
-	The y coordinates can be way out of view, which sometimes caused a lot of
-	unnecessary for looping before these things were here.
-	*/
 	int start01 = max(icor[0].y, 0);
 	int start12 = max(icor[1].y, 0);
 	int start23 = max(icor[2].y, 0);
@@ -232,12 +237,8 @@ Vec3 wall_center(const struct Wall *w)
 	float z = (float)w->startz;
 
 	switch(w->dir) {
-	case WALL_DIR_XY:
-		x += 0.5f;
-		break;
-	case WALL_DIR_ZY:
-		z += 0.5f;
-		break;
+		case WALL_DIR_XY: x += 0.5f; break;
+		case WALL_DIR_ZY: z += 0.5f; break;
 	}
 
 	return (Vec3){x,y,z};

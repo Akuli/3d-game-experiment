@@ -39,10 +39,12 @@ void wall_init(struct Wall *w);
 // moves el so that it doesn't bump
 void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el);
 
-void wall_show(const struct Wall *w, const struct Camera *cam);
-
 // center point of wall in world coordinates
 Vec3 wall_center(const struct Wall *w);
+
+// don't try to show an invisible wall
+bool wall_visible(const struct Wall *w, const struct Camera *cam);
+void wall_show(const struct Wall *w, const struct Camera *cam);
 
 // same for any two points on same side of the wall
 bool wall_side(const struct Wall *wall, Vec3 pt);

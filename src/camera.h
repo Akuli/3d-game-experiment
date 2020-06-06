@@ -13,9 +13,19 @@ with camera being wherever it is pointing to wherever it points to are "world
 coordinates". Both coordinate systems are right-handed with y axis pointing up.
 */
 struct Camera {
+	SDL_Surface *surface;
+
+	// call camera_update_caches() after changing these
 	Vec3 location;
 	Mat3 world2cam;
-	SDL_Surface *surface;
+
+	/*
+	For checking whether an object is visible or not, we split the world
+	into visible and invisible parts with planes. The normal vector of each
+	visibility plane points to the visible side. So, for a point to be
+	visible, plane_whichside() must return true for each visibility plane.
+	*/
+	struct Plane visibilityplanes[5];
 };
 
 /*
@@ -36,6 +46,9 @@ float camera_screenx_to_xzr(const struct Camera *cam, float screenx);
 float camera_screeny_to_yzr(const struct Camera *cam, float screeny);
 float camera_xzr_to_screenx(const struct Camera *cam, float xzr);
 float camera_yzr_to_screeny(const struct Camera *cam, float yzr);
+
+// call this after changing cam->location or cam->world2cam
+void camera_update_caches(struct Camera *cam);
 
 /*
 This asserts that pt.z is negative because otherwise the point is not in front

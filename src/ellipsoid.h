@@ -45,7 +45,8 @@ void ellipsoid_update_transforms(struct Ellipsoid *el);
 // Load a ellipsoid from an image file (el may be uninitialized)
 void ellipsoid_load(struct Ellipsoid *el, const char *filename);
 
-// draw ellipsoid to screen if camera is not inside ellipsoid
+// don't try to show an invisible ellipsoid
+bool ellipsoid_visible(const struct Ellipsoid *el, const struct Camera *cam);
 void ellipsoid_show(const struct Ellipsoid *el, const struct Camera *cam);
 
 /*

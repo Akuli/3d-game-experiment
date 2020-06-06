@@ -143,14 +143,14 @@ static const VectorArray *get_untransformed_surface_vectors(void)
 
 /*
 A part of the ellipsoid is visible to the camera. The rest isn't. The plane returned
-by this function divides the ellipsoid into the visible part and the part behind the
+by this function splits the ellipsoid into the visible part and the part behind the
 visible part. The normal vector of the plane points toward the visible side, so
 plane_whichside() returns whether a point on the ellipsoid is visible.
 
 The returned plane is in unit ball coordinates.
 */
 static struct Plane
-get_visibility_plane(const struct Ellipsoid *el, const struct Camera *cam)
+get_splitter_plane(const struct Ellipsoid *el, const struct Camera *cam)
 {
 	/*
 	Calculate camera location in unit ball coordinates. This must work
@@ -220,8 +220,8 @@ void ellipsoid_show(const struct Ellipsoid *el, const struct Camera *cam)
 	static Vec3 vectorcache[ELLIPSOID_PIXELS_VERTICALLY + 1][ELLIPSOID_PIXELS_AROUND];
 	static bool sidecache[ELLIPSOID_PIXELS_VERTICALLY + 1][ELLIPSOID_PIXELS_AROUND];
 
-	// vplane is in unit ball coordinates
-	struct Plane vplane = get_visibility_plane(el, cam);
+	// splane is in unit ball coordinates
+	struct Plane splane = get_splitter_plane(el, cam);
 
 	// center vector as camera coordinates
 	Vec3 center = camera_point_world2cam(cam, el->center);
@@ -237,7 +237,7 @@ void ellipsoid_show(const struct Ellipsoid *el, const struct Camera *cam)
 		for (size_t a = 0; a < ELLIPSOID_PIXELS_AROUND; a++) {
 			// this is perf critical code
 
-			sidecache[v][a] = plane_whichside(vplane, (*usvecs)[v][a]);
+			sidecache[v][a] = plane_whichside(splane, (*usvecs)[v][a]);
 
 			// turns out that in-place operations are measurably faster
 			vectorcache[v][a] = (*usvecs)[v][a];
@@ -280,6 +280,24 @@ void ellipsoid_show(const struct Ellipsoid *el, const struct Camera *cam)
 			}
 		}
 	}
+}
+
+static bool ellipsoid_intersects_plane(const struct Ellipsoid *el, struct Plane pl)
+{
+	// Switch to coordinates where ellipsoid is unit ball (a ball with radius 1)
+	Vec3 center = mat3_mul_vec3(el->transform_inverse, el->center);
+	plane_apply_mat3_INVERSE(&pl, el->transform);
+
+	return (plane_point_distanceSQUARED(pl, center) < 1);
+}
+
+bool ellipsoid_visible(const struct Ellipsoid *el, const struct Camera *cam)
+{
+	for (unsigned i = 0; i < sizeof(cam->visibilityplanes)/sizeof(cam->visibilityplanes[0]); i++) {
+		if (!plane_whichside(cam->visibilityplanes[i], el->center) && !ellipsoid_intersects_plane(el, cam->visibilityplanes[i]))
+			return false;
+	}
+	return true;
 }
 
 static Mat3 diag(float a, float b, float c)
