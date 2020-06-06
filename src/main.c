@@ -122,8 +122,8 @@ int main(int argc, char **argv)
 
 	gs->place = &place_list()[0];
 
-	ellipsoid_load(&gs->players[0].ellipsoid, "players/Tux.png");
-	ellipsoid_load(&gs->players[1].ellipsoid, "players/Chick.png");
+	ellipsoid_load(&gs->players[0].ellipsoid, "players/Tux.png", winsurf->format);
+	ellipsoid_load(&gs->players[1].ellipsoid, "players/Chick.png", winsurf->format);
 
 	gs->players[0].ellipsoid.center = (Vec3){ 2.5f, 0, 0.5f };
 	gs->players[1].ellipsoid.center = (Vec3){ 1.5f, 0, 0.5f };
@@ -132,12 +132,12 @@ int main(int argc, char **argv)
 	gs->players[0].cam.surface = create_half_surface(winsurf, 0, winsurf->w/2);
 	gs->players[1].cam.surface = create_half_surface(winsurf, winsurf->w/2, winsurf->w/2);
 
-	gs->nenemies = 10;
+	gs->nenemies = 20;
 	for (size_t i = 0; i < gs->nenemies; i++) {
-		enemy_init(&gs->enemies[i]);
+		enemy_init(&gs->enemies[i], winsurf->format);
 		gs->enemies[i].ellipsoid.center.x += 1;
 		gs->enemies[i].ellipsoid.center.z += 1;
-		gs->enemies[i].ellipsoid.angle += i/acosf(-1);
+		gs->enemies[i].ellipsoid.angle += i;
 		ellipsoid_update_transforms(&gs->enemies[i].ellipsoid);
 	}
 

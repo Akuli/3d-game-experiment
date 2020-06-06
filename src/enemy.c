@@ -7,13 +7,13 @@
 #define RADIANS_PER_SECOND 4.0f
 #define MOVE_UNITS_PER_SECOND 2.5f
 
-void enemy_init(struct Enemy *en)
+void enemy_init(struct Enemy *en, const SDL_PixelFormat *fmt)
 {
 	int no = (rand() % IMAGE_FILE_COUNT) + 1;
 	char fname[100];
 	snprintf(fname, sizeof fname, "enemies/enemy%d.png", no);
 
-	ellipsoid_load(&en->ellipsoid, fname);
+	ellipsoid_load(&en->ellipsoid, fname, fmt);
 	en->ellipsoid.hidelowerhalf = true;
 
 	en->ellipsoid.xzradius = 0.45f;

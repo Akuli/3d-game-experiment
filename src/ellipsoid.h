@@ -22,7 +22,13 @@ This struct is BIG. Always use pointers. Makefile has -Werror=stack-usage=bla
 */
 struct Ellipsoid {
 	Vec3 center;
-	SDL_Color image[ELLIPSOID_PIXELS_VERTICALLY][ELLIPSOID_PIXELS_AROUND];
+
+	/*
+	Image pixels stored in whatever pixel format needed for drawing to avoid
+	conversions in tight loops (actually made a difference)
+	*/
+	const SDL_PixelFormat *pixfmt;
+	uint32_t image[ELLIPSOID_PIXELS_VERTICALLY][ELLIPSOID_PIXELS_AROUND];
 
 	// call ellipsoid_update_transforms() after changing these
 	float angle;       // radians
@@ -42,8 +48,13 @@ struct Ellipsoid {
 // calculate el->transform and el->transform_inverse
 void ellipsoid_update_transforms(struct Ellipsoid *el);
 
-// Load a ellipsoid from an image file (el may be uninitialized)
-void ellipsoid_load(struct Ellipsoid *el, const char *filename);
+/*
+Load a ellipsoid from an image file.
+
+The ellipsoid could be e.g. from malloc, so uninitialized memory is fine. The
+pixel format must match the SDL_Surface when drawing the ellipsoid.
+*/
+void ellipsoid_load(struct Ellipsoid *el, const char *filename, const SDL_PixelFormat *fmt);
 
 // don't try to show an invisible ellipsoid
 bool ellipsoid_visible(const struct Ellipsoid *el, const struct Camera *cam);

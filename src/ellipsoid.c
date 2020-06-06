@@ -3,7 +3,6 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdint.h>
 #include <stb_image.h>
 #include <stb_image_resize.h>
 #include "camera.h"
@@ -11,67 +10,46 @@
 #include "ellipsemove.h"
 #include "mathstuff.h"
 
-#define CLAMP_TO_U8(val) ( (uint8_t) min(max(val, 0), 0xff) )
-#define IS_TRANSPARENT(color) ((color).a < 0x80)
+// This file uses unsigned char instead of uint8_t because it works better with strict aliasing
 
-static SDL_Color average_color(SDL_Color *pixels, size_t npixels)
+#define CLAMP_TO_U8(val) ( (unsigned char) min(max(val, 0), 0xff) )
+#define IS_TRANSPARENT(alpha) ((alpha) < 0x80)
+
+// yes, rgb math is bad ikr
+static void replace_alpha_with_average(unsigned char *bytes, size_t nbytes)
 {
-	// yes, rgb math is bad ikr
 	unsigned long long rsum = 0, gsum = 0, bsum = 0;
 	size_t count = 0;
 
-	for (size_t i = 0; i < npixels; i += 4) {
-		if (IS_TRANSPARENT(pixels[i]))
-			continue;
-
-		rsum += pixels[i].r;
-		gsum += pixels[i].g;
-		bsum += pixels[i].b;
-		count++;
+	for (size_t i = 0; i < 4*nbytes; i += 4) {
+		if (!IS_TRANSPARENT(bytes[i+3])) {
+			rsum += bytes[i];
+			gsum += bytes[i+1];
+			bsum += bytes[i+2];
+			count++;
+		}
 	}
 
-	if (count == 0) {
-		// just return something, avoid divide by zero
-		return (SDL_Color){ 0xff, 0xff, 0xff, 0xff };
-	}
+	if (count == 0)
+		return;
 
-	return (SDL_Color){
-		CLAMP_TO_U8(rsum / count),
-		CLAMP_TO_U8(gsum / count),
-		CLAMP_TO_U8(bsum / count),
-		0xff,
-	};
-}
-
-static void replace_alpha_with_average(SDL_Color *pixels, size_t npixels)
-{
-	SDL_Color avg = average_color(pixels, npixels);
-
-	for (size_t i = 0; i < npixels; i += 1) {
-		if (IS_TRANSPARENT(pixels[i]))
-			pixels[i] = avg;
-		pixels[i].a = 0xff;
+	for (size_t i = 0; i < 4*nbytes; i += 4) {
+		if (IS_TRANSPARENT(bytes[i+3])) {
+			bytes[i] = CLAMP_TO_U8(rsum / count);
+			bytes[i+1] = CLAMP_TO_U8(gsum / count);
+			bytes[i+2] = CLAMP_TO_U8(bsum / count);
+		}
 	}
 }
 
-static void read_image(const char *filename, SDL_Color *res)
+static void read_image(const char *filename, uint32_t *res, const SDL_PixelFormat *fmt)
 {
 	FILE *f = fopen(filename, "rb");
 	if (!f)
 		log_printf_abort("opening '%s' failed: %s", filename, strerror(errno));
 
-	/*
-	On a "typical" system, we can convert between SDL_Color arrays and uint8_t
-	arrays with just casts.
-	*/
-	static_assert(sizeof(SDL_Color) == 4, "weird padding");
-	static_assert(offsetof(SDL_Color, r) == 0, "weird structure order");
-	static_assert(offsetof(SDL_Color, g) == 1, "weird structure order");
-	static_assert(offsetof(SDL_Color, b) == 2, "weird structure order");
-	static_assert(offsetof(SDL_Color, a) == 3, "weird structure order");
-
 	int chansinfile, filew, fileh;
-	SDL_Color *filedata = (SDL_Color*) stbi_load_from_file(f, &filew, &fileh, &chansinfile, 4);
+	unsigned char *filedata = stbi_load_from_file(f, &filew, &fileh, &chansinfile, 4);
 	fclose(f);
 	if (!filedata)
 		log_printf_abort("stbi_load_from_file failed: %s", stbi_failure_reason());
@@ -79,19 +57,27 @@ static void read_image(const char *filename, SDL_Color *res)
 	replace_alpha_with_average(filedata, (size_t)filew*(size_t)fileh);
 
 	int ok = stbir_resize_uint8(
-		// afaik unsigned char works better with strict aliasing rules than uint8_t
-		(unsigned char *) filedata, filew, fileh, 0,
+		filedata, filew, fileh, 0,
 		(unsigned char *) res, ELLIPSOID_PIXELS_AROUND, ELLIPSOID_PIXELS_VERTICALLY, 0,
 		4);
 	stbi_image_free(filedata);
 	if (!ok)
 		log_printf_abort("stbir_resize_uint8 failed: %s", stbi_failure_reason());
+
+	for (size_t i = 0; i < ELLIPSOID_PIXELS_AROUND*ELLIPSOID_PIXELS_VERTICALLY; i++) {
+		// fingers crossed, hoping that i understood strict aliasing correctly...
+		// https://stackoverflow.com/a/29676395
+		unsigned char *ptr = (unsigned char *)&res[i];
+		res[i] = SDL_MapRGBA(fmt, ptr[0], ptr[1], ptr[2], 0xff);
+	}
 }
 
-void ellipsoid_load(struct Ellipsoid *el, const char *filename)
+void ellipsoid_load(struct Ellipsoid *el, const char *filename, const SDL_PixelFormat *fmt)
 {
 	memset(el, 0, sizeof(*el));
-	read_image(filename, (SDL_Color*) el->image);
+
+	read_image(filename, (uint32_t *)el->image, fmt);
+	el->pixfmt = fmt;
 
 	el->angle = 0;
 	el->xzradius = 1;
@@ -212,11 +198,10 @@ get_splitter_plane(const struct Ellipsoid *el, const struct Camera *cam)
 	};
 }
 
-#define convert_color(SURF, COL) \
-	SDL_MapRGBA((SURF)->format, (COL).r, (COL).g, (COL).b, (COL.a))
-
 void ellipsoid_show(const struct Ellipsoid *el, const struct Camera *cam)
 {
+	assert(cam->surface->format == el->pixfmt);
+
 	/*
 	static to keep stack usage down, also turns out to be quite a bit faster than
 	placing these caches into el. I also tried putting these to stack and that was
@@ -279,9 +264,7 @@ void ellipsoid_show(const struct Ellipsoid *el, const struct Camera *cam)
 					vectorcache[v2][a],
 					vectorcache[v2][a2]))
 			{
-				SDL_FillRect(
-					cam->surface, &rect,
-					convert_color(cam->surface, el->image[v][a]));
+				SDL_FillRect(cam->surface, &rect, el->image[v][a]);
 			}
 		}
 	}
