@@ -7,7 +7,7 @@
 #include "mathstuff.h"
 
 #define ELLIPSOID_PIXELS_AROUND 200
-#define ELLIPSOID_PIXELS_VERTICALLY 80
+#define ELLIPSOID_PIXELS_VERTICALLY 300
 
 /*
 An Ellipsoid is a stretched ball, given by

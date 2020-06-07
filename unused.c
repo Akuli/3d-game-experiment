@@ -1,15 +1,6 @@
 // this file contains functions that i wrote and later didn't need them anymore
 
 
-// about 2x faster than SDL_FillRect(surf, &(SDL_Rect){x,y,1,1}, px)
-static inline void set_pixel(SDL_Surface *surf, int x, int y, uint32_t px)
-{
-	unsigned char *ptr = surf->pixels;
-	ptr += y*surf->pitch;
-	ptr += x*(int)sizeof(px);
-	memcpy(ptr, &px, sizeof(px));
-}
-
 // Find intersection point of wall and line, return false if no intersection
 bool wall_intersect_line(const struct Wall *w, struct Line ln, Vec3 *res)
 {

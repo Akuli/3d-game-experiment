@@ -198,74 +198,146 @@ get_splitter_plane(const struct Ellipsoid *el, const struct Camera *cam)
 	};
 }
 
+static float linear_map(float srcmin, float srcmax, float dstmin, float dstmax, float val)
+{
+	float ratio = (val - srcmin)/(srcmax - srcmin);
+	return dstmin + ratio*(dstmax - dstmin);
+}
+
+// about 2x faster than SDL_FillRect(surf, &(SDL_Rect){x,y,1,1}, px)
+static inline void set_pixel(SDL_Surface *surf, int x, int y, uint32_t px)
+{
+	unsigned char *ptr = surf->pixels;
+	ptr += y*surf->pitch;
+	ptr += x*(int)sizeof(px);
+	memcpy(ptr, &px, sizeof(px));   // no strict aliasing issues thx
+}
+
 void ellipsoid_show(const struct Ellipsoid *el, const struct Camera *cam)
 {
-	assert(cam->surface->format == el->pixfmt);
+	// switching to unit ball coordinates
+	Vec3 camloc = mat3_mul_vec3(el->transform_inverse, vec3_sub(cam->location, el->center));
+	Mat3 cam2unitb = mat3_mul_mat3(el->transform_inverse, mat3_inverse(cam->world2cam));
+	Mat3 unitb2cam = mat3_inverse(cam2unitb);
 
-	/*
-	static to keep stack usage down, also turns out to be quite a bit faster than
-	placing these caches into el. I also tried putting these to stack and that was
-	about same speed as static.
-	*/
-	static Vec3 vectorcache[ELLIPSOID_PIXELS_VERTICALLY + 1][ELLIPSOID_PIXELS_AROUND];
-	static bool sidecache[ELLIPSOID_PIXELS_VERTICALLY + 1][ELLIPSOID_PIXELS_AROUND];
-
-	// splane is in unit ball coordinates
-	struct Plane splane = get_splitter_plane(el, cam);
-
-	// center vector as camera coordinates
-	Vec3 center = camera_point_world2cam(cam, el->center);
-
-	/*
-	To convert from unit ball coordinates to camera coordinates, apply
-	this and then add center
-	*/
-	Mat3 unitball2cam = mat3_mul_mat3(cam->world2cam, el->transform);
-
-	const VectorArray *usvecs = get_untransformed_surface_vectors();
-	for (size_t v = 0; v < ELLIPSOID_PIXELS_VERTICALLY + 1; v++) {
-		for (size_t a = 0; a < ELLIPSOID_PIXELS_AROUND; a++) {
-			// this is perf critical code
-
-			sidecache[v][a] = plane_whichside(splane, (*usvecs)[v][a]);
-
-			// turns out that in-place operations are measurably faster
-			vectorcache[v][a] = (*usvecs)[v][a];
-			vec3_apply_matrix(&vectorcache[v][a], unitball2cam);
-			vec3_add_inplace(&vectorcache[v][a], center);
-		}
+	if (vec3_lengthSQUARED(camloc) <= 1) {
+		// camera inside ball
+		return;
 	}
 
-	size_t vmax = ELLIPSOID_PIXELS_VERTICALLY;
-	if (el->hidelowerhalf)
-		vmax /= 2;
+	float pi = acosf(-1);
 
-	for (size_t a = 0; a < ELLIPSOID_PIXELS_AROUND; a++) {
-		size_t a2 = (a+1) % ELLIPSOID_PIXELS_AROUND;
+	float pp = vec3_lengthSQUARED(camloc);
 
-		for (size_t v = 0; v < vmax; v++) {
-			size_t v2 = v+1;
+	for (int x = 0; x < cam->surface->w; x++) {
+		float xzr = camera_screenx_to_xzr(cam, (float)x);
 
-			// this is perf critical code
+		/*
+		Vertical plane representing everything seen with this x coordinate:
 
-			if (!sidecache[v][a] &&
-				!sidecache[v][a2] &&
-				!sidecache[v2][a] &&
-				!sidecache[v2][a2])
-			{
+			x/z = xzr
+			1x + 0y + (-xzr)*z = 0
+			(-1)x + 0y + xzr*z = 0
+
+		This is in camera coordinates. The normal direction has to be right,
+		that was done with trial and error (lol)
+		*/
+		struct Plane xplane = { .normal = {-1, 0, xzr}, .constant = 0 };
+		plane_apply_mat3_INVERSE(&xplane, unitb2cam);
+		assert(xplane.constant == 0);
+		plane_move(&xplane, camloc);
+
+		// does it even touch the unit ball?
+		float plane2centerSQUARED = plane_point_distanceSQUARED(xplane, (Vec3){0,0,0});
+		if (plane2centerSQUARED > 1)
+			continue;
+
+		// The intersection is a circle
+		float radiusSQUARED = 1 - plane2centerSQUARED;   // Pythagorean theorem
+		Vec3 icenter = vec3_withlength(xplane.normal, sqrtf(plane2centerSQUARED));
+
+		Vec3 icenter2cam = vec3_sub(camloc, icenter);
+
+		// TODO: explain the "line" that i'm thinking about here
+		float littlebit = radiusSQUARED / sqrtf(vec3_lengthSQUARED(vec3_sub(camloc, icenter)));   // similar triangles
+		Vec3 icenter2linecenter = vec3_withlength(icenter2cam, littlebit);
+		Vec3 linecenter = vec3_add(icenter, icenter2linecenter);
+
+		float linelenHALF = sqrtf(radiusSQUARED - littlebit*littlebit);   // pythagorean theorem
+		Vec3 linevector = vec3_withlength(vec3_cross(icenter2cam, xplane.normal), linelenHALF);
+		Vec3 barelytouches1 = vec3_add(linecenter, linevector);
+		Vec3 barelytouches2 = vec3_sub(linecenter, linevector);
+
+		vec3_add_inplace(&barelytouches1, vec3_neg(camloc));
+		vec3_add_inplace(&barelytouches2, vec3_neg(camloc));
+		vec3_apply_matrix(&barelytouches1, unitb2cam);
+		vec3_apply_matrix(&barelytouches2, unitb2cam);
+
+		int ylower = (int)camera_yzr_to_screeny(cam, barelytouches2.y / barelytouches2.z);
+		int yupper = (int)camera_yzr_to_screeny(cam, barelytouches1.y / barelytouches1.z);
+
+		if (ylower < 0)
+			ylower = 0;
+		if (yupper >= cam->surface->h)
+			yupper = cam->surface->h - 1;
+
+		for (int y = ylower; y < yupper; y++) {
+			float yzr = camera_screeny_to_yzr(cam, (float)y);
+
+			/*
+			line equation in camera coordinates:
+
+			x = xzr*z, y = yzr*z aka (x,y,z) = z*(xzr,yzr,1)
+
+			just need to convert that to unit ball coords
+			*/
+			Vec3 linedir = mat3_mul_vec3(cam2unitb, (Vec3){xzr,yzr,1});
+
+			/*
+			Intersecting the unit ball
+
+				(x,y,z) dot (x,y,z) = 1
+
+			with the line
+
+				(x,y,z) = camloc + t*linedir
+
+			creates a system of equations. We want the solution with bigger t,
+			because the direction vector has z component 1 in camera coordinates,
+			i.e. it's pointing towards the camera.
+			*/
+			float dd = vec3_lengthSQUARED(linedir);
+			float pd = vec3_dot(camloc, linedir);
+
+			float discriminant = pd*pd - (pp - 1)*dd;
+			if (discriminant < 0) {
+				// nothing for this pixel
+				//log_printf("negative under sqrt %f", discriminant);
 				continue;
 			}
 
-			SDL_Rect rect;
-			if (camera_get_containing_rect(
-					cam, &rect,
-					vectorcache[v][a],
-					vectorcache[v][a2],
-					vectorcache[v2][a],
-					vectorcache[v2][a2]))
-			{
-				SDL_FillRect(cam->surface, &rect, el->image[v][a]);
-			}
+			float t = (-pd + sqrtf(discriminant))/dd;
+			Vec3 vec = vec3_add(camloc, vec3_mul_float(linedir, t));
+			if (el->hidelowerhalf && vec.y < 0)
+				continue;
+
+			float xzangle = atan2f(vec.z, vec.x);
+			if (xzangle < 0)
+				xzangle += 2*pi;
+
+			int a = (int)linear_map(0, 2*pi, 0, ELLIPSOID_PIXELS_AROUND,	xzangle);
+			if (a < 0)
+				a = 0;
+			if (a >= ELLIPSOID_PIXELS_AROUND)
+				a = ELLIPSOID_PIXELS_AROUND - 1;
+
+			int v = (int)linear_map(1, -1, 0, ELLIPSOID_PIXELS_VERTICALLY,	vec.y);
+			if (v < 0)
+				v = 0;
+			if (v >= ELLIPSOID_PIXELS_VERTICALLY)
+				v = ELLIPSOID_PIXELS_VERTICALLY - 1;
+
+			set_pixel(cam->surface, x, y, el->image[v][a]);
 		}
 	}
 }
