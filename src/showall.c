@@ -1,134 +1,122 @@
 #include "showall.h"
 #include <assert.h>
+#include <limits.h>
 #include <math.h>
+#include "ellipsoid.h"
+#include "interval.h"
 #include "player.h"
+#include "mathstuff.h"
 
 
-struct GameObj {
-	enum { ELLIPSOID, WALL } kind;
-	union { const struct Ellipsoid *ellipsoid; const struct Wall *wall; } ptr;
+// set to something else than 1 to make things fast but pixely
+#define RAY_SKIP 1
 
-	// all "dependency" GameObjs are drawn to screen first
-	struct GameObj *deps[SHOWALL_MAX_OBJECTS];
-	size_t ndeps;
-
-	float centerz;   // z coordinate of center in camera coordinates
-	bool shown;
+struct VisibleEnemyInfo {
+	const struct Enemy *enemy;
+	Vec3 center;    // in camera coordinates with cam2uball applied
 };
 
-static int compare_gameobj_ptrs_by_centerz(const void *aptr, const void *bptr)
+static int compare_visible_enemy_infos(const void *aptr, const void *bptr)
 {
-	float az = (*(const struct GameObj **)aptr)->centerz;
-	float bz = (*(const struct GameObj **)bptr)->centerz;
-	return (az > bz) - (az < bz);
+	const struct VisibleEnemyInfo *a = aptr, *b = bptr;
+	return (a->center.z > b->center.z) - (a->center.z < b->center.z);
 }
 
-// Make sure that dep is shown before obj
-// TODO: can be slow with many gameobjs, does it help to keep array always sorted and binsearch?
-static void add_dependency(struct GameObj *obj, struct GameObj *dep)
+static size_t create_visible_enemy_infos(
+	const struct Enemy *ens, size_t nens,
+	struct VisibleEnemyInfo *res,
+	const struct Camera *cam, Mat3 cam2uball)
 {
-	for (size_t i = 0; i < obj->ndeps; i++)
-		if (obj->deps[i] == dep)
-			return;
-	obj->deps[obj->ndeps++] = dep;
-}
-
-static void figure_out_deps_for_ellipsoids_behind_walls(
-	struct GameObj *walls, size_t nwalls,
-	struct GameObj *els, size_t nels,
-	const struct Camera *cam)
-{
-	for (size_t e = 0; e < nels; e++) {
-		Vec3 center = els[e].ptr.ellipsoid->center;
-
-		for (size_t w = 0; w < nwalls; w++) {
-			/*
-			Avoid funny issues near ends of the wall. Here 0.5 is a
-			constant found with trial and error, so 0.5*radius is
-			not a failed attempt at converting between a radius and
-			a diameter.
-			*/
-			if (!wall_aligned_with_point(walls[w].ptr.wall, center, 0.5f * els[e].ptr.ellipsoid->xzradius))
-				continue;
-
-			bool camside = wall_side(walls[w].ptr.wall, cam->location);
-			if (wall_side(walls[w].ptr.wall, center) == camside)
-				add_dependency(&els[e], &walls[w]);
-			else
-				add_dependency(&walls[w], &els[e]);
+	size_t n = 0;
+	for (size_t i = 0; i < nens; i++) {
+		if (ellipsoid_visible(&ens[i].ellipsoid, cam)) {
+			res[n++] = (struct VisibleEnemyInfo){
+				.enemy = &ens[i],
+				.center = mat3_mul_vec3(cam2uball, camera_point_world2cam(cam, ens[i].ellipsoid.center)),
+			};
 		}
 	}
+	return n;
 }
 
-static void add_wall_if_visible(
-	struct GameObj *arr, size_t *len, const struct Wall *w, const struct Camera *cam)
+static void calculate_y_minmax(
+	int *ymin, int *ymax,
+	float dSQUARED, Vec3 ballcenter, struct Plane xplane, const struct Camera *cam, Mat3 uball2cam)
 {
-	if (wall_visible(w, cam)) {
-		arr[(*len)++] = (struct GameObj){
-			.kind = WALL,
-			.ptr = { .wall = w },
-			.centerz = camera_point_world2cam(cam, wall_center(w)).z,
-			0,    // rest zeroed, measurably faster than memset
-		};
-	}
-}
+	// camera is at (0,0,0)
 
-static void add_ellipsoid_if_visible(
-	struct GameObj *arr, size_t *len, const struct Ellipsoid *el, const struct Camera *cam)
-{
-	if (ellipsoid_visible(el, cam)) {
-		arr[(*len)++] = (struct GameObj) {
-			.kind = ELLIPSOID,
-			.ptr = { .ellipsoid = el },
-			.centerz = camera_point_world2cam(cam, el->center).z,
-			0,
-		};
-	}
-}
-
-static struct GameObj **get_sorted_gameobj_pointers(
-	struct GameObj *walls, size_t nwalls,
-	struct GameObj *els, size_t nels)
-{
-	static struct GameObj *res[SHOWALL_MAX_OBJECTS];
-	struct GameObj **ptr = res;
-	for (size_t i = 0; i < nels; i++)
-		*ptr++ = &els[i];
-	for (size_t i = 0; i < nwalls; i++)
-		*ptr++ = &walls[i];
-
-	qsort(res, (size_t)(ptr - res), sizeof(res[0]), compare_gameobj_ptrs_by_centerz);
-	return res;
-}
-
-static void show(struct GameObj *gobj, const struct Camera *cam, unsigned int depth)
-{
-	if (gobj->shown)
-		return;
-
-	if (depth > SHOWALL_MAX_OBJECTS) {
-		// don't know when this could happen
-		log_printf("hitting recursion depth limit");
-		return;
-	}
+	// The intersection is a circle
+	float radiusSQUARED = 1 - dSQUARED;   // Pythagorean theorem
+	Vec3 icenter = vec3_add(ballcenter, vec3_withlength(xplane.normal, sqrtf(dSQUARED)));
 
 	/*
-	prevent infinite recursion on dependency cycle by setting this early.
-	I don't know what causes dependency cycles, but they happen sometimes.
+	On xplane, the situation looks like this:
+
+		       o o
+		    o       o
+		  o           o
+		\o   icenter   o/
+		 \A-----C-----B/
+		  \ o       o /
+		   \   o o   /
+		    \       /
+		     \     /
+		      \   /
+		       \ /
+		     (0,0,0) = camera
+
+	The \ and / lines are tangent lines of the intersection circle going
+	through the camera. We want to find those, because they correspond to
+	the first and last y pixel of the ball visible to the camera. Letting
+	A and B denote the intersections of the tangent lines with the circle,
+	and letting C denote the center of line AB, we see that the triangles
+
+		B-C-icenter  and  camera-B-icenter
+
+	are similar (90deg angle and the angle at icenter in both). Hence
+
+		|C - icenter| / |icenter - B| = |B - icenter| / |icenter - camera|
+
+	which gives
+
+		|C - icenter| = radius^2 / |icenter|.
+
+	The unit vector in direction of icenter (thinking of icenter as a
+	vector from camera=(0,0,0) to icenter) is icenter/|icenter|, so
+
+		C = icenter/|icenter| * (|icenter| - radius^2/|icenter|)
+		  = icenter * (1 - radius^2/|icenter|^2)
 	*/
-	gobj->shown = true;
+	Vec3 C = vec3_mul_float(icenter, 1 - radiusSQUARED/vec3_lengthSQUARED(icenter));
 
-	for (size_t i = 0; i < gobj->ndeps; i++)
-		show(gobj->deps[i], cam, depth+1);
+	/*
+	Pythagorean theorem: radius^2 = |C-A|^2 + |C - icenter|^2
 
-	switch(gobj->kind) {
-	case ELLIPSOID:
-		ellipsoid_show(gobj->ptr.ellipsoid, cam);
-		break;
-	case WALL:
-		wall_show(gobj->ptr.wall, cam);
-		break;
-	}
+	Plugging in from above gives this. Note that it has radius^4, aka
+	radius^2 * radius^2.
+	*/
+	float distanceCA = sqrtf(radiusSQUARED - radiusSQUARED*radiusSQUARED/vec3_lengthSQUARED(icenter));
+
+	/*
+	Use right hand rule for cross product, with xplane normal vector
+	pointing from you towards your screen in above picture.
+
+	The pointing direction could also be the opposite and you would get
+	CtoB instead of CtoA. Doesn't matter.
+	*/
+	Vec3 CtoA = vec3_withlength(vec3_cross(icenter, xplane.normal), distanceCA);
+	Vec3 A = vec3_add(C, CtoA);
+	Vec3 B = vec3_sub(C, CtoA);
+
+	// Trial and error has been used to figure out which y value is bigger and which is smaller...
+	*ymax = (int)camera_point_cam2screen(cam, mat3_mul_vec3(uball2cam, A)).y;
+	*ymin = (int)camera_point_cam2screen(cam, mat3_mul_vec3(uball2cam, B)).y;
+	assert(*ymin <= *ymax);
+
+	if (*ymin < 0)
+		*ymin = 0;
+	if (*ymax > cam->surface->h)
+		*ymax = cam->surface->h;
 }
 
 void show_all(
@@ -137,23 +125,57 @@ void show_all(
 	const struct Enemy *ens, size_t nens,
 	const struct Camera *cam)
 {
-	assert(nwalls <= PLACE_MAX_WALLS);
-	assert(nplrs <= SHOWALL_MAX_PLAYERS);
+	assert(nens <= SHOWALL_MAX_ENEMIES);
 
-	// these are static to keep stack usage down
-	static struct GameObj wallobjs[PLACE_MAX_WALLS], elobjs[SHOWALL_MAX_ELLIPSOIDS];
-	size_t nwallobjs = 0, nelobjs = 0;
+	// cam2uball flattens any enemy from camera coordinates into unit ball
+	Mat3 uball2cam = { .rows = {
+		{ ENEMY_XZRADIUS, 0, 0 },
+		{ 0, ENEMY_YRADIUS, 0 },
+		{ 0, 0, ENEMY_XZRADIUS },
+	}};
+	Mat3 cam2uball = mat3_inverse(uball2cam);
 
-	for (size_t i = 0; i < nwalls; i++)
-		add_wall_if_visible(wallobjs, &nwallobjs, &walls[i], cam);
-	for (size_t i = 0; i < nplrs; i++)
-		add_ellipsoid_if_visible(elobjs, &nelobjs, &plrs[i].ellipsoid, cam);
-	for (size_t i = 0; i < nens; i++)
-		add_ellipsoid_if_visible(elobjs, &nelobjs, &ens[i].ellipsoid, cam);
+	uint32_t color = SDL_MapRGB(cam->surface->format, 0xff, 0, 0xff);
 
-	figure_out_deps_for_ellipsoids_behind_walls(wallobjs, nwallobjs, elobjs, nelobjs, cam);
-	struct GameObj **sorted = get_sorted_gameobj_pointers(wallobjs, nwallobjs, elobjs, nelobjs);
+	// static to keep stack usage down
+	static struct VisibleEnemyInfo visens[SHOWALL_MAX_ENEMIES];
+	size_t nvisens = create_visible_enemy_infos(ens, nens, visens, cam, cam2uball);
+	qsort(visens, nvisens, sizeof(visens[0]), compare_visible_enemy_infos);
 
-	for (size_t i = 0; i < nwallobjs + nelobjs; i++)
-		show(sorted[i], cam, 0);
+	for (int x = 0; x < cam->surface->w; x += RAY_SKIP) {
+		float xzr = camera_screenx_to_xzr(cam, (float)x);
+		// Equation of plane of points having this screen x:
+		// x/z = xzr, aka 1x + 0y + (-xzr)z = 0
+		struct Plane xplane = { .normal = {1, 0, -xzr}, .constant = 0 };
+		plane_apply_mat3_INVERSE(&xplane, cam2uball);
+
+		static struct Interval intervals[SHOWALL_MAX_ENEMIES];
+		size_t nintervals = 0;
+
+		for (int v = 0; v < (int)nvisens; v++) {
+			float dSQUARED = plane_point_distanceSQUARED(xplane, visens[v].center);
+			if (dSQUARED >= 1)
+				continue;
+
+			int ymin, ymax;
+			calculate_y_minmax(&ymin, &ymax, dSQUARED, visens[v].center, xplane, cam, uball2cam);
+			if (ymin < ymax) {
+				intervals[nintervals++] = (struct Interval){
+					.start = ymin,
+					.end = ymax,
+					.id = v,
+				};
+			}
+		}
+
+		static struct Interval nonoverlap[INTERVAL_NON_OVERLAPPING_MAX(SHOWALL_MAX_ENEMIES)];
+		size_t nnonoverlap = interval_non_overlapping(intervals, nintervals, nonoverlap);
+
+		for (size_t i = 0; i < nnonoverlap; i++) {
+			SDL_FillRect(cam->surface, &(SDL_Rect){
+				x, nonoverlap[i].start,
+				RAY_SKIP, nonoverlap[i].end - nonoverlap[i].start,
+			}, color);
+		}
+	}
 }

@@ -16,8 +16,8 @@ void enemy_init(struct Enemy *en, const SDL_PixelFormat *fmt)
 	ellipsoid_load(&en->ellipsoid, fname, fmt);
 	en->ellipsoid.hidelowerhalf = true;
 
-	en->ellipsoid.xzradius = 0.45f;
-	en->ellipsoid.yradius = 1.2f;
+	en->ellipsoid.xzradius = ENEMY_XZRADIUS;
+	en->ellipsoid.yradius = ENEMY_YRADIUS;
 	en->ellipsoid.angle = 0;
 	ellipsoid_update_transforms(&en->ellipsoid);
 
@@ -174,6 +174,7 @@ static bool turn(float *angle, float incr, float destangle)
 	assert(incr > 0);
 
 	float diff = normalize_angle(destangle - *angle);
+	//*angle += diff; return false;
 	if (fabsf(diff) < incr) {
 		// so close to destangle that incr would go past destangle
 		*angle = destangle;

@@ -7,6 +7,8 @@
 
 #define min(a,b) ((a)<(b) ? (a) : (b))
 #define max(a,b) ((a)>(b) ? (a) : (b))
+#define min3(a,b,c) min(a,min(b,c))
+#define max3(a,b,c) max(a,max(b,c))
 #define min4(a,b,c,d) min(min(a,b),min(c,d))
 #define max4(a,b,c,d) max(max(a,b),max(c,d))
 

@@ -1,6 +1,108 @@
 // this file contains functions that i wrote and later didn't need them anymore
 
 
+/*
+Where on the ellipsoid's surface will each pixel go? This function calculates vectors
+so that we don't need to call slow trig functions every time an ellipsoid is drawn.
+Returns unit ball coordinates.
+*/
+static const VectorArray *get_untransformed_surface_vectors(void)
+{
+	static VectorArray res;
+	static bool ready = false;
+
+	if (ready)
+		return (const VectorArray *) &res;
+
+	float pi = acosf(-1);
+
+	for (size_t v = 0; v < ELLIPSOID_PIXELS_VERTICALLY+1; v++) {
+		float y = 1 - 2*(float)v/ELLIPSOID_PIXELS_VERTICALLY;
+		float xzrad = sqrtf(1 - y*y);  // radius on xz plane
+
+		for (size_t a = 0; a < ELLIPSOID_PIXELS_AROUND; a++) {
+			/*
+			+pi sets the angle of the back of the player, corresponding to a=0.
+			This way, the player looks into the angle=0 direction.
+			Minus sign is needed to avoid mirror imaging the pic for some reason.
+			*/
+			float angle = -(float)a/ELLIPSOID_PIXELS_AROUND * 2*pi + pi;
+			float x = xzrad*cosf(angle);
+			float z = xzrad*sinf(angle);
+			res[v][a] = (Vec3){ x, y, z };
+		}
+	}
+
+	ready = true;
+	return (const VectorArray *) &res;
+}
+
+/*
+A part of the ellipsoid is visible to the camera. The rest isn't. The plane returned
+by this function splits the ellipsoid into the visible part and the part behind the
+visible part. The normal vector of the plane points toward the visible side, so
+plane_whichside() returns whether a point on the ellipsoid is visible.
+
+The returned plane is in unit ball coordinates.
+*/
+static struct Plane
+get_splitter_plane(const struct Ellipsoid *el, const struct Camera *cam)
+{
+	/*
+	Calculate camera location in unit ball coordinates. This must work
+	so that once the resulting camera vector is
+		1. transformed with el->transform
+		2. transformed with cam->world2cam
+		3. added with el->center
+	then we get the camera location in camera coordinates, i.e. (0,0,0).
+	*/
+	Vec3 cam2center = camera_point_world2cam(cam, el->center);
+	Vec3 center2cam = vec3_neg(cam2center);
+	vec3_apply_matrix(&center2cam, mat3_inverse(cam->world2cam));
+	vec3_apply_matrix(&center2cam, el->transform_inverse);
+
+	/*
+	From the side, the el being split by the visibility plane looks like this:
+
+        \  /
+         \/___
+         /\   \
+        /| \o  |
+	   /  \_\_/
+    cam^^^^^^\^^^^^^^
+              \
+               \
+	       visibility
+	         plane
+
+	Note that the plane is closer to the camera than the el center. The center
+	is marked with o above. Note that we are using unit ball coordinates,
+	so we have o=(0,0,0).
+
+	Let D denote the distance between visibility plane and the el center. With
+	similar triangles and Pythagorean theorem, we get
+
+		D = 1/|center2cam|,
+
+	where 1 = 1^2 = (unit ball radius)^2. The equation of the plane is
+
+		projection of (x,y,z) onto center2cam = D,
+
+	because center2cam is a normal vector of the plane. By writing the projection
+	with dot product, we get
+
+		((x,y,z) dot center2cam) / |center2cam| = D.
+
+	This simplifies:
+
+		(x,y,z) dot center2cam = 1
+	*/
+	return (struct Plane) {
+		.normal = center2cam,
+		.constant = 1,
+	};
+}
+
 // Find intersection point of wall and line, return false if no intersection
 bool wall_intersect_line(const struct Wall *w, struct Line ln, Vec3 *res)
 {
@@ -231,4 +333,3 @@ static float smallest_distance_between_ellipse_and_point(float a, float b, Vec2 
 
 	return hypotf(m * b * cost, m * a * sint);
 }
-

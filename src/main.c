@@ -132,12 +132,12 @@ int main(int argc, char **argv)
 	gs->players[0].cam.surface = create_half_surface(winsurf, 0, winsurf->w/2);
 	gs->players[1].cam.surface = create_half_surface(winsurf, winsurf->w/2, winsurf->w/2);
 
-	gs->nenemies = 20;
+	gs->nenemies = 10;
 	for (size_t i = 0; i < gs->nenemies; i++) {
 		enemy_init(&gs->enemies[i], winsurf->format);
 		gs->enemies[i].ellipsoid.center.x += 1;
 		gs->enemies[i].ellipsoid.center.z += 1;
-		gs->enemies[i].ellipsoid.angle += i;
+		gs->enemies[i].ellipsoid.angle += (float)i;
 		ellipsoid_update_transforms(&gs->enemies[i].ellipsoid);
 	}
 
@@ -171,7 +171,7 @@ int main(int argc, char **argv)
 		uint32_t curtime = SDL_GetTicks();
 
 		percentsum += (float)(curtime - time) / (1000/FPS) * 100.f;
-		if (++counter == FPS) {
+		if (++counter == 1/*FPS*/) {
 			fprintf(stderr, "speed percentage average = %.2f%%\n", percentsum / (float)counter);
 			counter = 0;
 			percentsum = 0;

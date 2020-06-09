@@ -4,6 +4,9 @@
 #include "ellipsoid.h"
 #include "place.h"
 
+#define ENEMY_XZRADIUS 0.45f
+#define ENEMY_YRADIUS  1.2f
+
 enum EnemyDir {
 	ENEMY_DIR_XPOS,
 	ENEMY_DIR_XNEG,
