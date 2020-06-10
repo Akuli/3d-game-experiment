@@ -35,9 +35,6 @@ Vec3 vec3_mul_float(Vec3 v, float f);
 // dot product
 float vec3_dot(Vec3 v, Vec3 w);
 
-// Vector projection
-Vec3 vec3_project(Vec3 projectme, Vec3 onto);
-
 /*
 Returns |v|^2. Function name has SQUARED in capital letters to make sure you
 notice it. It's good to avoid square roots in performance critical code.

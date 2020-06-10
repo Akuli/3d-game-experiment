@@ -48,6 +48,7 @@ testrunner: $(TESTS_SRC) $(SRC)
 .PHONY: test
 test: testrunner
 	./$<
+	python3 checkfuncs.py
 
 
 # profiling stuff

@@ -64,7 +64,8 @@ All points are assumed to be in camera coordinates. This returns false if a poin
 is behind the camera. You must give at least one point.
 */
 bool camera_get_containing_rect(
-	const struct Camera *cam, SDL_Rect *res, Vec3 p1, Vec3 p2, Vec3 p3, Vec3 p4);
+	const struct Camera *cam, SDL_Rect *res,
+	Vec3 p1, Vec3 p2, Vec3 p3, Vec3 p4);
 
 
 #endif   // CAMERA_H

@@ -42,20 +42,6 @@ float vec3_lengthSQUARED(Vec3 v)
 	return vec3_dot(v,v);
 }
 
-Vec3 vec3_project(Vec3 projectme, Vec3 onto)
-{
-	/*
-	(projection length) * |onto| = projectme dot onto
-	projection vector = (unit vector in direction of onto)*(projection length)
-	unit vector in direction of onto = onto / |onto|
-
-	Putting all that together gives:
-
-	projection vector = onto*((projectme dot onto) / |onto|^2)
-	*/
-	return vec3_mul_float(onto, vec3_dot(projectme, onto)/vec3_lengthSQUARED(onto));
-}
-
 Vec3 vec3_withlength(Vec3 v, float len)
 {
 	float oldlen = sqrtf(vec3_lengthSQUARED(v));

@@ -47,7 +47,7 @@ bool wall_visible(const struct Wall *w, const struct Camera *cam);
 void wall_show(const struct Wall *w, const struct Camera *cam);
 
 // same for any two points on same side of the wall
-bool wall_side(const struct Wall *wall, Vec3 pt);
+bool wall_side(const struct Wall *w, Vec3 pt);
 
 /*
 Is a point directly in front of or behind the wall? below pic is viewing from
