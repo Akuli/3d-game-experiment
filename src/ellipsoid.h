@@ -4,10 +4,8 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 #include "camera.h"
+#include "ellipsoidpic.h"
 #include "mathstuff.h"
-
-#define ELLIPSOID_PIXELS_AROUND 200
-#define ELLIPSOID_PIXELS_VERTICALLY 300
 
 /*
 An Ellipsoid is a stretched ball, given by
@@ -17,18 +15,10 @@ An Ellipsoid is a stretched ball, given by
 but shifted by the center vector. So, we take the origin-centered unit ball
 x^2+y^2+z^2=1, stretch it in x and z directions by xzradius and in y direction
 by yradius, and move it to change the center.
-
-This struct is BIG. Always use pointers. Makefile has -Werror=stack-usage=bla
 */
 struct Ellipsoid {
 	Vec3 center;
-
-	/*
-	Image pixels stored in whatever pixel format needed for drawing to avoid
-	conversions in tight loops (actually made a difference)
-	*/
-	const SDL_PixelFormat *pixfmt;
-	uint32_t image[ELLIPSOID_PIXELS_VERTICALLY][ELLIPSOID_PIXELS_AROUND];
+	const struct EllipsoidPic *epic;
 
 	// call ellipsoid_update_transforms() after changing these
 	float angle;       // radians
@@ -40,25 +30,12 @@ struct Ellipsoid {
 	centered at the origin (you still need to add the center vector).
 	*/
 	Mat3 transform, transform_inverse;
-
-	// if true, then only the upper half of the ellipsoid is visible
-	bool hidelowerhalf;
 };
 
 // calculate el->transform and el->transform_inverse
 void ellipsoid_update_transforms(struct Ellipsoid *el);
 
-/*
-Load a ellipsoid from an image file.
-
-The ellipsoid could be e.g. from malloc, so uninitialized memory is fine. The
-pixel format must match the SDL_Surface when drawing the ellipsoid.
-*/
-void ellipsoid_load(struct Ellipsoid *el, const char *filename, const SDL_PixelFormat *fmt);
-
-// don't try to show an invisible ellipsoid
 bool ellipsoid_visible(const struct Ellipsoid *el, const struct Camera *cam);
-void ellipsoid_show(const struct Ellipsoid *el, const struct Camera *cam);
 
 /*
 Returns how much ellipsoids should be moved apart from each other to make them not

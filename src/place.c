@@ -21,7 +21,7 @@ Small language for specifying places as strings:
 static struct Place places[] = {
 	{ "Foo", {0}, 0, 0, 0, (const char *[]){
 		"_____|L_________",
-		"_L___ _________L",
+		"_L___L_________L",
 		"     ||         ",
 		"     ||         ",
 		"     ||         ",

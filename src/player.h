@@ -9,6 +9,7 @@
 #define PLAYER_HEIGHT_FLAT 0.1f
 
 struct Player {
+	struct EllipsoidPic epic;
 	struct Ellipsoid ellipsoid;
 	struct Camera cam;
 	int turning;   // see player_set_turning()

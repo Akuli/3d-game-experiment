@@ -24,6 +24,7 @@
 // includes all the GameObjects that all players should see
 struct GameState {
 	struct Player players[2];
+	struct EllipsoidPic enemypic;
 	struct Enemy enemies[SHOWALL_MAX_ENEMIES];
 	size_t nenemies;
 	const struct Place *place;
@@ -108,6 +109,9 @@ int main(int argc, char **argv)
 	if (!( argc == 2 && strcmp(argv[1], "--no-sound") == 0 ))
 		sound_init();
 
+	static struct GameState gs;
+	memset(&gs, 0, sizeof gs);
+
 	SDL_Window *win = SDL_CreateWindow(
 		"TODO: title here", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 800, 600, 0);
 	if (!win)
@@ -117,29 +121,29 @@ int main(int argc, char **argv)
 	if (!winsurf)
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 
-	struct GameState *gs = calloc(1, sizeof(*gs));
-	if (!gs)
-		log_printf_abort("not enough memory");
+	gs.place = &place_list()[0];
 
-	gs->place = &place_list()[0];
+	ellipsoidpic_load(&gs.players[0].epic, "players/Tux.png", winsurf->format);
+	ellipsoidpic_load(&gs.players[1].epic, "players/Chick.png", winsurf->format);
+	ellipsoidpic_load(&gs.enemypic, "enemies/enemy1.png", winsurf->format);
 
-	ellipsoid_load(&gs->players[0].ellipsoid, "players/Tux.png", winsurf->format);
-	ellipsoid_load(&gs->players[1].ellipsoid, "players/Chick.png", winsurf->format);
+	gs.players[0].ellipsoid.epic = &gs.players[0].epic;
+	gs.players[1].ellipsoid.epic = &gs.players[1].epic;
 
-	gs->players[0].ellipsoid.center = (Vec3){ 2.5f, 0, 0.5f };
-	gs->players[1].ellipsoid.center = (Vec3){ 1.5f, 0, 0.5f };
+	gs.players[0].ellipsoid.center = (Vec3){ 2.5f, 0, 0.5f };
+	gs.players[1].ellipsoid.center = (Vec3){ 1.5f, 0, 0.5f };
 
 	// This turned out to be much faster than blitting
-	gs->players[0].cam.surface = create_half_surface(winsurf, 0, winsurf->w/2);
-	gs->players[1].cam.surface = create_half_surface(winsurf, winsurf->w/2, winsurf->w/2);
+	gs.players[0].cam.surface = create_half_surface(winsurf, 0, winsurf->w/2);
+	gs.players[1].cam.surface = create_half_surface(winsurf, winsurf->w/2, winsurf->w/2);
 
-	gs->nenemies = 10;
-	for (size_t i = 0; i < gs->nenemies; i++) {
-		enemy_init(&gs->enemies[i], winsurf->format);
-		gs->enemies[i].ellipsoid.center.x += 1;
-		gs->enemies[i].ellipsoid.center.z += 1;
-		gs->enemies[i].ellipsoid.angle += (float)i;
-		ellipsoid_update_transforms(&gs->enemies[i].ellipsoid);
+	gs.nenemies = 10;
+	for (size_t i = 0; i < gs.nenemies; i++) {
+		enemy_init(&gs.enemies[i], &gs.enemypic);
+		gs.enemies[i].ellipsoid.center.x += 1;
+		gs.enemies[i].ellipsoid.center.z += 1;
+		gs.enemies[i].ellipsoid.angle += (float)i;
+		ellipsoid_update_transforms(&gs.enemies[i].ellipsoid);
 	}
 
 	uint32_t time = 0;
@@ -149,22 +153,22 @@ int main(int argc, char **argv)
 	while(1){
 		SDL_Event event;
 		while(SDL_PollEvent(&event)) {
-			if (!handle_event(event, gs))
+			if (!handle_event(event, &gs))
 				goto exit;
 		}
 
-		for (size_t i = 0; i < gs->nenemies; i++)
-			enemy_eachframe(&gs->enemies[i], FPS, gs->place);
+		for (size_t i = 0; i < gs.nenemies; i++)
+			enemy_eachframe(&gs.enemies[i], FPS, gs.place);
 		for (int i=0; i < 2; i++)
-			player_eachframe(&gs->players[i], FPS, gs->place->walls, gs->place->nwalls);
+			player_eachframe(&gs.players[i], FPS, gs.place->walls, gs.place->nwalls);
 
-		handle_players_bumping_each_other(&gs->players[0], &gs->players[1]);
-		handle_players_bumping_enemies(gs);
+		handle_players_bumping_each_other(&gs.players[0], &gs.players[1]);
+		handle_players_bumping_enemies(&gs);
 
 		SDL_FillRect(winsurf, NULL, 0);
 
 		for (int i = 0; i < 2; i++)
-			show_all(gs->place->walls, gs->place->nwalls, gs->players, 2, gs->enemies, gs->nenemies, &gs->players[i].cam);
+			show_all(gs.place->walls, gs.place->nwalls, gs.players, 2, gs.enemies, gs.nenemies, &gs.players[i].cam);
 
 		SDL_FillRect(winsurf, &(SDL_Rect){ winsurf->w/2, 0, 1, winsurf->h }, SDL_MapRGB(winsurf->format, 0xff, 0xff, 0xff));
 		SDL_UpdateWindowSurface(win);
@@ -188,9 +192,8 @@ int main(int argc, char **argv)
 	}
 
 exit:
-	SDL_FreeSurface(gs->players[0].cam.surface);
-	SDL_FreeSurface(gs->players[1].cam.surface);
-	free(gs);
+	SDL_FreeSurface(gs.players[0].cam.surface);
+	SDL_FreeSurface(gs.players[1].cam.surface);
 	sound_deinit();
 	SDL_DestroyWindow(win);
 	SDL_Quit();

@@ -8,6 +8,13 @@
 #include "mathstuff.h"
 
 
+static float linear_map(float srcmin, float srcmax, float dstmin, float dstmax, float val)
+{
+	float ratio = (val - srcmin)/(srcmax - srcmin);
+	return dstmin + ratio*(dstmax - dstmin);
+}
+
+
 // set to something else than 1 to make things fast but pixely
 #define RAY_SKIP 1
 
@@ -39,23 +46,27 @@ static size_t create_visible_enemy_infos(
 	return n;
 }
 
+struct PlaneBallIntersectionCircle {
+	Vec3 center;
+	float radiusSQUARED;
+};
+
 static void calculate_y_minmax(
 	int *ymin, int *ymax,
-	float dSQUARED, Vec3 ballcenter, struct Plane xplane, const struct Camera *cam, Mat3 uball2cam)
+	struct PlaneBallIntersectionCircle ic,
+	struct Plane xplane,
+	const struct Camera *cam,
+	Mat3 uball2cam)
 {
 	// camera is at (0,0,0)
 
-	// The intersection is a circle
-	float radiusSQUARED = 1 - dSQUARED;   // Pythagorean theorem
-	Vec3 icenter = vec3_add(ballcenter, vec3_withlength(xplane.normal, sqrtf(dSQUARED)));
-
 	/*
-	On xplane, the situation looks like this:
+	Intersection circle looks like this:
 
 		       o o
 		    o       o
 		  o           o
-		\o   icenter   o/
+		\o    center   o/
 		 \A-----C-----B/
 		  \ o       o /
 		   \   o o   /
@@ -87,7 +98,7 @@ static void calculate_y_minmax(
 		C = icenter/|icenter| * (|icenter| - radius^2/|icenter|)
 		  = icenter * (1 - radius^2/|icenter|^2)
 	*/
-	Vec3 C = vec3_mul_float(icenter, 1 - radiusSQUARED/vec3_lengthSQUARED(icenter));
+	Vec3 C = vec3_mul_float(ic.center, 1 - ic.radiusSQUARED/vec3_lengthSQUARED(ic.center));
 
 	/*
 	Pythagorean theorem: radius^2 = |C-A|^2 + |C - icenter|^2
@@ -95,7 +106,7 @@ static void calculate_y_minmax(
 	Plugging in from above gives this. Note that it has radius^4, aka
 	radius^2 * radius^2.
 	*/
-	float distanceCA = sqrtf(radiusSQUARED - radiusSQUARED*radiusSQUARED/vec3_lengthSQUARED(icenter));
+	float distanceCA = sqrtf(ic.radiusSQUARED - ic.radiusSQUARED*ic.radiusSQUARED/vec3_lengthSQUARED(ic.center));
 
 	/*
 	Use right hand rule for cross product, with xplane normal vector
@@ -104,7 +115,7 @@ static void calculate_y_minmax(
 	The pointing direction could also be the opposite and you would get
 	CtoB instead of CtoA. Doesn't matter.
 	*/
-	Vec3 CtoA = vec3_withlength(vec3_cross(icenter, xplane.normal), distanceCA);
+	Vec3 CtoA = vec3_withlength(vec3_cross(ic.center, xplane.normal), distanceCA);
 	Vec3 A = vec3_add(C, CtoA);
 	Vec3 B = vec3_sub(C, CtoA);
 
@@ -117,6 +128,84 @@ static void calculate_y_minmax(
 		*ymin = 0;
 	if (*ymax > cam->surface->h)
 		*ymax = cam->surface->h;
+}
+
+static uint32_t get_ellipsoid_color(
+	const struct Ellipsoid *el, const struct Camera *cam,
+	float xzr, int y,
+	Mat3 cam2unitb, Vec3 ballcenter)
+{
+	float yzr = camera_screeny_to_yzr(cam, (float)y);
+
+	/*
+	line equation in camera coordinates:
+
+		x = xzr*z, y = yzr*z aka (x,y,z) = z*(xzr,yzr,1)
+
+	Note that this has z coordinate 1 in camera coordinates, i.e. pointing toward camera
+	*/
+	Vec3 linedir = mat3_mul_vec3(cam2unitb, (Vec3){xzr,yzr,1});
+
+	/*
+	Let xyz denote the vector (x,y,z). Intersecting the ball
+
+		(xyz - ballcenter) dot (xyz - ballcenter) = 1
+
+	with the line
+
+		xyz = t*linedir
+
+	creates a quadratic equation in t. We want the solution with bigger t,
+	because the direction vector is pointing towards the camera.
+	*/
+	float cc = vec3_lengthSQUARED(ballcenter);
+	float dd = vec3_lengthSQUARED(linedir);
+	float cd = vec3_dot(ballcenter, linedir);
+
+	float undersqrt = cd*cd - dd*(cc-1);
+	if (undersqrt < 0) {
+		//log_printf("negative under sqrt: %f", undersqrt);
+		undersqrt = 0;
+	}
+
+	float t = (cd + sqrtf(undersqrt))/dd;
+	Vec3 vec = vec3_sub(vec3_mul_float(linedir, t), ballcenter);
+
+	/*
+	Adding pi makes the player's back go to angle pi, which means that face goes
+	to angle 0 as wanted.
+	*/
+	float pi = acosf(-1);
+	float xzangle = atan2f(vec.z, vec.x) - el->angle + cam->angle + pi;
+
+	// this seems to be faster than fmodf
+	while (xzangle > 2*pi)
+		xzangle -= 2*pi;
+	while (xzangle < 0)
+		xzangle += 2*pi;
+
+	int a = (int)linear_map(2*pi, 0, 0, ELLIPSOIDPIC_AROUND,	xzangle);
+	if (a < 0)
+		a = 0;
+	if (a >= ELLIPSOIDPIC_AROUND)
+		a = ELLIPSOIDPIC_AROUND - 1;
+
+	int v = (int)linear_map(1, -1, 0, ELLIPSOIDPIC_HEIGHT,	vec.y);
+	if (v < 0)
+		v = 0;
+	if (v >= ELLIPSOIDPIC_HEIGHT)
+		v = ELLIPSOIDPIC_HEIGHT - 1;
+
+	return el->epic->pixels[v][a];
+}
+
+// about 2x faster than SDL_FillRect(surf, &(SDL_Rect){x,y,1,1}, px)
+static inline void set_pixel(SDL_Surface *surf, int x, int y, uint32_t px)
+{
+	unsigned char *ptr = surf->pixels;
+	ptr += y*surf->pitch;
+	ptr += x*(int)sizeof(px);
+	memcpy(ptr, &px, sizeof(px));   // no strict aliasing issues thx
 }
 
 void show_all(
@@ -135,8 +224,6 @@ void show_all(
 	}};
 	Mat3 cam2uball = mat3_inverse(uball2cam);
 
-	uint32_t color = SDL_MapRGB(cam->surface->format, 0xff, 0, 0xff);
-
 	// static to keep stack usage down
 	static struct VisibleEnemyInfo visens[SHOWALL_MAX_ENEMIES];
 	size_t nvisens = create_visible_enemy_infos(ens, nens, visens, cam, cam2uball);
@@ -144,10 +231,14 @@ void show_all(
 
 	for (int x = 0; x < cam->surface->w; x += RAY_SKIP) {
 		float xzr = camera_screenx_to_xzr(cam, (float)x);
+
 		// Equation of plane of points having this screen x:
 		// x/z = xzr, aka 1x + 0y + (-xzr)z = 0
 		struct Plane xplane = { .normal = {1, 0, -xzr}, .constant = 0 };
 		plane_apply_mat3_INVERSE(&xplane, cam2uball);
+
+		// Intersection of xplane with each enemy is a circle
+		static struct PlaneBallIntersectionCircle icircles[SHOWALL_MAX_ENEMIES];
 
 		static struct Interval intervals[SHOWALL_MAX_ENEMIES];
 		size_t nintervals = 0;
@@ -157,8 +248,11 @@ void show_all(
 			if (dSQUARED >= 1)
 				continue;
 
+			icircles[v].radiusSQUARED = 1 - dSQUARED;   // Pythagorean theorem
+			icircles[v].center = vec3_add(visens[v].center, vec3_withlength(xplane.normal, sqrtf(dSQUARED)));
+
 			int ymin, ymax;
-			calculate_y_minmax(&ymin, &ymax, dSQUARED, visens[v].center, xplane, cam, uball2cam);
+			calculate_y_minmax(&ymin, &ymax, icircles[v], xplane, cam, uball2cam);
 			if (ymin < ymax) {
 				intervals[nintervals++] = (struct Interval){
 					.start = ymin,
@@ -172,10 +266,12 @@ void show_all(
 		size_t nnonoverlap = interval_non_overlapping(intervals, nintervals, nonoverlap);
 
 		for (size_t i = 0; i < nnonoverlap; i++) {
-			SDL_FillRect(cam->surface, &(SDL_Rect){
-				x, nonoverlap[i].start,
-				RAY_SKIP, nonoverlap[i].end - nonoverlap[i].start,
-			}, color);
+			struct VisibleEnemyInfo visen = visens[nonoverlap[i].id];
+			for (int y = nonoverlap[i].start; y < nonoverlap[i].end; y++) {
+				uint32_t col = get_ellipsoid_color(
+					&visen.enemy->ellipsoid, cam, xzr, y, cam2uball, visen.center);
+				set_pixel(cam->surface, x, y, col);
+			}
 		}
 	}
 }

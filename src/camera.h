@@ -17,6 +17,8 @@ struct Camera {
 
 	// call camera_update_caches() after changing these
 	Vec3 location;
+	float angle;
+
 	Mat3 world2cam;
 
 	/*

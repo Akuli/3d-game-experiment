@@ -39,7 +39,9 @@ static float get_y_radius(const struct Player *plr, unsigned int fps)
 void player_eachframe(struct Player *plr, unsigned int fps, const struct Wall *walls, size_t nwalls)
 {
 	if (plr->turning != 0) {
+		float pi = acosf(-1);
 		plr->ellipsoid.angle += (RADIANS_PER_SECOND / (float)fps) * (float)plr->turning;
+		plr->ellipsoid.angle = fmodf(plr->ellipsoid.angle, 2*pi);
 		// ellipsoid_update_transforms() called below
 	}
 
@@ -68,16 +70,13 @@ void player_eachframe(struct Player *plr, unsigned int fps, const struct Wall *w
 
 	plr->ellipsoid.center.y = y + plr->ellipsoid.yradius;
 
-	Mat3 rot = mat3_rotation_xz(plr->ellipsoid.angle);
-	Mat3 antirot = mat3_rotation_xz(-plr->ellipsoid.angle);
-
-	plr->cam.world2cam = antirot;
-
 	for (size_t i = 0; i < nwalls; i++)
 		wall_bumps_ellipsoid(&walls[i], &plr->ellipsoid);
 
 	Vec3 diff = { 0, 0, CAMERA_BEHIND_PLAYER };
-	vec3_apply_matrix(&diff, rot);
+	vec3_apply_matrix(&diff, mat3_rotation_xz(plr->ellipsoid.angle));
+
+	plr->cam.angle = plr->ellipsoid.angle;
 	plr->cam.location = vec3_add(plr->ellipsoid.center, diff);
 	plr->cam.location.y = CAMERA_HEIGHT;
 

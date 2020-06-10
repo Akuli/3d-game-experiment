@@ -41,6 +41,8 @@ Vec2 camera_point_cam2screen(const struct Camera *cam, Vec3 pt)
 
 void camera_update_caches(struct Camera *cam)
 {
+	cam->world2cam = mat3_rotation_xz(-cam->angle);
+
 	struct Plane pl[] = {
 		// z=0, with normal vector to negative side (that's where camera is looking)
 		{ .normal = {0, 0, -1}, .constant = 0 },

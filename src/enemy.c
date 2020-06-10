@@ -8,22 +8,18 @@
 #define RADIANS_PER_SECOND 4.0f
 #define MOVE_UNITS_PER_SECOND 2.5f
 
-void enemy_init(struct Enemy *en, const SDL_PixelFormat *fmt)
+void enemy_init(struct Enemy *en, const struct EllipsoidPic *epic)
 {
-	int no = (rand() % IMAGE_FILE_COUNT) + 1;
-	char fname[100];
-	snprintf(fname, sizeof fname, "enemies/enemy%d.png", no);
-
-	ellipsoid_load(&en->ellipsoid, fname, fmt);
-	en->ellipsoid.hidelowerhalf = true;
-
-	en->ellipsoid.xzradius = ENEMY_XZRADIUS;
-	en->ellipsoid.yradius = ENEMY_YRADIUS;
-	en->ellipsoid.angle = 0;
+	en->ellipsoid = (struct Ellipsoid){
+		.center = { 0.5f, 0, 0.5f },
+		.epic = epic,
+		.angle = 0,
+		.xzradius = ENEMY_XZRADIUS,
+		.yradius = ENEMY_YRADIUS,
+	};
 	ellipsoid_update_transforms(&en->ellipsoid);
 
 	en->turning = false;
-	en->ellipsoid.center = (Vec3){ 0.5f, 0, 0.5f };
 	en->dir = ENEMY_DIR_XPOS;
 }
 
@@ -191,6 +187,11 @@ static bool turn(float *angle, float incr, float destangle)
 		*angle += incr;
 	else
 		*angle -= incr;
+
+	// avoid huge and tiny angle values
+	float pi = acosf(-1);
+	*angle = fmodf(*angle, 2*pi);
+
 	return false;
 }
 
