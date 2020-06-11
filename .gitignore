@@ -3,3 +3,5 @@ game
 callgrind.out
 graph.*
 testrunner
+libs/
+build/

@@ -1,8 +1,10 @@
 #include "ellipsoid.h"
 #include <assert.h>
 #include <errno.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 #include <stb_image.h>
 #include <stb_image_resize.h>
 #include "camera.h"

@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #include "camera.h"
@@ -94,7 +95,7 @@ static void handle_players_bumping_enemies(struct GameState *gs)
 			if (ellipsoid_bump_amount(&gs->players[p].ellipsoid, &gs->enemies[e].ellipsoid) == 0)
 				continue;
 
-			memmove(&gs->enemies[e], &gs->enemies[--gs->nenemies], sizeof(gs->enemies[0]));
+			gs->enemies[e] = gs->enemies[--gs->nenemies];
 			sound_play("farts/fart*.wav");
 		}
 	}

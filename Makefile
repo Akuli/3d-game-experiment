@@ -11,17 +11,20 @@ LDFLAGS += -lm
 SRC := $(wildcard src/*.c)
 TESTS_SRC := $(wildcard tests/*.c)
 HEADERS := $(wildcard src/*.h)
+EXEDIR ?= .
+COPIED_DLLFILES := $(addprefix $(EXEDIR)/,$(notdir $(DLLFILES)))
 
 # order matters, parallelizing make works best when slowly compiling things are first
 OBJ := obj/stb_image.o obj/stb_image_resize.o $(SRC:src/%.c=obj/%.o)
 
-all: game test
+
+all: $(EXEDIR)/game$(EXESUFFIX) test checkfuncs
 
 # doesn't use .gitignore because it's sometimes handy to have files being
 # ignored but not cleaned on rebuild
 .PHONY: clean
 clean:
-	rm -rvf game obj callgrind.out graph.*
+	rm -rvf game build obj callgrind.out graph.* testrunner
 
 obj/%.o: src/%.c $(HEADERS)
 	mkdir -p $(@D) && $(CC) -c -o $@ $< $(CFLAGS)
@@ -38,25 +41,32 @@ obj/stb_image_resize.o: $(wildcard stb/*.h)
 	$(CC) -c -o $@ -x c \
 	-DSTB_IMAGE_RESIZE_IMPLEMENTATION stb/stb_image_resize.h $(VENDOR_CFLAGS)
 
-game: $(OBJ) $(HEADERS)
-	$(CC) $(CFLAGS) $(OBJ) -o $@ $(LDFLAGS)
+$(EXEDIR)/game$(EXESUFFIX): $(OBJ) $(HEADERS) $(COPIED_DLLFILES)
+	mkdir -p $(@D) && $(CC) $(CFLAGS) $(OBJ) -o $@ $(LDFLAGS)
 
 # this will need to be changed if i add more than one file of tests
-testrunner: $(TESTS_SRC) $(SRC)
-	$(CC) -o $@ $(TESTS_SRC) $(CFLAGS) $(LDFLAGS)
+$(EXEDIR)/testrunner$(EXESUFFIX): $(TESTS_SRC) $(SRC) $(HEADERS) $(COPIED_DLLFILES)
+	mkdir -p $(@D) && $(CC) -o $@ $(TESTS_SRC) $(CFLAGS) $(LDFLAGS)
 
 .PHONY: test
-test: testrunner
-	./$<
+test: $(EXEDIR)/testrunner$(EXESUFFIX)
+	$(RUN) ./$<
+
+.PHONY: checkfuncs
+checkfuncs:
 	python3 checkfuncs.py
+
+$(COPIED_DLLFILES): $(DLLFILES)
+	mkdir -p $(@D) && cp $(shell printf '%s\n' $^ | grep $(notdir $@)) $(EXEDIR)
 
 
 # profiling stuff
 #
+#	$ sudo apt install valgrind
 #	$ python3 -m pip install gprof2dot
 #	$ make graph.png
 
-callgrind.out: game
+callgrind.out: $(EXEDIR)/game$(EXESUFFIX)
 	valgrind --tool=callgrind --callgrind-out-file=$@ ./$< --no-sound
 
 graph.gv: callgrind.out

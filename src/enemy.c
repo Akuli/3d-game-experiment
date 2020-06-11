@@ -1,5 +1,6 @@
-#include <assert.h>
 #include "enemy.h"
+#include <assert.h>
+#include <math.h>
 #include "ellipsoid.h"
 
 #define IMAGE_FILE_COUNT 1

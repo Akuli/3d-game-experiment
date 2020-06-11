@@ -1,5 +1,6 @@
 #include "wall.h"
 #include <assert.h>
+#include <math.h>
 #include <stdint.h>
 #include "camera.h"
 #include "mathstuff.h"
