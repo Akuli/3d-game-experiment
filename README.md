@@ -56,6 +56,7 @@ Do this if you want to use wine for running tests and the produced executable:
 ```
 $ sudo apt install mingw-w64 winehq-stable
 $ source winbuildenv
+$ make clean
 $ make -j2
 $ wine build/game.exe
 ```
@@ -65,5 +66,6 @@ Do this if you don't want to use wine:
 ```
 $ sudo apt install mingw-w64
 $ source winbuildenv
+$ make clean
 $ make -j2 build/game.exe
 ```
