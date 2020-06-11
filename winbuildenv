@@ -1,0 +1,16 @@
+export CC=x86_64-w64-mingw32-gcc
+export CFLAGS=$(
+    printf -- '-I%s '      libs/*/x86_64-w64-mingw32/include &&
+    printf -- '-I%s/SDL2 ' libs/*/x86_64-w64-mingw32/include &&
+    echo -n "-DSDL_MAIN_HANDLED "            `# SDL and MinGW seem to conflict here in some way` &&
+    echo -n "-D__USE_MINGW_ANSI_STDIO=1 "    `# https://stackoverflow.com/q/44382862`
+)
+
+export EXEDIR=build
+export LDFLAGS=-Lbuild
+export EXESUFFIX=.exe
+export RUN=wine
+export DLLFILES=$(echo \
+    libs/SDL2-*/x86_64-w64-mingw32/bin/SDL2.dll \
+    libs/SDL2_mixer-*/x86_64-w64-mingw32/bin/SDL2_mixer.dll \
+)
