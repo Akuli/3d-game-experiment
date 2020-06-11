@@ -1,5 +1,6 @@
 #include "player.h"
 #include <assert.h>
+#include <math.h>
 #include "ellipsoid.h"
 #include "log.h"
 #include "mathstuff.h"
