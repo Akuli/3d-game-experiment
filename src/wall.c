@@ -45,12 +45,31 @@ void wall_init(struct Wall *w)
 void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el)
 {
 	// Switch to coordinates where the ellipsoid is a el with radius 1
-	Vec3 center = mat3_mul_vec3(el->transform_inverse, el->center);
+	Vec3 elcenter = mat3_mul_vec3(el->transform_inverse, el->center);
+	Vec3 wcenter = mat3_mul_vec3(el->transform_inverse, wall_center(w));
+
+	/*
+	Suppose that the ellipsoid and wall intersect at some point p. Let c be
+	the corner of the wall that is most far away from the ellipsoid. Let
+	diam(w) denote the distance between opposite corners of a wall. Then
+
+			|wcenter - elcenter|
+		=	|wcenter - p  +  p - elcenter|   (because -p+p = zero vector)
+		<=	|wcenter - p| + |p - elcenter|   (by triangle inequality)
+		<=	diam(w)/2     + 1                (because p is in wall and in ball)
+
+	If this is not the case, then we can't have any intersections. We use
+	this to optimize a common case.
+	*/
+	float h = Y_MAX - Y_MIN;
+	float diam = sqrtf(h*h + 1*1);   // Pythagorean theorem
+	if (vec3_lengthSQUARED(vec3_sub(elcenter, wcenter)) > diam/2 + 1)
+		return;
 
 	for (int xznum = 0; xznum < WALL_CP_COUNT; xznum++) {
 		for (int ynum = 0; ynum < WALL_CP_COUNT; ynum++) {
 			Vec3 collpoint = mat3_mul_vec3(el->transform_inverse, w->collpoints[xznum][ynum]);
-			Vec3 diff = vec3_sub(center, collpoint);
+			Vec3 diff = vec3_sub(elcenter, collpoint);
 
 			float distSQUARED = vec3_lengthSQUARED(diff);
 			if (distSQUARED >= 1)   // doesn't bump
@@ -72,7 +91,7 @@ void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el)
 			}
 
 			vec3_add_inplace(&el->center, diff);
-			center = mat3_mul_vec3(el->transform_inverse, el->center);   // cache invalidation
+			elcenter = mat3_mul_vec3(el->transform_inverse, el->center);   // cache invalidation
 		}
 	}
 }
