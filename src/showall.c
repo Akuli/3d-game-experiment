@@ -8,10 +8,11 @@
 #include "mathstuff.h"
 
 
-static float linear_map(float srcmin, float srcmax, float dstmin, float dstmax, float val)
+static inline float linear_map(float srcmin, float srcmax, float dstmin, float dstmax, float val)
 {
-	float ratio = (val - srcmin)/(srcmax - srcmin);
-	return dstmin + ratio*(dstmax - dstmin);
+	// ratio should get inlined when everything except val is constants
+	float ratio = (dstmax - dstmin)/(srcmax - srcmin);
+	return dstmin + (val - srcmin)*ratio;
 }
 
 
@@ -132,6 +133,7 @@ static void calculate_y_minmax(
 
 static uint32_t get_ellipsoid_color(
 	const struct Ellipsoid *el, const struct Camera *cam,
+	Mat3 rotation,
 	float xzr, int y,
 	Mat3 cam2unitb, Vec3 ballcenter)
 {
@@ -169,34 +171,21 @@ static uint32_t get_ellipsoid_color(
 	}
 
 	float t = (cd + sqrtf(undersqrt))/dd;
-	Vec3 vec = vec3_sub(vec3_mul_float(linedir, t), ballcenter);
+	Vec3 vec = mat3_mul_vec3(rotation, vec3_sub(vec3_mul_float(linedir, t), ballcenter));
 
-	/*
-	Adding pi makes the player's back go to angle pi, which means that face goes
-	to angle 0 as wanted.
-	*/
-	float pi = acosf(-1);
-	float xzangle = atan2f(vec.z, vec.x) - el->angle + cam->angle + pi;
+	int ex = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE-1, vec.x);
+	int ey = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE-1, vec.y);
+	int ez = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE-1, vec.z);
 
-	// this seems to be faster than fmodf
-	while (xzangle > 2*pi)
-		xzangle -= 2*pi;
-	while (xzangle < 0)
-		xzangle += 2*pi;
+	if (ex < 0) ex = 0;
+	if (ey < 0) ey = 0;
+	if (ez < 0) ez = 0;
 
-	int a = (int)linear_map(2*pi, 0, 0, ELLIPSOIDPIC_AROUND,	xzangle);
-	if (a < 0)
-		a = 0;
-	if (a >= ELLIPSOIDPIC_AROUND)
-		a = ELLIPSOIDPIC_AROUND - 1;
+	if (ex >= ELLIPSOIDPIC_SIDE) ex = ELLIPSOIDPIC_SIDE-1;
+	if (ey >= ELLIPSOIDPIC_SIDE) ey = ELLIPSOIDPIC_SIDE-1;
+	if (ez >= ELLIPSOIDPIC_SIDE) ez = ELLIPSOIDPIC_SIDE-1;
 
-	int v = (int)linear_map(1, -1, 0, ELLIPSOIDPIC_HEIGHT,	vec.y);
-	if (v < 0)
-		v = 0;
-	if (v >= ELLIPSOIDPIC_HEIGHT)
-		v = ELLIPSOIDPIC_HEIGHT - 1;
-
-	return el->epic->pixels[v][a];
+	return el->epic->cubepixels[ex][ey][ez];
 }
 
 // about 2x faster than SDL_FillRect(surf, &(SDL_Rect){x,y,1,1}, px)
@@ -267,9 +256,12 @@ void show_all(
 
 		for (size_t i = 0; i < nnonoverlap; i++) {
 			struct VisibleEnemyInfo visen = visens[nonoverlap[i].id];
+
+			Mat3 rot = mat3_rotation_xz(cam->angle - visen.enemy->ellipsoid.angle);
+
 			for (int y = nonoverlap[i].start; y < nonoverlap[i].end; y++) {
 				uint32_t col = get_ellipsoid_color(
-					&visen.enemy->ellipsoid, cam, xzr, y, cam2uball, visen.center);
+					&visen.enemy->ellipsoid, cam, rot, xzr, y, cam2uball, visen.center);
 				set_pixel(cam->surface, x, y, col);
 			}
 		}

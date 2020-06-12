@@ -7,8 +7,8 @@
 #include <stdint.h>
 #include <SDL2/SDL.h>
 
-#define ELLIPSOIDPIC_HEIGHT 80
-#define ELLIPSOIDPIC_AROUND 200
+// DON'T MAKE THIS TOO BIG, it uses this^3 amount of memory...
+#define ELLIPSOIDPIC_SIDE 150
 
 // this struct is BIG
 struct EllipsoidPic {
@@ -17,7 +17,12 @@ struct EllipsoidPic {
 	conversions in tight loops (actually made a difference)
 	*/
 	const SDL_PixelFormat *pixfmt;
-	uint32_t pixels[ELLIPSOIDPIC_HEIGHT][ELLIPSOIDPIC_AROUND];
+
+	/*
+	Which color to show for a given vector? Avoid slow atan2 calls when looking it
+	up by providing an array that essentially lets you do cubepixels[x][y][z].
+	*/
+	uint32_t cubepixels[ELLIPSOIDPIC_SIDE][ELLIPSOIDPIC_SIDE][ELLIPSOIDPIC_SIDE];
 
 	// if true, then only the upper half of the ellipsoid is visible
 	bool hidelowerhalf;

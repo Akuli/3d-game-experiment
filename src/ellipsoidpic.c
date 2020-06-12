@@ -1,8 +1,8 @@
 #include "ellipsoidpic.h"
+#include <assert.h>
 #include <errno.h>
 #include <string.h>
 #include "../stb/stb_image.h"
-#include "../stb/stb_image_resize.h"
 #include "log.h"
 #include "mathstuff.h"
 
@@ -36,7 +36,26 @@ static void replace_alpha_with_average(unsigned char *bytes, size_t nbytes)
 	}
 }
 
-static void read_image(const char *filename, uint32_t *res, const SDL_PixelFormat *fmt)
+static float linear_map(float srcmin, float srcmax, float dstmin, float dstmax, float val)
+{
+	float ratio = (val - srcmin)/(srcmax - srcmin);
+	return dstmin + ratio*(dstmax - dstmin);
+}
+
+// returns between 0 and 2pi
+static float get_angle(float x, float z)
+{
+	float pi = acosf(-1);
+
+	/*
+	+pi does two things:
+		- return value is between 0 and 2pi (atan2 is between -pi and pi)
+		- angle=0 corresponds to front of player because pi or -pi corresponds to back
+	*/
+	return atan2f(z, x) + pi;
+}
+
+static void read_image(const char *filename, struct EllipsoidPic *epic)
 {
 	FILE *f = fopen(filename, "rb");
 	if (!f)
@@ -50,19 +69,23 @@ static void read_image(const char *filename, uint32_t *res, const SDL_PixelForma
 
 	replace_alpha_with_average(filedata, (size_t)filew*(size_t)fileh);
 
-	int ok = stbir_resize_uint8(
-		filedata, filew, fileh, 0,
-		(unsigned char *) res, ELLIPSOIDPIC_AROUND, ELLIPSOIDPIC_HEIGHT, 0,
-		4);
-	stbi_image_free(filedata);
-	if (!ok)
-		log_printf_abort("stbir_resize_uint8 failed: %s", stbi_failure_reason());
+	float pi = acosf(-1);
 
-	for (size_t i = 0; i < ELLIPSOIDPIC_AROUND*ELLIPSOIDPIC_HEIGHT; i++) {
-		// fingers crossed, hoping that i understood strict aliasing correctly...
-		// https://stackoverflow.com/a/29676395
-		unsigned char *ptr = (unsigned char *)&res[i];
-		res[i] = SDL_MapRGBA(fmt, ptr[0], ptr[1], ptr[2], 0xff);
+	// triple for loop without much indentation (lol)
+	for (int x = 0; x < ELLIPSOIDPIC_SIDE; x++)
+	for (int y = 0; y < ELLIPSOIDPIC_SIDE; y++)
+	for (int z = 0; z < ELLIPSOIDPIC_SIDE; z++)
+	{
+		int picy = (int)linear_map(ELLIPSOIDPIC_SIDE-1, 0, 0, (float)(fileh-1), (float)y);
+		assert(0 <= picy && picy < fileh);
+
+		float angle = get_angle((float)x - ELLIPSOIDPIC_SIDE/2.f, (float)z - ELLIPSOIDPIC_SIDE/2.f);
+		int picx = (int)linear_map(0, 2*pi, 0, (float)(filew-1), angle);
+		assert(0 <= picx && picx < filew);
+
+		size_t i = (size_t)( (picy*filew + picx)*4 );
+		epic->cubepixels[x][y][z] = SDL_MapRGB(
+			epic->pixfmt, filedata[i], filedata[i+1], filedata[i+2]);
 	}
 }
 
@@ -70,6 +93,6 @@ void ellipsoidpic_load(
 	struct EllipsoidPic *epic, const char *filename, const SDL_PixelFormat *fmt)
 {
 	epic->pixfmt = fmt;
-	read_image(filename, (uint32_t *)epic->pixels, fmt);
+	read_image(filename, epic);
 	epic->hidelowerhalf = false;
 }

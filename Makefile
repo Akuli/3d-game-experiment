@@ -18,7 +18,7 @@ EXEDIR ?= .
 COPIED_DLLFILES := $(addprefix $(EXEDIR)/,$(notdir $(DLLFILES)))
 
 # order matters, parallelizing make works best when slowly compiling things are first
-OBJ := obj/stb_image.o obj/stb_image_resize.o $(SRC:src/%.c=obj/%.o)
+OBJ := obj/stb_image.o $(SRC:src/%.c=obj/%.o)
 
 
 all: $(EXEDIR)/game$(EXESUFFIX) test checkfuncs
@@ -38,11 +38,6 @@ obj/stb_image.o: $(wildcard stb/*.h)
 	mkdir -p $(@D) && \
 	$(CC) -c -o $@ -x c \
 	-DSTB_IMAGE_IMPLEMENTATION stb/stb_image.h $(VENDOR_CFLAGS)
-
-obj/stb_image_resize.o: $(wildcard stb/*.h)
-	mkdir -p $(@D) && \
-	$(CC) -c -o $@ -x c \
-	-DSTB_IMAGE_RESIZE_IMPLEMENTATION stb/stb_image_resize.h $(VENDOR_CFLAGS)
 
 $(EXEDIR)/game$(EXESUFFIX): $(OBJ) $(HEADERS) $(COPIED_DLLFILES)
 	mkdir -p $(@D) && $(CC) $(CFLAGS) $(OBJ) -o $@ $(LDFLAGS)
