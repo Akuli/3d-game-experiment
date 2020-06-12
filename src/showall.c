@@ -153,11 +153,6 @@ static void calculate_y_minmax(
 	*ymax = (int)camera_point_cam2screen(cam, mat3_mul_vec3(uball2cam, A)).y;
 	*ymin = (int)camera_point_cam2screen(cam, mat3_mul_vec3(uball2cam, B)).y;
 	assert(*ymin <= *ymax);
-
-	if (*ymin < 0)
-		*ymin = 0;
-	if (*ymax > cam->surface->h)
-		*ymax = cam->surface->h;
 }
 
 // about 2x faster than SDL_FillRect(surf, &(SDL_Rect){x,y,1,1}, px)
@@ -178,8 +173,8 @@ static void draw_ellipsoid_column(
 {
 	if (ydiff <= 0)
 		return;
-	if (ydiff > SHOWALL_SCREEN_HEIGHT)
-		log_printf_abort("ydiff should be less than screen height but it seems insanely huge: %d", ydiff);
+	assert(0 <= ymin && ymin+ydiff <= cam->surface->h);
+	assert(ydiff <= SHOWALL_SCREEN_HEIGHT);
 
 	/*
 	Code is ugly but gcc vectorizes it to make it very fast. This code was the
@@ -188,6 +183,7 @@ static void draw_ellipsoid_column(
 	*/
 
 #define LOOP for(int i = 0; i < ydiff; i++)
+
 	float yzr[SHOWALL_SCREEN_HEIGHT];
 	LOOP yzr[i] = camera_screeny_to_yzr(cam, (float)(ymin + i));
 
@@ -301,6 +297,9 @@ void show_all(
 			calculate_y_minmax(&ymin, &ymax, icircles[v], xplane, cam, uball2cam);
 			if (visens[v].enemy->ellipsoid.epic->hidelowerhalf)
 				ymax = calculate_center_y(xplane, visens[v].center, uball2cam, cam);
+
+			ymin = max(0, min(ymin, cam->surface->h - 1));
+			ymax = max(0, min(ymax, cam->surface->h - 1));
 
 			if (ymin < ymax) {
 				intervals[nintervals++] = (struct Interval){

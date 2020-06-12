@@ -59,7 +59,7 @@ float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid 
 	Vec3 diff = vec3_sub(el1->center, el2->center);
 	float difflen = hypotf(diff.x, diff.z);   // ignore diff.y
 	if (difflen < 1e-5f) {
-		// ellipses very near each other
+		// centers very near each other
 		return el1->xzradius + el2->xzradius;
 	}
 
