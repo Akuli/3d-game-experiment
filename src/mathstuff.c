@@ -6,19 +6,18 @@
 Non-static inline functions are weird in c. You need to put definition to h file
 and declaration to c file.
 */
-
-inline Vec3 vec3_add(Vec3 v, Vec3 w);
-inline Vec3 vec3_sub(Vec3 v, Vec3 w);
-inline void vec3_add_inplace(Vec3 *v, Vec3 w);
-inline void vec3_sub_inplace(Vec3 *v, Vec3 w);
-inline Vec3 vec3_mul_float(Vec3 v, float f);
-inline float vec3_dot(Vec3 v, Vec3 w);
-inline float vec3_lengthSQUARED(Vec3 v);
-inline Vec3 vec3_withlength(Vec3 v, float len);
-inline Vec3 vec3_cross(Vec3 v, Vec3 w);
-inline Vec3 mat3_mul_vec3(Mat3 M, Vec3 v);
-inline void vec3_apply_matrix(Vec3 *v, Mat3 M);
-inline bool plane_whichside(struct Plane pl, Vec3 pt);
+extern inline Vec3 vec3_add(Vec3 v, Vec3 w);
+extern inline Vec3 vec3_sub(Vec3 v, Vec3 w);
+extern inline void vec3_add_inplace(Vec3 *v, Vec3 w);
+extern inline void vec3_sub_inplace(Vec3 *v, Vec3 w);
+extern inline Vec3 vec3_mul_float(Vec3 v, float f);
+extern inline float vec3_dot(Vec3 v, Vec3 w);
+extern inline float vec3_lengthSQUARED(Vec3 v);
+extern inline Vec3 vec3_withlength(Vec3 v, float len);
+extern inline Vec3 vec3_cross(Vec3 v, Vec3 w);
+extern inline Vec3 mat3_mul_vec3(Mat3 M, Vec3 v);
+extern inline void vec3_apply_matrix(Vec3 *v, Mat3 M);
+extern inline bool plane_whichside(struct Plane pl, Vec3 pt);
 
 Mat3 mat3_mul_mat3(Mat3 A, Mat3 B)
 {
