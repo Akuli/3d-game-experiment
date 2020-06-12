@@ -52,6 +52,41 @@ struct PlaneBallIntersectionCircle {
 	float radiusSQUARED;
 };
 
+static float calculate_center_y(
+	struct Plane xplane,
+	Vec3 ballcenter,
+	Mat3 uball2cam,
+	const struct Camera *cam)
+{
+	assert(xplane.constant == 0);  // goes through camera at (0,0,0)
+	assert(xplane.normal.y == 0);  // not tilted
+	assert(xplane.normal.x > 0);   // seems to be always true, needed to figure out which z solution is bigger
+
+	/*
+	We want to intersect these:
+	- unit ball: (x - ballcenter.x)^2 + (y - ballcenter.y)^2 + (z - ballcenter.z)^2 = 1
+	- plane that splits unit ball in half: y = ballcenter.y
+	- xplane: x*xplane.normal.x + z*xplane.normal.z = 0
+
+	Intersecting all that gives 3 equations with 3 unknowns x,y,z. We want the
+	solution with bigger z because that's closer to the camera.
+	*/
+
+	float bottom = vec3_lengthSQUARED(xplane.normal);
+	float dot = vec3_dot(xplane.normal, ballcenter);
+	float undersqrt = bottom - dot*dot;
+	if (undersqrt < 0) {
+		printf("won't put under sqrt: %f\n", undersqrt);
+		undersqrt = 0;
+	}
+	float infrontofsqrt = xplane.normal.x*ballcenter.z - ballcenter.x*xplane.normal.z;
+	float tmp = (infrontofsqrt + sqrtf(undersqrt))/bottom;
+	Vec3 v = { -xplane.normal.z*tmp, ballcenter.y, xplane.normal.x*tmp };
+
+	vec3_apply_matrix(&v, uball2cam);
+	return camera_yzr_to_screeny(cam, v.y/v.z);
+}
+
 static void calculate_y_minmax(
 	int *ymin, int *ymax,
 	struct PlaneBallIntersectionCircle ic,
@@ -195,7 +230,7 @@ static void draw_ellipsoid_column(
 
 	float t[SHOWALL_SCREEN_HEIGHT];
 	LOOP t[i] = cd[i]*cd[i] - dd[i]*(cc-1);
-	LOOP t[i] = max(0, t[i]);   // no negative under sqrt thx
+	LOOP t[i] = max(0, t[i]);   // no negative under sqrt plz
 	LOOP t[i] = (cd[i] + sqrtf(t[i]))/dd[i];
 
 	float vecx[SHOWALL_SCREEN_HEIGHT], vecy[SHOWALL_SCREEN_HEIGHT], vecz[SHOWALL_SCREEN_HEIGHT];
@@ -264,6 +299,9 @@ void show_all(
 
 			int ymin, ymax;
 			calculate_y_minmax(&ymin, &ymax, icircles[v], xplane, cam, uball2cam);
+			if (visens[v].enemy->ellipsoid.epic->hidelowerhalf)
+				ymax = calculate_center_y(xplane, visens[v].center, uball2cam, cam);
+
 			if (ymin < ymax) {
 				intervals[nintervals++] = (struct Interval){
 					.start = ymin,

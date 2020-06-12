@@ -126,6 +126,7 @@ int main(int argc, char **argv)
 	ellipsoidpic_load(&gs.players[0].epic, "players/Tux.png", winsurf->format);
 	ellipsoidpic_load(&gs.players[1].epic, "players/Chick.png", winsurf->format);
 	ellipsoidpic_load(&gs.enemypic, "enemies/enemy1.png", winsurf->format);
+	gs.enemypic.hidelowerhalf = true;
 
 	gs.players[0].ellipsoid.epic = &gs.players[0].epic;
 	gs.players[1].ellipsoid.epic = &gs.players[1].epic;
