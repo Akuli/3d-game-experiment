@@ -46,7 +46,7 @@ struct PlaneBallIntersectionCircle {
 	float radiusSQUARED;
 };
 
-static float calculate_center_y(
+static int calculate_center_y(
 	struct Plane xplane,
 	Vec3 ballcenter,
 	Mat3 uball2cam,
@@ -78,7 +78,7 @@ static float calculate_center_y(
 	Vec3 v = { -xplane.normal.z*tmp, ballcenter.y, xplane.normal.x*tmp };
 
 	vec3_apply_matrix(&v, uball2cam);
-	return camera_yzr_to_screeny(cam, v.y/v.z);
+	return (int)camera_yzr_to_screeny(cam, v.y/v.z);
 }
 
 static void calculate_y_minmax(
