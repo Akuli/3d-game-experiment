@@ -2,87 +2,23 @@
 #include <assert.h>
 #include <math.h>
 
-// guideline: make in-place stuff fast, because that is used in perf-critical code
+/*
+Non-static inline functions are weird in c. You need to put definition to h file
+and declaration to c file.
+*/
 
-void vec3_add_inplace(Vec3 *v, Vec3 w)
-{
-	v->x += w.x;
-	v->y += w.y;
-	v->z += w.z;
-}
-
-Vec3 vec3_add(Vec3 v, Vec3 w)
-{
-	vec3_add_inplace(&v, w);
-	return v;
-}
-
-Vec3 vec3_mul_float(Vec3 v, float f)
-{
-	return (Vec3){ v.x*f, v.y*f, v.z*f };
-}
-
-Vec3 vec3_neg(Vec3 v)
-{
-	return vec3_mul_float(v, -1);
-}
-
-Vec3 vec3_sub(Vec3 v, Vec3 w)
-{
-	return vec3_add(v, vec3_neg(w));
-}
-
-float vec3_dot(Vec3 v, Vec3 w)
-{
-	return v.x*w.x + v.y*w.y + v.z*w.z;
-}
-
-float vec3_lengthSQUARED(Vec3 v)
-{
-	return vec3_dot(v,v);
-}
-
-Vec3 vec3_withlength(Vec3 v, float len)
-{
-	float oldlen = sqrtf(vec3_lengthSQUARED(v));
-	return vec3_mul_float(v, len / oldlen);
-}
-
-Vec3 vec3_cross(Vec3 v, Vec3 w)
-{
-	/*
-	| i j k |    | b c |    | a c |    | a b |
-	| a b c | = i| e f | - j| d f | + k| d e |
-	| d e f |
-	          = (bf-ce)i - (af-cd)j + (ae-bd)k
-	*/
-	float a = v.x, b = v.y, c = v.z;
-	float d = w.x, e = w.y, f = w.z;
-	return (Vec3) {
-		.x = b*f - c*e,
-		.y = -(a*f - c*d),
-		.z = a*e - b*d,
-	};
-}
-
-
-Vec3 mat3_mul_vec3(Mat3 M, Vec3 v)
-{
-	return (Vec3) {
-		v.x*M.rows[0][0] + v.y*M.rows[0][1] + v.z*M.rows[0][2],
-		v.x*M.rows[1][0] + v.y*M.rows[1][1] + v.z*M.rows[1][2],
-		v.x*M.rows[2][0] + v.y*M.rows[2][1] + v.z*M.rows[2][2],
-	};
-}
-
-void vec3_apply_matrix(Vec3 *v, Mat3 M)
-{
-	*v = (Vec3){
-		v->x*M.rows[0][0] + v->y*M.rows[0][1] + v->z*M.rows[0][2],
-		v->x*M.rows[1][0] + v->y*M.rows[1][1] + v->z*M.rows[1][2],
-		v->x*M.rows[2][0] + v->y*M.rows[2][1] + v->z*M.rows[2][2],
-	};
-}
+inline Vec3 vec3_add(Vec3 v, Vec3 w);
+inline Vec3 vec3_sub(Vec3 v, Vec3 w);
+inline void vec3_add_inplace(Vec3 *v, Vec3 w);
+inline void vec3_sub_inplace(Vec3 *v, Vec3 w);
+inline Vec3 vec3_mul_float(Vec3 v, float f);
+inline float vec3_dot(Vec3 v, Vec3 w);
+inline float vec3_lengthSQUARED(Vec3 v);
+inline Vec3 vec3_withlength(Vec3 v, float len);
+inline Vec3 vec3_cross(Vec3 v, Vec3 w);
+inline Vec3 mat3_mul_vec3(Mat3 M, Vec3 v);
+inline void vec3_apply_matrix(Vec3 *v, Mat3 M);
+inline bool plane_whichside(struct Plane pl, Vec3 pt);
 
 Mat3 mat3_mul_mat3(Mat3 A, Mat3 B)
 {
@@ -102,7 +38,7 @@ Mat3 mat3_mul_mat3(Mat3 A, Mat3 B)
 	}};
 }
 
-Mat3 mat3_mul_float(Mat3 M, float f)
+static Mat3 multiply_matrix_by_float(Mat3 M, float f)
 {
 	for (int i = 0; i < 3; i++)
 		for (int j = 0; j < 3; j++)
@@ -111,7 +47,7 @@ Mat3 mat3_mul_float(Mat3 M, float f)
 	return M;
 }
 
-float mat3_det(Mat3 M)
+static float determinant(Mat3 M)
 {
 	Vec3 row1 = { M.rows[0][0], M.rows[0][1], M.rows[0][2] };
 	Vec3 row2 = { M.rows[1][0], M.rows[1][1], M.rows[1][2] };
@@ -127,13 +63,13 @@ Mat3 mat3_inverse(Mat3 M)
 		d=M.rows[1][0], e=M.rows[1][1], f=M.rows[1][2],
 		g=M.rows[2][0], h=M.rows[2][1], i=M.rows[2][2];
 
-	return mat3_mul_float(
+	return multiply_matrix_by_float(
 		(Mat3){ .rows = {
 			{ e*i-f*h, c*h-b*i, f*b-c*e },
 			{ f*g-d*i, a*i-c*g, c*d-a*f },
 			{ d*h-e*g, b*g-a*h, a*e-b*d },
 		}},
-		1.0f/mat3_det(M)
+		1.0f/determinant(M)
 	);
 }
 
@@ -229,13 +165,6 @@ void plane_move(struct Plane *pl, Vec3 mv)
 	pl->constant += vec3_dot(mv, pl->normal);
 }
 
-bool plane_whichside(struct Plane pl, Vec3 pt)
-{
-	return (vec3_dot(pl.normal, pt) > pl.constant);
-}
-
-static inline float square(float f){ return f*f; }
-
 float plane_point_distanceSQUARED(struct Plane pl, Vec3 pt)
 {
 	/*
@@ -244,7 +173,8 @@ float plane_point_distanceSQUARED(struct Plane pl, Vec3 pt)
 	Constant has minus sign because it's written to different side of equation
 	here than in the link.
 	*/
-	return square(vec3_dot(pl.normal, pt) - pl.constant) / vec3_lengthSQUARED(pl.normal);
+	float top = vec3_dot(pl.normal, pt) - pl.constant;
+	return top*top / vec3_lengthSQUARED(pl.normal);
 }
 
 

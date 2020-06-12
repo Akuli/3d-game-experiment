@@ -82,5 +82,5 @@ void ellipsoid_move_apart(struct Ellipsoid *el1, struct Ellipsoid *el2, float mv
 	assert(mv >= 0);
 	Vec3 from1to2 = vec3_withlength(vec3_sub(el2->center, el1->center), mv/2);
 	vec3_add_inplace(&el2->center, from1to2);
-	vec3_add_inplace(&el1->center, vec3_neg(from1to2));
+	vec3_sub_inplace(&el1->center, from1to2);
 }
