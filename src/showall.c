@@ -152,7 +152,11 @@ static void draw_ellipsoid_column(
 	if (ydiff > SHOWALL_SCREEN_HEIGHT)
 		log_printf_abort("ydiff should be less than screen height but it seems insanely huge: %d", ydiff);
 
-	// code is ugly but gcc vectorizes it to make it very fast
+	/*
+	Code is ugly but gcc vectorizes it to make it very fast. This code was the
+	bottleneck of the game before making it more vectorizable, and it still is
+	at the time of writing this comment.
+	*/
 
 #define LOOP for(int i = 0; i < ydiff; i++)
 	float yzr[SHOWALL_SCREEN_HEIGHT];
