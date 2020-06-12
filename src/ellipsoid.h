@@ -32,10 +32,45 @@ struct Ellipsoid {
 	Mat3 transform, transform_inverse;
 };
 
+/*
+Information produced in ellipsoid_visible_x(), for reuse in other functions
+*/
+struct EllipsoidXCache {
+	int x;
+	float xzr;
+	const struct Camera *cam;
+
+	// coordinates are in camera coordinates with Ellipsoid.transform_inverse applied
+	Vec3 ballcenter;        // ellipsoid->center, transformed as described above
+	struct Plane xplane;    // plane of points that are visible at given screen x
+	float dSQUARED;         // (distance between xplane and ballcenter)^2
+};
+
 // calculate el->transform and el->transform_inverse
 void ellipsoid_update_transforms(struct Ellipsoid *el);
 
+// Is the ellipsoid visible anywhere on screen?
 bool ellipsoid_visible(const struct Ellipsoid *el, const struct Camera *cam);
+
+/*
+Is the ellipsoid visible at given screen x? If it is, fill in all fields of xcache.
+*/
+bool ellipsoid_visible_x(
+	const struct Ellipsoid *el, const struct Camera *cam,
+	int x, struct EllipsoidXCache *xcache);
+
+/*
+Assuming that ellipsoid_visible_x() has returned true, which range of screen y
+coordinates is showing the ellipsoid?
+*/
+void ellipsoid_yminmax(
+	const struct Ellipsoid *el, const struct EllipsoidXCache *xcache,
+	int *ymin, int *ymax);
+
+// Draw all pixels of ellipsoid corresponding to one x coordinate
+void ellipsoid_drawcolumn(
+	const struct Ellipsoid *el, const struct EllipsoidXCache *xcache,
+	int ymin, int ymax);
 
 /*
 Returns how much ellipsoids should be moved apart from each other to make them not

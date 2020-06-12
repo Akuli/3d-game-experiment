@@ -69,32 +69,3 @@ void camera_update_caches(struct Camera *cam)
 	static_assert(sizeof(pl) == sizeof(cam->visibilityplanes), "");
 	memcpy(cam->visibilityplanes, pl, sizeof(pl));
 }
-
-bool camera_get_containing_rect(
-	const struct Camera *cam, SDL_Rect *res,
-	Vec3 p1, Vec3 p2, Vec3 p3, Vec3 p4)
-{
-	if (p1.z >= 0 || p2.z >= 0 || p3.z >= 0 || p4.z >= 0)
-		return false;
-
-	float x1 = camera_xzr_to_screenx(cam, p1.x / p1.z);
-	float x2 = camera_xzr_to_screenx(cam, p2.x / p2.z);
-	float x3 = camera_xzr_to_screenx(cam, p3.x / p3.z);
-	float x4 = camera_xzr_to_screenx(cam, p4.x / p4.z);
-
-	float y1 = camera_yzr_to_screeny(cam, p1.y / p1.z);
-	float y2 = camera_yzr_to_screeny(cam, p2.y / p2.z);
-	float y3 = camera_yzr_to_screeny(cam, p3.y / p3.z);
-	float y4 = camera_yzr_to_screeny(cam, p4.y / p4.z);
-
-	float xmin = min4(x1,x2,x3,x4);
-	float xmax = max4(x1,x2,x3,x4);
-	float ymin = min4(y1,y2,y3,y4);
-	float ymax = max4(y1,y2,y3,y4);
-
-	res->x = (int) xmin;
-	res->y = (int) ymin;
-	res->w = (int) (xmax - xmin + 1.);
-	res->h = (int) (ymax - ymin + 1.);
-	return true;
-}
