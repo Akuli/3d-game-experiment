@@ -1,5 +1,5 @@
-#ifndef COMMON_H
-#define COMMON_H
+#ifndef LOG_H
+#define LOG_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,4 +13,4 @@
 
 #define log_printf_abort(...) do { log_printf(__VA_ARGS__); abort(); } while(0)
 
-#endif   // COMMON_H
+#endif   // LOG_H
