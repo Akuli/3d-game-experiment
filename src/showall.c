@@ -24,12 +24,6 @@ struct VisibleEnemyInfo {
 	Vec3 center;    // in camera coordinates with cam2uball applied
 };
 
-static int compare_visible_enemy_infos(const void *aptr, const void *bptr)
-{
-	const struct VisibleEnemyInfo *a = aptr, *b = bptr;
-	return (a->center.z > b->center.z) - (a->center.z < b->center.z);
-}
-
 static size_t create_visible_enemy_infos(
 	const struct Enemy *ens, size_t nens,
 	struct VisibleEnemyInfo *res,
@@ -252,6 +246,12 @@ static void draw_ellipsoid_column(
 	LOOP px[i] = el->epic->cubepixels[ex[i]][ey[i]][ez[i]];
 	LOOP set_pixel(cam->surface, x, ymin + i, px[i]);
 #undef LOOP
+}
+
+static int compare_visible_enemy_infos(const void *aptr, const void *bptr)
+{
+	const struct VisibleEnemyInfo *a = aptr, *b = bptr;
+	return (a->center.z > b->center.z) - (a->center.z < b->center.z);
 }
 
 void show_all(
