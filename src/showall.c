@@ -131,13 +131,32 @@ static void calculate_y_minmax(
 		*ymax = cam->surface->h;
 }
 
-static uint32_t get_ellipsoid_color(
+// about 2x faster than SDL_FillRect(surf, &(SDL_Rect){x,y,1,1}, px)
+static inline void set_pixel(SDL_Surface *surf, int x, int y, uint32_t px)
+{
+	unsigned char *ptr = surf->pixels;
+	ptr += y*surf->pitch;
+	ptr += x*(int)sizeof(px);
+	memcpy(ptr, &px, sizeof(px));   // no strict aliasing issues thx
+}
+
+static void draw_ellipsoid_column(
 	const struct Ellipsoid *el, const struct Camera *cam,
 	Mat3 rotation,
-	float xzr, int y,
+	int x, float xzr,
+	int ymin, int ydiff,
 	Mat3 cam2unitb, Vec3 ballcenter)
 {
-	float yzr = camera_screeny_to_yzr(cam, (float)y);
+	if (ydiff <= 0)
+		return;
+	if (ydiff > SHOWALL_SCREEN_HEIGHT)
+		log_printf_abort("ydiff should be less than screen height but it seems insanely huge: %d", ydiff);
+
+	// code is ugly but gcc vectorizes it to make it very fast
+
+#define LOOP for(int i = 0; i < ydiff; i++)
+	float yzr[SHOWALL_SCREEN_HEIGHT];
+	LOOP yzr[i] = camera_screeny_to_yzr(cam, (float)(ymin + i));
 
 	/*
 	line equation in camera coordinates:
@@ -146,7 +165,11 @@ static uint32_t get_ellipsoid_color(
 
 	Note that this has z coordinate 1 in camera coordinates, i.e. pointing toward camera
 	*/
-	Vec3 linedir = mat3_mul_vec3(cam2unitb, (Vec3){xzr,yzr,1});
+	float linedirx[SHOWALL_SCREEN_HEIGHT], linediry[SHOWALL_SCREEN_HEIGHT], linedirz[SHOWALL_SCREEN_HEIGHT];
+	LOOP linedirx[i] = mat3_mul_vec3(cam2unitb, (Vec3){xzr,yzr[i],1}).x;
+	LOOP linediry[i] = mat3_mul_vec3(cam2unitb, (Vec3){xzr,yzr[i],1}).y;
+	LOOP linedirz[i] = mat3_mul_vec3(cam2unitb, (Vec3){xzr,yzr[i],1}).z;
+#define LineDir(i) ( (Vec3){ linedirx[i], linediry[i], linedirz[i] } )
 
 	/*
 	Let xyz denote the vector (x,y,z). Intersecting the ball
@@ -160,41 +183,36 @@ static uint32_t get_ellipsoid_color(
 	creates a quadratic equation in t. We want the solution with bigger t,
 	because the direction vector is pointing towards the camera.
 	*/
-	float cc = vec3_lengthSQUARED(ballcenter);
-	float dd = vec3_lengthSQUARED(linedir);
-	float cd = vec3_dot(ballcenter, linedir);
+	float cc = vec3_lengthSQUARED(ballcenter);    // ballcenter dot ballcenter
+	float dd[SHOWALL_SCREEN_HEIGHT];    // linedir dot linedir
+	float cd[SHOWALL_SCREEN_HEIGHT];    // ballcenter dot linedir
+	LOOP dd[i] = vec3_lengthSQUARED(LineDir(i));
+	LOOP cd[i] = vec3_dot(ballcenter, LineDir(i));
 
-	float undersqrt = cd*cd - dd*(cc-1);
-	if (undersqrt < 0) {
-		//log_printf("negative under sqrt: %f", undersqrt);
-		undersqrt = 0;
-	}
+	float t[SHOWALL_SCREEN_HEIGHT];
+	LOOP t[i] = cd[i]*cd[i] - dd[i]*(cc-1);
+	LOOP t[i] = max(0, t[i]);   // no negative under sqrt thx
+	LOOP t[i] = (cd[i] + sqrtf(t[i]))/dd[i];
 
-	float t = (cd + sqrtf(undersqrt))/dd;
-	Vec3 vec = mat3_mul_vec3(rotation, vec3_sub(vec3_mul_float(linedir, t), ballcenter));
+	float vecx[SHOWALL_SCREEN_HEIGHT], vecy[SHOWALL_SCREEN_HEIGHT], vecz[SHOWALL_SCREEN_HEIGHT];
+	LOOP vecx[i] = mat3_mul_vec3(rotation, vec3_sub(vec3_mul_float(LineDir(i), t[i]), ballcenter)).x;
+	LOOP vecy[i] = mat3_mul_vec3(rotation, vec3_sub(vec3_mul_float(LineDir(i), t[i]), ballcenter)).y;
+	LOOP vecz[i] = mat3_mul_vec3(rotation, vec3_sub(vec3_mul_float(LineDir(i), t[i]), ballcenter)).z;
+#undef LineDir
 
-	int ex = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE-1, vec.x);
-	int ey = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE-1, vec.y);
-	int ez = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE-1, vec.z);
+	int ex[SHOWALL_SCREEN_HEIGHT], ey[SHOWALL_SCREEN_HEIGHT], ez[SHOWALL_SCREEN_HEIGHT];
+	LOOP ex[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE-1, vecx[i]);
+	LOOP ey[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE-1, vecy[i]);
+	LOOP ez[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE-1, vecz[i]);
 
-	if (ex < 0) ex = 0;
-	if (ey < 0) ey = 0;
-	if (ez < 0) ez = 0;
+	LOOP ex[i] = max(0, min(ELLIPSOIDPIC_SIDE-1, ex[i]));
+	LOOP ey[i] = max(0, min(ELLIPSOIDPIC_SIDE-1, ey[i]));
+	LOOP ez[i] = max(0, min(ELLIPSOIDPIC_SIDE-1, ez[i]));
 
-	if (ex >= ELLIPSOIDPIC_SIDE) ex = ELLIPSOIDPIC_SIDE-1;
-	if (ey >= ELLIPSOIDPIC_SIDE) ey = ELLIPSOIDPIC_SIDE-1;
-	if (ez >= ELLIPSOIDPIC_SIDE) ez = ELLIPSOIDPIC_SIDE-1;
-
-	return el->epic->cubepixels[ex][ey][ez];
-}
-
-// about 2x faster than SDL_FillRect(surf, &(SDL_Rect){x,y,1,1}, px)
-static inline void set_pixel(SDL_Surface *surf, int x, int y, uint32_t px)
-{
-	unsigned char *ptr = surf->pixels;
-	ptr += y*surf->pitch;
-	ptr += x*(int)sizeof(px);
-	memcpy(ptr, &px, sizeof(px));   // no strict aliasing issues thx
+	uint32_t px[SHOWALL_SCREEN_HEIGHT];
+	LOOP px[i] = el->epic->cubepixels[ex[i]][ey[i]][ez[i]];
+	LOOP set_pixel(cam->surface, x, ymin + i, px[i]);
+#undef LOOP
 }
 
 void show_all(
@@ -258,12 +276,13 @@ void show_all(
 			struct VisibleEnemyInfo visen = visens[nonoverlap[i].id];
 
 			Mat3 rot = mat3_rotation_xz(cam->angle - visen.enemy->ellipsoid.angle);
-
-			for (int y = nonoverlap[i].start; y < nonoverlap[i].end; y++) {
-				uint32_t col = get_ellipsoid_color(
-					&visen.enemy->ellipsoid, cam, rot, xzr, y, cam2uball, visen.center);
-				set_pixel(cam->surface, x, y, col);
-			}
+			int ymin = nonoverlap[i].start;
+			int ydiff = nonoverlap[i].end - nonoverlap[i].start;
+			draw_ellipsoid_column(
+				&visen.enemy->ellipsoid, cam, rot,
+				x, xzr,
+				ymin, ydiff,
+				cam2uball, visen.center);
 		}
 	}
 }

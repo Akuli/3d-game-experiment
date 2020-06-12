@@ -14,6 +14,10 @@
 #define SHOWALL_MAX_ELLIPSOIDS (SHOWALL_MAX_PLAYERS + SHOWALL_MAX_ENEMIES)
 #define SHOWALL_MAX_OBJECTS (PLACE_MAX_WALLS + SHOWALL_MAX_ELLIPSOIDS)
 
+// camera surfaces can be smaller than this, but these are handy for loop bounds
+#define SHOWALL_SCREEN_WIDTH 800
+#define SHOWALL_SCREEN_HEIGHT 600
+
 void show_all(
 	const struct Wall *walls, size_t nwalls,
 	const struct Player *plrs, size_t nplrs,

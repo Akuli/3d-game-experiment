@@ -113,7 +113,7 @@ int main(int argc, char **argv)
 	memset(&gs, 0, sizeof gs);
 
 	SDL_Window *win = SDL_CreateWindow(
-		"TODO: title here", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 800, 600, 0);
+		"TODO: title here", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SHOWALL_SCREEN_WIDTH, SHOWALL_SCREEN_HEIGHT, 0);
 	if (!win)
 		log_printf_abort("SDL_CreateWindow failed: %s", SDL_GetError());
 
@@ -176,7 +176,7 @@ int main(int argc, char **argv)
 		uint32_t curtime = SDL_GetTicks();
 
 		percentsum += (float)(curtime - time) / (1000/FPS) * 100.f;
-		if (++counter == 1/*FPS*/) {
+		if (++counter == FPS/3) {
 			fprintf(stderr, "speed percentage average = %.2f%%\n", percentsum / (float)counter);
 			counter = 0;
 			percentsum = 0;

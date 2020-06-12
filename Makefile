@@ -4,7 +4,7 @@ CFLAGS += -Wconversion -Werror=int-conversion
 CFLAGS += -Werror=incompatible-pointer-types
 CFLAGS += -Werror=implicit-function-declaration
 CFLAGS += -Werror=discarded-qualifiers
-CFLAGS += -Werror=stack-usage=3000
+CFLAGS += -Werror=stack-usage=50000
 CFLAGS += -g
 CFLAGS += -O3
 VENDOR_CFLAGS := $(CFLAGS:-W%=)   # no warnings from other people's code please
