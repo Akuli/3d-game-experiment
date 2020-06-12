@@ -14,21 +14,16 @@ struct VisibleEllipsoidInfo {
 	float camcenterz;   // center z in camera coordinates
 };
 
-static size_t create_visible_enemy_infos(
-	const struct Enemy *ens, size_t nens,
-	struct VisibleEllipsoidInfo *res,
-	const struct Camera *cam)
+static void add_ellipsoid_if_visible(
+	struct VisibleEllipsoidInfo *res, size_t *n,
+	const struct Camera *cam, const struct Ellipsoid *el)
 {
-	size_t n = 0;
-	for (size_t i = 0; i < nens; i++) {
-		if (ellipsoid_visible(&ens[i].ellipsoid, cam)) {
-			res[n++] = (struct VisibleEllipsoidInfo){
-				.el = &ens[i].ellipsoid,
-				.camcenterz = camera_point_world2cam(cam, ens[i].ellipsoid.center).z,
-			};
-		}
+	if (ellipsoid_visible(el, cam)) {
+		res[(*n)++] = (struct VisibleEllipsoidInfo){
+			.el = el,
+			.camcenterz = camera_point_world2cam(cam, el->center).z,
+		};
 	}
-	return n;
 }
 
 static int compare_visible_enemy_infos(const void *aptr, const void *bptr)
@@ -47,7 +42,10 @@ void show_all(
 
 	// static to keep stack usage down
 	static struct VisibleEllipsoidInfo visels[SHOWALL_MAX_PLAYERS + SHOWALL_MAX_ENEMIES];
-	size_t nvisels = create_visible_enemy_infos(ens, nens, visels, cam);
+	size_t nvisels = 0;
+	for (size_t i = 0; i < nens ; i++) add_ellipsoid_if_visible(visels, &nvisels, cam, &ens [i].ellipsoid);
+	for (size_t i = 0; i < nplrs; i++) add_ellipsoid_if_visible(visels, &nvisels, cam, &plrs[i].ellipsoid);
+
 	qsort(visels, nvisels, sizeof(visels[0]), compare_visible_enemy_infos);
 
 	for (int x = 0; x < cam->surface->w; x++) {
