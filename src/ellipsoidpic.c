@@ -48,11 +48,14 @@ static float get_angle(float x, float z)
 	float pi = acosf(-1);
 
 	/*
-	+pi does two things:
-		- return value is between 0 and 2pi (atan2 is between -pi and pi)
-		- angle=0 corresponds to front of player because pi or -pi corresponds to back
+	This angle is chosen so that angle=0 means toward positive z axis and player
+	pictures don't show up mirrored. That makes the player stuff easier because
+	the front of the player at angle=pi should point in negative z direction.
 	*/
-	return atan2f(z, x) + pi;
+	float res = pi/2 - atan2f(z, x);
+	if (res < 2*pi) res += 2*pi;
+	if (res > 2*pi) res -= 2*pi;
+	return res;
 }
 
 static void read_image(const char *filename, struct EllipsoidPic *epic)

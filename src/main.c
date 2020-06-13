@@ -92,12 +92,13 @@ static void handle_players_bumping_each_other(struct Player *plr1, struct Player
 static void handle_players_bumping_enemies(struct GameState *gs)
 {
 	for (int p = 0; p < 2; p++) {
-		for (size_t e = 0; e < gs->nenemies; e++) {
-			if (ellipsoid_bump_amount(&gs->players[p].ellipsoid, &gs->enemies[e].ellipsoid) == 0)
-				continue;
-
-			gs->enemies[e] = gs->enemies[--gs->nenemies];
-			sound_play("farts/fart*.wav");
+		for (size_t e = 0; e < gs->nenemies; ) {
+			if (ellipsoid_bump_amount(&gs->players[p].ellipsoid, &gs->enemies[e].ellipsoid) == 0) {
+				e++;
+			} else {
+				gs->enemies[e] = gs->enemies[--gs->nenemies];
+				sound_play("farts/fart*.wav");
+			}
 		}
 	}
 }

@@ -188,10 +188,6 @@ static bool turn(float *angle, float incr, float destangle)
 	else
 		*angle -= incr;
 
-	// avoid huge and tiny angle values
-	float pi = acosf(-1);
-	*angle = fmodf(*angle, 2*pi);
-
 	return false;
 }
 
@@ -199,7 +195,15 @@ static float dir_to_angle(enum EnemyDir dir)
 {
 	int xdiff = (dir == ENEMY_DIR_XPOS) - (dir == ENEMY_DIR_XNEG);
 	int zdiff = (dir == ENEMY_DIR_ZPOS) - (dir == ENEMY_DIR_ZNEG);
-	return atan2f((float)zdiff, (float)xdiff);
+	float pi = acosf(-1);
+
+	/*
+	The atan2 call returns the angle so that 0 means positive x direction. We want
+	it to mean negative z direction instead, because that's how ellipsoidpic works;
+	it makes player stuff correspondingly easier, because player looks in negative
+	z direction in camera coordinates.
+	*/
+	return atan2f((float)zdiff, (float)xdiff) + pi/2;
 }
 
 void enemy_eachframe(struct Enemy *en, unsigned int fps, const struct Place *pl)
