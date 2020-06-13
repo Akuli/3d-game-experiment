@@ -81,9 +81,9 @@ static void init_place(struct Place *pl)
 			if ((c == '|' || c == 'L') && (x != 0))
 				add_wall(pl, x, z, WALL_DIR_ZY);
 
-			// walls at PLACE_ZSIZE_MAX are added later
+			// walls at zsize are added later
 			// z+1 to make the wall go to bottom
-			if ((c == '_' || c == 'L') && (z+1 != PLACE_ZSIZE_MAX))
+			if ((c == '_' || c == 'L') && (z+1 != pl->zsize))
 				add_wall(pl, x, z+1, WALL_DIR_XY);
 
 		}
