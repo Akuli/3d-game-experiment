@@ -67,7 +67,7 @@ static void begin_turning(struct Enemy *en, const struct Place *pl)
 	int x = (int) floorf(en->ellipsoid.center.x);
 	int z = (int) floorf(en->ellipsoid.center.z);
 
-	for (size_t i = 0; i < pl->nwalls; i++) {
+	for (int i = 0; i < pl->nwalls; i++) {
 		switch(pl->walls[i].dir) {
 
 		case WALL_DIR_XY:
@@ -141,7 +141,7 @@ static void move_coordinate(float *coord, float delta, struct Enemy *en, const s
 	}
 }
 
-static void move(struct Enemy *en, unsigned int fps, const struct Place *pl)
+static void move(struct Enemy *en, int fps, const struct Place *pl)
 {
 	switch(en->dir) {
 		case ENEMY_DIR_XPOS: move_coordinate(&en->ellipsoid.center.x, +MOVE_UNITS_PER_SECOND/(float)fps, en, pl); break;
@@ -206,7 +206,7 @@ static float dir_to_angle(enum EnemyDir dir)
 	return atan2f((float)zdiff, (float)xdiff) + pi/2;
 }
 
-void enemy_eachframe(struct Enemy *en, unsigned int fps, const struct Place *pl)
+void enemy_eachframe(struct Enemy *en, int fps, const struct Place *pl)
 {
 	if (en->turning) {
 		bool done = turn(&en->ellipsoid.angle, RADIANS_PER_SECOND / (float)fps, dir_to_angle(en->dir));

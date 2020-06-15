@@ -230,7 +230,7 @@ static inline void set_pixel(SDL_Surface *surf, int x, int y, uint32_t px)
 {
 	unsigned char *ptr = surf->pixels;
 	ptr += y*surf->pitch;
-	ptr += x*(int)sizeof(px);
+	ptr += x*sizeof(px);
 	memcpy(ptr, &px, sizeof(px));   // no strict aliasing issues thx
 }
 

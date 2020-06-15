@@ -125,7 +125,7 @@ static bool wall_is_visible(const Vec3 *corners, const struct Camera *cam)
 	// check if any corner is visible
 	for (int c = 0; c < 4; c++) {
 		bool cornervisible = true;
-		for (unsigned v = 0; v < sizeof(cam->visplanes)/sizeof(cam->visplanes[0]); v++) {
+		for (int v = 0; v < sizeof(cam->visplanes)/sizeof(cam->visplanes[0]); v++) {
 			if (!plane_whichside(cam->visplanes[v], corners[c])) {
 				cornervisible = false;
 				break;

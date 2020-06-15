@@ -62,7 +62,7 @@ void camera_update_caches(struct Camera *cam)
 	};
 
 	// Convert from camera coordinates to world coordinates
-	for (unsigned i = 0; i < sizeof(pl)/sizeof(pl[0]); i++) {
+	for (int i = 0; i < sizeof(pl)/sizeof(pl[0]); i++) {
 		plane_apply_mat3_INVERSE(&pl[i], cam->world2cam);
 		plane_move(&pl[i], cam->location);
 	}

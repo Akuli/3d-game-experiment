@@ -16,7 +16,7 @@
 #define JUMP_MAX_HEIGHT 3.0f
 #define JUMP_DURATION_SEC 0.6f
 
-static float get_jump_height(unsigned int jumpframe, unsigned int fps)
+static float get_jump_height(int jumpframe, int fps)
 {
 	float time = (float)jumpframe / (float)fps;
 
@@ -28,7 +28,7 @@ static float get_jump_height(unsigned int jumpframe, unsigned int fps)
 	return a*(time - 0)*(time - JUMP_DURATION_SEC);
 }
 
-static float get_y_radius(const struct Player *plr, unsigned int fps)
+static float get_y_radius(const struct Player *plr, int fps)
 {
 	if (plr->flat)   // if flat and jumping, then do this
 		return PLAYER_HEIGHT_FLAT / 2;
@@ -36,7 +36,7 @@ static float get_y_radius(const struct Player *plr, unsigned int fps)
 	return 1.5f*plr->ellipsoid.xzradius + 0.3f*get_jump_height(plr->jumpframe, fps);
 }
 
-void player_eachframe(struct Player *plr, unsigned int fps, const struct Wall *walls, size_t nwalls)
+void player_eachframe(struct Player *plr, int fps, const struct Wall *walls, int nwalls)
 {
 	if (plr->turning != 0) {
 		plr->ellipsoid.angle += (RADIANS_PER_SECOND / (float)fps) * (float)plr->turning;
@@ -68,7 +68,7 @@ void player_eachframe(struct Player *plr, unsigned int fps, const struct Wall *w
 
 	plr->ellipsoid.center.y = y + plr->ellipsoid.yradius;
 
-	for (size_t i = 0; i < nwalls; i++)
+	for (int i = 0; i < nwalls; i++)
 		wall_bumps_ellipsoid(&walls[i], &plr->ellipsoid);
 
 	Vec3 diff = { 0, 0, CAMERA_BEHIND_PLAYER };

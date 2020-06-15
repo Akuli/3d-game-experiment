@@ -12,7 +12,7 @@
 // yes, rgb math is bad ikr
 static void replace_alpha_with_average(unsigned char *bytes, size_t nbytes)
 {
-	unsigned long long rsum = 0, gsum = 0, bsum = 0;
+	long long rsum = 0, gsum = 0, bsum = 0;
 	size_t count = 0;
 
 	for (size_t i = 0; i < 4*nbytes; i += 4) {

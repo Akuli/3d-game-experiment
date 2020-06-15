@@ -27,7 +27,7 @@ struct GameState {
 	struct Player players[2];
 	struct EllipsoidPic enemypic;
 	struct Enemy enemies[MAX_ENEMIES];
-	size_t nenemies;
+	int nenemies;
 	const struct Place *place;
 };
 
@@ -155,7 +155,7 @@ int main(int argc, char **argv)
 	gs.players[1].cam.id = "cam2";
 
 	gs.nenemies = 0;
-	for (size_t i = 0; i < gs.nenemies; i++) {
+	for (int i = 0; i < gs.nenemies; i++) {
 		enemy_init(&gs.enemies[i], &gs.enemypic);
 		gs.enemies[i].ellipsoid.center.x += 1;
 		gs.enemies[i].ellipsoid.center.z += 1;
@@ -174,9 +174,9 @@ int main(int argc, char **argv)
 				goto exit;
 		}
 
-		for (size_t i = 0; i < gs.nenemies; i++)
+		for (int i = 0; i < gs.nenemies; i++)
 			enemy_eachframe(&gs.enemies[i], FPS, gs.place);
-		for (int i=0; i < 2; i++)
+		for (int i = 0; i < 2; i++)
 			player_eachframe(&gs.players[i], FPS, gs.place->walls, gs.place->nwalls);
 
 		handle_players_bumping_each_other(&gs.players[0], &gs.players[1]);

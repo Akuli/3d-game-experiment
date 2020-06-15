@@ -16,21 +16,21 @@ How many walls can there be?
 struct Place {
 	const char *name;
 	struct Wall walls[PLACE_MAX_WALLS];
-	size_t nwalls;
+	int nwalls;
 
 	// players are allowed to be between x=0 and x=xsize
-	unsigned int xsize, zsize;
+	int xsize, zsize;
 
 	// rest of this struct is only for place.c
 	const char *const *spec;
 };
 
-extern const size_t place_count;
+extern const int place_count;
 
 // Returns a statically allocated array of places of length place_count, all walls initialized
 const struct Place *place_list(void);
 
-struct Wall *place_load(const char *const *spec, size_t *nwalls);
+struct Wall *place_load(const char *const *spec, int *nwalls);
 
 
 #endif   // PLACE_H

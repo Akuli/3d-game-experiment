@@ -31,16 +31,16 @@ static struct Place places[] = {
 	}},
 };
 
-const size_t place_count = sizeof(places)/sizeof(places[0]);
+const int place_count = sizeof(places)/sizeof(places[0]);
 static bool places_inited = false;
 
-static void add_wall(struct Place *pl, unsigned int x, unsigned int z, enum WallDirection dir)
+static void add_wall(struct Place *pl, int x, int z, enum WallDirection dir)
 {
 	assert(pl->nwalls < PLACE_MAX_WALLS);
 
 	struct Wall *w = &pl->walls[pl->nwalls++];
-	w->startx = (int)x;
-	w->startz = (int)z;
+	w->startx = x;
+	w->startz = z;
 	w->dir = dir;
 	wall_init(w);
 }
@@ -49,7 +49,7 @@ static void init_place(struct Place *pl)
 {
 	assert(pl->name);
 	assert(pl->spec[0]);
-	pl->xsize = (unsigned int) strlen(pl->spec[0]);
+	pl->xsize = strlen(pl->spec[0]);
 	pl->zsize = 0;
 	while (pl->spec[pl->zsize]) {
 		assert(strlen(pl->spec[pl->zsize]) == pl->xsize);
@@ -71,8 +71,8 @@ static void init_place(struct Place *pl)
 	z
 	*/
 
-	for (unsigned z = 0; z < pl->zsize; z++) {
-		for (unsigned x = 0; x < pl->xsize; x++) {
+	for (int z = 0; z < pl->zsize; z++) {
+		for (int x = 0; x < pl->xsize; x++) {
 			char c = pl->spec[z][x];
 			if (c != '|' && c != '_' && c != 'L' && c != ' ')
 				log_printf_abort("bad wall character '%c'", c);
@@ -90,21 +90,21 @@ static void init_place(struct Place *pl)
 	}
 
 	// add surrounding walls
-	for (unsigned x = 0; x < pl->xsize; x++) {
+	for (int x = 0; x < pl->xsize; x++) {
 		add_wall(pl, x, 0, WALL_DIR_XY);
 		add_wall(pl, x, pl->zsize, WALL_DIR_XY);
 	}
-	for (unsigned z = 0; z < pl->zsize; z++) {
+	for (int z = 0; z < pl->zsize; z++) {
 		add_wall(pl, 0, z, WALL_DIR_ZY);
 		add_wall(pl, pl->xsize, z, WALL_DIR_ZY);
 	}
-	printf("created %zu walls\n", pl->nwalls);
+	log_printf("created %d walls\n", pl->nwalls);
 }
 
 const struct Place *place_list(void)
 {
 	if (!places_inited) {
-		for (size_t i = 0; i < place_count; i++)
+		for (int i = 0; i < place_count; i++)
 			init_place(&places[i]);
 	}
 	return places;

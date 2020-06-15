@@ -15,11 +15,11 @@ struct Player {
 	int turning;   // see player_set_turning()
 	bool moving;
 	bool flat;
-	unsigned int jumpframe;   // how many frames since jump started, 0 for not jumping
+	int jumpframe;   // how many frames since jump started, 0 for not jumping
 };
 
 // run before showing stuff to user
-void player_eachframe(struct Player *plr, unsigned int fps, const struct Wall *walls, size_t nwalls);
+void player_eachframe(struct Player *plr, int fps, const struct Wall *walls, int nwalls);
 
 // key press callbacks. dir values: -1 for left, +1 for right
 void player_set_turning(struct Player *plr, int dir, bool turn);

@@ -36,7 +36,7 @@ static struct Sound sounds[] = {
 void sound_init(void)
 {
 	// check that sounds array is sorted
-	for (size_t i = 0; i < sizeof(sounds)/sizeof(sounds[0]) - 1; i++)
+	for (int i = 0; i < sizeof(sounds)/sizeof(sounds[0]) - 1; i++)
 		assert(strcmp(sounds[i].filename, sounds[i+1].filename) < 0);
 
 	if (SDL_Init(SDL_INIT_AUDIO) == -1) {
@@ -65,7 +65,7 @@ void sound_init(void)
 	*/
 	Mix_AllocateChannels(32);
 
-	for (size_t i = 0; i < sizeof(sounds)/sizeof(sounds[0]); i++) {
+	for (int i = 0; i < sizeof(sounds)/sizeof(sounds[0]); i++) {
 		char path[1024];
 		snprintf(path, sizeof path, "sounds/%s", sounds[i].filename);
 
@@ -109,8 +109,8 @@ static const struct Sound *choose_sound(const char *pattern)
 	const struct Sound *matching[sizeof(sounds)/sizeof(sounds[0])];
 	int nmatching = 0;
 
-	for (size_t i = 0; i < sizeof(sounds)/sizeof(sounds[0]); i++) {
-		if (string_starts_with(sounds[i].filename, pattern, (size_t)(star - pattern)) &&
+	for (int i = 0; i < sizeof(sounds)/sizeof(sounds[0]); i++) {
+		if (string_starts_with(sounds[i].filename, pattern, star - pattern) &&
 			string_ends_with(sounds[i].filename, star+1))
 		{
 			matching[nmatching++] = &sounds[i];
@@ -136,7 +136,7 @@ void sound_play(const char *fnpattern)
 
 void sound_deinit(void)
 {
-	for (size_t i = 0; i < sizeof(sounds)/sizeof(sounds[0]); i++)
+	for (int i = 0; i < sizeof(sounds)/sizeof(sounds[0]); i++)
 		Mix_FreeChunk(sounds[i].chunk);
 
 	Mix_CloseAudio();

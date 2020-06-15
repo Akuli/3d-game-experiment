@@ -250,7 +250,7 @@ void show_all(
 
 	for (int x = 0; x < cam->surface->w; x++) {
 		static struct Interval intervals[ArrayLen(sorted)];
-		size_t nintervals = 0;
+		int nintervals = 0;
 
 		for (int i = 0; i < st.nvisible; i++) {
 			ID id = sorted[i];
