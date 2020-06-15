@@ -20,48 +20,14 @@ static bool ellipsoid_intersects_plane(const struct Ellipsoid *el, struct Plane 
 	return (plane_point_distanceSQUARED(pl, center) < 1);
 }
 
-bool ellipsoid_visible(const struct Ellipsoid *el, const struct Camera *cam)
+/*
+Given a circle on a plane going through (0,0,0), find the points A and B where
+tangent lines of circle going through (0,0,0) intersect the circle
+*/
+static void tangent_line_intersections(
+	Vec3 planenormal, Vec3 center, float radiusSQUARED, Vec3 *A, Vec3 *B)
 {
-	for (unsigned i = 0; i < sizeof(cam->visibilityplanes)/sizeof(cam->visibilityplanes[0]); i++) {
-		if (!plane_whichside(cam->visibilityplanes[i], el->center) && !ellipsoid_intersects_plane(el, cam->visibilityplanes[i]))
-			return false;
-	}
-	return true;
-}
-
-bool ellipsoid_visible_x(
-	const struct Ellipsoid *el, const struct Camera *cam,
-	int x, struct EllipsoidXCache *xcache)
-{
-	float xzr = camera_screenx_to_xzr(cam, (float)x);
-
-	// Equation of plane of points having this screen x:
-	// x/z = xzr, aka 1x + 0y + (-xzr)z = 0
-	xcache->xplane = (struct Plane) { .normal = {1, 0, -xzr}, .constant = 0 };
-	plane_apply_mat3_INVERSE(&xcache->xplane, el->transform);
-
-	xcache->ballcenter = mat3_mul_vec3(
-		el->transform_inverse, camera_point_world2cam(cam, el->center));
-
-	xcache->dSQUARED = plane_point_distanceSQUARED(xcache->xplane, xcache->ballcenter);
-	if (xcache->dSQUARED >= 1)
-		return false;
-
-	xcache->x = x;
-	xcache->xzr = xzr;
-	xcache->cam = cam;
-	return true;
-}
-
-static void calculate_yminmax_without_hidelowerhalf(const struct Ellipsoid *el, const struct EllipsoidXCache *xcache, int *ymin, int *ymax)
-{
-	// Intersection of xplane and unit ball is a circle
-	float radiusSQUARED = 1 - xcache->dSQUARED;   // Pythagorean theorem
-	Vec3 center = vec3_add(xcache->ballcenter, vec3_withlength(xcache->xplane.normal, sqrtf(xcache->dSQUARED)));
-
 	/*
-	on xplane:
-
 		       o o
 		    o       o
 		  o           o
@@ -73,7 +39,7 @@ static void calculate_yminmax_without_hidelowerhalf(const struct Ellipsoid *el, 
 		     \     /
 		      \   /
 		       \ /
-		     (0,0,0) = camera
+		     (0,0,0)
 
 	The \ and / lines are tangent lines of the intersection circle going
 	through the camera. We want to find those, because they correspond to
@@ -108,19 +74,106 @@ static void calculate_yminmax_without_hidelowerhalf(const struct Ellipsoid *el, 
 	float distanceCA = sqrtf(radiusSQUARED - radiusSQUARED*radiusSQUARED/vec3_lengthSQUARED(center));
 
 	/*
-	Use right hand rule for cross product, with xplane normal vector
+	Use right hand rule for cross product, with normal vector
 	pointing from you towards your screen in above picture.
 
 	The pointing direction could also be the opposite and you would get
 	CtoB instead of CtoA. Doesn't matter.
 	*/
-	Vec3 CtoA = vec3_withlength(vec3_cross(center, xcache->xplane.normal), distanceCA);
-	Vec3 A = vec3_add(C, CtoA);
-	Vec3 B = vec3_sub(C, CtoA);
+	Vec3 CtoA = vec3_withlength(vec3_cross(center, planenormal), distanceCA);
+	*A = vec3_add(C, CtoA);
+	*B = vec3_sub(C, CtoA);
+}
 
-	// Trial and error has been used to figure out which y value is bigger and which is smaller...
-	*ymax = (int)camera_point_cam2screen(xcache->cam, mat3_mul_vec3(el->transform, A)).y;
-	*ymin = (int)camera_point_cam2screen(xcache->cam, mat3_mul_vec3(el->transform, B)).y;
+bool ellipsoid_visible_xminmax(
+	const struct Ellipsoid *el, const struct Camera *cam, int *xmin, int *xmax)
+{
+	/*
+	Ensure that it's in front of camera and not even touching the
+	camera plane. This allows us to make nice assumptions:
+		- Camera is not inside ellipsoid
+		- x/z ratios of all points on ellipsoid surface in camera coords work
+	*/
+	if (!plane_whichside(cam->visplanes[CAMERA_CAMPLANE_IDX], el->center) ||
+		ellipsoid_intersects_plane(el, cam->visplanes[CAMERA_CAMPLANE_IDX]))
+	{
+		return false;
+	}
+
+	for (int i = 0; i < sizeof(cam->visplanes)/sizeof(cam->visplanes[0]); i++) {
+		if (i == CAMERA_CAMPLANE_IDX)
+			continue;
+
+		/*
+		If center is on the wrong side, then it can touch the plane to
+		still be partially visible
+		*/
+		if (!plane_whichside(cam->visplanes[i], el->center) &&
+			!ellipsoid_intersects_plane(el, cam->visplanes[i]))
+		{
+			return false;
+		}
+	}
+
+	// switch to camera coordinates
+	Vec3 center = camera_point_world2cam(cam, el->center);
+
+	// A non-tilted plane (i.e. planenormal.x = 0) going through camera at (0,0,0) and center
+	struct Plane pl = { .normal = { 0, center.z, -center.y }, .constant = 0 };
+
+	// switch to coordinates with unit ball
+	vec3_apply_matrix(&center, el->transform_inverse);
+	plane_apply_mat3_INVERSE(&pl, el->transform);
+
+	Vec3 A, B;
+	tangent_line_intersections(pl.normal, center, 1*1, &A, &B);
+
+	// back to camera coordinates
+	vec3_apply_matrix(&A, el->transform);
+	vec3_apply_matrix(&B, el->transform);
+
+	// trial and error has been used to figure out which is bigger
+	*xmin = (int)ceilf(camera_point_cam2screen(cam, A).x);
+	*xmax = (int)      camera_point_cam2screen(cam, B).x;
+	return true;
+}
+
+static void fill_xcache(
+	const struct Ellipsoid *el, const struct Camera *cam,
+	int x, struct EllipsoidXCache *xcache)
+{
+	xcache->x = x;
+	xcache->cam = cam;
+	xcache->xzr = camera_screenx_to_xzr(cam, (float)x);
+
+	// Equation of plane of points having this screen x:
+	// x/z = xzr, aka 1x + 0y + (-xzr)z = 0
+	xcache->xplane = (struct Plane) { .normal = {1, 0, -xcache->xzr}, .constant = 0 };
+	plane_apply_mat3_INVERSE(&xcache->xplane, el->transform);
+
+	xcache->ballcenter = mat3_mul_vec3(
+		el->transform_inverse, camera_point_world2cam(cam, el->center));
+
+	xcache->dSQUARED = plane_point_distanceSQUARED(xcache->xplane, xcache->ballcenter);
+	if (xcache->dSQUARED >= 1) {
+		log_printf("hopefully this is near 1: %f", xcache->dSQUARED);
+		xcache->dSQUARED = 1;
+	}
+}
+
+static void calculate_yminmax_without_hidelowerhalf(const struct Ellipsoid *el, const struct EllipsoidXCache *xcache, int *ymin, int *ymax)
+{
+	// Intersection of xplane and unit ball is a circle
+	float radiusSQUARED = 1 - xcache->dSQUARED;   // Pythagorean theorem
+	Vec3 center = vec3_add(xcache->ballcenter, vec3_withlength(xcache->xplane.normal, sqrtf(xcache->dSQUARED)));
+
+	// camera is at (0,0,0) and tangent lines correspond to first and last visible y pixel of the ball
+	Vec3 A, B;
+	tangent_line_intersections(xcache->xplane.normal, center, radiusSQUARED, &A, &B);
+
+	// Trial and error has been used to figure out which is bigger and which is smaller...
+	*ymax = (int)ceilf(camera_point_cam2screen(xcache->cam, mat3_mul_vec3(el->transform, A)).y);
+	*ymin = (int)      camera_point_cam2screen(xcache->cam, mat3_mul_vec3(el->transform, B)).y;
 	assert(*ymin <= *ymax);
 }
 
@@ -159,9 +212,11 @@ static int calculate_center_y(const struct Ellipsoid *el, const struct Ellipsoid
 }
 
 void ellipsoid_yminmax(
-	const struct Ellipsoid *el, const struct EllipsoidXCache *xcache,
+	const struct Ellipsoid *el, const struct Camera *cam,
+	int x, struct EllipsoidXCache *xcache,
 	int *ymin, int *ymax)
 {
+	fill_xcache(el, cam, x, xcache);
 	calculate_yminmax_without_hidelowerhalf(el, xcache, ymin, ymax);
 	if (el->epic->hidelowerhalf)
 		*ymax = calculate_center_y(el, xcache);

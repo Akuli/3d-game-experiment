@@ -42,12 +42,23 @@ void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el);
 // center point of wall in world coordinates
 Vec3 wall_center(const struct Wall *w);
 
-// don't try to show an invisible wall
-bool wall_visible(const struct Wall *w, const struct Camera *cam);
-void wall_show(const struct Wall *w, const struct Camera *cam);
+/*
+Information shared in multiple functions
+*/
+struct WallCache {
+	// screen points
+	Vec2 top1, top2, bot1, bot2;
+};
 
-// same for any two points on same side of the wall
-bool wall_side(const struct Wall *w, Vec3 pt);
+/*
+Returns whether wall is visible. If it is, values of xmin and xmax tell where on
+the screen it will be shown and cache is filled.
+*/
+bool wall_visible_xminmax(
+	const struct Wall *w, const struct Camera *cam, int *xmin, int *xmax, struct WallCache *wc);
+
+// Which range of screen y coordinates is showing the wall?
+void wall_yminmax(const struct WallCache *wc, int x, int *ymin, int *ymax);
 
 /*
 Is a point directly in front of or behind the wall? below pic is viewing from
@@ -67,5 +78,10 @@ Nothing is checked in y direction, aka "up/down" direction.
 */
 bool wall_aligned_with_point(const struct Wall *w, Vec3 pt, float offmax);
 
+// same for any two points on same side of the wall
+bool wall_side(const struct Wall *w, Vec3 pt);
+
+// two walls are lined up if they are parallel and on the same plane
+bool wall_linedup(const struct Wall *w1, const struct Wall *w2);
 
 #endif    // WALL_H

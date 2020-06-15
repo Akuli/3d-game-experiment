@@ -4,16 +4,24 @@
 #include "mathstuff.h"
 
 
+bool interval_overlap(int start1, int end1, int start2, int end2)
+{
+	int ostart = max(start1, start2);
+	int oend = min(end1, end2);
+	return (ostart < oend);
+}
+
 static void remove_overlaps(struct Interval in, struct Interval *bot, struct Interval **top)
 {
-	for (struct Interval *p = bot; p < *top; p++) {
-		int overlapstart = max(p->start, in.start);
-		int overlapend = min(p->end, in.end);
-		if (overlapstart >= overlapend)   // no overlap
+	// looping backwards to make removing from list easier
+	for (struct Interval *p = *top - 1; p >= bot; p--) {
+		int ostart = max(p->start, in.start);
+		int oend = min(p->end, in.end);
+		if (ostart >= oend)   // no overlap
 			continue;
 
-		bool leftpiece = (p->start < overlapstart);
-		bool rightpiece = (p->end > overlapend);
+		bool leftpiece = (p->start < ostart);
+		bool rightpiece = (p->end > oend);
 
 		// remove overlap from *p
 		if (leftpiece && rightpiece) {
@@ -21,15 +29,15 @@ static void remove_overlaps(struct Interval in, struct Interval *bot, struct Int
 			*(*top)++ = (struct Interval){
 				// left piece
 				.start = p->start,
-				.end = overlapstart,
+				.end = ostart,
 				.id = p->id,
 			};
 			// right piece
-			p->start = overlapend;
+			p->start = oend;
 		} else if (leftpiece) {
-			p->end = overlapstart;
+			p->end = ostart;
 		} else if (rightpiece) {
-			p->start = overlapend;
+			p->start = oend;
 		} else {
 			// interval gets removed completely
 			*p = *--*top;
@@ -37,14 +45,14 @@ static void remove_overlaps(struct Interval in, struct Interval *bot, struct Int
 	}
 }
 
-size_t interval_non_overlapping(const struct Interval *in, size_t inlen, struct Interval *out)
+int interval_non_overlapping(const struct Interval *in, int inlen, struct Interval *out)
 {
 	struct Interval *top = out;
-	for (size_t i = 0; i < inlen; i++) {
+	for (int i = 0; i < inlen; i++) {
 		remove_overlaps(in[i], out, &top);
 		*top++ = in[i];
 	}
 
 	assert(top >= out);
-	return (size_t)(top - out);
+	return (top - out);
 }

@@ -27,8 +27,17 @@ struct Camera {
 	visibility plane points to the visible side. So, for a point to be
 	visible, plane_whichside() must return true for each visibility plane.
 	*/
-	struct Plane visibilityplanes[5];
+	struct Plane visplanes[5];
+
+	// for debugging
+	const char *id;
 };
+
+/*
+visplanes[CAMERA_CAMPLANE_IDX] is the visibility plane that corresponds
+to object not being behind camera
+*/
+#define CAMERA_CAMPLANE_IDX 0
 
 /*
 The conversion between these consists of a rotation about the camera location and

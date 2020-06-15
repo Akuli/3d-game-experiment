@@ -43,6 +43,7 @@ void camera_update_caches(struct Camera *cam)
 {
 	cam->world2cam = mat3_rotation_xz(-cam->angle);
 
+	// see also CAMERA_CAMPLANE_IDX
 	struct Plane pl[] = {
 		// z=0, with normal vector to negative side (that's where camera is looking)
 		{ .normal = {0, 0, -1}, .constant = 0 },
@@ -66,6 +67,6 @@ void camera_update_caches(struct Camera *cam)
 		plane_move(&pl[i], cam->location);
 	}
 
-	static_assert(sizeof(pl) == sizeof(cam->visibilityplanes), "");
-	memcpy(cam->visibilityplanes, pl, sizeof(pl));
+	static_assert(sizeof(pl) == sizeof(cam->visplanes), "");
+	memcpy(cam->visplanes, pl, sizeof(pl));
 }

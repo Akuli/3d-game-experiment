@@ -33,7 +33,7 @@ struct Ellipsoid {
 };
 
 /*
-Information produced in ellipsoid_visible_x(), for reuse in other functions
+Information shared in multiple functions, specific to screen x coordinate
 */
 struct EllipsoidXCache {
 	int x;
@@ -49,25 +49,23 @@ struct EllipsoidXCache {
 // calculate el->transform and el->transform_inverse
 void ellipsoid_update_transforms(struct Ellipsoid *el);
 
-// Is the ellipsoid visible anywhere on screen?
-bool ellipsoid_visible(const struct Ellipsoid *el, const struct Camera *cam);
-
 /*
-Is the ellipsoid visible at given screen x? If it is, fill in all fields of xcache.
+Is the ellipsoid visible anywhere on screen? If it is, put range of visible screen
+x coordinates to xmin and xmax.
 */
-bool ellipsoid_visible_x(
-	const struct Ellipsoid *el, const struct Camera *cam,
-	int x, struct EllipsoidXCache *xcache);
+bool ellipsoid_visible_xminmax(
+	const struct Ellipsoid *el, const struct Camera *cam, int *xmin, int *xmax);
 
-/*
-Assuming that ellipsoid_visible_x() has returned true, which range of screen y
-coordinates is showing the ellipsoid?
-*/
+// Which range of screen y coordinates is showing the ellipsoid? Also fill in xcache.
 void ellipsoid_yminmax(
-	const struct Ellipsoid *el, const struct EllipsoidXCache *xcache,
+	const struct Ellipsoid *el, const struct Camera *cam,
+	int x, struct EllipsoidXCache *xcache,
 	int *ymin, int *ymax);
 
-// Draw all pixels of ellipsoid corresponding to one x coordinate
+/*
+Draw all pixels of ellipsoid corresponding to range of x coordinates. May be
+called more than once with same xcache but different ymin and ymax.
+*/
 void ellipsoid_drawcolumn(
 	const struct Ellipsoid *el, const struct EllipsoidXCache *xcache,
 	int ymin, int ymax);

@@ -20,12 +20,13 @@
 #include <SDL2/SDL.h>
 
 #define FPS 60
+#define MAX_ENEMIES (SHOWALL_MAX_ELLIPSOIDS - 2)
 
 // includes all the GameObjects that all players should see
 struct GameState {
 	struct Player players[2];
 	struct EllipsoidPic enemypic;
-	struct Enemy enemies[SHOWALL_MAX_ENEMIES];
+	struct Enemy enemies[MAX_ENEMIES];
 	size_t nenemies;
 	const struct Place *place;
 };
@@ -92,10 +93,8 @@ static void handle_players_bumping_each_other(struct Player *plr1, struct Player
 static void handle_players_bumping_enemies(struct GameState *gs)
 {
 	for (int p = 0; p < 2; p++) {
-		for (size_t e = 0; e < gs->nenemies; ) {
-			if (ellipsoid_bump_amount(&gs->players[p].ellipsoid, &gs->enemies[e].ellipsoid) == 0) {
-				e++;
-			} else {
+		for (int e = gs->nenemies - 1; e >= 0; e--) {
+			if (ellipsoid_bump_amount(&gs->players[p].ellipsoid, &gs->enemies[e].ellipsoid) != 0) {
 				gs->enemies[e] = gs->enemies[--gs->nenemies];
 				sound_play("farts/fart*.wav");
 			}
@@ -103,9 +102,22 @@ static void handle_players_bumping_enemies(struct GameState *gs)
 	}
 }
 
+static const struct Ellipsoid *get_all_ellipsoids(const struct GameState *gs)
+{
+	static struct Ellipsoid result[SHOWALL_MAX_ELLIPSOIDS];
+	static_assert(sizeof(result[0]) < 512,
+		"Ellipsoid struct is huge, maybe switch to pointers?");
+
+	result[0] = gs->players[0].ellipsoid;
+	result[1] = gs->players[1].ellipsoid;
+	for (int i = 0; i < gs->nenemies; i++)
+		result[2+i] = gs->enemies[i].ellipsoid;
+	return result;
+}
+
 int main(int argc, char **argv)
 {
-	srand((unsigned) time(NULL));
+	srand(time(NULL));
 
 	if (!( argc == 2 && strcmp(argv[1], "--no-sound") == 0 ))
 		sound_init();
@@ -139,7 +151,10 @@ int main(int argc, char **argv)
 	gs.players[0].cam.surface = create_half_surface(winsurf, 0, winsurf->w/2);
 	gs.players[1].cam.surface = create_half_surface(winsurf, winsurf->w/2, winsurf->w/2);
 
-	gs.nenemies = 10;
+	gs.players[0].cam.id = "cam1";
+	gs.players[1].cam.id = "cam2";
+
+	gs.nenemies = 0;
 	for (size_t i = 0; i < gs.nenemies; i++) {
 		enemy_init(&gs.enemies[i], &gs.enemypic);
 		gs.enemies[i].ellipsoid.center.x += 1;
@@ -169,8 +184,9 @@ int main(int argc, char **argv)
 
 		SDL_FillRect(winsurf, NULL, 0);
 
+		const struct Ellipsoid *els = get_all_ellipsoids(&gs);
 		for (int i = 0; i < 2; i++)
-			show_all(gs.place->walls, gs.place->nwalls, gs.players, 2, gs.enemies, gs.nenemies, &gs.players[i].cam);
+			show_all(gs.place->walls, gs.place->nwalls, els, 2 + gs.nenemies, &gs.players[i].cam);
 
 		SDL_FillRect(winsurf, &(SDL_Rect){ winsurf->w/2, 0, 1, winsurf->h }, SDL_MapRGB(winsurf->format, 0xff, 0xff, 0xff));
 		SDL_UpdateWindowSurface(win);
@@ -179,7 +195,7 @@ int main(int argc, char **argv)
 
 		percentsum += (float)(curtime - time) / (1000/FPS) * 100.f;
 		if (++counter == FPS/3) {
-			fprintf(stderr, "speed percentage average = %.2f%%\n", percentsum / (float)counter);
+			log_printf("speed percentage average = %.2f%%", percentsum / (float)counter);
 			counter = 0;
 			percentsum = 0;
 		}
