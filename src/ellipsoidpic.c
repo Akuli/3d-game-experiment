@@ -60,13 +60,8 @@ static float get_angle(float x, float z)
 
 static void read_image(const char *filename, struct EllipsoidPic *epic)
 {
-	FILE *f = fopen(filename, "rb");
-	if (!f)
-		log_printf_abort("opening '%s' failed: %s", filename, strerror(errno));
-
 	int chansinfile, filew, fileh;
-	unsigned char *filedata = stbi_load_from_file(f, &filew, &fileh, &chansinfile, 4);
-	fclose(f);
+	unsigned char *filedata = stbi_load(filename, &filew, &fileh, &chansinfile, 4);
 	if (!filedata)
 		log_printf_abort("stbi_load_from_file failed: %s", stbi_failure_reason());
 
@@ -90,6 +85,8 @@ static void read_image(const char *filename, struct EllipsoidPic *epic)
 		epic->cubepixels[x][y][z] = SDL_MapRGB(
 			epic->pixfmt, filedata[i], filedata[i+1], filedata[i+2]);
 	}
+
+	stbi_image_free(filedata);
 }
 
 void ellipsoidpic_load(

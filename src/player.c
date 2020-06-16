@@ -33,7 +33,7 @@ static float get_y_radius(const struct Player *plr, int fps)
 	if (plr->flat)   // if flat and jumping, then do this
 		return PLAYER_HEIGHT_FLAT / 2;
 
-	return 1.5f*plr->ellipsoid.xzradius + 0.3f*get_jump_height(plr->jumpframe, fps);
+	return 0.45f + 0.3f*get_jump_height(plr->jumpframe, fps);
 }
 
 void player_eachframe(struct Player *plr, int fps, const struct Wall *walls, int nwalls)
@@ -62,7 +62,13 @@ void player_eachframe(struct Player *plr, int fps, const struct Wall *walls, int
 		}
 	}
 
-	plr->ellipsoid.xzradius = 0.3f;
+	/*
+	xzradius must not be >0.25, because two players must fit between walls
+	that are distance 1 apart from each other. If they don't fit, then the
+	players will end up sticking out to the other side of the walls, which
+	causes weird behaviour.
+	*/
+	plr->ellipsoid.xzradius = 0.25f;
 	plr->ellipsoid.yradius = get_y_radius(plr, fps);
 	ellipsoid_update_transforms(&plr->ellipsoid);
 

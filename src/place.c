@@ -98,7 +98,7 @@ static void init_place(struct Place *pl)
 		add_wall(pl, 0, z, WALL_DIR_ZY);
 		add_wall(pl, pl->xsize, z, WALL_DIR_ZY);
 	}
-	log_printf("created %d walls\n", pl->nwalls);
+	log_printf("created %d walls", pl->nwalls);
 }
 
 const struct Place *place_list(void)
