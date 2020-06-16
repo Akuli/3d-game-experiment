@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <math.h>
+#include "camera.h"
 #include "ellipsoid.h"
 #include "interval.h"
 #include "player.h"
@@ -124,9 +125,26 @@ static void setup_same_type_dependency(struct ShowingState *st, ID id1, ID id2)
 		default: return;    // make compiler happy
 	}
 
-	float z1 = camera_point_world2cam(st->cam, center1).z;
-	float z2 = camera_point_world2cam(st->cam, center2).z;
-	if (z1 < z2)
+	float c1, c2;
+	if (center1.x == center2.x && center1.z == center2.z) {
+		// comparing y coordinates does the right thing for guards above players
+		c1 = center1.y;
+		c2 = center2.y;
+	} else {
+		/*
+		using distance between camera and center instead creates funny bug: Set up
+		two players with wall in between them. Make player A look at player B
+		(behind the wall), and jump up and down with player B. Sometimes B will
+		show up through the wall.
+
+		tl;dr: don't "improve" this code by replacing z coordinate (in camera coords)
+		       with something like |camera - center|
+		*/
+		c1 = camera_point_world2cam(st->cam, center1).z;
+		c2 = camera_point_world2cam(st->cam, center2).z;
+	}
+
+	if (c1 < c2)
 		add_dependency(st, id1, id2);
 	else
 		add_dependency(st, id2, id1);
@@ -155,6 +173,7 @@ static void setup_dependencies(struct ShowingState *st)
 	}
 }
 
+#if 0
 static void debug_print_dependencies(const struct ShowingState *st)
 {
 	printf("\ndependency dump for camera %s:\n", st->cam->id);
@@ -167,6 +186,7 @@ static void debug_print_dependencies(const struct ShowingState *st)
 	}
 	printf("\n");
 }
+#endif
 
 static void add_dependencies_and_id_to_sorted_array(struct ShowingState *st, ID **ptr, ID id)
 {

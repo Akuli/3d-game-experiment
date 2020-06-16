@@ -9,6 +9,7 @@
 #include "camera.h"
 #include "ellipsoid.h"
 #include "enemy.h"
+#include "guard.h"
 #include "log.h"
 #include "mathstuff.h"
 #include "place.h"
@@ -20,15 +21,31 @@
 #include <SDL2/SDL.h>
 
 #define FPS 60
-#define MAX_ENEMIES (SHOWALL_MAX_ELLIPSOIDS - 2)
+
+/*
+unpicked guard = guard that no player has picked or enemy destroyed
+
+Each player has at most GUARD_MAX guards, so at most 1+GUARD_MAX ellipsoids.
+There are 2 players. Remaining ellipsoids are divided equally for unpicked
+guards and enemies.
+*/
+#define MAX_ENEMIES ( (SHOWALL_MAX_ELLIPSOIDS - 2*(1 + GUARD_MAX)) / 2 )
+#define MAX_UNPICKED_GUARDS MAX_ENEMIES
+
+static_assert(MAX_UNPICKED_GUARDS + MAX_ENEMIES + 2*(1 + GUARD_MAX) <= SHOWALL_MAX_ELLIPSOIDS, "");
+static_assert(MAX_UNPICKED_GUARDS >= 100, "");
+static_assert(MAX_ENEMIES >= 100, "");
 
 // includes all the GameObjects that all players should see
 struct GameState {
 	struct Player players[2];
-	struct EllipsoidPic enemypic;
+	struct EllipsoidPic enemypic;   // TODO: this doesn't belong here
 	struct Enemy enemies[MAX_ENEMIES];
 	int nenemies;
 	const struct Place *place;
+
+	struct Ellipsoid unpicked_guards[MAX_UNPICKED_GUARDS];
+	int n_unpicked_guards;
 };
 
 
@@ -98,22 +115,44 @@ static void handle_players_bumping_enemies(struct GameState *gs)
 				gs->enemies[e] = gs->enemies[--gs->nenemies];
 				log_printf("%d enemies left", gs->nenemies);
 				sound_play("farts/fart*.wav");
+
+				int nguards = --gs->players[p].nguards;
+				log_printf("player %d now has %d guards", p, nguards);
+				if (nguards < 0) {
+					// TODO: needs something MUCH nicer than this...
+					log_printf("*********************");
+					log_printf("***   game over   ***");
+					log_printf("*********************");
+				}
 			}
 		}
 	}
 }
 
-static const struct Ellipsoid *get_all_ellipsoids(const struct GameState *gs)
+static void get_all_ellipsoids(
+	const struct GameState *gs, const struct Ellipsoid **arr, int *arrlen)
 {
 	static struct Ellipsoid result[SHOWALL_MAX_ELLIPSOIDS];
 	static_assert(sizeof(result[0]) < 512,
 		"Ellipsoid struct is huge, maybe switch to pointers?");
+	struct Ellipsoid *ptr = result;
 
-	result[0] = gs->players[0].ellipsoid;
-	result[1] = gs->players[1].ellipsoid;
+	*ptr++ = gs->players[0].ellipsoid;
+	*ptr++ = gs->players[1].ellipsoid;
+	ptr += guard_create_picked(ptr, &gs->players[0]);
+	ptr += guard_create_picked(ptr, &gs->players[1]);
+
 	for (int i = 0; i < gs->nenemies; i++)
-		result[2+i] = gs->enemies[i].ellipsoid;
-	return result;
+		*ptr++ = gs->enemies[i].ellipsoid;
+
+	// this will likely optimize into a memcpy, so why bother write it as memcpy :D
+	for (int i = 0; i < gs->n_unpicked_guards; i++)
+		*ptr++ = gs->unpicked_guards[i];
+
+	assert(ptr < result + sizeof(result)/sizeof(result[0]));
+
+	*arr = result;
+	*arrlen = ptr - result;
 }
 
 int main(int argc, char **argv)
@@ -155,12 +194,21 @@ int main(int argc, char **argv)
 	gs.players[0].cam.id = "cam1";
 	gs.players[1].cam.id = "cam2";
 
-	gs.nenemies = 20;
+	/*
+	FIXME:
+	- guards of only one player show up
+	- enemies don't show up
+	- when guard-less player hits (invisible) enemies, the other player's
+	  guards go away
+	*/
+	gs.players[0].nguards = 20;
+	gs.players[1].nguards = 20;
+
+	gs.nenemies = 30;
 	for (int i = 0; i < gs.nenemies; i++) {
 		enemy_init(&gs.enemies[i], &gs.enemypic);
 		gs.enemies[i].ellipsoid.center.x += 1;
-		gs.enemies[i].ellipsoid.center.z += 1;
-		gs.enemies[i].ellipsoid.angle += (float)i;
+		gs.enemies[i].ellipsoid.center.z += 2;
 		ellipsoid_update_transforms(&gs.enemies[i].ellipsoid);
 	}
 
@@ -185,27 +233,33 @@ int main(int argc, char **argv)
 
 		SDL_FillRect(winsurf, NULL, 0);
 
-		const struct Ellipsoid *els = get_all_ellipsoids(&gs);
+		const struct Ellipsoid *els;
+		int nels;
+		get_all_ellipsoids(&gs, &els, &nels);
+
 		for (int i = 0; i < 2; i++)
-			show_all(gs.place->walls, gs.place->nwalls, els, 2 + gs.nenemies, &gs.players[i].cam);
+			show_all(gs.place->walls, gs.place->nwalls, els, nels, &gs.players[i].cam);
 
 		SDL_FillRect(winsurf, &(SDL_Rect){ winsurf->w/2, 0, 1, winsurf->h }, SDL_MapRGB(winsurf->format, 0xff, 0xff, 0xff));
 		SDL_UpdateWindowSurface(win);
 
 		uint32_t curtime = SDL_GetTicks();
 
-		percentsum += (float)(curtime - time) / (1000/FPS) * 100.f;
+		float percent = (float)(curtime - time) / (1000/FPS) * 100.f;
+		percentsum += percent;
 		if (++counter == FPS/3) {
 			log_printf("speed percentage average = %.2f%%", percentsum / (float)counter);
 			counter = 0;
 			percentsum = 0;
 		}
 
+		bool first = (time == 0);
 		time += 1000/FPS;
 		if (curtime <= time) {
 			SDL_Delay(time - curtime);
 		} else {
-			// its lagging
+			if (!first)
+				log_printf("the game is lagging with speed percentage %.2f%%", percent);
 			time = curtime;
 		}
 	}

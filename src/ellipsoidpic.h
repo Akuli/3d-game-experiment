@@ -28,6 +28,7 @@ struct EllipsoidPic {
 	bool hidelowerhalf;
 };
 
+// epic lmao
 void ellipsoidpic_load(
 	struct EllipsoidPic *epic, const char *filename, const SDL_PixelFormat *fmt);
 

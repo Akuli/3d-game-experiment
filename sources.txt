@@ -8,3 +8,5 @@ players/Tux.png: http://www.home.unix-ag.org/simon/penguin/
 players/Chick.png: from a picture taken by a relative
 
 enemies/enemy1.png: I drew this myself with gimp
+
+guard.png: https://pixabay.com/photos/corrugated-sheet-metal-plate-2370925/
