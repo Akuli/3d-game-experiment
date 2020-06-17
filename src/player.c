@@ -44,9 +44,8 @@ void player_eachframe(struct Player *plr, int fps, const struct Wall *walls, int
 	}
 
 	if (plr->moving) {
-		Mat3 cam2world = mat3_inverse(plr->cam.world2cam);
 		Vec3 diff = mat3_mul_vec3(
-			cam2world,
+			plr->cam.cam2world,
 			(Vec3){ 0, 0, -MOVE_UNITS_PER_SECOND/(float)fps });
 		vec3_add_inplace(&plr->ellipsoid.center, diff);
 	}

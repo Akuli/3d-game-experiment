@@ -251,8 +251,6 @@ void ellipsoid_drawcolumn(
 	assert(0 <= ymin && ymin+ydiff <= xcache->cam->surface->h);
 	assert(ydiff <= SHOWALL_SCREEN_HEIGHT);
 
-	Mat3 cam2world = mat3_inverse(xcache->cam->world2cam);
-
 	/*
 	Code is ugly but gcc vectorizes it to make it very fast. This code was the
 	bottleneck of the game before making it more vectorizable, and it still is
@@ -301,9 +299,9 @@ void ellipsoid_drawcolumn(
 	LOOP t[i] = (cd[i] + sqrtf(t[i]))/dd[i];
 
 	float vecx[SHOWALL_SCREEN_HEIGHT], vecy[SHOWALL_SCREEN_HEIGHT], vecz[SHOWALL_SCREEN_HEIGHT];
-	LOOP vecx[i] = mat3_mul_vec3(cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), xcache->ballcenter)).x;
-	LOOP vecy[i] = mat3_mul_vec3(cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), xcache->ballcenter)).y;
-	LOOP vecz[i] = mat3_mul_vec3(cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), xcache->ballcenter)).z;
+	LOOP vecx[i] = mat3_mul_vec3(xcache->cam->cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), xcache->ballcenter)).x;
+	LOOP vecy[i] = mat3_mul_vec3(xcache->cam->cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), xcache->ballcenter)).y;
+	LOOP vecz[i] = mat3_mul_vec3(xcache->cam->cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), xcache->ballcenter)).z;
 #undef LineDir
 
 	int ex[SHOWALL_SCREEN_HEIGHT], ey[SHOWALL_SCREEN_HEIGHT], ez[SHOWALL_SCREEN_HEIGHT];

@@ -1,6 +1,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
+#include <assert.h>
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 #include "log.h"
@@ -19,7 +20,7 @@ struct Camera {
 	Vec3 location;
 	float angle;
 
-	Mat3 world2cam;
+	Mat3 world2cam, cam2world;
 
 	/*
 	For checking whether an object is visible or not, we split the world
@@ -44,28 +45,46 @@ The conversion between these consists of a rotation about the camera location an
 offsetting by the camera location vector. This is what these functions do, but
 there may be good reasons to not use these functions.
 */
-Vec3 camera_point_world2cam(const struct Camera *cam, Vec3 v);
-Vec3 camera_point_cam2world(const struct Camera *cam, Vec3 v);
+inline Vec3 camera_point_world2cam(const struct Camera *cam, Vec3 v)
+{
+	return mat3_mul_vec3(cam->world2cam, vec3_sub(v, cam->location));
+}
+inline Vec3 camera_point_cam2world(const struct Camera *cam, Vec3 v)
+{
+	return vec3_add(mat3_mul_vec3(cam->cam2world, v), cam->location);
+}
 
 /*
 When mapping a point given in camera coordinates to a pixel on an SDL surface, we
 only use the ratios point.z/point.x and point.z/point.y; we don't need to know
 anything else about the point. I call these ratios xzr and yzr, short for "x to z
 ratio" and "y to z ratio".
+
+Hints for figuring out the formulas:
+- Usually z is negative, so xzr has the opposite sign as x, and yzr has the
+  opposite sign of y.
+- For x=0 and y=0, we want the center of the SDL surface.
+- More x means right, which means means more screen x. More y means up, which
+  means *less* screen y. That's how coordinates work in most 2D graphics things.
 */
-float camera_screenx_to_xzr(const struct Camera *cam, float screenx);
-float camera_screeny_to_yzr(const struct Camera *cam, float screeny);
-float camera_xzr_to_screenx(const struct Camera *cam, float xzr);
-float camera_yzr_to_screeny(const struct Camera *cam, float yzr);
+#define SCALING_FACTOR 300.f
+inline float camera_xzr_to_screenx(const struct Camera *cam, float xzr) { return (float)cam->surface->w/2 - SCALING_FACTOR*xzr; }
+inline float camera_yzr_to_screeny(const struct Camera *cam, float yzr) { return (float)cam->surface->h/2 + SCALING_FACTOR*yzr; }
+inline float camera_screenx_to_xzr(const struct Camera *cam, float screenx) { return (-screenx + (float)cam->surface->w/2)/SCALING_FACTOR; }
+inline float camera_screeny_to_yzr(const struct Camera *cam, float screeny) { return (screeny - (float)cam->surface->h/2)/SCALING_FACTOR; }
+#undef SCALING_FACTOR
 
 // call this after changing cam->location or cam->world2cam
 void camera_update_caches(struct Camera *cam);
 
-/*
-This asserts that pt.z is negative because otherwise the point is not in front
-of the player.
-*/
-Vec2 camera_point_cam2screen(const struct Camera *cam, Vec3 pt);
+inline Vec2 camera_point_cam2screen(const struct Camera *cam, Vec3 pt)
+{
+	assert(pt.z < 0);   // point must be in front of camera
+	return (Vec2){
+		.x = camera_xzr_to_screenx(cam, pt.x/pt.z),
+		.y = camera_yzr_to_screeny(cam, pt.y/pt.z),
+	};
+}
 
 
 #endif   // CAMERA_H

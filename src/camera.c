@@ -3,44 +3,18 @@
 #include <SDL2/SDL.h>
 #include "mathstuff.h"
 
-#define SCALING_FACTOR 300.f
-
-Vec3 camera_point_world2cam(const struct Camera *cam, Vec3 v)
-{
-	// can be optimized by caching inverse matrix if needed
-	return mat3_mul_vec3(cam->world2cam, vec3_sub(v, cam->location));
-}
-
-Vec3 camera_point_cam2world(const struct Camera *cam, Vec3 v)
-{
-	return vec3_add(mat3_mul_vec3(mat3_inverse(cam->world2cam), v), cam->location);
-}
-
-/*
-Hints for figuring out the formulas:
-- Usually z is negative, so xzr has the opposite sign as x, and yzr has the
-  opposite sign of y.
-- For x=0 and y=0, we want the center of the SDL surface.
-- More x means right, which means means more screen x. More y means up, which
-  means *less* screen y. That's how coordinates work in most 2D graphics things.
-*/
-float camera_xzr_to_screenx(const struct Camera *cam, float xzr) { return (float)cam->surface->w/2 - SCALING_FACTOR*xzr; }
-float camera_yzr_to_screeny(const struct Camera *cam, float yzr) { return (float)cam->surface->h/2 + SCALING_FACTOR*yzr; }
-
-float camera_screenx_to_xzr(const struct Camera *cam, float screenx) { return (-screenx + (float)cam->surface->w/2)/SCALING_FACTOR; }
-float camera_screeny_to_yzr(const struct Camera *cam, float screeny) { return (screeny - (float)cam->surface->h/2)/SCALING_FACTOR; }
-
-Vec2 camera_point_cam2screen(const struct Camera *cam, Vec3 pt)
-{
-	assert(pt.z < 0);
-	return (Vec2){
-		.x = camera_xzr_to_screenx(cam, pt.x/pt.z),
-		.y = camera_yzr_to_screeny(cam, pt.y/pt.z),
-	};
-}
+// non-static inlines are weird in c
+extern inline float camera_xzr_to_screenx(const struct Camera *cam, float xzr);
+extern inline float camera_yzr_to_screeny(const struct Camera *cam, float yzr);
+extern inline float camera_screenx_to_xzr(const struct Camera *cam, float screenx);
+extern inline float camera_screeny_to_yzr(const struct Camera *cam, float screeny);
+extern inline Vec2 camera_point_cam2screen(const struct Camera *cam, Vec3 pt);
+extern inline Vec3 camera_point_world2cam(const struct Camera *cam, Vec3 v);
+extern inline Vec3 camera_point_cam2world(const struct Camera *cam, Vec3 v);
 
 void camera_update_caches(struct Camera *cam)
 {
+	cam->cam2world = mat3_rotation_xz(cam->angle);
 	cam->world2cam = mat3_rotation_xz(-cam->angle);
 
 	// see also CAMERA_CAMPLANE_IDX
