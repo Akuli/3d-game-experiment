@@ -43,7 +43,7 @@ static float linear_map(float srcmin, float srcmax, float dstmin, float dstmax, 
 }
 
 // returns between 0 and 2pi
-static float get_angle(float x, float z)
+static float calculate_angle(int x, int z)
 {
 	float pi = acosf(-1);
 
@@ -52,14 +52,35 @@ static float get_angle(float x, float z)
 	pictures don't show up mirrored. That makes the player stuff easier because
 	the front of the player at angle=pi should point in negative z direction.
 	*/
-	float res = pi/2 - atan2f(z, x);
+	float res = pi/2 - atan2f(z - ELLIPSOIDPIC_SIDE/2, x - ELLIPSOIDPIC_SIDE/2);
 	if (res < 2*pi) res += 2*pi;
 	if (res > 2*pi) res -= 2*pi;
+	assert(0 <= res && res <= 2*pi);
 	return res;
+}
+
+// the atan2 in calculate_angle() is slow, let's cache it
+typedef float AngleArray[ELLIPSOIDPIC_SIDE][ELLIPSOIDPIC_SIDE];
+static const AngleArray *get_angle_array(void)
+{
+	static AngleArray res;
+	static bool loaded = false;
+
+	if (!loaded) {
+		for (int x = 0; x < ELLIPSOIDPIC_SIDE; x++) {
+			for (int z = 0; z < ELLIPSOIDPIC_SIDE; z++) {
+				res[x][z] = calculate_angle(x, z);
+			}
+		}
+		loaded = true;
+	}
+	return (const AngleArray *) &res;
 }
 
 static void read_image(const char *filename, struct EllipsoidPic *epic)
 {
+	const AngleArray *angles = get_angle_array();
+
 	int chansinfile, filew, fileh;
 	unsigned char *filedata = stbi_load(filename, &filew, &fileh, &chansinfile, 4);
 	if (!filedata)
@@ -77,7 +98,7 @@ static void read_image(const char *filename, struct EllipsoidPic *epic)
 		int picy = (int)linear_map(ELLIPSOIDPIC_SIDE-1, 0, 0, (float)(fileh-1), (float)y);
 		assert(0 <= picy && picy < fileh);
 
-		float angle = get_angle((float)x - ELLIPSOIDPIC_SIDE/2.f, (float)z - ELLIPSOIDPIC_SIDE/2.f);
+		float angle = (*angles)[x][z];
 		int picx = (int)linear_map(0, 2*pi, 0, (float)(filew-1), angle);
 		assert(0 <= picx && picx < filew);
 
