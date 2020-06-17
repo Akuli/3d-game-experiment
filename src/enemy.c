@@ -8,11 +8,26 @@
 #define RADIANS_PER_SECOND 4.0f
 #define MOVE_UNITS_PER_SECOND 2.5f
 
-void enemy_init(struct Enemy *en, const struct EllipsoidPic *epic)
+static const struct EllipsoidPic *get_ellipsoid_pic(const SDL_PixelFormat *fmt)
+{
+	static struct EllipsoidPic epic;
+	static bool ready = false;
+
+	if (!ready) {
+		ellipsoidpic_load(&epic, "enemies/enemy1.png", fmt);
+		epic.hidelowerhalf = true;
+		ready = true;
+	}
+
+	assert(epic.pixfmt == fmt);
+	return &epic;
+}
+
+void enemy_init(struct Enemy *en, const SDL_PixelFormat *fmt)
 {
 	en->ellipsoid = (struct Ellipsoid){
 		.center = { 0.5f, 0, 0.5f },
-		.epic = epic,
+		.epic = get_ellipsoid_pic(fmt),
 		.angle = 0,
 		.xzradius = ENEMY_XZRADIUS,
 		.yradius = ENEMY_YRADIUS,

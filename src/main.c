@@ -39,7 +39,6 @@ static_assert(MAX_ENEMIES >= 100, "");
 // includes all the GameObjects that all players should see
 struct GameState {
 	struct Player players[2];
-	struct EllipsoidPic enemypic;   // TODO: this doesn't belong here
 	struct Enemy enemies[MAX_ENEMIES];
 	int nenemies;
 	const struct Place *place;
@@ -96,7 +95,7 @@ static SDL_Surface *create_half_surface(SDL_Surface *surf, int xoffset, int widt
 		width, surf->h,
 		32, surf->pitch, 0, 0, 0, 0);
 	if (!res)
-		log_printf_abort("SDL_CreateRGBSurfaceFROM failed: %s", SDL_GetError());
+		log_printf_abort("SDL_CreateRGBSurfaceFrom failed: %s", SDL_GetError());
 	return res;
 }
 
@@ -178,8 +177,6 @@ int main(int argc, char **argv)
 
 	ellipsoidpic_load(&gs.players[0].epic, "players/Tux.png", winsurf->format);
 	ellipsoidpic_load(&gs.players[1].epic, "players/Chick.png", winsurf->format);
-	ellipsoidpic_load(&gs.enemypic, "enemies/enemy1.png", winsurf->format);
-	gs.enemypic.hidelowerhalf = true;
 
 	gs.players[0].ellipsoid.epic = &gs.players[0].epic;
 	gs.players[1].ellipsoid.epic = &gs.players[1].epic;
@@ -204,9 +201,9 @@ int main(int argc, char **argv)
 	gs.players[0].nguards = 20;
 	gs.players[1].nguards = 20;
 
-	gs.nenemies = 0;
+	gs.nenemies = 1;
 	for (int i = 0; i < gs.nenemies; i++) {
-		enemy_init(&gs.enemies[i], &gs.enemypic);
+		enemy_init(&gs.enemies[i], winsurf->format);
 		gs.enemies[i].ellipsoid.center.x += 1;
 		gs.enemies[i].ellipsoid.center.z += 2;
 		ellipsoid_update_transforms(&gs.enemies[i].ellipsoid);
