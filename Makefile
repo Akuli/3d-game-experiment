@@ -21,7 +21,8 @@ COPIED_DLLFILES := $(addprefix $(EXEDIR)/,$(notdir $(DLLFILES)))
 OBJ := obj/stb_image.o $(SRC:src/%.c=obj/%.o)
 
 
-all: $(EXEDIR)/game$(EXESUFFIX) test checkfuncs
+
+all: $(EXEDIR)/game$(EXESUFFIX) test checkfuncs checkassets
 
 # doesn't use .gitignore because it's sometimes handy to have files being
 # ignored but not cleaned on rebuild
@@ -53,6 +54,10 @@ test: $(EXEDIR)/testrunner$(EXESUFFIX)
 .PHONY: checkfuncs
 checkfuncs:
 	python3 checkfuncs.py
+
+.PHONY: checkassets
+checkassets:
+	./checkassets.sh
 
 $(COPIED_DLLFILES): $(DLLFILES)
 	mkdir -p $(@D) && cp $(shell printf '%s\n' $^ | grep $(notdir $@)) $(EXEDIR)
