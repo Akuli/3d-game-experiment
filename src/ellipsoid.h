@@ -63,7 +63,7 @@ void ellipsoid_yminmax(
 	int *ymin, int *ymax);
 
 /*
-Draw all pixels of ellipsoid corresponding to range of x coordinates. May be
+Draw all pixels of ellipsoid corresponding to range of y coordinates. May be
 called more than once with same xcache but different ymin and ymax.
 */
 void ellipsoid_drawcolumn(

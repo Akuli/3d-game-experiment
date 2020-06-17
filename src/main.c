@@ -204,7 +204,7 @@ int main(int argc, char **argv)
 	gs.players[0].nguards = 20;
 	gs.players[1].nguards = 20;
 
-	gs.nenemies = 30;
+	gs.nenemies = 0;
 	for (int i = 0; i < gs.nenemies; i++) {
 		enemy_init(&gs.enemies[i], &gs.enemypic);
 		gs.enemies[i].ellipsoid.center.x += 1;

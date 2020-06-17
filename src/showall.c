@@ -98,10 +98,26 @@ static void setup_ellipsoid_wall_dependency(struct ShowingState *st, ID eid, ID 
 
 	const struct Ellipsoid *el = &st->els[ID_INDEX(eid)];
 	const struct Wall *w = &st->walls[ID_INDEX(wid)];
-	if (wall_side(w, el->center) == wall_side(w, st->cam->location))
-		add_dependency(st, wid, eid);
-	else
+
+	// biggest and smallest camera z coords of wall corners (don't know which is which)
+	float z1 = camera_point_world2cam(st->cam, w->top1).z;
+	float z2 = camera_point_world2cam(st->cam, w->top2).z;
+
+	float elcenterz = camera_point_world2cam(st->cam, el->center).z;
+
+	if (elcenterz < z1 && elcenterz < z2) {
+		// ellipsoid is behind every corner of the wall
 		add_dependency(st, eid, wid);
+	} else if (elcenterz > z1 && elcenterz > z2) {
+		// in front of every corner of the wall
+		add_dependency(st, wid, eid);
+	} else if (wall_side(w, el->center) == wall_side(w, st->cam->location)) {
+		// lined up with wall and on same side of wall as camera
+		add_dependency(st, wid, eid);
+	} else {
+		// lined up with wall and on different side of wall as camera
+		add_dependency(st, eid, wid);
+	}
 }
 
 static void setup_same_type_dependency(struct ShowingState *st, ID id1, ID id2)
@@ -121,8 +137,6 @@ static void setup_same_type_dependency(struct ShowingState *st, ID id1, ID id2)
 			center1 = wall_center(&st->walls[ID_INDEX(id1)]);
 			center2 = wall_center(&st->walls[ID_INDEX(id2)]);
 			break;
-
-		default: return;    // make compiler happy
 	}
 
 	float c1, c2;
@@ -156,6 +170,7 @@ static void setup_dependencies(struct ShowingState *st)
 		for (int k = i+1; k < st->nvisible; k++) {
 			ID id1 = st->visible[i];
 			ID id2 = st->visible[k];
+
 			if (!interval_overlap(
 					st->infos[id1].xmin, st->infos[id1].xmax,
 					st->infos[id2].xmin, st->infos[id2].xmax))
@@ -225,18 +240,12 @@ static void get_yminmax(struct ShowingState *st, ID id, int x, int *ymin, int *y
 
 static void draw_column(const struct ShowingState *st, int x, ID id, int ymin, int ymax)
 {
-	float dSQUARED;
-
 	switch(ID_TYPE(id)) {
 	case ID_TYPE_ELLIPSOID:
 		ellipsoid_drawcolumn(&st->els[ID_INDEX(id)], &st->infos[id].cache.ellipsoidc, ymin, ymax);
 		break;
 	case ID_TYPE_WALL:
-		dSQUARED = vec3_lengthSQUARED(vec3_sub(st->cam->location, wall_center(&st->walls[ID_INDEX(id)])));
-		SDL_FillRect(
-			st->cam->surface,
-			&(SDL_Rect){x, ymin, 1, ymax-ymin},
-			SDL_MapRGB(st->cam->surface->format, (int)( 0xaa*expf(-dSQUARED / 300.f) ), 0, 0));
+		wall_drawcolumn(&st->infos[id].cache.wallc, x, ymin, ymax);
 		break;
 	}
 }

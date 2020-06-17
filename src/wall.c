@@ -35,6 +35,20 @@ void wall_init(struct Wall *w)
 			}
 		}
 	}
+
+	w->top1 = w->top2 = (Vec3){ (float)w->startx, Y_MAX, (float)w->startz };
+	w->bot1 = w->bot2 = (Vec3){ (float)w->startx, Y_MIN, (float)w->startz };
+
+	switch(w->dir) {
+		case WALL_DIR_XY:
+			w->top2.x += 1.0f;
+			w->bot2.x += 1.0f;
+			break;
+		case WALL_DIR_ZY:
+			w->top2.z += 1.0f;
+			w->bot2.z += 1.0f;
+			break;
+	}
 }
 
 void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el)
@@ -51,13 +65,12 @@ void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el)
 		=	|center(w) - p  +  p - center(el)|         (because -p+p = zero vector)
 		<=	|center(w) - p| + |p - center(el)|         (by triangle inequality)
 		<=	diam(w)/2       + |p - center(el)|         (because p is in wall)
-		<=	diam(w)/2       + max(xzradius, yradius)   (because p is in wall)
+		<=	diam(w)/2       + max(xzradius, yradius)   (because p is in ellipsoid)
 
 	If this is not the case, then we can't have any intersections. We use
 	this to optimize a common case.
 	*/
-	float h = Y_MAX - Y_MIN;
-	float diam = hypotf(h, 1);
+	float diam = hypotf(Y_MAX - Y_MIN, 1);
 	float thing = diam/2 + max(el->xzradius, el->yradius);
 	if (vec3_lengthSQUARED(vec3_sub(el->center, wall_center(w))) > thing*thing)
 		return;
@@ -95,28 +108,10 @@ void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el)
 	}
 }
 
-static void get_corners_in_world_coordinates(
-	const struct Wall *w,
-	Vec3 *top1, Vec3 *top2,
-	Vec3 *bot1, Vec3 *bot2)
+static bool wall_is_visible(const struct Wall *w, const struct Camera *cam)
 {
-	*top1 = *top2 = (Vec3){ (float)w->startx, Y_MAX, (float)w->startz };
-	*bot1 = *bot2 = (Vec3){ (float)w->startx, Y_MIN, (float)w->startz };
+	Vec3 corners[] = { w->top1, w->top2, w->bot1, w->bot2 };
 
-	switch(w->dir) {
-		case WALL_DIR_XY:
-			top2->x += 1.0f;
-			bot2->x += 1.0f;
-			break;
-		case WALL_DIR_ZY:
-			top2->z += 1.0f;
-			bot2->z += 1.0f;
-			break;
-	}
-}
-
-static bool wall_is_visible(const Vec3 *corners, const struct Camera *cam)
-{
 	// Ensure that no corner is behind camera. This means that x/z ratios will work.
 	for (int c = 0; c < 4; c++)
 		if (!plane_whichside(cam->visplanes[CAMERA_CAMPLANE_IDX], corners[c]))
@@ -138,18 +133,26 @@ static bool wall_is_visible(const Vec3 *corners, const struct Camera *cam)
 	return false;
 }
 
+static void fill_cache(const struct Wall *w, struct WallCache *wc, const struct Camera *cam)
+{
+	wc->cam = cam;
+
+	float dSQUARED = vec3_lengthSQUARED(vec3_sub(cam->location, wall_center(w)));
+	wc->color = SDL_MapRGB(cam->surface->format, (int)( 0xaa*expf(-dSQUARED / 300.f) ), 0, 0);
+
+	wc->top1 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->top1));
+	wc->top2 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->top2));
+	wc->bot1 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->bot1));
+	wc->bot2 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->bot2));
+}
+
 bool wall_visible_xminmax(
 	const struct Wall *w, const struct Camera *cam, int *xmin, int *xmax, struct WallCache *wc)
 {
-	Vec3 top1, top2, bot1, bot2;
-	get_corners_in_world_coordinates(w, &top1, &top2, &bot1, &bot2);
-	if (!wall_is_visible((const Vec3[]){ top1, top2, bot1, bot2 }, cam))
+	if (!wall_is_visible(w, cam))
 		return false;
 
-	wc->top1 = camera_point_cam2screen(cam, camera_point_world2cam(cam, top1));
-	wc->top2 = camera_point_cam2screen(cam, camera_point_world2cam(cam, top2));
-	wc->bot1 = camera_point_cam2screen(cam, camera_point_world2cam(cam, bot1));
-	wc->bot2 = camera_point_cam2screen(cam, camera_point_world2cam(cam, bot2));
+	fill_cache(w, wc, cam);
 
 	assert(fabsf(wc->top1.x - wc->bot1.x) < 1e-5f);
 	assert(fabsf(wc->top2.x - wc->bot2.x) < 1e-5f);
@@ -218,4 +221,9 @@ bool wall_linedup(const struct Wall *w1, const struct Wall *w2)
 
 	// never actually runs, makes compiler happy
 	return false;
+}
+
+void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax)
+{
+	SDL_FillRect(wc->cam->surface, &(SDL_Rect){x, ymin, 1, ymax-ymin}, wc->color);
 }

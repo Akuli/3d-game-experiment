@@ -1,6 +1,7 @@
 #ifndef WALL_H
 #define WALL_H
 
+#include <stdint.h>
 #include "ellipsoid.h"
 #include "camera.h"
 #include "mathstuff.h"
@@ -29,11 +30,34 @@ struct Wall {
 	int startz;
 	enum WallDirection dir;
 
+	/* corners in world coordinates, always up to date because walls don't move.
+
+	now some 3D ascii art (imagine top1 and bot1 being closer to you)
+
+           top2
+	      / |
+	     /  |
+	    /   |
+	   /    |
+	 top1   |
+	  |    bot2
+	  |    /
+	  |   /
+	  |  /
+	  | /
+	 bot1
+
+	top1 and bot1 aren't always closer to camera than top2 and bot2. The important
+	thing is that top1 and bot1 are always vertically lined up, and so are top2
+	and bot2.
+	*/
+	Vec3 top1, top2, bot1, bot2;
+
 	// don't use outside wall.c
 	Vec3 collpoints[WALL_CP_COUNT][WALL_CP_COUNT];
 };
 
-// Call this after setting startx, startz and dir of a new Wall
+// Call this after setting startx, startz and dir of a new wall
 void wall_init(struct Wall *w);
 
 // moves el so that it doesn't bump
@@ -46,6 +70,9 @@ Vec3 wall_center(const struct Wall *w);
 Information shared in multiple functions
 */
 struct WallCache {
+	const struct Camera *cam;
+	uint32_t color;
+
 	// screen points
 	Vec2 top1, top2, bot1, bot2;
 };
@@ -83,5 +110,12 @@ bool wall_side(const struct Wall *w, Vec3 pt);
 
 // two walls are lined up if they are parallel and on the same plane
 bool wall_linedup(const struct Wall *w1, const struct Wall *w2);
+
+/*
+Draw all pixels of wall corresponding to range of y coordinates. May be
+called more than once with same xcache but different ymin and ymax.
+*/
+void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax);
+
 
 #endif    // WALL_H

@@ -46,12 +46,6 @@ void guard_nonpicked_eachframe(struct Ellipsoid *el)
 	ellipsoid_update_transforms(el);
 }
 
-static float linear_map(float srcmin, float srcmax, float dstmin, float dstmax, float val)
-{
-	float ratio = (val - srcmin)/(srcmax - srcmin);
-	return dstmin + ratio*(dstmax - dstmin);
-}
-
 int guard_create_picked(struct Ellipsoid *arr, const struct Player *plr)
 {
 	if (plr->nguards <= 0)
