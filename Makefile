@@ -18,8 +18,7 @@ EXEDIR ?= .
 COPIED_DLLFILES := $(addprefix $(EXEDIR)/,$(notdir $(DLLFILES)))
 
 # order matters, parallelizing make works best when slowly compiling things are first
-OBJ := obj/stb_image.o $(SRC:src/%.c=obj/%.o)
-
+OBJ := obj/stb_image.o $(SRC:src/%.c=obj/src/%.o) obj/generated/filelist.o
 
 
 all: $(EXEDIR)/game$(EXESUFFIX) test checkfuncs checkassets
@@ -28,9 +27,12 @@ all: $(EXEDIR)/game$(EXESUFFIX) test checkfuncs checkassets
 # ignored but not cleaned on rebuild
 .PHONY: clean
 clean:
-	rm -rvf game build obj callgrind.out graph.* testrunner
+	rm -rvf game generated build obj callgrind.out graph.* testrunner
 
-obj/%.o: src/%.c $(HEADERS)
+generated/filelist.c: scripts/generate_filelist $(shell find -name '*.wav') $(shell find -name '*.png')
+	mkdir -p $(@D) && $< > $@
+
+obj/%.o: %.c $(HEADERS)
 	mkdir -p $(@D) && $(CC) -c -o $@ $< $(CFLAGS)
 
 # "-x c" tells gcc to not treat the file as a header file

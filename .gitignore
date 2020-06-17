@@ -5,3 +5,4 @@ graph.*
 testrunner
 libs/
 build/
+generated/

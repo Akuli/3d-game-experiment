@@ -16,15 +16,12 @@ def read(file):
 
 
 cfiles = glob.glob('src/*.c')
-hfiles = glob.glob('src/*.h')
 
-for hfile in hfiles:
-    cfile = hfile.rstrip('h') + 'c'
-    if cfile == 'src/log.c':
-        assert cfile not in cfiles
-        cfile = None
-    else:
-        assert cfile in cfiles
+for cfile in cfiles:
+    if cfile == 'src/main.c':
+        continue
+
+    hfile = cfile.rstrip('c') + 'h'
 
     declarations = re.findall(
         r'^(?:\w+ )+\w+\([^()]*?\);', read(hfile),
