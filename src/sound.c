@@ -5,39 +5,37 @@
 #include <string.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
+#include "../generated/filelist.h"
 #include "log.h"
 
-struct Sound {
-	const char *filename;
-	int volume_percents;
-	Mix_Chunk *chunk;
-};
+static bool string_starts_with(const char *s, const char *pre, int prelen)
+{
+	if (prelen < 0)
+		prelen = strlen(pre);
+	return (strncmp(s, pre, prelen) == 0);
+}
 
-static struct Sound sounds[] = {
-	// must be sorted by filename, that's used for binary searching the list
-	{ "boing.wav", 100, NULL },
-	{ "farts/fart1.wav", 100, NULL },
-	{ "farts/fart10.wav", 100, NULL },
-	{ "farts/fart11.wav", 100, NULL },
-	{ "farts/fart2.wav", 100, NULL },
-	{ "farts/fart3.wav", 100, NULL },
-	{ "farts/fart4.wav", 100, NULL },
-	{ "farts/fart5.wav", 100, NULL },
-	{ "farts/fart6.wav", 100, NULL },
-	{ "farts/fart7.wav", 100, NULL },
-	{ "farts/fart8.wav", 100, NULL },
-	{ "farts/fart9.wav", 100, NULL },
-	{ "lemonsqueeze.wav", 100, NULL },
-	{ "pop.wav", 100, NULL },
-};
+static bool string_ends_with(const char *s, const char *suff)
+{
+	if (strlen(s) < strlen(suff))
+		return false;
+	return (strcmp(s + strlen(s) - strlen(suff), suff) == 0);
+}
+
+#define N_SOUNDS ( sizeof(filelist_sounds)/sizeof(filelist_sounds[0]) )
+static Mix_Chunk *sound_chunks[N_SOUNDS];
 
 #define CHUNK_SIZE 1024
 
 void sound_init(void)
 {
-	// check that sounds array is sorted
-	for (int i = 0; i < sizeof(sounds)/sizeof(sounds[0]) - 1; i++)
-		assert(strcmp(sounds[i].filename, sounds[i+1].filename) < 0);
+	// filenames must be sorted for binary searching
+	for (int i = 0; i < N_SOUNDS-1; i++)
+		assert(strcmp(filelist_sounds[i], filelist_sounds[i+1]) < 0);
+
+	// sound_play() takes filename without "sounds/" in front
+	for (int i = 0; i < N_SOUNDS; i++)
+		assert(string_starts_with(filelist_sounds[i], "sounds/", -1));
 
 	if (SDL_Init(SDL_INIT_AUDIO) == -1) {
 		log_printf("SDL_Init(SDL_INIT_AUDIO) failed: %s", SDL_GetError());
@@ -65,55 +63,50 @@ void sound_init(void)
 	*/
 	Mix_AllocateChannels(32);
 
-	for (int i = 0; i < sizeof(sounds)/sizeof(sounds[0]); i++) {
-		char path[1024];
-		snprintf(path, sizeof path, "sounds/%s", sounds[i].filename);
-
-		assert(!sounds[i].chunk);
-		if (!( sounds[i].chunk = Mix_LoadWAV(path) )) {
-			log_printf("Mix_LoadWav(\"%s\") failed: %s", path, Mix_GetError());
-			continue;
-		}
-		Mix_VolumeChunk(sounds[i].chunk, MIX_MAX_VOLUME * sounds[i].volume_percents / 100);
+	for (int i = 0; i < N_SOUNDS; i++) {
+		if (!( sound_chunks[i] = Mix_LoadWAV(filelist_sounds[i]) ))
+			log_printf("Mix_LoadWav(\"%s\") failed: %s", filelist_sounds[i], Mix_GetError());
 	}
-}
-
-static bool string_starts_with(const char *s, const char *pre, size_t prelen)
-{
-	return (strncmp(s, pre, prelen) == 0);
-}
-
-static bool string_ends_with(const char *s, const char *suff)
-{
-	if (strlen(s) < strlen(suff))
-		return false;
-	return (strcmp(s + strlen(s) - strlen(suff), suff) == 0);
 }
 
 static int compare_sound_filename(const void *a, const void *b)
 {
-	return strcmp(a, ((const struct Sound *)b)->filename);
+	const char *astr = a;
+	const char *bstr = *(const char *const*)b;
+
+	assert(!string_starts_with(astr, "sounds/", -1));
+	assert(string_starts_with(bstr, "sounds/", -1));
+	return strcmp(astr, bstr + strlen("sounds/"));
 }
 
-static const struct Sound *choose_sound(const char *pattern)
+static Mix_Chunk *choose_sound(const char *pattern)
 {
 	const char *star = strchr(pattern, '*');
 	if (!star) {
 		// no wildcard being used, binary search with filename
-		return bsearch(
-			pattern, sounds, sizeof(sounds)/sizeof(sounds[0]), sizeof(sounds[0]),
+		const char *const *ptr = bsearch(
+			pattern, filelist_sounds, N_SOUNDS, sizeof(filelist_sounds[0]),
 			compare_sound_filename);
+		if (!ptr)
+			return NULL;
+
+		int i = ptr - filelist_sounds;
+		assert(0 <= i && i < N_SOUNDS);
+		return sound_chunks[i];
 	}
+
 	assert(strrchr(pattern, '*') == star);   // no more than 1 wildcard
 
-	const struct Sound *matching[sizeof(sounds)/sizeof(sounds[0])];
+	Mix_Chunk *matching[N_SOUNDS];
 	int nmatching = 0;
 
-	for (int i = 0; i < sizeof(sounds)/sizeof(sounds[0]); i++) {
-		if (string_starts_with(sounds[i].filename, pattern, star - pattern) &&
-			string_ends_with(sounds[i].filename, star+1))
+	for (int i = 0; i < N_SOUNDS; i++) {
+		const char *fnam = filelist_sounds[i] + strlen("sounds/");
+		if (string_starts_with(fnam, pattern, star - pattern) &&
+			string_ends_with(fnam, star+1) &&
+			sound_chunks[i] != NULL)
 		{
-			matching[nmatching++] = &sounds[i];
+			matching[nmatching++] = sound_chunks[i];
 		}
 	}
 
@@ -124,20 +117,17 @@ static const struct Sound *choose_sound(const char *pattern)
 
 void sound_play(const char *fnpattern)
 {
-	const struct Sound *snd = choose_sound(fnpattern);
-
-	if (snd == NULL)
+	Mix_Chunk *c = choose_sound(fnpattern);
+	if (!c)
 		log_printf("no sounds match the pattern '%s'", fnpattern);
-	else if (snd->chunk == NULL)
-		log_printf("loading sound '%s' has failed", snd->filename);
-	else if (Mix_PlayChannel(-1, snd->chunk, 0) == -1)
-		log_printf("Mix_PlayChannel for sound '%s' failed: %s", snd->filename, Mix_GetError());
+	else if (Mix_PlayChannel(-1, c, 0) == -1)
+		log_printf("Mix_PlayChannel failed: %s", Mix_GetError());
 }
 
 void sound_deinit(void)
 {
-	for (int i = 0; i < sizeof(sounds)/sizeof(sounds[0]); i++)
-		Mix_FreeChunk(sounds[i].chunk);
+	for (int i = 0; i < N_SOUNDS; i++)
+		Mix_FreeChunk(sound_chunks[i]);
 
 	Mix_CloseAudio();
 	Mix_Quit();
