@@ -8,7 +8,7 @@
 // for non-picked guards, this is used for both xzradius and yradius
 #define XZRADIUS 0.25f
 
-static const struct EllipsoidPic *get_ellipsoid_pic(const SDL_PixelFormat *fmt)
+static struct EllipsoidPic *get_ellipsoid_pic(const SDL_PixelFormat *fmt)
 {
 	static struct EllipsoidPic epic;
 	static bool ready = false;
@@ -65,7 +65,7 @@ int guard_create_picked(struct Ellipsoid *arr, const struct Player *plr)
 			plr->ellipsoid.center.y + plr->ellipsoid.yradius - yradius/2,
 			plr->ellipsoid.center.z,
 		},
-		.epic = get_ellipsoid_pic(plr->epic.pixfmt),
+		.epic = get_ellipsoid_pic(plr->ellipsoid.epic->pixfmt),
 		.angle = plr->ellipsoid.angle,
 		.xzradius = XZRADIUS,
 		.yradius = yradius,

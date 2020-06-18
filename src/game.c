@@ -73,13 +73,11 @@ static bool handle_event(SDL_Event event, struct GameState *gs)
 		case SDL_SCANCODE_UP: player_set_moving(&gs->players[1], down); break;
 		case SDL_SCANCODE_DOWN: player_set_flat(&gs->players[1], down); break;
 
-		default:
-			break;
+		default: break;
 		}
 		break;
 
-	default:
-		break;
+	default: break;
 	}
 
 	return true;
@@ -140,24 +138,7 @@ static void get_all_ellipsoids(
 	*arrlen = ptr - result;
 }
 
-/*
-Create a surface that refers to another another surface. So, drawing to the
-returned surface actually draws to the surface given as argument. This turns out
-to be much faster than blitting.
-*/
-static SDL_Surface *create_half_surface(SDL_Surface *surf, int xoffset, int width)
-{
-	// TODO: use surf->format somehow?
-	SDL_Surface *res = SDL_CreateRGBSurfaceFrom(
-		(uint32_t *)surf->pixels + xoffset,
-		width, surf->h,
-		32, surf->pitch, 0, 0, 0, 0);
-	if (!res)
-		log_printf_abort("SDL_CreateRGBSurfaceFrom failed: %s", SDL_GetError());
-	return res;
-}
-
-void game_run(SDL_Window *win, const struct Place *pl)
+bool game_run(SDL_Window *win, const struct EllipsoidPic *plr1pic, const struct EllipsoidPic *plr2pic, const struct Place *pl)
 {
 	static struct GameState gs;
 	memset(&gs, 0, sizeof gs);
@@ -166,17 +147,14 @@ void game_run(SDL_Window *win, const struct Place *pl)
 	if (!winsurf)
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 
-	ellipsoidpic_load(&gs.players[0].epic, "players/Tux.png", winsurf->format);
-	ellipsoidpic_load(&gs.players[1].epic, "players/Chick.png", winsurf->format);
-
-	gs.players[0].ellipsoid.epic = &gs.players[0].epic;
-	gs.players[1].ellipsoid.epic = &gs.players[1].epic;
+	gs.players[0].ellipsoid.epic = plr1pic;
+	gs.players[1].ellipsoid.epic = plr2pic;
 
 	gs.players[0].ellipsoid.center = (Vec3){ 2.5f, 0, 0.5f };
 	gs.players[1].ellipsoid.center = (Vec3){ 1.5f, 0, 0.5f };
 
-	gs.players[0].cam.surface = create_half_surface(winsurf, 0, winsurf->w/2);
-	gs.players[1].cam.surface = create_half_surface(winsurf, winsurf->w/2, winsurf->w/2);
+	gs.players[0].cam.surface = camera_create_cropped_surface(winsurf, (SDL_Rect){ .x = 0,            .y = 0, .w = winsurf->w/2, .h = winsurf->h });
+	gs.players[1].cam.surface = camera_create_cropped_surface(winsurf, (SDL_Rect){ .x = winsurf->w/2, .y = 0, .w = winsurf->w/2, .h = winsurf->h });
 
 	gs.players[0].nguards = 20;
 	gs.players[1].nguards = 20;
@@ -197,7 +175,7 @@ void game_run(SDL_Window *win, const struct Place *pl)
 			if (!handle_event(event, &gs)) {
 				SDL_FreeSurface(gs.players[0].cam.surface);
 				SDL_FreeSurface(gs.players[1].cam.surface);
-				return;
+				return false;
 			}
 		}
 
@@ -218,9 +196,10 @@ void game_run(SDL_Window *win, const struct Place *pl)
 		for (int i = 0; i < 2; i++)
 			show_all(pl->walls, pl->nwalls, els, nels, &gs.players[i].cam);
 
+		// horizontal line
 		SDL_FillRect(winsurf, &(SDL_Rect){ winsurf->w/2, 0, 1, winsurf->h }, SDL_MapRGB(winsurf->format, 0xff, 0xff, 0xff));
-		SDL_UpdateWindowSurface(win);
 
+		SDL_UpdateWindowSurface(win);
 		looptimer_wait(&lt);
 	}
 }

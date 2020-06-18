@@ -1,6 +1,6 @@
 #CFLAGS += -fsanitize=undefined -fsanitize=address
 CFLAGS += -std=c11 -Wall -Wextra -Wpedantic
-CFLAGS += -Wfloat-conversion -Wno-sign-compare
+CFLAGS += -Wfloat-conversion -Wno-sign-compare -Werror=int-conversion
 CFLAGS += -Werror=incompatible-pointer-types
 CFLAGS += -Werror=implicit-function-declaration
 CFLAGS += -Werror=discarded-qualifiers
@@ -8,7 +8,7 @@ CFLAGS += -Werror=stack-usage=50000
 CFLAGS += -g
 CFLAGS += -O3
 VENDOR_CFLAGS := $(CFLAGS:-W%=)   # no warnings from other people's code please
-LDFLAGS += -lSDL2 -lSDL2_mixer
+LDFLAGS += -lSDL2 -lSDL2_mixer -lSDL2_ttf
 LDFLAGS += -lm
 
 SRC := $(wildcard src/*.c) generated/filelist.c

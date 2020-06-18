@@ -8,7 +8,7 @@
 #define RADIANS_PER_SECOND 4.0f
 #define MOVE_UNITS_PER_SECOND 2.5f
 
-static const struct EllipsoidPic *get_ellipsoid_pic(const SDL_PixelFormat *fmt)
+static struct EllipsoidPic *get_ellipsoid_pic(const SDL_PixelFormat *fmt)
 {
 	static struct EllipsoidPic epic;
 	static bool ready = false;

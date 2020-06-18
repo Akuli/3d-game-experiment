@@ -4,6 +4,8 @@
 #include "camera.h"
 #include "ellipsoid.h"
 #include "wall.h"
+#include "../generated/filelist.h"
+#include <SDL2/SDL.h>
 
 // smallest possible height of the player (then ellipsoid.yradius is half of this)
 #define PLAYER_HEIGHT_FLAT 0.1f
@@ -14,13 +16,12 @@ that are distance 1 apart from each other. If they don't fit, then the
 players will end up sticking out to the other side of the walls, which
 causes weird behaviour.
 */
-#define PLAYER_XRADIUS 0.25f
+#define PLAYER_XZRADIUS 0.25f
 
 // isn't correct when player is flat
 #define PLAYER_YRADIUS_NOFLAT 0.45f
 
 struct Player {
-	struct EllipsoidPic epic;
 	struct Ellipsoid ellipsoid;
 	struct Camera cam;
 
@@ -32,6 +33,12 @@ struct Player {
 	// negative after game over
 	int nguards;
 };
+
+/*
+Return value is same at each call, an array of same length as filelist_players
+(from "../generated/filelist.h"). Its indexes are compatible with filelist_players.
+*/
+const struct EllipsoidPic *player_get_epics(const SDL_PixelFormat *fmt);
 
 // run before showing stuff to user
 void player_eachframe(struct Player *plr, const struct Wall *walls, int nwalls);

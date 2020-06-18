@@ -6,6 +6,7 @@
 #include "mathstuff.h"
 #include "sound.h"
 #include "wall.h"
+#include "../generated/filelist.h"
 
 #define MOVE_UNITS_PER_SECOND 8.f
 #define RADIANS_PER_SECOND 5.0f
@@ -15,6 +16,24 @@
 
 #define JUMP_MAX_HEIGHT 3.0f
 #define JUMP_DURATION_SEC 0.6f
+
+
+const struct EllipsoidPic *player_get_epics(const SDL_PixelFormat *fmt)
+{
+	static struct EllipsoidPic res[sizeof(filelist_players)/sizeof(filelist_players[0])];
+	static const SDL_PixelFormat *cachedfmt = NULL;
+
+	if (!cachedfmt) {
+		cachedfmt = fmt;
+		// this loop causes slow startup time...
+		for (int i = 0; i < sizeof(res)/sizeof(res[0]); i++)
+			ellipsoidpic_load(&res[i], filelist_players[i], fmt);
+	}
+
+	assert(fmt == cachedfmt);
+	return res;
+}
+
 
 static float get_jump_height(int jumpframe)
 {
@@ -61,7 +80,7 @@ void player_eachframe(struct Player *plr, const struct Wall *walls, int nwalls)
 		}
 	}
 
-	plr->ellipsoid.xzradius = PLAYER_XRADIUS;
+	plr->ellipsoid.xzradius = PLAYER_XZRADIUS;
 	plr->ellipsoid.yradius = get_y_radius(plr);
 	ellipsoid_update_transforms(&plr->ellipsoid);
 

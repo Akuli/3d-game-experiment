@@ -3,15 +3,10 @@
 
 #include "wall.h"
 
-// real programmers (tm) make stuff fit their terminals, and write the (tm) sign in ascii
 #define PLACE_XSIZE_MAX 25
 #define PLACE_ZSIZE_MAX 25
 
-/*
-How many walls can there be?
-+1 because ends included, and some more to avoid off-by-one (lol)
-*/
-#define PLACE_MAX_WALLS ((PLACE_XSIZE_MAX + 3)*(PLACE_ZSIZE_MAX + 3))
+#define PLACE_MAX_WALLS 100
 
 struct Place {
 	const char *name;
@@ -27,7 +22,10 @@ struct Place {
 
 extern const int place_count;
 
-// Returns a statically allocated array of places of length place_count, all walls initialized
+/*
+Returns a statically allocated array of places of length place_count (same
+array every time). All walls are initialized.
+*/
 const struct Place *place_list(void);
 
 struct Wall *place_load(const char *const *spec, int *nwalls);

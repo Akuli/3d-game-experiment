@@ -268,10 +268,8 @@ void show_all(
 	st.els = els;
 	st.nvisible = 0;
 
-	for (int i = 0; i < nwalls; i++)
-		add_wall_if_visible(&st, i);
-	for (int i = 0; i < nels; i++)
-		add_ellipsoid_if_visible(&st, i);
+	for (int i = 0; i < nwalls; i++) add_wall_if_visible(&st, i);
+	for (int i = 0; i < nels; i++)   add_ellipsoid_if_visible(&st, i);
 
 	setup_dependencies(&st);
 

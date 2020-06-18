@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+
+cd buttons
+rm -rvf small
+mkdir -v small
+
+for file in $(cd big && echo *); do
+	echo "big/$file --> small/$file"
+	convert big/$file -resize 100x50 small/$file
+done

@@ -89,5 +89,16 @@ inline Vec2 camera_point_cam2screen(const struct Camera *cam, Vec3 pt)
 	};
 }
 
+/*
+Create a surface that refers to another another surface. So, drawing to the
+returned surface actually draws to the surface given as argument. This turns out
+to be much faster than blitting.
+
+Never returns NULL.
+
+This doesn't really belong to camera.{c,h}, but I don't know where else to put it.
+*/
+SDL_Surface *camera_create_cropped_surface(SDL_Surface *surf, SDL_Rect r);
+
 
 #endif   // CAMERA_H
