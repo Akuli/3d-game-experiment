@@ -11,14 +11,14 @@ VENDOR_CFLAGS := $(CFLAGS:-W%=)   # no warnings from other people's code please
 LDFLAGS += -lSDL2 -lSDL2_mixer
 LDFLAGS += -lm
 
-SRC := $(wildcard src/*.c)
+SRC := $(wildcard src/*.c) generated/filelist.c
 TESTS_SRC := $(wildcard tests/*.c)
-HEADERS := $(wildcard src/*.h)
+HEADERS := $(wildcard src/*.h) generated/filelist.h
 EXEDIR ?= .
 COPIED_DLLFILES := $(addprefix $(EXEDIR)/,$(notdir $(DLLFILES)))
 
 # order matters, parallelizing make works best when slowly compiling things are first
-OBJ := obj/stb_image.o $(SRC:src/%.c=obj/src/%.o) obj/generated/filelist.o
+OBJ := obj/stb_image.o $(SRC:%.c=obj/%.o)
 
 
 all: $(EXEDIR)/game$(EXESUFFIX) test checkfuncs checkassets
@@ -29,8 +29,8 @@ all: $(EXEDIR)/game$(EXESUFFIX) test checkfuncs checkassets
 clean:
 	rm -rvf game generated build obj callgrind.out graph.* testrunner
 
-generated/filelist.c: scripts/generate_filelist $(shell find -name '*.wav') $(shell find -name '*.png')
-	mkdir -p $(@D) && $< > $@
+generated/filelist.c generated/filelist.h: scripts/generate_filelist $(shell find -name '*.wav') $(shell find -name '*.png')
+	mkdir -p $(@D) && $< $@
 
 obj/%.o: %.c $(HEADERS)
 	mkdir -p $(@D) && $(CC) -c -o $@ $< $(CFLAGS)
