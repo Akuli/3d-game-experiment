@@ -36,7 +36,6 @@ obj/%.o: %.c $(HEADERS)
 	mkdir -p $(@D) && $(CC) -c -o $@ $< $(CFLAGS)
 
 # "-x c" tells gcc to not treat the file as a header file
-
 obj/stb_image.o: $(wildcard stb/*.h)
 	mkdir -p $(@D) && \
 	$(CC) -c -o $@ -x c \
