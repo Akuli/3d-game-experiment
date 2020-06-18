@@ -6,6 +6,7 @@ sounds/farts/*.wav: https://freesound.org/people/opriema/sounds/406107/
 
 players/Tux.png: http://www.home.unix-ag.org/simon/penguin/
 players/Chick.png: from a picture taken by a relative
+players/Dog.png: from a picture taken by a relative
 
 enemies/enemy1.png: I drew this myself with gimp
 
