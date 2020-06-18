@@ -5,6 +5,7 @@
 #include "camera.h"
 #include "ellipsoid.h"
 #include "interval.h"
+#include "place.h"
 #include "player.h"
 #include "mathstuff.h"
 

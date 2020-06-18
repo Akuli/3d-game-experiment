@@ -249,7 +249,7 @@ void ellipsoid_drawcolumn(
 	if (ydiff <= 0)
 		return;
 	assert(0 <= ymin && ymin+ydiff <= xcache->cam->surface->h);
-	assert(ydiff <= SHOWALL_SCREEN_HEIGHT);
+	assert(ydiff <= CAMERA_SCREEN_HEIGHT);
 
 	/*
 	Code is ugly but gcc vectorizes it to make it very fast. This code was the
@@ -259,7 +259,7 @@ void ellipsoid_drawcolumn(
 
 #define LOOP for(int i = 0; i < ydiff; i++)
 
-	float yzr[SHOWALL_SCREEN_HEIGHT];
+	float yzr[CAMERA_SCREEN_HEIGHT];
 	LOOP yzr[i] = camera_screeny_to_yzr(xcache->cam, (float)(ymin + i));
 
 	/*
@@ -269,7 +269,7 @@ void ellipsoid_drawcolumn(
 
 	Note that this has z coordinate 1 in camera coordinates, i.e. pointing toward camera
 	*/
-	float linedirx[SHOWALL_SCREEN_HEIGHT], linediry[SHOWALL_SCREEN_HEIGHT], linedirz[SHOWALL_SCREEN_HEIGHT];
+	float linedirx[CAMERA_SCREEN_HEIGHT], linediry[CAMERA_SCREEN_HEIGHT], linedirz[CAMERA_SCREEN_HEIGHT];
 	LOOP linedirx[i] = mat3_mul_vec3(el->transform_inverse, (Vec3){xcache->xzr,yzr[i],1}).x;
 	LOOP linediry[i] = mat3_mul_vec3(el->transform_inverse, (Vec3){xcache->xzr,yzr[i],1}).y;
 	LOOP linedirz[i] = mat3_mul_vec3(el->transform_inverse, (Vec3){xcache->xzr,yzr[i],1}).z;
@@ -288,23 +288,23 @@ void ellipsoid_drawcolumn(
 	because the direction vector is pointing towards the camera.
 	*/
 	float cc = vec3_lengthSQUARED(xcache->ballcenter);    // ballcenter dot ballcenter
-	float dd[SHOWALL_SCREEN_HEIGHT];    // linedir dot linedir
-	float cd[SHOWALL_SCREEN_HEIGHT];    // ballcenter dot linedir
+	float dd[CAMERA_SCREEN_HEIGHT];    // linedir dot linedir
+	float cd[CAMERA_SCREEN_HEIGHT];    // ballcenter dot linedir
 	LOOP dd[i] = vec3_lengthSQUARED(LineDir(i));
 	LOOP cd[i] = vec3_dot(xcache->ballcenter, LineDir(i));
 
-	float t[SHOWALL_SCREEN_HEIGHT];
+	float t[CAMERA_SCREEN_HEIGHT];
 	LOOP t[i] = cd[i]*cd[i] - dd[i]*(cc-1);
 	LOOP t[i] = max(0, t[i]);   // no negative under sqrt plz. Don't know why t[i] can be more than just a little bit negative...
 	LOOP t[i] = (cd[i] + sqrtf(t[i]))/dd[i];
 
-	float vecx[SHOWALL_SCREEN_HEIGHT], vecy[SHOWALL_SCREEN_HEIGHT], vecz[SHOWALL_SCREEN_HEIGHT];
+	float vecx[CAMERA_SCREEN_HEIGHT], vecy[CAMERA_SCREEN_HEIGHT], vecz[CAMERA_SCREEN_HEIGHT];
 	LOOP vecx[i] = mat3_mul_vec3(xcache->cam->cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), xcache->ballcenter)).x;
 	LOOP vecy[i] = mat3_mul_vec3(xcache->cam->cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), xcache->ballcenter)).y;
 	LOOP vecz[i] = mat3_mul_vec3(xcache->cam->cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), xcache->ballcenter)).z;
 #undef LineDir
 
-	int ex[SHOWALL_SCREEN_HEIGHT], ey[SHOWALL_SCREEN_HEIGHT], ez[SHOWALL_SCREEN_HEIGHT];
+	int ex[CAMERA_SCREEN_HEIGHT], ey[CAMERA_SCREEN_HEIGHT], ez[CAMERA_SCREEN_HEIGHT];
 	LOOP ex[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE, vecx[i]);
 	LOOP ey[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE, vecy[i]);
 	LOOP ez[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE, vecz[i]);
@@ -313,7 +313,7 @@ void ellipsoid_drawcolumn(
 	LOOP ey[i] = max(0, min(ELLIPSOIDPIC_SIDE-1, ey[i]));
 	LOOP ez[i] = max(0, min(ELLIPSOIDPIC_SIDE-1, ez[i]));
 
-	uint32_t px[SHOWALL_SCREEN_HEIGHT];
+	uint32_t px[CAMERA_SCREEN_HEIGHT];
 	LOOP px[i] = el->epic->cubepixels[ex[i]][ey[i]][ez[i]];
 	LOOP set_pixel(xcache->cam->surface, xcache->x, ymin + i, px[i]);
 #undef LOOP

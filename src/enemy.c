@@ -156,13 +156,13 @@ static void move_coordinate(float *coord, float delta, struct Enemy *en, const s
 	}
 }
 
-static void move(struct Enemy *en, int fps, const struct Place *pl)
+static void move(struct Enemy *en, const struct Place *pl)
 {
 	switch(en->dir) {
-		case ENEMY_DIR_XPOS: move_coordinate(&en->ellipsoid.center.x, +MOVE_UNITS_PER_SECOND/(float)fps, en, pl); break;
-		case ENEMY_DIR_XNEG: move_coordinate(&en->ellipsoid.center.x, -MOVE_UNITS_PER_SECOND/(float)fps, en, pl); break;
-		case ENEMY_DIR_ZPOS: move_coordinate(&en->ellipsoid.center.z, +MOVE_UNITS_PER_SECOND/(float)fps, en, pl); break;
-		case ENEMY_DIR_ZNEG: move_coordinate(&en->ellipsoid.center.z, -MOVE_UNITS_PER_SECOND/(float)fps, en, pl); break;
+		case ENEMY_DIR_XPOS: move_coordinate(&en->ellipsoid.center.x, +MOVE_UNITS_PER_SECOND/(float)CAMERA_FPS, en, pl); break;
+		case ENEMY_DIR_XNEG: move_coordinate(&en->ellipsoid.center.x, -MOVE_UNITS_PER_SECOND/(float)CAMERA_FPS, en, pl); break;
+		case ENEMY_DIR_ZPOS: move_coordinate(&en->ellipsoid.center.z, +MOVE_UNITS_PER_SECOND/(float)CAMERA_FPS, en, pl); break;
+		case ENEMY_DIR_ZNEG: move_coordinate(&en->ellipsoid.center.z, -MOVE_UNITS_PER_SECOND/(float)CAMERA_FPS, en, pl); break;
 	}
 }
 
@@ -221,16 +221,16 @@ static float dir_to_angle(enum EnemyDir dir)
 	return atan2f((float)zdiff, (float)xdiff) + pi/2;
 }
 
-void enemy_eachframe(struct Enemy *en, int fps, const struct Place *pl)
+void enemy_eachframe(struct Enemy *en, const struct Place *pl)
 {
 	if (en->turning) {
-		bool done = turn(&en->ellipsoid.angle, RADIANS_PER_SECOND / (float)fps, dir_to_angle(en->dir));
+		bool done = turn(&en->ellipsoid.angle, RADIANS_PER_SECOND / (float)CAMERA_FPS, dir_to_angle(en->dir));
 		ellipsoid_update_transforms(&en->ellipsoid);
 		if (done) {
 			en->turning = false;
-			move(en, fps, NULL);
+			move(en, NULL);
 		}
 	} else {
-		move(en, fps, pl);
+		move(en, pl);
 	}
 }

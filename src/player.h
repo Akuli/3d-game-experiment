@@ -34,7 +34,7 @@ struct Player {
 };
 
 // run before showing stuff to user
-void player_eachframe(struct Player *plr, int fps, const struct Wall *walls, int nwalls);
+void player_eachframe(struct Player *plr, const struct Wall *walls, int nwalls);
 
 // key press callbacks. dir values: -1 for left, +1 for right
 void player_set_turning(struct Player *plr, int dir, bool turn);

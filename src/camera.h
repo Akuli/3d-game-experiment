@@ -7,6 +7,12 @@
 #include "log.h"
 #include "mathstuff.h"
 
+// surfaces can be smaller than this, but these are handy for array sizes
+#define CAMERA_SCREEN_WIDTH 800
+#define CAMERA_SCREEN_HEIGHT 600
+
+#define CAMERA_FPS 60
+
 /*
 It's often handy to have the camera at (0,0,0) pointing to negative z direction.
 Coordinates like that are called "camera coordinates", and the usual coordinates
@@ -29,9 +35,6 @@ struct Camera {
 	visible, plane_whichside() must return true for each visibility plane.
 	*/
 	struct Plane visplanes[5];
-
-	// for debugging
-	const char *id;
 };
 
 /*

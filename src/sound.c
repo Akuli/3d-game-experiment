@@ -23,7 +23,7 @@ static bool string_ends_with(const char *s, const char *suff)
 }
 
 #define N_SOUNDS ( sizeof(filelist_sounds)/sizeof(filelist_sounds[0]) )
-static Mix_Chunk *sound_chunks[N_SOUNDS];
+static Mix_Chunk *sound_chunks[N_SOUNDS] = {0};
 
 #define CHUNK_SIZE 1024
 
@@ -64,6 +64,7 @@ void sound_init(void)
 	Mix_AllocateChannels(32);
 
 	for (int i = 0; i < N_SOUNDS; i++) {
+		assert(sound_chunks[i] == NULL);
 		if (!( sound_chunks[i] = Mix_LoadWAV(filelist_sounds[i]) ))
 			log_printf("Mix_LoadWav(\"%s\") failed: %s", filelist_sounds[i], Mix_GetError());
 	}

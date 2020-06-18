@@ -16,9 +16,9 @@
 #define JUMP_MAX_HEIGHT 3.0f
 #define JUMP_DURATION_SEC 0.6f
 
-static float get_jump_height(int jumpframe, int fps)
+static float get_jump_height(int jumpframe)
 {
-	float time = (float)jumpframe / (float)fps;
+	float time = (float)jumpframe / (float)CAMERA_FPS;
 
 	/*
 	Parabola that intersects time axis at time=0 and time=JUMP_DURATION_SEC, having
@@ -28,32 +28,32 @@ static float get_jump_height(int jumpframe, int fps)
 	return a*(time - 0)*(time - JUMP_DURATION_SEC);
 }
 
-static float get_y_radius(const struct Player *plr, int fps)
+static float get_y_radius(const struct Player *plr)
 {
 	if (plr->flat)   // if flat and jumping, then do this
 		return PLAYER_HEIGHT_FLAT / 2;
 
-	return PLAYER_YRADIUS_NOFLAT + 0.3f*get_jump_height(plr->jumpframe, fps);
+	return PLAYER_YRADIUS_NOFLAT + 0.3f*get_jump_height(plr->jumpframe);
 }
 
-void player_eachframe(struct Player *plr, int fps, const struct Wall *walls, int nwalls)
+void player_eachframe(struct Player *plr, const struct Wall *walls, int nwalls)
 {
 	if (plr->turning != 0) {
-		plr->ellipsoid.angle += (RADIANS_PER_SECOND / (float)fps) * (float)plr->turning;
+		plr->ellipsoid.angle += (RADIANS_PER_SECOND / (float)CAMERA_FPS) * (float)plr->turning;
 		// ellipsoid_update_transforms() called below
 	}
 
 	if (plr->moving) {
 		Vec3 diff = mat3_mul_vec3(
 			plr->cam.cam2world,
-			(Vec3){ 0, 0, -MOVE_UNITS_PER_SECOND/(float)fps });
+			(Vec3){ 0, 0, -MOVE_UNITS_PER_SECOND/(float)CAMERA_FPS });
 		vec3_add_inplace(&plr->ellipsoid.center, diff);
 	}
 
 	float y = 0;
 	if (plr->jumpframe != 0) {
 		plr->jumpframe++;
-		y = get_jump_height(plr->jumpframe, fps);
+		y = get_jump_height(plr->jumpframe);
 		if (y < 0) {
 			// land
 			plr->jumpframe = 0;
@@ -62,7 +62,7 @@ void player_eachframe(struct Player *plr, int fps, const struct Wall *walls, int
 	}
 
 	plr->ellipsoid.xzradius = PLAYER_XRADIUS;
-	plr->ellipsoid.yradius = get_y_radius(plr, fps);
+	plr->ellipsoid.yradius = get_y_radius(plr);
 	ellipsoid_update_transforms(&plr->ellipsoid);
 
 	plr->ellipsoid.center.y = y + plr->ellipsoid.yradius;
