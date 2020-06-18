@@ -54,11 +54,11 @@ test: $(EXEDIR)/testrunner$(EXESUFFIX)
 
 .PHONY: checkfuncs
 checkfuncs:
-	python3 checkfuncs.py
+	scripts/checkfuncs
 
 .PHONY: checkassets
 checkassets:
-	./checkassets.sh
+	scripts/checkassets
 
 $(COPIED_DLLFILES): $(DLLFILES)
 	mkdir -p $(@D) && cp $(shell printf '%s\n' $^ | grep $(notdir $@)) $(EXEDIR)
