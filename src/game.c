@@ -155,15 +155,18 @@ bool game_run(SDL_Window *win, const struct EllipsoidPic *plr1pic, const struct 
 
 	gs.players[0].cam.surface = camera_create_cropped_surface(winsurf, (SDL_Rect){ .x = 0,            .y = 0, .w = winsurf->w/2, .h = winsurf->h });
 	gs.players[1].cam.surface = camera_create_cropped_surface(winsurf, (SDL_Rect){ .x = winsurf->w/2, .y = 0, .w = winsurf->w/2, .h = winsurf->h });
+	gs.players[0].cam.screencentery = winsurf->h/2;
+	gs.players[1].cam.screencentery = winsurf->h/2;
 
 	gs.players[0].nguards = 20;
 	gs.players[1].nguards = 20;
 
-	gs.nenemies = 1;
+	gs.nenemies = 20;
 	for (int i = 0; i < gs.nenemies; i++) {
 		enemy_init(&gs.enemies[i], winsurf->format);
 		gs.enemies[i].ellipsoid.center.x += 1;
-		gs.enemies[i].ellipsoid.center.z += 2;
+		gs.enemies[i].ellipsoid.center.z += 1;
+		gs.enemies[i].ellipsoid.angle += i/10.f;
 		ellipsoid_update_transforms(&gs.enemies[i].ellipsoid);
 	}
 

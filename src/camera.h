@@ -22,6 +22,9 @@ coordinates". Both coordinate systems are right-handed with y axis pointing up.
 struct Camera {
 	SDL_Surface *surface;
 
+	// it's often fine to set this to surface->h/2
+	float screencentery;
+
 	// call camera_update_caches() after changing these
 	Vec3 location;
 	float angle;
@@ -72,9 +75,9 @@ Hints for figuring out the formulas:
 */
 #define SCALING_FACTOR 300.f
 inline float camera_xzr_to_screenx(const struct Camera *cam, float xzr) { return (float)cam->surface->w/2 - SCALING_FACTOR*xzr; }
-inline float camera_yzr_to_screeny(const struct Camera *cam, float yzr) { return (float)cam->surface->h/2 + SCALING_FACTOR*yzr; }
+inline float camera_yzr_to_screeny(const struct Camera *cam, float yzr) { return cam->screencentery + SCALING_FACTOR*yzr; }
 inline float camera_screenx_to_xzr(const struct Camera *cam, float screenx) { return (-screenx + (float)cam->surface->w/2)/SCALING_FACTOR; }
-inline float camera_screeny_to_yzr(const struct Camera *cam, float screeny) { return (screeny - (float)cam->surface->h/2)/SCALING_FACTOR; }
+inline float camera_screeny_to_yzr(const struct Camera *cam, float screeny) { return (screeny - cam->screencentery)/SCALING_FACTOR; }
 #undef SCALING_FACTOR
 
 // call this after changing cam->location or cam->world2cam

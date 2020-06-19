@@ -95,7 +95,7 @@ static void show_button(const struct Button *butt)
 	blit_with_center(butt->cachesurf, butt->destsurf, &butt->center);
 }
 
-#define PLAYER_CHOOSER_HEIGHT ( CAMERA_SCREEN_HEIGHT*2/3 )
+#define PLAYER_CHOOSER_HEIGHT ( CAMERA_SCREEN_HEIGHT/2 )
 #define PLACE_CHOOSER_HEIGHT (CAMERA_SCREEN_HEIGHT - PLAYER_CHOOSER_HEIGHT)
 
 struct PlayerChooser {
@@ -146,6 +146,7 @@ static void setup_player_chooser(struct PlayerChooser *ch, int idx, int centerx,
 			.center = nextc,
 		},
 		.cam = {
+			.screencentery = 0.2f*PLAYER_CHOOSER_HEIGHT,
 			.surface = camera_create_cropped_surface(surf, preview),
 			.angle = (2*pi)/FILELIST_NPLAYERS * idx,
 		},
@@ -191,7 +192,7 @@ static void turn_camera(struct PlayerChooser *ch)
 	ch->cam.angle += turn;
 	ch->anglediff -= turn;
 
-	ch->cam.location = mat3_mul_vec3(mat3_rotation_xz(ch->cam.angle), (Vec3){0,0.7f,3});
+	ch->cam.location = mat3_mul_vec3(mat3_rotation_xz(ch->cam.angle), (Vec3){0,0.7f,3.0f});
 	camera_update_caches(&ch->cam);
 }
 
