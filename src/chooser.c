@@ -15,13 +15,28 @@
 #define BUTTON_SIZE 60
 
 struct Button {
-	const char *imgpath;
-	SDL_Surface *surface;   // exactly size of button, contains image
-	SDL_Point center;       // where to put button
-	const char *text;       // utf-8
+	// first draw image 1, then image 2 if any, then add text if any
+	const char *img1path, *img2path, *text;
+	SDL_Surface *cachesurf;   // same size as image 1
+	SDL_Surface *destsurf;    // usually bigger than the button itself
+	SDL_Point center;         // where to put button
 };
 
-static void show_text(SDL_Surface *surf, const char *text, SDL_Point center)
+static void blit_with_center(SDL_Surface *src, SDL_Surface *dst, const SDL_Point *center)
+{
+	int cx, cy;
+	if (center) {
+		cx = center->x;
+		cy = center->y;
+	} else {
+		cx = dst->w/2;
+		cy = dst->h/2;
+	}
+	SDL_Rect r = { cx - src->w/2, cy - src->h/2, src->w, src->h };
+	SDL_BlitSurface(src, NULL, dst, &r);
+}
+
+static SDL_Surface *create_text_surface(const char *text)
 {
 	/*
 	Hard-coding font size shoudn't matter much because font and buttons are the
@@ -33,51 +48,51 @@ static void show_text(SDL_Surface *surf, const char *text, SDL_Point center)
 
 	SDL_Color col = { 0, 0, 0, 0xff };
 
-	SDL_Surface *textsurf = TTF_RenderUTF8_Solid(font, text, col);
+	SDL_Surface *s = TTF_RenderUTF8_Solid(font, text, col);
 	TTF_CloseFont(font);
-	if (!textsurf)
+	if (!s)
 		log_printf_abort("TTF_RenderUTF8_Solid failed: %s", TTF_GetError());
-
-	int x = center.x - textsurf->w/2;
-	int y = center.y - textsurf->h/2;
-	SDL_BlitSurface(textsurf, NULL, surf, &(SDL_Rect){ x, y, textsurf->w, textsurf->h });
-	SDL_FreeSurface(textsurf);
+	return s;
 }
 
-// sets image size to *w and *h
-static void set_button_image(struct Button *butt, const char *path)
+static SDL_Surface *create_image_surface(const char *path)
 {
-	if (butt->imgpath != NULL && strcmp(path, butt->imgpath) == 0)
-		return;
-
-	butt->imgpath = path;
-
 	int fmt, w, h;
 	unsigned char *data = stbi_load(path, &w, &h, &fmt, 4);
 	if (!data)
-		log_printf_abort("loading button image from '%s' failed: %s", path, stbi_failure_reason());
+		log_printf_abort("loading image from '%s' failed: %s", path, stbi_failure_reason());
 
 	// SDL_CreateRGBSurfaceWithFormatFrom docs have example code for using it with stbi :D
-	if (butt->surface)
-		SDL_FreeSurface(butt->surface);
-
-	butt->surface = SDL_CreateRGBSurfaceWithFormatFrom(
+	SDL_Surface *s = SDL_CreateRGBSurfaceWithFormatFrom(
 		data, w, h, 32, 4*w, SDL_PIXELFORMAT_RGBA32);
-	if (!butt->surface)
+	if (!s)
 		log_printf_abort("SDL_CreateRGBSurfaceWithFormatFrom failed: %s", SDL_GetError());
-
-	show_text(butt->surface, butt->text, (SDL_Point){ w/2, h/2 });
+	return s;
 }
 
-static void show_button(const struct Button *butt, SDL_Surface *s)
+void update_button_cache_surface(struct Button *butt)
 {
-	assert(butt->surface);
-	SDL_BlitSurface(butt->surface, NULL, s, &(SDL_Rect){
-		butt->center.x - butt->surface->w/2,
-		butt->center.y - butt->surface->h/2,
-		butt->surface->w,
-		butt->surface->h,
-	});
+	if (butt->cachesurf)
+		SDL_FreeSurface(butt->cachesurf);
+
+	butt->cachesurf = create_image_surface(butt->img1path);
+
+	if (butt->img2path) {
+		SDL_Surface *s = create_image_surface(butt->img2path);
+		blit_with_center(s, butt->cachesurf, NULL);
+		SDL_FreeSurface(s);
+	}
+
+	if (butt->text && butt->text[0]) {
+		SDL_Surface *s = create_text_surface(butt->text);
+		blit_with_center(s, butt->cachesurf, NULL);
+		SDL_FreeSurface(s);
+	}
+}
+
+static void show_button(const struct Button *butt)
+{
+	blit_with_center(butt->cachesurf, butt->destsurf, &butt->center);
 }
 
 #define PLAYER_CHOOSER_HEIGHT ( CAMERA_SCREEN_HEIGHT*2/3 )
@@ -120,16 +135,26 @@ static void setup_player_chooser(struct PlayerChooser *ch, int idx, int centerx,
 	float pi = acosf(-1);
 	*ch = (struct PlayerChooser){
 		.index = idx,
-		.prevbtn = { .text = "<", .center = prevc },
-		.nextbtn = { .text = ">", .center = nextc },
+		.prevbtn = {
+			.img1path = "buttons/small/normal.png",
+			.img2path = "arrows/left.png",
+			.destsurf = surf,
+			.center = prevc,
+		},
+		.nextbtn = {
+			.img1path = "buttons/small/normal.png",
+			.img2path = "arrows/right.png",
+			.destsurf = surf,
+			.center = nextc,
+		},
 		.cam = {
 			.surface = camera_create_cropped_surface(surf, preview),
 			.angle = (2*pi)/FILELIST_NPLAYERS * idx,
 		},
 	};
 
-	set_button_image(&ch->prevbtn, "buttons/small/normal.png");
-	set_button_image(&ch->nextbtn, "buttons/small/normal.png");
+	update_button_cache_surface(&ch->prevbtn);
+	update_button_cache_surface(&ch->nextbtn);
 }
 
 static void rotate_player_chooser(struct PlayerChooser *pl, int dir)
@@ -186,6 +211,13 @@ static enum HandleEventResult handle_event(const SDL_Event event, struct Chooser
 	return CONTINUE;
 }
 
+static void free_player_chooser(const struct PlayerChooser *ch)
+{
+	SDL_FreeSurface(ch->cam.surface);
+	SDL_FreeSurface(ch->prevbtn.cachesurf);
+	SDL_FreeSurface(ch->nextbtn.cachesurf);
+}
+
 bool chooser_run(
 	SDL_Window *win,
 	const struct EllipsoidPic **plr1pic, const struct EllipsoidPic **plr2pic,
@@ -232,8 +264,8 @@ bool chooser_run(
 			case PLAY:
 			case QUIT:
 				// FIXME: free button surfaces
-				SDL_FreeSurface(st.playerch1.cam.surface);
-				SDL_FreeSurface(st.playerch2.cam.surface);
+				free_player_chooser(&st.playerch1);
+				free_player_chooser(&st.playerch2);
 
 				*plr1pic = &player_get_epics(winsurf->format)[st.playerch1.index];
 				*plr2pic = &player_get_epics(winsurf->format)[st.playerch2.index];
@@ -255,10 +287,10 @@ bool chooser_run(
 		SDL_FillRect(winsurf, NULL, 0);
 		show_all(NULL, 0, st.ellipsoids, FILELIST_NPLAYERS, &st.playerch1.cam);
 		show_all(NULL, 0, st.ellipsoids, FILELIST_NPLAYERS, &st.playerch2.cam);
-		show_button(&st.playerch1.prevbtn, winsurf);
-		show_button(&st.playerch1.nextbtn, winsurf);
-		show_button(&st.playerch2.prevbtn, winsurf);
-		show_button(&st.playerch2.nextbtn, winsurf);
+		show_button(&st.playerch1.prevbtn);
+		show_button(&st.playerch1.nextbtn);
+		show_button(&st.playerch2.prevbtn);
+		show_button(&st.playerch2.nextbtn);
 
 		SDL_UpdateWindowSurface(win);
 		looptimer_wait(&lt);

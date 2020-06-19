@@ -1,7 +1,7 @@
 #!/bin/bash
 
 diff \
-	<(find guard.png DejaVuSans.ttf sounds/ buttons/ enemies/ players/ -name '*.*' | sort) \
+	<(find guard.png DejaVuSans.ttf arrows/ sounds/ buttons/ enemies/ players/ -name '*.*' | sort) \
 	<(printf '%s\n' $(
 	   # this expands wildcards
 		grep ': ' sources.txt | cut -d: -f1
