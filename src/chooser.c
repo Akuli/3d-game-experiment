@@ -12,7 +12,7 @@
 #include <SDL2/SDL_ttf.h>
 
 // actual button size is smaller than this, which means we get some padding
-#define BUTTON_SIZE 60
+#define BUTTON_SIZE 50
 
 struct Button {
 	// first draw image 1, then image 2 if any, then add text if any
@@ -70,7 +70,7 @@ static SDL_Surface *create_image_surface(const char *path)
 	return s;
 }
 
-void update_button_cache_surface(struct Button *butt)
+void refresh_button(struct Button *butt)
 {
 	if (butt->cachesurf)
 		SDL_FreeSurface(butt->cachesurf);
@@ -136,13 +136,13 @@ static void setup_player_chooser(struct PlayerChooser *ch, int idx, int centerx,
 	*ch = (struct PlayerChooser){
 		.index = idx,
 		.prevbtn = {
-			.img1path = "buttons/small/normal.png",
+			.img1path = "buttons/small/vertical/normal.png",
 			.img2path = "arrows/left.png",
 			.destsurf = surf,
 			.center = prevc,
 		},
 		.nextbtn = {
-			.img1path = "buttons/small/normal.png",
+			.img1path = "buttons/small/vertical/normal.png",
 			.img2path = "arrows/right.png",
 			.destsurf = surf,
 			.center = nextc,
@@ -153,23 +153,35 @@ static void setup_player_chooser(struct PlayerChooser *ch, int idx, int centerx,
 		},
 	};
 
-	update_button_cache_surface(&ch->prevbtn);
-	update_button_cache_surface(&ch->nextbtn);
+	refresh_button(&ch->prevbtn);
+	refresh_button(&ch->nextbtn);
 }
 
-static void rotate_player_chooser(struct PlayerChooser *pl, int dir)
+static void set_button_pressed(struct Button *butt, bool pressed)
+{
+	if (pressed)
+		butt->img1path = "buttons/small/vertical/pressed.png";
+	else
+		butt->img1path = "buttons/small/vertical/normal.png";
+	refresh_button(butt);
+}
+
+static void rotate_player_chooser(struct PlayerChooser *ch, int dir)
 {
 	assert(dir == +1 || dir == -1);
 	float pi = acosf(-1);
 
-	pl->index -= dir;   // don't know why subtracting here helps...
-	pl->index %= FILELIST_NPLAYERS;
-	if (pl->index < 0)
-		pl->index += FILELIST_NPLAYERS;
-	assert(0 <= pl->index && pl->index < FILELIST_NPLAYERS);
+	ch->index -= dir;   // don't know why subtracting here helps...
+	ch->index %= FILELIST_NPLAYERS;
+	if (ch->index < 0)
+		ch->index += FILELIST_NPLAYERS;
+	assert(0 <= ch->index && ch->index < FILELIST_NPLAYERS);
 
 	// why subtracting: more angle = clockwise from above = left in chooser
-	pl->anglediff -= dir * (2*pi) / (float)FILELIST_NPLAYERS;
+	ch->anglediff -= dir * (2*pi) / (float)FILELIST_NPLAYERS;
+
+	set_button_pressed(&ch->prevbtn, false);
+	set_button_pressed(&ch->nextbtn, false);
 }
 
 static void turn_camera(struct PlayerChooser *ch)
@@ -194,13 +206,23 @@ static enum HandleEventResult handle_event(const SDL_Event event, struct Chooser
 
 	case SDL_KEYDOWN:
 		switch(event.key.keysym.scancode) {
+			case SDL_SCANCODE_A:     set_button_pressed(&st->playerch1.prevbtn, true); break;
+			case SDL_SCANCODE_D:     set_button_pressed(&st->playerch1.nextbtn, true); break;
+			case SDL_SCANCODE_LEFT:  set_button_pressed(&st->playerch2.prevbtn, true); break;
+			case SDL_SCANCODE_RIGHT: set_button_pressed(&st->playerch2.nextbtn, true); break;
+
+			// FIXME: add big "Play" button instead of this
+			case SDL_SCANCODE_P: return PLAY;
+			default: break;
+		}
+		break;
+
+	case SDL_KEYUP:
+		switch(event.key.keysym.scancode) {
 			case SDL_SCANCODE_A:     rotate_player_chooser(&st->playerch1, -1); break;
 			case SDL_SCANCODE_D:     rotate_player_chooser(&st->playerch1, +1); break;
 			case SDL_SCANCODE_LEFT:  rotate_player_chooser(&st->playerch2, -1); break;
 			case SDL_SCANCODE_RIGHT: rotate_player_chooser(&st->playerch2, +1); break;
-
-			// FIXME: add big "Play" button instead of this
-			case SDL_SCANCODE_P: return PLAY;
 			default: break;
 		}
 		break;
