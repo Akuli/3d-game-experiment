@@ -85,6 +85,7 @@ static void show_button(const struct Button *butt, SDL_Surface *s)
 
 struct PlayerChooser {
 	int index;
+	float anglediff;    // how much the player chooser is about to spin
 	struct Button prevbtn, nextbtn;
 	struct Camera cam;
 };
@@ -124,11 +125,7 @@ static void setup_player_chooser(struct PlayerChooser *ch, int idx, int centerx,
 		.nextbtn = { .text = ">", .center = nextc },
 		.cam = {
 			.surface = camera_create_cropped_surface(surf, preview),
-			/*
-			minus sign because more angle means clockwise viewed from top, and
-			that corresponds to left when cycling through the players.
-			*/
-			.angle = -(2*pi)/nplayers * idx,
+			.angle = (2*pi)/nplayers * idx,
 		},
 	};
 
@@ -136,46 +133,33 @@ static void setup_player_chooser(struct PlayerChooser *ch, int idx, int centerx,
 	set_button_image(&ch->nextbtn, "buttons/small/normal.png");
 }
 
-// FIXME: enemy.c copy/pasta
-
-// bring the angle between -pi and pi by changing it only modulo 2pi
-static float normalize_angle(float angle)
+static void rotate_player_chooser(struct PlayerChooser *pl, int dir)
 {
+	assert(dir == +1 || dir == -1);
+	int nplayers = sizeof(filelist_players)/sizeof(filelist_players[0]);
 	float pi = acosf(-1);
-	angle = fmodf(angle, 2*pi);
-	if (angle > pi)
-		angle -= 2*pi;
-	if (angle < -pi)
-		angle += 2*pi;
 
-	assert(-pi <= angle && angle <= pi);
-	return angle;
+	pl->index -= dir;   // don't know why subtracting here helps...
+	pl->index %= nplayers;
+	if (pl->index < 0)
+		pl->index += nplayers;
+	assert(0 <= pl->index && pl->index < nplayers);
+
+	// why subtracting: more angle = clockwise from above = left in chooser
+	pl->anglediff -= dir * (2*pi) / (float)nplayers;
 }
 
-// returns whether destination angle was reached
-static bool turn(float *angle, float incr, float destangle)
+static void turn_camera(struct PlayerChooser *ch)
 {
-	assert(incr > 0);
+	float maxturn = 10.0f / CAMERA_FPS;
+	assert(maxturn > 0);
+	float turn = max(-maxturn, min(maxturn, ch->anglediff));
 
-	float diff = normalize_angle(destangle - *angle);
-	//*angle += diff; return false;
-	if (fabsf(diff) < incr) {
-		// so close to destangle that incr would go past destangle
-		*angle = destangle;
-		return true;
-	}
+	ch->cam.angle += turn;
+	ch->anglediff -= turn;
 
-	/*
-	Think of diff as "destangle - *angle", and think of diff > 0 as
-	"*angle < destangle". This gives the correct result, although it's
-	not quite correct because angles can be off by multiples of 2pi.
-	*/
-	if (diff > 0)
-		*angle += incr;
-	else
-		*angle -= incr;
-
-	return false;
+	ch->cam.location = mat3_mul_vec3(mat3_rotation_xz(ch->cam.angle), (Vec3){0,1,3});
+	camera_update_caches(&ch->cam);
 }
 
 enum HandleEventResult { QUIT, PLAY, CONTINUE };
@@ -187,12 +171,12 @@ static enum HandleEventResult handle_event(const SDL_Event event, struct Chooser
 
 	case SDL_KEYDOWN:
 		switch(event.key.keysym.scancode) {
-			case SDL_SCANCODE_A:     st->playerch1.index--; break;
-			case SDL_SCANCODE_D:     st->playerch1.index++; break;
-			case SDL_SCANCODE_LEFT:  st->playerch2.index--; break;
-			case SDL_SCANCODE_RIGHT: st->playerch2.index++; break;
+			case SDL_SCANCODE_A:     rotate_player_chooser(&st->playerch1, -1); break;
+			case SDL_SCANCODE_D:     rotate_player_chooser(&st->playerch1, +1); break;
+			case SDL_SCANCODE_LEFT:  rotate_player_chooser(&st->playerch2, -1); break;
+			case SDL_SCANCODE_RIGHT: rotate_player_chooser(&st->playerch2, +1); break;
 
-			// FIXME: add big "Play" button
+			// FIXME: add big "Play" button instead of this
 			case SDL_SCANCODE_P: return PLAY;
 			default: break;
 		}
@@ -202,25 +186,6 @@ static enum HandleEventResult handle_event(const SDL_Event event, struct Chooser
 	}
 
 	return CONTINUE;
-}
-
-static void turn_camera(struct PlayerChooser *ch)
-{
-	int nplayers = sizeof(filelist_players)/sizeof(filelist_players[0]);
-	float pi = acosf(-1);
-	turn(&ch->cam.angle, 6.0f / CAMERA_FPS, -(float)ch->index / nplayers * (2*pi));
-	ch->cam.location = mat3_mul_vec3(mat3_rotation_xz(ch->cam.angle), (Vec3){0,1,3});
-	camera_update_caches(&ch->cam);
-}
-
-static int my_modulo(int a, int b)
-{
-	assert(b > 0);
-	int res = a % b;
-	if (res < 0)
-		res += b;
-	log_printf("%d",res);
-	return res;
 }
 
 bool chooser_run(
@@ -273,8 +238,8 @@ bool chooser_run(
 				SDL_FreeSurface(st.playerch1.cam.surface);
 				SDL_FreeSurface(st.playerch2.cam.surface);
 
-				*plr1pic = &player_get_epics(winsurf->format)[my_modulo(st.playerch1.index, nplayers)];
-				*plr2pic = &player_get_epics(winsurf->format)[my_modulo(st.playerch2.index, nplayers)];
+				*plr1pic = &player_get_epics(winsurf->format)[st.playerch1.index];
+				*plr2pic = &player_get_epics(winsurf->format)[st.playerch2.index];
 
 				return (r == PLAY);
 			case CONTINUE:
