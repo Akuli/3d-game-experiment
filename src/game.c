@@ -165,7 +165,7 @@ bool game_run(SDL_Window *win, const struct EllipsoidPic *plr1pic, const struct 
 	for (int i = 0; i < gs.nenemies; i++) {
 		enemy_init(&gs.enemies[i], winsurf->format);
 		gs.enemies[i].ellipsoid.center.x += 1;
-		gs.enemies[i].ellipsoid.center.z += 1;
+		gs.enemies[i].ellipsoid.center.z += 2;
 		gs.enemies[i].ellipsoid.angle += i/10.f;
 		ellipsoid_update_transforms(&gs.enemies[i].ellipsoid);
 	}

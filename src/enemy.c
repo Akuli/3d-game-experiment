@@ -1,6 +1,8 @@
 #include "enemy.h"
 #include <assert.h>
 #include <math.h>
+#include <stdlib.h>
+#include "../generated/filelist.h"
 #include "ellipsoid.h"
 
 #define IMAGE_FILE_COUNT 1
@@ -10,17 +12,19 @@
 
 static struct EllipsoidPic *get_ellipsoid_pic(const SDL_PixelFormat *fmt)
 {
-	static struct EllipsoidPic epic;
+	static struct EllipsoidPic epics[FILELIST_NENEMIES];
 	static bool ready = false;
 
 	if (!ready) {
-		ellipsoidpic_load(&epic, "enemies/enemy1.png", fmt);
-		epic.hidelowerhalf = true;
+		for (int i = 0; i < FILELIST_NENEMIES; i++) {
+			ellipsoidpic_load(&epics[i], filelist_enemies[i], fmt);
+			epics[i].hidelowerhalf = true;
+		}
 		ready = true;
 	}
 
-	assert(epic.pixfmt == fmt);
-	return &epic;
+	assert(epics[0].pixfmt == fmt);
+	return &epics[rand() % FILELIST_NENEMIES];
 }
 
 void enemy_init(struct Enemy *en, const SDL_PixelFormat *fmt)
