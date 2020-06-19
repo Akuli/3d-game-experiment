@@ -130,8 +130,6 @@ static void setup_player_chooser(struct PlayerChooser *ch, int idx, int centerx,
 	SDL_Point prevc, nextc;
 	calculate_player_chooser_geometry_stuff(centerx, &preview, &prevc, &nextc);
 
-	printf("prevc = %d %d\n", prevc.x, prevc.y);
-
 	float pi = acosf(-1);
 	*ch = (struct PlayerChooser){
 		.index = idx,
@@ -186,14 +184,14 @@ static void rotate_player_chooser(struct PlayerChooser *ch, int dir)
 
 static void turn_camera(struct PlayerChooser *ch)
 {
-	float maxturn = 10.0f / CAMERA_FPS;
+	float maxturn = 50.0f / (CAMERA_FPS * FILELIST_NPLAYERS);
 	assert(maxturn > 0);
 	float turn = max(-maxturn, min(maxturn, ch->anglediff));
 
 	ch->cam.angle += turn;
 	ch->anglediff -= turn;
 
-	ch->cam.location = mat3_mul_vec3(mat3_rotation_xz(ch->cam.angle), (Vec3){0,1,3});
+	ch->cam.location = mat3_mul_vec3(mat3_rotation_xz(ch->cam.angle), (Vec3){0,0.7f,3});
 	camera_update_caches(&ch->cam);
 }
 
@@ -212,7 +210,7 @@ static enum HandleEventResult handle_event(const SDL_Event event, struct Chooser
 			case SDL_SCANCODE_RIGHT: set_button_pressed(&st->playerch2.nextbtn, true); break;
 
 			// FIXME: add big "Play" button instead of this
-			case SDL_SCANCODE_P: return PLAY;
+			case SDL_SCANCODE_RETURN: return PLAY;
 			default: break;
 		}
 		break;
@@ -240,6 +238,25 @@ static void free_player_chooser(const struct PlayerChooser *ch)
 	SDL_FreeSurface(ch->nextbtn.cachesurf);
 }
 
+static void create_player_ellipsoids(struct Ellipsoid *arr, const SDL_PixelFormat *fmt)
+{
+	float pi = acosf(-1);
+
+	for (int i = 0; i < FILELIST_NPLAYERS; i++) {
+		// pi/2 to make first players (i=0 and i=1) look at camera
+		float angle = pi/2 + ( i/(float)FILELIST_NPLAYERS * (2*pi) );
+
+		arr[i] = (struct Ellipsoid){
+			.epic = &player_get_epics(fmt)[i],
+			.center = mat3_mul_vec3(mat3_rotation_xz(angle), (Vec3){ 1.4f, 0, 0 }),
+			.angle = angle,
+			.xzradius = PLAYER_XZRADIUS,
+			.yradius = PLAYER_YRADIUS_NOFLAT,
+		};
+		ellipsoid_update_transforms(&arr[i]);
+	}
+}
+
 bool chooser_run(
 	SDL_Window *win,
 	const struct EllipsoidPic **plr1pic, const struct EllipsoidPic **plr2pic,
@@ -254,24 +271,7 @@ bool chooser_run(
 	*pl = &place_list()[0];
 
 	static struct ChooserState st;
-
-	// ellipsoids are laied out into a circle with radius r
-	float r = 1;
-
-	for (int i = 0; i < FILELIST_NPLAYERS; i++) {
-		float pi = acosf(-1);
-		// initial angle at pi/2 so that players are about to turn to look at camera
-		float angle = ( (float)i / FILELIST_NPLAYERS * (2*pi) ) + pi/2;
-
-		st.ellipsoids[i] = (struct Ellipsoid){
-			.epic = &player_get_epics(winsurf->format)[i],
-			.center = { r*cosf(angle), 0, r*sinf(angle) },
-			.angle = angle,   // about to turn so that it looks at camera
-			.xzradius = PLAYER_XZRADIUS,
-			.yradius = PLAYER_YRADIUS_NOFLAT,
-		};
-		ellipsoid_update_transforms(&st.ellipsoids[i]);
-	}
+	create_player_ellipsoids(st.ellipsoids, winsurf->format);
 
 	setup_player_chooser(&st.playerch1, 0, 0, winsurf);
 	setup_player_chooser(&st.playerch2, 1, CAMERA_SCREEN_WIDTH/2, winsurf);
@@ -285,7 +285,6 @@ bool chooser_run(
 			switch(r) {
 			case PLAY:
 			case QUIT:
-				// FIXME: free button surfaces
 				free_player_chooser(&st.playerch1);
 				free_player_chooser(&st.playerch2);
 
