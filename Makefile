@@ -15,7 +15,7 @@ SRC := $(wildcard src/*.c) generated/filelist.c
 TESTS_SRC := $(wildcard tests/*.c)
 HEADERS := $(wildcard src/*.h) generated/filelist.h
 EXEDIR ?= .
-COPIED_DLLFILES := $(addprefix $(EXEDIR)/,$(notdir $(DLLFILES)))
+COPIED_FILES := $(addprefix $(EXEDIR)/,$(notdir $(FILES_TO_COPY)))
 
 # order matters, parallelizing make works best when slowly compiling things are first
 OBJ := obj/stb_image.o $(SRC:%.c=obj/%.o)
@@ -29,8 +29,10 @@ all: $(EXEDIR)/game$(EXESUFFIX) test checkfuncs checkassets
 clean:
 	rm -rvf game generated build obj callgrind.out graph.* testrunner
 
-generated/filelist.c generated/filelist.h: scripts/generate_filelist $(shell find -name '*.wav') $(shell find -name '*.png')
-	mkdir -p $(@D) && $< $@
+# currently this doesn't depend on the assets because it doesn't need to run when
+# an asset is changed
+generated/filelist.c generated/filelist.h: scripts/generate_filelist
+	mkdir -p $(@D) && $< $(suffix $@) > $@
 
 obj/%.o: %.c $(HEADERS)
 	mkdir -p $(@D) && $(CC) -c -o $@ $< $(CFLAGS)
@@ -41,11 +43,11 @@ obj/stb_image.o: $(wildcard stb/*.h)
 	$(CC) -c -o $@ -x c \
 	-DSTB_IMAGE_IMPLEMENTATION stb/stb_image.h $(VENDOR_CFLAGS)
 
-$(EXEDIR)/game$(EXESUFFIX): $(OBJ) $(HEADERS) $(COPIED_DLLFILES)
+$(EXEDIR)/game$(EXESUFFIX): $(OBJ) $(HEADERS) $(COPIED_FILES)
 	mkdir -p $(@D) && $(CC) $(CFLAGS) $(OBJ) -o $@ $(LDFLAGS)
 
 # this will need to be changed if i add more than one file of tests
-$(EXEDIR)/testrunner$(EXESUFFIX): $(TESTS_SRC) $(SRC) $(HEADERS) $(COPIED_DLLFILES)
+$(EXEDIR)/testrunner$(EXESUFFIX): $(TESTS_SRC) $(SRC) $(HEADERS) $(COPIED_FILES)
 	mkdir -p $(@D) && $(CC) -o $@ $(TESTS_SRC) $(CFLAGS) $(LDFLAGS)
 
 .PHONY: test
@@ -60,8 +62,8 @@ checkfuncs:
 checkassets:
 	scripts/checkassets
 
-$(COPIED_DLLFILES): $(DLLFILES)
-	mkdir -p $(@D) && cp $(shell printf '%s\n' $^ | grep $(notdir $@)) $(EXEDIR)
+$(COPIED_FILES): $(FILES_TO_COPY)
+	mkdir -p $(@D) && cp -r $(shell printf '%s\n' $^ | grep $(notdir $@)) $(EXEDIR)
 
 
 # profiling stuff

@@ -1,4 +1,5 @@
 #!/bin/bash
+cd assets
 
 diff \
 	<(find guard.png DejaVuSans.ttf arrows/ sounds/ buttons/ enemies/ players/ -name '*.*' | sort) \
@@ -8,7 +9,7 @@ diff \
 	) | sort)
 
 if [ $? -eq 0 ]; then
-	echo "sources.txt is up to date"
+	echo "assets/sources.txt is up to date"
 	exit 0
 fi
 

@@ -6,8 +6,12 @@
 #include <math.h>
 #include <stdbool.h>
 
-#define min(a,b) ((a)<(b) ? (a) : (b))
-#define max(a,b) ((a)>(b) ? (a) : (b))
+// windows.h defines min and max macros just like the ones below
+#if !defined(min) && !defined(max)
+	#define min(a,b) ((a)<(b) ? (a) : (b))
+	#define max(a,b) ((a)>(b) ? (a) : (b))
+#endif
+
 #define min3(a,b,c) min(a,min(b,c))
 #define max3(a,b,c) max(a,max(b,c))
 #define min4(a,b,c,d) min(min(a,b),min(c,d))

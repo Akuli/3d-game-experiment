@@ -1,7 +1,7 @@
 #!/bin/bash
 set -ex
 
-cd buttons
+cd assets/buttons
 rm -rvf big small
 mkdir -vp big/horizontal small/vertical
 
@@ -13,8 +13,7 @@ for file in $(cd huge && echo vertical/*); do
     convert huge/$file -resize 40x100 small/$file
 done
 
-cd ..
-cd arrows
+cd ../arrows
 
 size=30x30
 convert huge-right.png -resize $size right.png

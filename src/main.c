@@ -1,3 +1,11 @@
+#ifdef _WIN32
+	#include <direct.h>
+	#include <windows.h>
+#else
+	#define _POSIX_C_SOURCE 200809L    // for chdir()
+	#include <unistd.h>
+#endif
+
 #include <assert.h>
 #include <string.h>
 #include <time.h>
@@ -11,10 +19,36 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
+static void cd_assets(void)
+{
+#ifdef _WIN32
+	// assets directory is in same directory with the exe file, like dlls are
+	wchar_t exepath[MAX_PATH];
+	int n = GetModuleFileNameW(NULL, exepath, sizeof(exepath)/sizeof(exepath[0]) - 1);
+	assert(n >= 0);
+	assert(n < sizeof(exepath)/sizeof(exepath[0]));
+	exepath[n] = L'\0';
+	log_printf("exe file: %ls\n", exepath);
+
+	wchar_t dir[MAX_PATH];
+	int ret = _wsplitpath_s(exepath, NULL, 0, dir, sizeof(dir)/sizeof(dir[0]), NULL, 0, NULL, 0);
+	if (ret != 0)
+		log_printf_abort("_wsplitpath_s failed with path '%ls'", exepath);
+
+	if (_wchdir(dir) != 0) log_printf_abort("_whcir(L\"%ls\") failed: %s", dir, strerror(errno));
+	if (_wchdir(L"assets") != 0) log_printf_abort("_whcir(L\"assets\") failed: %s", strerror(errno));
+
+#else
+	// assume that the game isn't installed anywhere
+	if (chdir("assets") != 0)
+		log_printf_abort("chdir(\"assets\") failed: %s", strerror(errno));
+#endif
+}
+
 int main(int argc, char **argv)
 {
 	srand(time(NULL));
-
+	cd_assets();
 	if (!( argc == 2 && strcmp(argv[1], "--no-sound") == 0 ))
 		sound_init();
 
