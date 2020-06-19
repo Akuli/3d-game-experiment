@@ -14,12 +14,23 @@
 // actual button size is smaller than this, which means we get some padding
 #define BUTTON_SIZE 50
 
+struct PlayerChooser;
+
 struct Button {
-	// first draw image 1, then image 2 if any, then add text if any
-	const char *img1path, *img2path, *text;
-	SDL_Surface *cachesurf;   // same size as image 1
-	SDL_Surface *destsurf;    // usually bigger than the button itself
-	SDL_Point center;         // where to put button
+	// imgpath image is drawn on top of a generic button background image
+	const char *imgpath;
+	bool pressed;
+
+	// which keyboard key press corresponds to this button?
+	int scancode;
+
+	// cachesurf is blitted to destsurf on each frame
+	SDL_Surface *cachesurf;
+	SDL_Surface *destsurf;
+	SDL_Point center;
+
+	void (*onclick)(struct Button *);
+	struct PlayerChooser *playerch;
 };
 
 static void blit_with_center(SDL_Surface *src, SDL_Surface *dst, const SDL_Point *center)
@@ -70,29 +81,52 @@ static SDL_Surface *create_image_surface(const char *path)
 	return s;
 }
 
-void refresh_button(struct Button *butt)
+static void refresh_button(struct Button *butt)
 {
 	if (butt->cachesurf)
 		SDL_FreeSurface(butt->cachesurf);
 
-	butt->cachesurf = create_image_surface(butt->img1path);
+	butt->cachesurf = create_image_surface(
+		butt->pressed ? "buttons/small/vertical/pressed.png"
+		: "buttons/small/vertical/normal.png");
 
-	if (butt->img2path) {
-		SDL_Surface *s = create_image_surface(butt->img2path);
-		blit_with_center(s, butt->cachesurf, NULL);
-		SDL_FreeSurface(s);
-	}
-
-	if (butt->text && butt->text[0]) {
-		SDL_Surface *s = create_text_surface(butt->text);
-		blit_with_center(s, butt->cachesurf, NULL);
-		SDL_FreeSurface(s);
-	}
+	SDL_Surface *s = create_image_surface(butt->imgpath);
+	blit_with_center(s, butt->cachesurf, NULL);
+	SDL_FreeSurface(s);
 }
 
 static void show_button(const struct Button *butt)
 {
 	blit_with_center(butt->cachesurf, butt->destsurf, &butt->center);
+}
+
+static bool mouse_on_button(const SDL_MouseButtonEvent *me, const struct Button *butt)
+{
+	return fabsf(me->x - butt->center.x) < butt->cachesurf->w/2 &&
+			fabsf(me->y - butt->center.y) < butt->cachesurf->h/2;
+}
+
+static void handle_button_event(const SDL_Event *evt, struct Button *butt)
+{
+	if ((
+		(evt->type == SDL_MOUSEBUTTONDOWN && mouse_on_button(&evt->button, butt)) ||
+		(evt->type == SDL_KEYDOWN && evt->key.keysym.scancode == butt->scancode)
+	) && !butt->pressed) {
+		butt->pressed = true;
+	} else if ((
+		(evt->type == SDL_MOUSEBUTTONUP && mouse_on_button(&evt->button, butt)) ||
+		(evt->type == SDL_KEYUP && evt->key.keysym.scancode == butt->scancode)
+	) && butt->pressed) {
+		butt->pressed = false;
+		butt->onclick(butt);
+	} else if (evt->type == SDL_MOUSEBUTTONUP && butt->pressed) {
+		// if button has been pressed and mouse has been moved away, unpress button but don't click
+		butt->pressed = false;
+	} else {
+		// don't refresh
+		return;
+	}
+	refresh_button(butt);
 }
 
 #define PLAYER_CHOOSER_HEIGHT ( CAMERA_SCREEN_HEIGHT/2 )
@@ -124,53 +158,6 @@ static void calculate_player_chooser_geometry_stuff(
 	nextbcenter->y = PLAYER_CHOOSER_HEIGHT/2;
 }
 
-static void setup_player_chooser(struct PlayerChooser *ch, int idx, int centerx, SDL_Surface *surf)
-{
-	SDL_Rect preview;
-	SDL_Point prevc, nextc;
-	calculate_player_chooser_geometry_stuff(centerx, &preview, &prevc, &nextc);
-
-	float pi = acosf(-1);
-	*ch = (struct PlayerChooser){
-		.index = idx,
-		.prevbtn = {
-			.img1path = "buttons/small/vertical/normal.png",
-			.img2path = "arrows/left.png",
-			.destsurf = surf,
-			.center = prevc,
-		},
-		.nextbtn = {
-			.img1path = "buttons/small/vertical/normal.png",
-			.img2path = "arrows/right.png",
-			.destsurf = surf,
-			.center = nextc,
-		},
-		.cam = {
-			.screencentery = 0.2f*PLAYER_CHOOSER_HEIGHT,
-			.surface = camera_create_cropped_surface(surf, preview),
-			.angle = (2*pi)/FILELIST_NPLAYERS * idx,
-		},
-	};
-
-	refresh_button(&ch->prevbtn);
-	refresh_button(&ch->nextbtn);
-}
-
-static void set_button_pressed(struct Button *butt, bool pressed)
-{
-	if (pressed)
-		butt->img1path = "buttons/small/vertical/pressed.png";
-	else
-		butt->img1path = "buttons/small/vertical/normal.png";
-	refresh_button(butt);
-}
-
-static bool button_is_pressed(const struct Button *butt)
-{
-	return (butt->img1path != NULL &&
-			strcmp(butt->img1path, "buttons/small/vertical/pressed.png") == 0);
-}
-
 static void rotate_player_chooser(struct PlayerChooser *ch, int dir)
 {
 	assert(dir == +1 || dir == -1);
@@ -184,9 +171,46 @@ static void rotate_player_chooser(struct PlayerChooser *ch, int dir)
 
 	// why subtracting: more angle = clockwise from above = left in chooser
 	ch->anglediff -= dir * (2*pi) / (float)FILELIST_NPLAYERS;
+}
 
-	set_button_pressed(&ch->prevbtn, false);
-	set_button_pressed(&ch->nextbtn, false);
+static void rotate_left (struct Button *butt) { rotate_player_chooser(butt->playerch, -1); }
+static void rotate_right(struct Button *butt) { rotate_player_chooser(butt->playerch, +1); }
+
+static void setup_player_chooser(struct PlayerChooser *ch, SDL_Surface *surf, int idx, int leftx, int scprev, int scnext)
+{
+	SDL_Rect preview;
+	SDL_Point prevc, nextc;
+	calculate_player_chooser_geometry_stuff(leftx, &preview, &prevc, &nextc);
+
+	float pi = acosf(-1);
+	*ch = (struct PlayerChooser){
+		.index = idx,
+		.prevbtn = {
+			.imgpath = "arrows/left.png",
+			.scancode = scprev,
+			.destsurf = surf,
+			.center = prevc,
+			.onclick = rotate_left,
+		},
+		.nextbtn = {
+			.imgpath = "arrows/right.png",
+			.scancode = scnext,
+			.destsurf = surf,
+			.center = nextc,
+			.onclick = rotate_right,
+		},
+		.cam = {
+			.screencentery = 0.2f*PLAYER_CHOOSER_HEIGHT,
+			.surface = camera_create_cropped_surface(surf, preview),
+			.angle = (2*pi)/FILELIST_NPLAYERS * idx,
+		},
+	};
+
+	ch->prevbtn.playerch = ch;
+	ch->nextbtn.playerch = ch;
+	refresh_button(&ch->prevbtn);
+	refresh_button(&ch->nextbtn);
+	camera_update_caches(&ch->cam);
 }
 
 static void turn_camera(struct PlayerChooser *ch)
@@ -202,65 +226,25 @@ static void turn_camera(struct PlayerChooser *ch)
 	camera_update_caches(&ch->cam);
 }
 
-static bool mouse_on_button(const SDL_MouseButtonEvent *me, const struct Button *butt)
-{
-	return fabsf(me->x - butt->center.x) < butt->cachesurf->w/2 &&
-			fabsf(me->y - butt->center.y) < butt->cachesurf->h/2;
-}
-
-static void handle_button_press(const SDL_MouseButtonEvent *me, struct Button *butt)
-{
-	if (mouse_on_button(me, butt))
-		set_button_pressed(butt, true);
-}
-
 enum HandleEventResult { QUIT, PLAY, CONTINUE };
-static enum HandleEventResult handle_event(const SDL_Event event, struct ChooserState *st)
+static enum HandleEventResult handle_event(const SDL_Event *evt, struct ChooserState *st)
 {
-	switch(event.type) {
+	switch(evt->type) {
 	case SDL_QUIT:
 		return QUIT;
 
-	case SDL_MOUSEBUTTONDOWN:
-		handle_button_press(&event.button, &st->playerch1.prevbtn);
-		handle_button_press(&event.button, &st->playerch1.nextbtn);
-		handle_button_press(&event.button, &st->playerch2.prevbtn);
-		handle_button_press(&event.button, &st->playerch2.nextbtn);
-		break;
-
-	case SDL_MOUSEBUTTONUP:
-		if (mouse_on_button(&event.button, &st->playerch1.prevbtn)) rotate_player_chooser(&st->playerch1, -1);
-		if (mouse_on_button(&event.button, &st->playerch1.nextbtn)) rotate_player_chooser(&st->playerch1, +1);
-		if (mouse_on_button(&event.button, &st->playerch2.prevbtn)) rotate_player_chooser(&st->playerch2, -1);
-		if (mouse_on_button(&event.button, &st->playerch2.nextbtn)) rotate_player_chooser(&st->playerch2, +1);
-		set_button_pressed(&st->playerch1.prevbtn, false);
-		set_button_pressed(&st->playerch1.nextbtn, false);
-		set_button_pressed(&st->playerch2.prevbtn, false);
-		set_button_pressed(&st->playerch2.nextbtn, false);
-		break;
-
 	case SDL_KEYDOWN:
-		switch(event.key.keysym.scancode) {
-			case SDL_SCANCODE_A:     set_button_pressed(&st->playerch1.prevbtn, true); break;
-			case SDL_SCANCODE_D:     set_button_pressed(&st->playerch1.nextbtn, true); break;
-			case SDL_SCANCODE_LEFT:  set_button_pressed(&st->playerch2.prevbtn, true); break;
-			case SDL_SCANCODE_RIGHT: set_button_pressed(&st->playerch2.nextbtn, true); break;
-
-			// FIXME: add big "Play" button
-			case SDL_SCANCODE_RETURN: return PLAY;
-			default: break;
-		}
-		break;
-
+		// FIXME: add big "Play" button
+		if (evt->key.keysym.scancode == SDL_SCANCODE_RETURN)
+			return PLAY;
+		// fall through
 	case SDL_KEYUP:
-		switch(event.key.keysym.scancode) {
-			case SDL_SCANCODE_A:     rotate_player_chooser(&st->playerch1, -1); break;
-			case SDL_SCANCODE_D:     rotate_player_chooser(&st->playerch1, +1); break;
-			case SDL_SCANCODE_LEFT:  rotate_player_chooser(&st->playerch2, -1); break;
-			case SDL_SCANCODE_RIGHT: rotate_player_chooser(&st->playerch2, +1); break;
-			default: break;
-		}
-		break;
+	case SDL_MOUSEBUTTONDOWN:
+	case SDL_MOUSEBUTTONUP:
+		handle_button_event(evt, &st->playerch1.prevbtn);
+		handle_button_event(evt, &st->playerch1.nextbtn);
+		handle_button_event(evt, &st->playerch2.prevbtn);
+		handle_button_event(evt, &st->playerch2.nextbtn);
 
 	default: break;
 	}
@@ -310,15 +294,15 @@ bool chooser_run(
 	static struct ChooserState st;
 	create_player_ellipsoids(st.ellipsoids, winsurf->format);
 
-	setup_player_chooser(&st.playerch1, 0, 0, winsurf);
-	setup_player_chooser(&st.playerch2, 1, CAMERA_SCREEN_WIDTH/2, winsurf);
+	setup_player_chooser(&st.playerch1, winsurf, 0, 0, SDL_SCANCODE_A, SDL_SCANCODE_D);
+	setup_player_chooser(&st.playerch2, winsurf, 1, CAMERA_SCREEN_WIDTH/2, SDL_SCANCODE_LEFT, SDL_SCANCODE_RIGHT);
 
 	struct LoopTimer lt = {0};
 
 	while(1) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
-			enum HandleEventResult r = handle_event(e, &st);
+			enum HandleEventResult r = handle_event(&e, &st);
 			switch(r) {
 			case PLAY:
 			case QUIT:
