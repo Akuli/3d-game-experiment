@@ -36,7 +36,7 @@ static void cd_assets(void)
 		log_printf_abort("_wsplitpath_s failed with path '%ls'", exepath);
 
 	if (_wchdir(dir) != 0) log_printf_abort("_wchcir to '%ls' failed: %s", dir, strerror(errno));
-	if (_chdir(ASSETS_DIR) != 0) log_printf_abort("_chcir to '%s' failed: %s", "assets2", strerror(errno));
+	if (_chdir(ASSETS_DIR) != 0) log_printf_abort("_chcir to '%s' failed: %s", ASSETS_DIR, strerror(errno));
 
 #else
 	// assume that current working directory contains assets
