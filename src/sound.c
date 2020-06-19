@@ -126,8 +126,10 @@ void sound_play(const char *fnpattern)
 
 void sound_deinit(void)
 {
-	for (int i = 0; i < FILELIST_NSOUNDS; i++)
-		Mix_FreeChunk(sound_chunks[i]);
+	for (int i = 0; i < FILELIST_NSOUNDS; i++) {
+		if (sound_chunks[i])
+			Mix_FreeChunk(sound_chunks[i]);
+	}
 
 	Mix_CloseAudio();
 	Mix_Quit();

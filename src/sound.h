@@ -8,7 +8,7 @@ effect playing state everywhere.
 */
 
 void sound_init(void);
-void sound_deinit(void);
+void sound_deinit(void);   // may be called without calling sound_init() first
 
 // filename pattern may contain ONE "*" wildcard
 void sound_play(const char *fnpattern);
