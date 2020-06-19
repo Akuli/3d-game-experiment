@@ -35,13 +35,13 @@ static void cd_assets(void)
 	if (ret != 0)
 		log_printf_abort("_wsplitpath_s failed with path '%ls'", exepath);
 
-	if (_wchdir(dir) != 0) log_printf_abort("_whcir(L\"%ls\") failed: %s", dir, strerror(errno));
-	if (_wchdir(L"assets") != 0) log_printf_abort("_whcir(L\"assets\") failed: %s", strerror(errno));
+	if (_wchdir(dir) != 0) log_printf_abort("_wchcir to '%ls' failed: %s", dir, strerror(errno));
+	if (_chdir(ASSETS_DIR) != 0) log_printf_abort("_chcir to '%s' failed: %s", "assets2", strerror(errno));
 
 #else
-	// assume that the game isn't installed anywhere
-	if (chdir("assets") != 0)
-		log_printf_abort("chdir(\"assets\") failed: %s", strerror(errno));
+	// assume that current working directory contains assets
+	if (chdir(ASSETS_DIR) != 0)
+		log_printf_abort("chdir to '%s' failed: %s", ASSETS_DIR, strerror(errno));
 #endif
 }
 
@@ -49,6 +49,7 @@ int main(int argc, char **argv)
 {
 	srand(time(NULL));
 	cd_assets();
+
 	if (!( argc == 2 && strcmp(argv[1], "--no-sound") == 0 ))
 		sound_init();
 

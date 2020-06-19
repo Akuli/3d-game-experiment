@@ -11,6 +11,9 @@ VENDOR_CFLAGS := $(CFLAGS:-W%=)   # no warnings from other people's code please
 LDFLAGS += -lSDL2 -lSDL2_mixer -lSDL2_ttf
 LDFLAGS += -lm
 
+ASSETS_DIR ?= assets
+CFLAGS += -DASSETS_DIR='"$(ASSETS_DIR)"'
+
 SRC := $(wildcard src/*.c) generated/filelist.c
 TESTS_SRC := $(wildcard tests/*.c)
 HEADERS := $(wildcard src/*.h) generated/filelist.h
@@ -32,7 +35,7 @@ clean:
 # currently this doesn't depend on the assets because it doesn't need to run when
 # an asset is changed
 generated/filelist.c generated/filelist.h: scripts/generate_filelist
-	mkdir -p $(@D) && $< $(suffix $@) > $@
+	mkdir -p $(@D) && $< $(ASSETS_DIR) $(suffix $@) > $@
 
 obj/%.o: %.c $(HEADERS)
 	mkdir -p $(@D) && $(CC) -c -o $@ $< $(CFLAGS)
@@ -58,9 +61,9 @@ test: $(EXEDIR)/testrunner$(EXESUFFIX)
 checkfuncs:
 	scripts/checkfuncs
 
-.PHONY: checkassets
+.PHONY: check_assets_sources
 checkassets:
-	scripts/checkassets
+	scripts/check_assets_sources $(ASSETS_DIR)
 
 $(COPIED_FILES): $(FILES_TO_COPY)
 	mkdir -p $(@D) && cp -r $(shell printf '%s\n' $^ | grep $(notdir $@)) $(EXEDIR)

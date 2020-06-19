@@ -30,7 +30,7 @@ struct EllipsoidPic {
 
 // epic lmao
 void ellipsoidpic_load(
-	struct EllipsoidPic *epic, const char *filename, const SDL_PixelFormat *fmt);
+	struct EllipsoidPic *epic, const char *path, const SDL_PixelFormat *fmt);
 
 
 #endif    // ELLIPSOIDPIC_H
