@@ -35,7 +35,7 @@ struct Player {
 };
 
 /*
-Return value is same at each call, an array of same length as filelist_players
+Return value is same at each call, an array of same length FILELIST_NPLAYERS
 (from "../generated/filelist.h"). Its indexes are compatible with filelist_players.
 */
 const struct EllipsoidPic *player_get_epics(const SDL_PixelFormat *fmt);

@@ -7,9 +7,11 @@ case $OUT in
     *.c)
         function create_string_array()
         {
-            local name=$1
-            shift
-            echo "const char *$name[$#] = {"
+            local arrayname=$1
+            local countname=$2
+            shift 2
+
+            echo "const char *$arrayname[] = {"
             printf '\t"%s",\n' "$@"
             echo '};'
         }
@@ -19,9 +21,12 @@ case $OUT in
     *.h)
         function create_string_array()
         {
-            local name=$1
-            shift
-            echo "extern const char *$name[$#];"
+            local arrayname=$1
+            local countname=$2
+            shift 2
+
+            echo "extern const char *$arrayname[];"
+            echo "#define $countname $#"
         }
         START=$'#ifndef FILELIST_H\n#define FILELIST_H'
         END='#endif'
@@ -37,7 +42,10 @@ echo "$START" >> $OUT
 
 # from sort(1): "The locale specified by the environment affects sort order. Set
 # LC_ALL=C to get the traditional sort order that uses native byte values."
-create_string_array filelist_players players/*.png >> $OUT
-create_string_array filelist_sounds $(find sounds -name '*.wav' | LC_ALL=C sort) >> $OUT
+sounds=$(find sounds -name '*.wav' | LC_ALL=C sort)
+
+# variable names written here as they are to make this script more greppable
+create_string_array filelist_players FILELIST_NPLAYERS players/*.png >> $OUT
+create_string_array filelist_sounds FILELIST_NSOUNDS $sounds >> $OUT
 
 echo "$END" >> $OUT

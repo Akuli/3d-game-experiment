@@ -22,19 +22,18 @@ static bool string_ends_with(const char *s, const char *suff)
 	return (strcmp(s + strlen(s) - strlen(suff), suff) == 0);
 }
 
-#define N_SOUNDS ( sizeof(filelist_sounds)/sizeof(filelist_sounds[0]) )
-static Mix_Chunk *sound_chunks[N_SOUNDS] = {0};
+static Mix_Chunk *sound_chunks[FILELIST_NSOUNDS] = {0};
 
 #define CHUNK_SIZE 1024
 
 void sound_init(void)
 {
 	// filenames must be sorted for binary searching
-	for (int i = 0; i < N_SOUNDS-1; i++)
+	for (int i = 0; i < FILELIST_NSOUNDS-1; i++)
 		assert(strcmp(filelist_sounds[i], filelist_sounds[i+1]) < 0);
 
 	// sound_play() takes filename without "sounds/" in front
-	for (int i = 0; i < N_SOUNDS; i++)
+	for (int i = 0; i < FILELIST_NSOUNDS; i++)
 		assert(string_starts_with(filelist_sounds[i], "sounds/", -1));
 
 	if (SDL_Init(SDL_INIT_AUDIO) == -1) {
@@ -63,7 +62,7 @@ void sound_init(void)
 	*/
 	Mix_AllocateChannels(32);
 
-	for (int i = 0; i < N_SOUNDS; i++) {
+	for (int i = 0; i < FILELIST_NSOUNDS; i++) {
 		assert(sound_chunks[i] == NULL);
 		if (!( sound_chunks[i] = Mix_LoadWAV(filelist_sounds[i]) ))
 			log_printf("Mix_LoadWav(\"%s\") failed: %s", filelist_sounds[i], Mix_GetError());
@@ -86,22 +85,22 @@ static Mix_Chunk *choose_sound(const char *pattern)
 	if (!star) {
 		// no wildcard being used, binary search with filename
 		const char *const *ptr = bsearch(
-			pattern, filelist_sounds, N_SOUNDS, sizeof(filelist_sounds[0]),
+			pattern, filelist_sounds, FILELIST_NSOUNDS, sizeof(filelist_sounds[0]),
 			compare_sound_filename);
 		if (!ptr)
 			return NULL;
 
 		int i = ptr - filelist_sounds;
-		assert(0 <= i && i < N_SOUNDS);
+		assert(0 <= i && i < FILELIST_NSOUNDS);
 		return sound_chunks[i];
 	}
 
 	assert(strrchr(pattern, '*') == star);   // no more than 1 wildcard
 
-	Mix_Chunk *matching[N_SOUNDS];
+	Mix_Chunk *matching[FILELIST_NSOUNDS];
 	int nmatching = 0;
 
-	for (int i = 0; i < N_SOUNDS; i++) {
+	for (int i = 0; i < FILELIST_NSOUNDS; i++) {
 		const char *fnam = filelist_sounds[i] + strlen("sounds/");
 		if (string_starts_with(fnam, pattern, star - pattern) &&
 			string_ends_with(fnam, star+1) &&
@@ -127,7 +126,7 @@ void sound_play(const char *fnpattern)
 
 void sound_deinit(void)
 {
-	for (int i = 0; i < N_SOUNDS; i++)
+	for (int i = 0; i < FILELIST_NSOUNDS; i++)
 		Mix_FreeChunk(sound_chunks[i]);
 
 	Mix_CloseAudio();

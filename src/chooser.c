@@ -92,7 +92,7 @@ struct PlayerChooser {
 
 struct ChooserState {
 	struct PlayerChooser playerch1, playerch2;
-	struct Ellipsoid ellipsoids[sizeof(filelist_players)/sizeof(filelist_players[0])];
+	struct Ellipsoid ellipsoids[FILELIST_NPLAYERS];
 };
 
 static void calculate_player_chooser_geometry_stuff(
@@ -117,7 +117,6 @@ static void setup_player_chooser(struct PlayerChooser *ch, int idx, int centerx,
 
 	printf("prevc = %d %d\n", prevc.x, prevc.y);
 
-	int nplayers = sizeof(filelist_players)/sizeof(filelist_players[0]);
 	float pi = acosf(-1);
 	*ch = (struct PlayerChooser){
 		.index = idx,
@@ -125,7 +124,7 @@ static void setup_player_chooser(struct PlayerChooser *ch, int idx, int centerx,
 		.nextbtn = { .text = ">", .center = nextc },
 		.cam = {
 			.surface = camera_create_cropped_surface(surf, preview),
-			.angle = (2*pi)/nplayers * idx,
+			.angle = (2*pi)/FILELIST_NPLAYERS * idx,
 		},
 	};
 
@@ -136,17 +135,16 @@ static void setup_player_chooser(struct PlayerChooser *ch, int idx, int centerx,
 static void rotate_player_chooser(struct PlayerChooser *pl, int dir)
 {
 	assert(dir == +1 || dir == -1);
-	int nplayers = sizeof(filelist_players)/sizeof(filelist_players[0]);
 	float pi = acosf(-1);
 
 	pl->index -= dir;   // don't know why subtracting here helps...
-	pl->index %= nplayers;
+	pl->index %= FILELIST_NPLAYERS;
 	if (pl->index < 0)
-		pl->index += nplayers;
-	assert(0 <= pl->index && pl->index < nplayers);
+		pl->index += FILELIST_NPLAYERS;
+	assert(0 <= pl->index && pl->index < FILELIST_NPLAYERS);
 
 	// why subtracting: more angle = clockwise from above = left in chooser
-	pl->anglediff -= dir * (2*pi) / (float)nplayers;
+	pl->anglediff -= dir * (2*pi) / (float)FILELIST_NPLAYERS;
 }
 
 static void turn_camera(struct PlayerChooser *ch)
@@ -204,13 +202,12 @@ bool chooser_run(
 	static struct ChooserState st;
 
 	// ellipsoids are laied out into a circle with radius r
-	static const float r = 1;
+	float r = 1;
 
-	int nplayers = sizeof(st.ellipsoids)/sizeof(st.ellipsoids[0]);
-	for (int i = 0; i < nplayers; i++) {
+	for (int i = 0; i < FILELIST_NPLAYERS; i++) {
 		float pi = acosf(-1);
 		// initial angle at pi/2 so that players are about to turn to look at camera
-		float angle = ( (float)i / nplayers * (2*pi) ) + pi/2;
+		float angle = ( (float)i / FILELIST_NPLAYERS * (2*pi) ) + pi/2;
 
 		st.ellipsoids[i] = (struct Ellipsoid){
 			.epic = &player_get_epics(winsurf->format)[i],
@@ -247,7 +244,7 @@ bool chooser_run(
 			}
 		}
 
-		for (int i = 0; i < nplayers; i++) {
+		for (int i = 0; i < FILELIST_NPLAYERS; i++) {
 			st.ellipsoids[i].angle += 1.0f / CAMERA_FPS;
 			ellipsoid_update_transforms(&st.ellipsoids[i]);
 		}
@@ -256,8 +253,8 @@ bool chooser_run(
 		turn_camera(&st.playerch2);
 
 		SDL_FillRect(winsurf, NULL, 0);
-		show_all(NULL, 0, st.ellipsoids, nplayers, &st.playerch1.cam);
-		show_all(NULL, 0, st.ellipsoids, nplayers, &st.playerch2.cam);
+		show_all(NULL, 0, st.ellipsoids, FILELIST_NPLAYERS, &st.playerch1.cam);
+		show_all(NULL, 0, st.ellipsoids, FILELIST_NPLAYERS, &st.playerch2.cam);
 		show_button(&st.playerch1.prevbtn, winsurf);
 		show_button(&st.playerch1.nextbtn, winsurf);
 		show_button(&st.playerch2.prevbtn, winsurf);

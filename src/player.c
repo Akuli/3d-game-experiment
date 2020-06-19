@@ -20,13 +20,13 @@
 
 const struct EllipsoidPic *player_get_epics(const SDL_PixelFormat *fmt)
 {
-	static struct EllipsoidPic res[sizeof(filelist_players)/sizeof(filelist_players[0])];
+	static struct EllipsoidPic res[FILELIST_NPLAYERS];
 	static const SDL_PixelFormat *cachedfmt = NULL;
 
 	if (!cachedfmt) {
 		cachedfmt = fmt;
-		// this loop causes slow startup time...
-		for (int i = 0; i < sizeof(res)/sizeof(res[0]); i++)
+		// this loop can cause slow startup time
+		for (int i = 0; i < FILELIST_NPLAYERS; i++)
 			ellipsoidpic_load(&res[i], filelist_players[i], fmt);
 	}
 
