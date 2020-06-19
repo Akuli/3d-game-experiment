@@ -42,15 +42,18 @@ https://www.libsdl.org/download-2.0.php
 
 https://www.libsdl.org/projects/SDL_mixer/
 
+https://www.libsdl.org/projects/SDL_ttf/
+
 Copy them to a directory named `libs` and extract:
 
 ```
 $ cd path-to-directory-containing-this-README-file
 $ mkdir libs
-$ cp ~/Downloads/{SDL2,SDL2_mixer}-devel-*-mingw.tar.gz libs
+$ cp ~/Downloads/{SDL2,SDL2_mixer,SDL2_ttf}-devel-*-mingw.tar.gz libs
 $ cd libs
 $ tar xf SDL2-*
 $ tar xf SDL2_mixer-*
+$ tar xf SDL2_ttf-*
 $ cd ..
 ```
 

@@ -13,4 +13,5 @@ export RUN=wine
 export DLLFILES=$(echo \
     libs/SDL2-*/x86_64-w64-mingw32/bin/SDL2.dll \
     libs/SDL2_mixer-*/x86_64-w64-mingw32/bin/SDL2_mixer.dll \
+    libs/SDL2_ttf-*/x86_64-w64-mingw32/bin/* \
 )
