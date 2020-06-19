@@ -165,6 +165,12 @@ static void set_button_pressed(struct Button *butt, bool pressed)
 	refresh_button(butt);
 }
 
+static bool button_is_pressed(const struct Button *butt)
+{
+	return (butt->img1path != NULL &&
+			strcmp(butt->img1path, "buttons/small/vertical/pressed.png") == 0);
+}
+
 static void rotate_player_chooser(struct PlayerChooser *ch, int dir)
 {
 	assert(dir == +1 || dir == -1);
@@ -196,12 +202,42 @@ static void turn_camera(struct PlayerChooser *ch)
 	camera_update_caches(&ch->cam);
 }
 
+static bool mouse_on_button(const SDL_MouseButtonEvent *me, const struct Button *butt)
+{
+	return fabsf(me->x - butt->center.x) < butt->cachesurf->w/2 &&
+			fabsf(me->y - butt->center.y) < butt->cachesurf->h/2;
+}
+
+static void handle_button_press(const SDL_MouseButtonEvent *me, struct Button *butt)
+{
+	if (mouse_on_button(me, butt))
+		set_button_pressed(butt, true);
+}
+
 enum HandleEventResult { QUIT, PLAY, CONTINUE };
 static enum HandleEventResult handle_event(const SDL_Event event, struct ChooserState *st)
 {
 	switch(event.type) {
 	case SDL_QUIT:
 		return QUIT;
+
+	case SDL_MOUSEBUTTONDOWN:
+		handle_button_press(&event.button, &st->playerch1.prevbtn);
+		handle_button_press(&event.button, &st->playerch1.nextbtn);
+		handle_button_press(&event.button, &st->playerch2.prevbtn);
+		handle_button_press(&event.button, &st->playerch2.nextbtn);
+		break;
+
+	case SDL_MOUSEBUTTONUP:
+		if (mouse_on_button(&event.button, &st->playerch1.prevbtn)) rotate_player_chooser(&st->playerch1, -1);
+		if (mouse_on_button(&event.button, &st->playerch1.nextbtn)) rotate_player_chooser(&st->playerch1, +1);
+		if (mouse_on_button(&event.button, &st->playerch2.prevbtn)) rotate_player_chooser(&st->playerch2, -1);
+		if (mouse_on_button(&event.button, &st->playerch2.nextbtn)) rotate_player_chooser(&st->playerch2, +1);
+		set_button_pressed(&st->playerch1.prevbtn, false);
+		set_button_pressed(&st->playerch1.nextbtn, false);
+		set_button_pressed(&st->playerch2.prevbtn, false);
+		set_button_pressed(&st->playerch2.nextbtn, false);
+		break;
 
 	case SDL_KEYDOWN:
 		switch(event.key.keysym.scancode) {
@@ -210,7 +246,7 @@ static enum HandleEventResult handle_event(const SDL_Event event, struct Chooser
 			case SDL_SCANCODE_LEFT:  set_button_pressed(&st->playerch2.prevbtn, true); break;
 			case SDL_SCANCODE_RIGHT: set_button_pressed(&st->playerch2.nextbtn, true); break;
 
-			// FIXME: add big "Play" button instead of this
+			// FIXME: add big "Play" button
 			case SDL_SCANCODE_RETURN: return PLAY;
 			default: break;
 		}
