@@ -11,8 +11,8 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
-// actual button size is smaller than this, which means we get some padding
-#define BUTTON_SIZE 50
+#define BUTTON_SIZE 50    // actual button size is smaller, we get padding
+#define TEXT_SIZE 40
 
 struct PlayerChooser;
 
@@ -49,17 +49,13 @@ static void blit_with_center(SDL_Surface *src, SDL_Surface *dst, const SDL_Point
 
 static SDL_Surface *create_text_surface(const char *text)
 {
-	/*
-	Hard-coding font size shoudn't matter much because font and buttons are the
-	same on all operating systems.
-	*/
-	TTF_Font *font = TTF_OpenFont("DejaVuSans.ttf", 30);
+	TTF_Font *font = TTF_OpenFont("DejaVuSans.ttf", TEXT_SIZE);
 	if (!font)
 		log_printf_abort("TTF_OpenFont failed: %s", TTF_GetError());
 
-	SDL_Color col = { 0, 0, 0, 0xff };
+	SDL_Color col = { 0xff, 0xff, 0xff, 0xff };
 
-	SDL_Surface *s = TTF_RenderUTF8_Solid(font, text, col);
+	SDL_Surface *s = TTF_RenderUTF8_Blended(font, text, col);
 	TTF_CloseFont(font);
 	if (!s)
 		log_printf_abort("TTF_RenderUTF8_Solid failed: %s", TTF_GetError());
@@ -129,17 +125,20 @@ static void handle_button_event(const SDL_Event *evt, struct Button *butt)
 	refresh_button(butt);
 }
 
-#define PLAYER_CHOOSER_HEIGHT ( CAMERA_SCREEN_HEIGHT/2 )
+#define PLAYER_CHOOSER_HEIGHT ( 0.4f*CAMERA_SCREEN_HEIGHT )
 #define PLACE_CHOOSER_HEIGHT (CAMERA_SCREEN_HEIGHT - PLAYER_CHOOSER_HEIGHT)
 
 struct PlayerChooser {
+	int leftx;
 	int index;
 	float anglediff;    // how much the player chooser is about to spin
 	struct Button prevbtn, nextbtn;
 	struct Camera cam;
+	SDL_Surface *nametextsurf;
 };
 
 struct ChooserState {
+	SDL_Surface *winsurf;
 	struct PlayerChooser playerch1, playerch2;
 	struct Ellipsoid ellipsoids[FILELIST_NPLAYERS];
 };
@@ -150,24 +149,45 @@ static void calculate_player_chooser_geometry_stuff(
 	preview->w = CAMERA_SCREEN_WIDTH/2 - 2*BUTTON_SIZE;
 	preview->h = PLAYER_CHOOSER_HEIGHT;
 	preview->x = leftx + CAMERA_SCREEN_WIDTH/4 - preview->w/2;
-	preview->y = 0;
+	preview->y = TEXT_SIZE;
 
 	prevbcenter->x = leftx + BUTTON_SIZE/2;
 	nextbcenter->x = leftx + CAMERA_SCREEN_WIDTH/2 - BUTTON_SIZE/2;
-	prevbcenter->y = PLAYER_CHOOSER_HEIGHT/2;
-	nextbcenter->y = PLAYER_CHOOSER_HEIGHT/2;
+	prevbcenter->y = TEXT_SIZE + PLAYER_CHOOSER_HEIGHT/2;
+	nextbcenter->y = TEXT_SIZE + PLAYER_CHOOSER_HEIGHT/2;
+}
+
+static void set_player_chooser_index(struct PlayerChooser *ch, int idx)
+{
+	idx %= FILELIST_NPLAYERS;
+	if (idx < 0)
+		idx += FILELIST_NPLAYERS;
+	assert(0 <= idx && idx < FILELIST_NPLAYERS);
+	ch->index = idx;
+
+	if (ch->nametextsurf)
+		SDL_FreeSurface(ch->nametextsurf);
+
+	const char *path = filelist_players[idx];
+
+	const char *prefix = "players/";
+	assert(strstr(path, prefix) == path);
+	path += strlen(prefix);
+
+	char name[100] = {0};
+	strncpy(name, path, sizeof(name)-1);
+	char *dot = strrchr(name, '.');
+	assert(dot);
+	*dot = '\0';
+
+	ch->nametextsurf = create_text_surface(name);
 }
 
 static void rotate_player_chooser(struct PlayerChooser *ch, int dir)
 {
 	assert(dir == +1 || dir == -1);
+	set_player_chooser_index(ch, ch->index + dir);
 	float pi = acosf(-1);
-
-	ch->index -= dir;   // don't know why subtracting here helps...
-	ch->index %= FILELIST_NPLAYERS;
-	if (ch->index < 0)
-		ch->index += FILELIST_NPLAYERS;
-	assert(0 <= ch->index && ch->index < FILELIST_NPLAYERS);
 
 	// why subtracting: more angle = clockwise from above = left in chooser
 	ch->anglediff -= dir * (2*pi) / (float)FILELIST_NPLAYERS;
@@ -184,7 +204,7 @@ static void setup_player_chooser(struct PlayerChooser *ch, SDL_Surface *surf, in
 
 	float pi = acosf(-1);
 	*ch = (struct PlayerChooser){
-		.index = idx,
+		.leftx = leftx,
 		.prevbtn = {
 			.imgpath = "arrows/left.png",
 			.scancode = scprev,
@@ -200,14 +220,16 @@ static void setup_player_chooser(struct PlayerChooser *ch, SDL_Surface *surf, in
 			.onclick = rotate_right,
 		},
 		.cam = {
-			.screencentery = 0.2f*PLAYER_CHOOSER_HEIGHT,
+			.screencentery = 0,
 			.surface = camera_create_cropped_surface(surf, preview),
-			.angle = (2*pi)/FILELIST_NPLAYERS * idx,
+			.angle = -(2*pi)/FILELIST_NPLAYERS * idx,
 		},
 	};
 
 	ch->prevbtn.playerch = ch;
 	ch->nextbtn.playerch = ch;
+
+	set_player_chooser_index(ch, idx);
 	refresh_button(&ch->prevbtn);
 	refresh_button(&ch->nextbtn);
 	camera_update_caches(&ch->cam);
@@ -252,6 +274,17 @@ static enum HandleEventResult handle_event(const SDL_Event *evt, struct ChooserS
 	return CONTINUE;
 }
 
+static void show_player_chooser(const struct ChooserState *st, const struct PlayerChooser *ch)
+{
+	show_all(NULL, 0, st->ellipsoids, FILELIST_NPLAYERS, &ch->cam);
+	show_button(&ch->prevbtn);
+	show_button(&ch->nextbtn);
+	blit_with_center(ch->nametextsurf, st->winsurf, &(SDL_Point){
+		ch->leftx + st->winsurf->w/4,
+		TEXT_SIZE + PLAYER_CHOOSER_HEIGHT + TEXT_SIZE/2,
+	});
+}
+
 static void free_player_chooser(const struct PlayerChooser *ch)
 {
 	SDL_FreeSurface(ch->cam.surface);
@@ -265,7 +298,7 @@ static void create_player_ellipsoids(struct Ellipsoid *arr, const SDL_PixelForma
 
 	for (int i = 0; i < FILELIST_NPLAYERS; i++) {
 		// pi/2 to make first players (i=0 and i=1) look at camera
-		float angle = pi/2 + ( i/(float)FILELIST_NPLAYERS * (2*pi) );
+		float angle = pi/2 - ( i/(float)FILELIST_NPLAYERS * (2*pi) );
 
 		arr[i] = (struct Ellipsoid){
 			.epic = &player_get_epics(fmt)[i],
@@ -283,21 +316,23 @@ bool chooser_run(
 	const struct EllipsoidPic **plr1pic, const struct EllipsoidPic **plr2pic,
 	const struct Place **pl)
 {
-	SDL_Surface *winsurf = SDL_GetWindowSurface(win);
-	if (!winsurf)
+	static struct ChooserState st;
+
+	if (!( st.winsurf = SDL_GetWindowSurface(win) ))
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
-	SDL_FillRect(winsurf, NULL, 0);
+	SDL_FillRect(st.winsurf, NULL, 0);
 
 	// TODO: implement a place chooser
 	*pl = &place_list()[0];
 
-	static struct ChooserState st;
-	create_player_ellipsoids(st.ellipsoids, winsurf->format);
+	create_player_ellipsoids(st.ellipsoids, st.winsurf->format);
 
-	setup_player_chooser(&st.playerch1, winsurf, 0, 0, SDL_SCANCODE_A, SDL_SCANCODE_D);
-	setup_player_chooser(&st.playerch2, winsurf, 1, CAMERA_SCREEN_WIDTH/2, SDL_SCANCODE_LEFT, SDL_SCANCODE_RIGHT);
+	setup_player_chooser(&st.playerch1, st.winsurf, 0, 0, SDL_SCANCODE_A, SDL_SCANCODE_D);
+	setup_player_chooser(&st.playerch2, st.winsurf, 1, CAMERA_SCREEN_WIDTH/2, SDL_SCANCODE_LEFT, SDL_SCANCODE_RIGHT);
 
 	struct LoopTimer lt = {0};
+
+	SDL_Surface *chooseplrtxt = create_text_surface("Chooser players:");
 
 	while(1) {
 		SDL_Event e;
@@ -309,8 +344,8 @@ bool chooser_run(
 				free_player_chooser(&st.playerch1);
 				free_player_chooser(&st.playerch2);
 
-				*plr1pic = &player_get_epics(winsurf->format)[st.playerch1.index];
-				*plr2pic = &player_get_epics(winsurf->format)[st.playerch2.index];
+				*plr1pic = &player_get_epics(st.winsurf->format)[st.playerch1.index];
+				*plr2pic = &player_get_epics(st.winsurf->format)[st.playerch2.index];
 
 				return (r == PLAY);
 			case CONTINUE:
@@ -326,13 +361,10 @@ bool chooser_run(
 		turn_camera(&st.playerch1);
 		turn_camera(&st.playerch2);
 
-		SDL_FillRect(winsurf, NULL, 0);
-		show_all(NULL, 0, st.ellipsoids, FILELIST_NPLAYERS, &st.playerch1.cam);
-		show_all(NULL, 0, st.ellipsoids, FILELIST_NPLAYERS, &st.playerch2.cam);
-		show_button(&st.playerch1.prevbtn);
-		show_button(&st.playerch1.nextbtn);
-		show_button(&st.playerch2.prevbtn);
-		show_button(&st.playerch2.nextbtn);
+		SDL_FillRect(st.winsurf, NULL, 0);
+		blit_with_center(chooseplrtxt, st.winsurf, &(SDL_Point){st.winsurf->w/2, TEXT_SIZE/2});
+		show_player_chooser(&st, &st.playerch1);
+		show_player_chooser(&st, &st.playerch2);
 
 		SDL_UpdateWindowSurface(win);
 		looptimer_wait(&lt);
