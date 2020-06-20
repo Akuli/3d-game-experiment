@@ -1,4 +1,5 @@
 #include "misc.h"
+#include <assert.h>
 #include "log.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -33,11 +34,13 @@ SDL_Surface *misc_create_text_surface(const char *text, SDL_Color col)
 
 SDL_Surface *misc_create_cropped_surface(SDL_Surface *surf, SDL_Rect r)
 {
-	// TODO: use surf->format somehow?
+	assert(surf->format->BitsPerPixel == 8*surf->format->BytesPerPixel);
 	SDL_Surface *res = SDL_CreateRGBSurfaceFrom(
-		(char*)surf->pixels + r.y*surf->pitch + sizeof(uint32_t)*r.x,
+		(char*)surf->pixels + r.y*surf->pitch + surf->format->BytesPerPixel*r.x,
 		r.w, r.h,
-		32, surf->pitch, 0, 0, 0, 0);
+		surf->format->BitsPerPixel,
+		surf->pitch,
+		surf->format->Rmask, surf->format->Gmask, surf->format->Bmask, surf->format->Amask);
 	if (!res)
 		log_printf_abort("SDL_CreateRGBSurfaceFrom failed: %s", SDL_GetError());
 	return res;
