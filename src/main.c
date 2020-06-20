@@ -60,7 +60,7 @@ int main(int argc, char **argv)
 		log_printf_abort("TTF_Init failed: %s", TTF_GetError());
 
 	SDL_Window *wnd = SDL_CreateWindow(
-		"TODO: title here", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, CAMERA_SCREEN_WIDTH, CAMERA_SCREEN_HEIGHT, 0);
+		"3D game experiment", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, CAMERA_SCREEN_WIDTH, CAMERA_SCREEN_HEIGHT, 0);
 	if (!wnd)
 		log_printf_abort("SDL_CreateWindow failed: %s", SDL_GetError());
 
