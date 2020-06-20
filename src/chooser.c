@@ -173,25 +173,27 @@ static void on_play_button_clicked(void *ptr)
 
 void chooser_init(struct Chooser *ch, SDL_Window *win)
 {
+	SDL_Surface *winsurf = SDL_GetWindowSurface(win);
+	if (!winsurf)
+		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
+
 	*ch = (struct Chooser){
 		.win = win,
-		.winsurf = SDL_GetWindowSurface(win),
+		.winsurf = winsurf,
 		.bigplaybtn = {
 			.text = "Play",
 			.big = true,
 			.horizontal = true,
+			.destsurf = winsurf,
 			.scancode = SDL_SCANCODE_RETURN,
 			.center = { CAMERA_SCREEN_WIDTH/2, (CAMERA_SCREEN_HEIGHT + PLAYER_CHOOSER_HEIGHT)/2 },
 			.onclick = on_play_button_clicked,
 			// onclickdata is set in chooser_run()
 		},
+		.chooseplayertext = misc_create_text_surface("Choose players:", white_color, FONT_SIZE),
 	};
-	if (!ch->winsurf)
-		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 
-	ch->bigplaybtn.destsurf = ch->winsurf;
 	button_refresh(&ch->bigplaybtn);
-
 	create_player_ellipsoids(ch->ellipsoids, ch->winsurf->format);
 	setup_player_chooser(ch, 0, SDL_SCANCODE_A, SDL_SCANCODE_D);
 	setup_player_chooser(ch, 1, SDL_SCANCODE_LEFT, SDL_SCANCODE_RIGHT);
@@ -205,6 +207,7 @@ void chooser_destroy(const struct Chooser *ch)
 		button_destroy(&ch->playerch[i].nextbtn);
 	}
 	button_destroy(&ch->bigplaybtn);
+	SDL_FreeSurface(ch->chooseplayertext);
 }
 
 enum MiscState chooser_run(struct Chooser *ch)
@@ -212,17 +215,13 @@ enum MiscState chooser_run(struct Chooser *ch)
 	bool playbtnclicked = false;
 	ch->bigplaybtn.onclickdata = &playbtnclicked;
 
-	// TODO: put this to Chooser?
-	SDL_Surface *chooseplrtxt = misc_create_text_surface(
-		"Choose players:", white_color, FONT_SIZE);
-
 	struct LoopTimer lt = {0};
 
 	while(!playbtnclicked) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
 			if (!handle_event(&e, ch))
-				goto out;
+				return MISC_STATE_QUIT;
 		}
 
 		for (int i = 0; i < FILELIST_NPLAYERS; i++) {
@@ -234,7 +233,8 @@ enum MiscState chooser_run(struct Chooser *ch)
 		turn_camera(&ch->playerch[1]);
 
 		SDL_FillRect(ch->winsurf, NULL, 0);
-		misc_blit_with_center(chooseplrtxt, ch->winsurf, &(SDL_Point){ch->winsurf->w/2, FONT_SIZE/2});
+		misc_blit_with_center(ch->chooseplayertext, ch->winsurf,
+			&(SDL_Point){ch->winsurf->w/2, FONT_SIZE/2});
 		show_player_chooser(ch, &ch->playerch[0]);
 		show_player_chooser(ch, &ch->playerch[1]);
 		button_show(&ch->bigplaybtn);
@@ -242,8 +242,5 @@ enum MiscState chooser_run(struct Chooser *ch)
 		SDL_UpdateWindowSurface(ch->win);
 		looptimer_wait(&lt);
 	}
-
-out:
-	SDL_FreeSurface(chooseplrtxt);
-	return playbtnclicked ? MISC_STATE_PLAY : MISC_STATE_QUIT;
+	return MISC_STATE_PLAY;
 }
