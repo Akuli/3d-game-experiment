@@ -5,8 +5,7 @@
 #include "ellipsoidpic.h"
 #include "mathstuff.h"
 
-// for non-picked guards, this is used for both xzradius and yradius
-#define XZRADIUS 0.25f
+#define XZRADIUS 0.3f
 
 static struct EllipsoidPic *get_ellipsoid_pic(const SDL_PixelFormat *fmt)
 {

@@ -11,15 +11,15 @@
 #define PLAYER_HEIGHT_FLAT 0.1f
 
 /*
-xzradius must not be >0.25, because two players must fit between walls
-that are distance 1 apart from each other. If they don't fit, then the
-players will end up sticking out to the other side of the walls, which
-causes weird behaviour.
+If xzradius is just a little bit more than 0.25, then two players can be squeezed
+between walls that are distance 1 apart from each other. They end up going
+partially through the walls. That can happen so much that they hit enemies through
+walls. If you set xzradius to >0.25, then check that this doesn't happen.
 */
-#define PLAYER_XZRADIUS 0.25f
+#define PLAYER_XZRADIUS 0.4f
 
 // isn't correct when player is flat
-#define PLAYER_YRADIUS_NOFLAT 0.45f
+#define PLAYER_YRADIUS_NOFLAT 0.7f
 
 struct Player {
 	struct Ellipsoid ellipsoid;

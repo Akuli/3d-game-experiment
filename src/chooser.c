@@ -17,6 +17,10 @@
 #define PLAYER_CHOOSER_HEIGHT ( 0.4f*CAMERA_SCREEN_HEIGHT )
 #define PLACE_CHOOSER_HEIGHT (CAMERA_SCREEN_HEIGHT - PLAYER_CHOOSER_HEIGHT)
 
+#define ELLIPSOID_XZ_DISTANCE_FROM_ORIGIN 2.0f
+#define CAMERA_XZ_DISTANCE_FROM_ORIGIN 5.0f
+#define CAMERA_Y 1.6f
+
 static const SDL_Color white_color = { 0xff, 0xff, 0xff, 0xff };
 
 static void calculate_player_chooser_geometry_stuff(
@@ -112,7 +116,9 @@ static void turn_camera(struct ChooserPlayerStuff *cps)
 	cps->cam.angle += turn;
 	cps->anglediff -= turn;
 
-	cps->cam.location = mat3_mul_vec3(mat3_rotation_xz(cps->cam.angle), (Vec3){0,0.7f,3.0f});
+	cps->cam.location = mat3_mul_vec3(
+		mat3_rotation_xz(cps->cam.angle),
+		(Vec3){ 0, CAMERA_Y, CAMERA_XZ_DISTANCE_FROM_ORIGIN });
 	camera_update_caches(&cps->cam);
 }
 
@@ -151,7 +157,7 @@ static void create_player_ellipsoids(struct Ellipsoid *arr, const SDL_PixelForma
 
 		arr[i] = (struct Ellipsoid){
 			.epic = &player_get_epics(fmt)[i],
-			.center = mat3_mul_vec3(mat3_rotation_xz(angle), (Vec3){ 1.4f, 0, 0 }),
+			.center = mat3_mul_vec3(mat3_rotation_xz(angle), (Vec3){ ELLIPSOID_XZ_DISTANCE_FROM_ORIGIN, 0, 0 }),
 			.angle = angle,
 			.xzradius = PLAYER_XZRADIUS,
 			.yradius = PLAYER_YRADIUS_NOFLAT,
