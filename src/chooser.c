@@ -19,22 +19,6 @@
 
 static const SDL_Color white_color = { 0xff, 0xff, 0xff, 0xff };
 
-struct PlayerChooser {
-	int leftx;
-	const struct EllipsoidPic *epic;   // pointer into player_getepics()
-	float anglediff;    // how much the player chooser is about to spin
-	struct Button prevbtn, nextbtn;
-	struct Camera cam;
-	SDL_Surface *nametextsurf;
-};
-
-struct ChooserState {
-	SDL_Surface *winsurf;
-	struct PlayerChooser playerch[2];
-	struct Ellipsoid ellipsoids[FILELIST_NPLAYERS];
-	struct Button bigplaybtn;
-};
-
 static void calculate_player_chooser_geometry_stuff(
 	int leftx, SDL_Rect *preview, SDL_Point *prevbcenter, SDL_Point *nextbcenter)
 {
@@ -49,110 +33,110 @@ static void calculate_player_chooser_geometry_stuff(
 	nextbcenter->y = FONT_SIZE + PLAYER_CHOOSER_HEIGHT/2;
 }
 
-static void update_name_display(struct PlayerChooser *ch)
+static void update_name_display(struct ChooserPlayerStuff *cps)
 {
-	if (ch->nametextsurf)
-		SDL_FreeSurface(ch->nametextsurf);
-	ch->nametextsurf = misc_create_text_surface(
-		player_getname(ch->epic), white_color, FONT_SIZE);
+	if (cps->nametextsurf)
+		SDL_FreeSurface(cps->nametextsurf);
+	cps->nametextsurf = misc_create_text_surface(
+		player_getname(cps->epic), white_color, FONT_SIZE);
 }
 
-static void rotate_player_chooser(struct PlayerChooser *ch, int dir)
+static void rotate_player_chooser(struct ChooserPlayerStuff *cps, int dir)
 {
 	assert(dir == +1 || dir == -1);
 
-	ch->epic += dir;
-	if (ch->epic == player_get_epics(NULL) - 1)
-		ch->epic += FILELIST_NPLAYERS;
-	else if (ch->epic == player_get_epics(NULL) + FILELIST_NPLAYERS)
-		ch->epic -= FILELIST_NPLAYERS;
-	update_name_display(ch);
+	cps->epic += dir;
+	if (cps->epic == player_get_epics(NULL) - 1)
+		cps->epic += FILELIST_NPLAYERS;
+	else if (cps->epic == player_get_epics(NULL) + FILELIST_NPLAYERS)
+		cps->epic -= FILELIST_NPLAYERS;
+	update_name_display(cps);
 
 	// why subtracting: more angle = clockwise from above = left in chooser
 	float pi = acosf(-1);
-	ch->anglediff -= dir * (2*pi) / (float)FILELIST_NPLAYERS;
+	cps->anglediff -= dir * (2*pi) / (float)FILELIST_NPLAYERS;
 }
 
 static void rotate_left (void *playerch) { rotate_player_chooser(playerch, -1); }
 static void rotate_right(void *playerch) { rotate_player_chooser(playerch, +1); }
 
-static void setup_player_chooser(struct ChooserState *st, int idx, int scprev, int scnext)
+static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int scnext)
 {
-	int leftx = idx * (st->winsurf->w/2);
+	int leftx = idx * (ch->winsurf->w/2);
 
 	SDL_Rect preview;
 	SDL_Point prevc, nextc;
 	calculate_player_chooser_geometry_stuff(leftx, &preview, &prevc, &nextc);
 
 	float pi = acosf(-1);
-	struct PlayerChooser *ch = &st->playerch[idx];
-	*ch = (struct PlayerChooser){
-		.epic = st->ellipsoids[idx].epic,
+	struct ChooserPlayerStuff *cps = &ch->playerch[idx];
+	*cps = (struct ChooserPlayerStuff){
+		.epic = ch->ellipsoids[idx].epic,
 		.leftx = leftx,
 		.prevbtn = {
 			.imgpath = "arrows/left.png",
 			.scancode = scprev,
-			.destsurf = st->winsurf,
+			.destsurf = ch->winsurf,
 			.center = prevc,
 			.onclick = rotate_left,
 		},
 		.nextbtn = {
 			.imgpath = "arrows/right.png",
 			.scancode = scnext,
-			.destsurf = st->winsurf,
+			.destsurf = ch->winsurf,
 			.center = nextc,
 			.onclick = rotate_right,
 		},
 		.cam = {
 			.screencentery = 0,
-			.surface = misc_create_cropped_surface(st->winsurf, preview),
+			.surface = misc_create_cropped_surface(ch->winsurf, preview),
 			.angle = -(2*pi)/FILELIST_NPLAYERS * idx,
 		},
 	};
 
-	ch->prevbtn.onclickdata = ch;
-	ch->nextbtn.onclickdata = ch;
+	cps->prevbtn.onclickdata = cps;
+	cps->nextbtn.onclickdata = cps;
 
-	update_name_display(ch);
-	button_refresh(&ch->prevbtn);
-	button_refresh(&ch->nextbtn);
-	camera_update_caches(&ch->cam);
+	update_name_display(cps);
+	button_refresh(&cps->prevbtn);
+	button_refresh(&cps->nextbtn);
+	camera_update_caches(&cps->cam);
 }
 
-static void turn_camera(struct PlayerChooser *ch)
+static void turn_camera(struct ChooserPlayerStuff *cps)
 {
 	float maxturn = 50.0f / (CAMERA_FPS * FILELIST_NPLAYERS);
 	assert(maxturn > 0);
-	float turn = max(-maxturn, min(maxturn, ch->anglediff));
+	float turn = max(-maxturn, min(maxturn, cps->anglediff));
 
-	ch->cam.angle += turn;
-	ch->anglediff -= turn;
+	cps->cam.angle += turn;
+	cps->anglediff -= turn;
 
-	ch->cam.location = mat3_mul_vec3(mat3_rotation_xz(ch->cam.angle), (Vec3){0,0.7f,3.0f});
-	camera_update_caches(&ch->cam);
+	cps->cam.location = mat3_mul_vec3(mat3_rotation_xz(cps->cam.angle), (Vec3){0,0.7f,3.0f});
+	camera_update_caches(&cps->cam);
 }
 
 // returns false when game should quit
-static bool handle_event(const SDL_Event *evt, struct ChooserState *st)
+static bool handle_event(const SDL_Event *evt, struct Chooser *ch)
 {
 	if (evt->type == SDL_QUIT)
 		return false;
 
 	for (int i = 0; i < 2; i++) {
-		button_handle_event(evt, &st->playerch[i].prevbtn);
-		button_handle_event(evt, &st->playerch[i].nextbtn);
+		button_handle_event(evt, &ch->playerch[i].prevbtn);
+		button_handle_event(evt, &ch->playerch[i].nextbtn);
 	}
-	button_handle_event(evt, &st->bigplaybtn);
+	button_handle_event(evt, &ch->bigplaybtn);
 	return true;
 }
 
-static void show_player_chooser(const struct ChooserState *st, const struct PlayerChooser *ch)
+static void show_player_chooser(const struct Chooser *ch, const struct ChooserPlayerStuff *cps)
 {
-	show_all(NULL, 0, st->ellipsoids, FILELIST_NPLAYERS, &ch->cam);
-	button_show(&ch->prevbtn);
-	button_show(&ch->nextbtn);
-	misc_blit_with_center(ch->nametextsurf, st->winsurf, &(SDL_Point){
-		ch->leftx + st->winsurf->w/4,
+	show_all(NULL, 0, ch->ellipsoids, FILELIST_NPLAYERS, &cps->cam);
+	button_show(&cps->prevbtn);
+	button_show(&cps->nextbtn);
+	misc_blit_with_center(cps->nametextsurf, ch->winsurf, &(SDL_Point){
+		cps->leftx + ch->winsurf->w/4,
 		FONT_SIZE + PLAYER_CHOOSER_HEIGHT + FONT_SIZE/2,
 	});
 }
@@ -181,37 +165,48 @@ static void on_play_button_clicked(void *ptr)
 	*(bool *)ptr = true;
 }
 
-enum MiscState chooser_run(
-	SDL_Window *win,
-	const struct EllipsoidPic **plr1epic, const struct EllipsoidPic **plr2epic,
-	const struct Place **pl)
+void chooser_init(struct Chooser *ch, SDL_Window *win)
 {
-	bool playbtnclicked = false;
-	struct ChooserState st = {
+	*ch = (struct Chooser){
+		.win = win,
 		.winsurf = SDL_GetWindowSurface(win),
 		.bigplaybtn = {
 			.text = "Play",
 			.big = true,
 			.horizontal = true,
 			.scancode = SDL_SCANCODE_RETURN,
-			.destsurf = st.winsurf,
 			.center = { CAMERA_SCREEN_WIDTH/2, (CAMERA_SCREEN_HEIGHT + PLAYER_CHOOSER_HEIGHT)/2 },
 			.onclick = on_play_button_clicked,
-			.onclickdata = &playbtnclicked,
+			// onclickdata is set in chooser_run()
 		},
 	};
-
-	if (!st.winsurf)
+	if (!ch->winsurf)
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
-	button_refresh(&st.bigplaybtn);
 
-	// TODO: implement a place chooser
-	*pl = &place_list()[0];
+	ch->bigplaybtn.destsurf = ch->winsurf;
+	button_refresh(&ch->bigplaybtn);
 
-	create_player_ellipsoids(st.ellipsoids, st.winsurf->format);
-	setup_player_chooser(&st, 0, SDL_SCANCODE_A, SDL_SCANCODE_D);
-	setup_player_chooser(&st, 1, SDL_SCANCODE_LEFT, SDL_SCANCODE_RIGHT);
+	create_player_ellipsoids(ch->ellipsoids, ch->winsurf->format);
+	setup_player_chooser(ch, 0, SDL_SCANCODE_A, SDL_SCANCODE_D);
+	setup_player_chooser(ch, 1, SDL_SCANCODE_LEFT, SDL_SCANCODE_RIGHT);
+}
 
+void chooser_destroy(const struct Chooser *ch)
+{
+	for (int i = 0; i < 2; i++) {
+		SDL_FreeSurface(ch->playerch[i].cam.surface);
+		button_destroy(&ch->playerch[i].prevbtn);
+		button_destroy(&ch->playerch[i].nextbtn);
+	}
+	button_destroy(&ch->bigplaybtn);
+}
+
+enum MiscState chooser_run(struct Chooser *ch)
+{
+	bool playbtnclicked = false;
+	ch->bigplaybtn.onclickdata = &playbtnclicked;
+
+	// TODO: put this to Chooser?
 	SDL_Surface *chooseplrtxt = misc_create_text_surface(
 		"Choose players:", white_color, FONT_SIZE);
 
@@ -220,36 +215,29 @@ enum MiscState chooser_run(
 	while(!playbtnclicked) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
-			if (!handle_event(&e, &st))
+			if (!handle_event(&e, ch))
 				goto out;
 		}
 
 		for (int i = 0; i < FILELIST_NPLAYERS; i++) {
-			st.ellipsoids[i].angle += 1.0f / CAMERA_FPS;
-			ellipsoid_update_transforms(&st.ellipsoids[i]);
+			ch->ellipsoids[i].angle += 1.0f / CAMERA_FPS;
+			ellipsoid_update_transforms(&ch->ellipsoids[i]);
 		}
 
-		turn_camera(&st.playerch[0]);
-		turn_camera(&st.playerch[1]);
+		turn_camera(&ch->playerch[0]);
+		turn_camera(&ch->playerch[1]);
 
-		SDL_FillRect(st.winsurf, NULL, 0);
-		misc_blit_with_center(chooseplrtxt, st.winsurf, &(SDL_Point){st.winsurf->w/2, FONT_SIZE/2});
-		show_player_chooser(&st, &st.playerch[0]);
-		show_player_chooser(&st, &st.playerch[1]);
-		button_show(&st.bigplaybtn);
+		SDL_FillRect(ch->winsurf, NULL, 0);
+		misc_blit_with_center(chooseplrtxt, ch->winsurf, &(SDL_Point){ch->winsurf->w/2, FONT_SIZE/2});
+		show_player_chooser(ch, &ch->playerch[0]);
+		show_player_chooser(ch, &ch->playerch[1]);
+		button_show(&ch->bigplaybtn);
 
-		SDL_UpdateWindowSurface(win);
+		SDL_UpdateWindowSurface(ch->win);
 		looptimer_wait(&lt);
 	}
 
 out:
-	for (int i = 0; i < 2; i++) {
-		SDL_FreeSurface(st.playerch[i].cam.surface);
-		button_destroy(&st.playerch[i].prevbtn);
-		button_destroy(&st.playerch[i].nextbtn);
-	}
-
-	*plr1epic = st.playerch[0].epic;
-	*plr2epic = st.playerch[1].epic;
+	SDL_FreeSurface(chooseplrtxt);
 	return playbtnclicked ? MISC_STATE_PLAY : MISC_STATE_QUIT;
 }
