@@ -138,28 +138,29 @@ static void get_all_ellipsoids(
 
 bool game_run(SDL_Window *win, const struct EllipsoidPic *plr1pic, const struct EllipsoidPic *plr2pic, const struct Place *pl)
 {
-	static struct GameState gs;
-	memset(&gs, 0, sizeof gs);
-
 	SDL_Surface *winsurf = SDL_GetWindowSurface(win);
 	if (!winsurf)
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 
-	gs.players[0].ellipsoid.epic = plr1pic;
-	gs.players[1].ellipsoid.epic = plr2pic;
+	float pi = acosf(-1);
+	struct GameState gs = {
+		.nenemies = 20,
+		.players = {
+			{
+				.ellipsoid = { .angle = pi, .epic = plr1pic, .center = { 2.5f, 0, 0.5f } },
+				.cam = { .screencentery = winsurf->h/2, .surface = camera_create_cropped_surface(
+					winsurf, (SDL_Rect){ 0, 0, winsurf->w/2, winsurf->h }) },
+				.nguards = 20,
+			},
+			{
+				.ellipsoid = { .angle = pi, .epic = plr2pic, .center = { 1.5f, 0, 0.5f } },
+				.cam = { .screencentery = winsurf->h/2, .surface = camera_create_cropped_surface(
+					winsurf, (SDL_Rect){ winsurf->w/2, 0, winsurf->w/2, winsurf->h }) },
+				.nguards = 20,
+			},
+		},
+	};
 
-	gs.players[0].ellipsoid.center = (Vec3){ 2.5f, 0, 0.5f };
-	gs.players[1].ellipsoid.center = (Vec3){ 1.5f, 0, 0.5f };
-
-	gs.players[0].cam.surface = camera_create_cropped_surface(winsurf, (SDL_Rect){ .x = 0,            .y = 0, .w = winsurf->w/2, .h = winsurf->h });
-	gs.players[1].cam.surface = camera_create_cropped_surface(winsurf, (SDL_Rect){ .x = winsurf->w/2, .y = 0, .w = winsurf->w/2, .h = winsurf->h });
-	gs.players[0].cam.screencentery = winsurf->h/2;
-	gs.players[1].cam.screencentery = winsurf->h/2;
-
-	gs.players[0].nguards = 20;
-	gs.players[1].nguards = 20;
-
-	gs.nenemies = 20;
 	for (int i = 0; i < gs.nenemies; i++) {
 		enemy_init(&gs.enemies[i], winsurf->format);
 		gs.enemies[i].ellipsoid.center.x += 1;

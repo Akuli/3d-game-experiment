@@ -7,10 +7,13 @@
 #include "place.h"
 #include <SDL2/SDL.h>
 
-// Return values: true means play game, false means exit
+/*
+Resulting ellipsoid pics are from player_get_epics(). Returns true to play
+game, false to quit.
+*/
 bool chooser_run(
 	SDL_Window *win,
-	const struct EllipsoidPic **plr1pic, const struct EllipsoidPic **plr2pic,
+	const struct EllipsoidPic **plr1epic, const struct EllipsoidPic **plr2epic,
 	const struct Place **pl);
 
 #endif     // PLAYERCHOOSER_H

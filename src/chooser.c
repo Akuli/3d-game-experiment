@@ -332,7 +332,7 @@ static void on_play_button_clicked(void *ptr)
 
 bool chooser_run(
 	SDL_Window *win,
-	const struct EllipsoidPic **plr1pic, const struct EllipsoidPic **plr2pic,
+	const struct EllipsoidPic **plr1epic, const struct EllipsoidPic **plr2epic,
 	const struct Place **pl)
 {
 	bool playbtnclicked = false;
@@ -392,9 +392,7 @@ bool chooser_run(
 out:
 	free_player_chooser(&st.playerch1);
 	free_player_chooser(&st.playerch2);
-
-	*plr1pic = &player_get_epics(st.winsurf->format)[st.playerch1.index];
-	*plr2pic = &player_get_epics(st.winsurf->format)[st.playerch2.index];
-
+	*plr1epic = &player_get_epics(st.winsurf->format)[st.playerch1.index];
+	*plr2epic = &player_get_epics(st.winsurf->format)[st.playerch2.index];
 	return playbtnclicked;
 }
