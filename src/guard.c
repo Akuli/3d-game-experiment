@@ -5,7 +5,8 @@
 #include "ellipsoidpic.h"
 #include "mathstuff.h"
 
-#define XZRADIUS 0.3f
+#define XZRADIUS 0.25f
+#define YRADIUS_BASIC 1.0f
 
 static struct EllipsoidPic *get_ellipsoid_pic(const SDL_PixelFormat *fmt)
 {
@@ -51,17 +52,17 @@ int guard_create_picked(struct Ellipsoid *arr, const struct Player *plr)
 		return 0;
 
 	/*
-	make hats flatten and stretch too.
+	make guards flatten and stretch too.
 
 	Usually ratio is 1, but it's between 0 and 1 when flat, and >1 when stretchy.
 	*/
 	float ratio = plr->ellipsoid.yradius / PLAYER_YRADIUS_NOFLAT;
-	float yradius = ratio*XZRADIUS;
+	float yradius = ratio*YRADIUS_BASIC;
 
 	arr[0] = (struct Ellipsoid){
 		.center = {
 			plr->ellipsoid.center.x,
-			plr->ellipsoid.center.y + plr->ellipsoid.yradius - yradius/2,
+			plr->ellipsoid.center.y + plr->ellipsoid.yradius - yradius/5,
 			plr->ellipsoid.center.z,
 		},
 		.epic = get_ellipsoid_pic(plr->ellipsoid.epic->pixfmt),
@@ -73,7 +74,7 @@ int guard_create_picked(struct Ellipsoid *arr, const struct Player *plr)
 
 	for (int i = 1; i < plr->nguards; i++) {
 		arr[i] = arr[0];
-		arr[i].center.y += yradius/2 * i;
+		arr[i].center.y += yradius/6 * i;
 		// no need to update transforms, they don't depend on center location at all
 	}
 	return plr->nguards;
