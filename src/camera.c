@@ -44,15 +44,3 @@ void camera_update_caches(struct Camera *cam)
 	static_assert(sizeof(pl) == sizeof(cam->visplanes), "");
 	memcpy(cam->visplanes, pl, sizeof(pl));
 }
-
-SDL_Surface *camera_create_cropped_surface(SDL_Surface *surf, SDL_Rect r)
-{
-	// TODO: use surf->format somehow?
-	SDL_Surface *res = SDL_CreateRGBSurfaceFrom(
-		(char*)surf->pixels + r.y*surf->pitch + sizeof(uint32_t)*r.x,
-		r.w, r.h,
-		32, surf->pitch, 0, 0, 0, 0);
-	if (!res)
-		log_printf_abort("SDL_CreateRGBSurfaceFrom failed: %s", SDL_GetError());
-	return res;
-}

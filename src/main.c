@@ -13,8 +13,10 @@
 #include "camera.h"
 #include "chooser.h"
 #include "game.h"
+#include "player.h"
 #include "showall.h"
 #include "sound.h"
+#include "../generated/filelist.h"
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -61,11 +63,26 @@ int main(int argc, char **argv)
 	if (!win)
 		log_printf_abort("SDL_CreateWindow failed: %s", SDL_GetError());
 
-	const struct EllipsoidPic *plr1pic, *plr2pic;
-	const struct Place *pl;
+	// TODO: pass this to chooser_run() and game_run()?
+	SDL_Surface *winsurf = SDL_GetWindowSurface(win);
+	if (!winsurf)
+		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 
-	while (chooser_run(win, &plr1pic, &plr2pic, &pl) && game_run(win, plr1pic, plr2pic, pl)) { }
+	while(true){
+		const struct EllipsoidPic *plr1pic, *plr2pic;
+		const struct Place *pl;
+		if (!chooser_run(win, &plr1pic, &plr2pic, &pl))
+			break;
 
+		const struct EllipsoidPic *winner = game_run(win, plr1pic, plr2pic, pl);
+		if (!winner)
+			break;
+
+		const char *winnerpath = filelist_players[winner - player_get_epics(winsurf->format)];
+		printf("\n\nwinner path: %s\n\n\n", winnerpath);
+	}
+
+	log_printf("cleaning up for successful exit");
 	sound_deinit();
 	SDL_DestroyWindow(win);
 	SDL_Quit();

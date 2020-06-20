@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
 #include "camera.h"
 #include "ellipsoid.h"
 #include "enemy.h"
@@ -15,12 +14,12 @@
 #include "log.h"
 #include "looptimer.h"
 #include "mathstuff.h"
+#include "misc.h"
 #include "place.h"
 #include "player.h"
 #include "showall.h"
 #include "sound.h"
 #include "wall.h"
-
 #include <SDL2/SDL.h>
 
 /*
@@ -97,14 +96,8 @@ static void handle_players_bumping_enemies(struct GameState *gs)
 				log_printf("%d enemies left", gs->nenemies);
 				sound_play("farts/fart*.wav");
 
-				int nguards = --gs->players[p].nguards;
+				int nguards = --gs->players[p].nguards;   // can become negative
 				log_printf("player %d now has %d guards", p, nguards);
-				if (nguards < 0) {
-					// TODO: needs something MUCH nicer than this...
-					log_printf("*********************");
-					log_printf("***   game over   ***");
-					log_printf("*********************");
-				}
 			}
 		}
 	}
@@ -136,7 +129,10 @@ static void get_all_ellipsoids(
 	*arrlen = ptr - result;
 }
 
-bool game_run(SDL_Window *win, const struct EllipsoidPic *plr1pic, const struct EllipsoidPic *plr2pic, const struct Place *pl)
+const struct EllipsoidPic *game_run(
+	SDL_Window *win,
+	const struct EllipsoidPic *plr1pic, const struct EllipsoidPic *plr2pic,
+	const struct Place *pl)
 {
 	SDL_Surface *winsurf = SDL_GetWindowSurface(win);
 	if (!winsurf)
@@ -148,15 +144,15 @@ bool game_run(SDL_Window *win, const struct EllipsoidPic *plr1pic, const struct 
 		.players = {
 			{
 				.ellipsoid = { .angle = pi, .epic = plr1pic, .center = { 2.5f, 0, 0.5f } },
-				.cam = { .screencentery = winsurf->h/2, .surface = camera_create_cropped_surface(
+				.cam = { .screencentery = winsurf->h/2, .surface = misc_create_cropped_surface(
 					winsurf, (SDL_Rect){ 0, 0, winsurf->w/2, winsurf->h }) },
-				.nguards = 20,
+				.nguards = 10,
 			},
 			{
 				.ellipsoid = { .angle = pi, .epic = plr2pic, .center = { 1.5f, 0, 0.5f } },
-				.cam = { .screencentery = winsurf->h/2, .surface = camera_create_cropped_surface(
+				.cam = { .screencentery = winsurf->h/2, .surface = misc_create_cropped_surface(
 					winsurf, (SDL_Rect){ winsurf->w/2, 0, winsurf->w/2, winsurf->h }) },
-				.nguards = 20,
+				.nguards = 10,
 			},
 		},
 	};
@@ -169,15 +165,15 @@ bool game_run(SDL_Window *win, const struct EllipsoidPic *plr1pic, const struct 
 		ellipsoid_update_transforms(&gs.enemies[i].ellipsoid);
 	}
 
+	const struct EllipsoidPic *winner;
 	struct LoopTimer lt = {0};
 
-	while(1){
+	while(gs.players[0].nguards >= 0 && gs.players[1].nguards >= 0) {
 		SDL_Event event;
 		while(SDL_PollEvent(&event)) {
 			if (!handle_event(event, &gs)) {
-				SDL_FreeSurface(gs.players[0].cam.surface);
-				SDL_FreeSurface(gs.players[1].cam.surface);
-				return false;
+				winner = NULL;
+				goto out;
 			}
 		}
 
@@ -204,4 +200,14 @@ bool game_run(SDL_Window *win, const struct EllipsoidPic *plr1pic, const struct 
 		SDL_UpdateWindowSurface(win);
 		looptimer_wait(&lt);
 	}
+
+	if (gs.players[0].nguards >= 0)
+		winner = plr1pic;
+	else
+		winner = plr2pic;
+
+out:
+	SDL_FreeSurface(gs.players[0].cam.surface);
+	SDL_FreeSurface(gs.players[1].cam.surface);
+	return winner;
 }
