@@ -1,4 +1,4 @@
-#include "game.h"
+#include "play.h"
 
 #include <assert.h>
 #include <stdbool.h>
@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <SDL2/SDL.h>
 #include "camera.h"
 #include "ellipsoid.h"
 #include "enemy.h"
@@ -20,7 +21,6 @@
 #include "showall.h"
 #include "sound.h"
 #include "wall.h"
-#include <SDL2/SDL.h>
 
 /*
 unpicked guard = guard that no player has picked or enemy destroyed
@@ -129,12 +129,13 @@ static void get_all_ellipsoids(
 	*arrlen = ptr - result;
 }
 
-const struct EllipsoidPic *game_run(
-	SDL_Window *win,
+enum MiscState play_the_game(
+	SDL_Window *wnd,
 	const struct EllipsoidPic *plr1pic, const struct EllipsoidPic *plr2pic,
+	const struct EllipsoidPic **winnerpic,
 	const struct Place *pl)
 {
-	SDL_Surface *winsurf = SDL_GetWindowSurface(win);
+	SDL_Surface *winsurf = SDL_GetWindowSurface(wnd);
 	if (!winsurf)
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 
@@ -165,14 +166,14 @@ const struct EllipsoidPic *game_run(
 		ellipsoid_update_transforms(&gs.enemies[i].ellipsoid);
 	}
 
-	const struct EllipsoidPic *winner;
 	struct LoopTimer lt = {0};
+	enum MiscState ret;
 
 	while(gs.players[0].nguards >= 0 && gs.players[1].nguards >= 0) {
 		SDL_Event event;
 		while(SDL_PollEvent(&event)) {
 			if (!handle_event(event, &gs)) {
-				winner = NULL;
+				ret = MISC_STATE_QUIT;
 				goto out;
 			}
 		}
@@ -197,17 +198,18 @@ const struct EllipsoidPic *game_run(
 		// horizontal line
 		SDL_FillRect(winsurf, &(SDL_Rect){ winsurf->w/2, 0, 1, winsurf->h }, SDL_MapRGB(winsurf->format, 0xff, 0xff, 0xff));
 
-		SDL_UpdateWindowSurface(win);
+		SDL_UpdateWindowSurface(wnd);
 		looptimer_wait(&lt);
 	}
+	ret = MISC_STATE_GAMEOVER;
 
 	if (gs.players[0].nguards >= 0)
-		winner = plr1pic;
+		*winnerpic = plr1pic;
 	else
-		winner = plr2pic;
+		*winnerpic = plr2pic;
 
 out:
 	SDL_FreeSurface(gs.players[0].cam.surface);
 	SDL_FreeSurface(gs.players[1].cam.surface);
-	return winner;
+	return ret;
 }

@@ -106,6 +106,7 @@ const struct Place *place_list(void)
 	if (!places_inited) {
 		for (int i = 0; i < place_count; i++)
 			init_place(&places[i]);
+		places_inited = true;
 	}
 	return places;
 }

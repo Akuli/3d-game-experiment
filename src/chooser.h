@@ -4,6 +4,7 @@
 #define PLAYERCHOOSER_H
 
 #include "ellipsoidpic.h"
+#include "misc.h"
 #include "place.h"
 #include <SDL2/SDL.h>
 
@@ -11,7 +12,7 @@
 Resulting ellipsoid pics are from player_get_epics(). Returns true to play
 game, false to quit.
 */
-bool chooser_run(
+enum MiscState chooser_run(
 	SDL_Window *win,
 	const struct EllipsoidPic **plr1epic, const struct EllipsoidPic **plr2epic,
 	const struct Place **pl);

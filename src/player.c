@@ -24,16 +24,35 @@ const struct EllipsoidPic *player_get_epics(const SDL_PixelFormat *fmt)
 	static const SDL_PixelFormat *cachedfmt = NULL;
 
 	if (!cachedfmt) {
+		assert(fmt != NULL);
 		cachedfmt = fmt;
 		// this loop can cause slow startup time
 		for (int i = 0; i < FILELIST_NPLAYERS; i++)
 			ellipsoidpic_load(&res[i], filelist_players[i], fmt);
 	}
 
-	assert(fmt == cachedfmt);
+	assert(fmt == NULL || fmt == cachedfmt);
 	return res;
 }
 
+const char *player_getname(const struct EllipsoidPic *epic)
+{
+	int i = epic - player_get_epics(NULL);
+	assert(0 <= i && i < FILELIST_NPLAYERS);
+	const char *path = filelist_players[i];
+
+	const char *prefix = "players/";
+	assert(strstr(path, prefix) == path);
+	path += strlen(prefix);
+
+	static char name[100] = {0};
+	strncpy(name, path, sizeof(name)-1);
+	char *dot = strrchr(name, '.');
+	assert(dot);
+	*dot = '\0';
+
+	return name;
+}
 
 static float get_jump_height(int jumpframe)
 {

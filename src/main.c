@@ -1,6 +1,6 @@
 #ifdef _WIN32
 	#include <direct.h>
-	#include <windows.h>
+	#include <wnddows.h>
 #else
 	#define _POSIX_C_SOURCE 200809L    // for chdir()
 	#include <unistd.h>
@@ -9,17 +9,18 @@
 #include <assert.h>
 #include <string.h>
 #include <time.h>
-
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 #include "camera.h"
 #include "chooser.h"
-#include "game.h"
+#include "play.h"
+#include "gameover.h"
+#include "misc.h"
 #include "player.h"
 #include "showall.h"
 #include "sound.h"
 #include "../generated/filelist.h"
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
 
 static void cd_assets(void)
 {
@@ -58,32 +59,38 @@ int main(int argc, char **argv)
 	if (TTF_Init() == -1)
 		log_printf_abort("TTF_Init failed: %s", TTF_GetError());
 
-	SDL_Window *win = SDL_CreateWindow(
+	SDL_Window *wnd = SDL_CreateWindow(
 		"TODO: title here", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, CAMERA_SCREEN_WIDTH, CAMERA_SCREEN_HEIGHT, 0);
-	if (!win)
+	if (!wnd)
 		log_printf_abort("SDL_CreateWindow failed: %s", SDL_GetError());
 
-	// TODO: pass this to chooser_run() and game_run()?
-	SDL_Surface *winsurf = SDL_GetWindowSurface(win);
-	if (!winsurf)
-		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
+	const struct EllipsoidPic *plr1pic, *plr2pic, *winner;
+	const struct Place *pl;
+	enum MiscState s = MISC_STATE_CHOOSER;
 
-	while(true){
-		const struct EllipsoidPic *plr1pic, *plr2pic;
-		const struct Place *pl;
-		if (!chooser_run(win, &plr1pic, &plr2pic, &pl))
+	while(1) {
+		switch(s) {
+		case MISC_STATE_CHOOSER:
+			log_printf("running chooser");
+			s = chooser_run(wnd, &plr1pic, &plr2pic, &pl);
 			break;
 
-		const struct EllipsoidPic *winner = game_run(win, plr1pic, plr2pic, pl);
-		if (!winner)
+		case MISC_STATE_PLAY:
+			log_printf("playing the game begins");
+			s = play_the_game(wnd, plr1pic, plr2pic, &winner, pl);
 			break;
 
-		const char *winnerpath = filelist_players[winner - player_get_epics(winsurf->format)];
-		printf("\n\nwinner path: %s\n\n\n", winnerpath);
+		case MISC_STATE_GAMEOVER:
+			log_printf("game is over");
+			s = game_over(wnd, winner);
+			break;
+
+		case MISC_STATE_QUIT:
+			log_printf("cleaning up for successful exit");
+			sound_deinit();
+			SDL_DestroyWindow(wnd);
+			SDL_Quit();
+			return 0;
+		}
 	}
-
-	log_printf("cleaning up for successful exit");
-	sound_deinit();
-	SDL_DestroyWindow(win);
-	SDL_Quit();
 }

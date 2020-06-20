@@ -39,7 +39,7 @@ void button_refresh(struct Button *butt)
 	}
 
 	if (butt->text) {
-		SDL_Surface *s = misc_create_text_surface(butt->text, black_color);
+		SDL_Surface *s = misc_create_text_surface(butt->text, black_color, 50);
 		misc_blit_with_center(s, butt->cachesurf, NULL);
 		SDL_FreeSurface(s);
 	}
