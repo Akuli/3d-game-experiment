@@ -207,8 +207,13 @@ static void debug_print_dependencies(const struct ShowingState *st)
 }
 #endif
 
-static void add_dependencies_and_id_to_sorted_array(struct ShowingState *st, ID **ptr, ID id)
+static void add_dependencies_and_id_to_sorted_array(struct ShowingState *st, ID **ptr, ID id, int depth)
 {
+	if (depth > PLACE_MAX_WALLS + SHOWALL_MAX_ELLIPSOIDS) {
+		// don't know when this could happen, but prevent disasters
+		log_printf("hitting recursion depth limit, something weird is happening");
+		return;
+	}
 	if (st->infos[id].insortedarray)
 		return;
 
@@ -216,7 +221,7 @@ static void add_dependencies_and_id_to_sorted_array(struct ShowingState *st, ID 
 	st->infos[id].insortedarray = true;   
 
 	for (int i = 0; i < st->infos[id].ndeps; i++)
-		add_dependencies_and_id_to_sorted_array(st, ptr, st->infos[id].deps[i]);
+		add_dependencies_and_id_to_sorted_array(st, ptr, st->infos[id].deps[i], depth+1);
 
 	*(*ptr)++ = id;
 }
@@ -226,7 +231,7 @@ static void create_sorted_array(struct ShowingState *st, ID *sorted)
 {
 	ID *ptr = sorted;
 	for (int i = 0; i < st->nvisible; i++)
-		add_dependencies_and_id_to_sorted_array(st, &ptr, st->visible[i]);
+		add_dependencies_and_id_to_sorted_array(st, &ptr, st->visible[i], 0);
 	assert(sorted + st->nvisible == ptr);
 }
 
