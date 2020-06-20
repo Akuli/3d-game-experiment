@@ -8,7 +8,12 @@ bool interval_overlap(int start1, int end1, int start2, int end2)
 {
 	int ostart = max(start1, start2);
 	int oend = min(end1, end2);
-	return (ostart < oend);
+
+	/*
+	Allow equality here, so that overlaps can happen with e.g. start1==end1. This
+	helps with showing very thin walls on screen.
+	*/
+	return (ostart <= oend);
 }
 
 static void remove_overlaps(struct Interval in, struct Interval *bot, struct Interval **top)

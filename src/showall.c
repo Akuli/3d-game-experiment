@@ -192,9 +192,12 @@ static void setup_dependencies(struct ShowingState *st)
 #if 0
 static void debug_print_dependencies(const struct ShowingState *st)
 {
-	printf("\ndependency dump for camera %s:\n", st->cam->id);
+	printf("\ndependency dump:\n");
 	for (int i = 0; i < st->nvisible; i++) {
 		ID id = st->visible[i];
+		if (st->infos[id].ndeps == 0)
+			continue;
+
 		printf("   %-3d --> ", id);
 		for (int d = 0; d < st->infos[id].ndeps; d++)
 			printf("%s%d", (d?",":""), st->infos[id].deps[d]);
