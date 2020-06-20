@@ -48,6 +48,7 @@ struct Button {
 
 	// cachesurf is blitted to destsurf on each frame
 	SDL_Surface *cachesurf;
+	unsigned char *cachesurfdata;
 	SDL_Surface *destsurf;
 	SDL_Point center;
 

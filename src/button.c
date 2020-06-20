@@ -6,37 +6,45 @@
 
 static const SDL_Color black_color = { 0x00, 0x00, 0x00, 0xff };
 
-static SDL_Surface *create_image_surface(const char *path)
+static SDL_Surface *create_image_surface(const char *path, unsigned char **data)
 {
 	int fmt, w, h;
-	unsigned char *data = stbi_load(path, &w, &h, &fmt, 4);
-	if (!data)
+	if (!( *data = stbi_load(path, &w, &h, &fmt, 4) ))
 		log_printf_abort("loading image from '%s' failed: %s", path, stbi_failure_reason());
 
 	// SDL_CreateRGBSurfaceWithFormatFrom docs have example code for using it with stbi :D
 	SDL_Surface *s = SDL_CreateRGBSurfaceWithFormatFrom(
-		data, w, h, 32, 4*w, SDL_PIXELFORMAT_RGBA32);
+		*data, w, h, 32, 4*w, SDL_PIXELFORMAT_RGBA32);
 	if (!s)
 		log_printf_abort("SDL_CreateRGBSurfaceWithFormatFrom failed: %s", SDL_GetError());
 	return s;
 }
 
-void button_refresh(struct Button *butt)
+void button_destroy(const struct Button *butt)
 {
 	if (butt->cachesurf)
 		SDL_FreeSurface(butt->cachesurf);
+	if (butt->cachesurfdata)
+		stbi_image_free(butt->cachesurfdata);
+}
+
+void button_refresh(struct Button *butt)
+{
+	button_destroy(butt);
 
 	char path[100];
 	snprintf(path, sizeof path, "buttons/%s/%s/%s",
 		butt->big ? "big" : "small",
 		butt->horizontal ? "horizontal" : "vertical",
 		butt->pressed ? "pressed.png" : "normal.png");
-	butt->cachesurf = create_image_surface(path);
+	butt->cachesurf = create_image_surface(path, &butt->cachesurfdata);
 
 	if (butt->imgpath) {
-		SDL_Surface *s = create_image_surface(butt->imgpath);
+		unsigned char *data;
+		SDL_Surface *s = create_image_surface(butt->imgpath, &data);
 		misc_blit_with_center(s, butt->cachesurf, NULL);
 		SDL_FreeSurface(s);
+		stbi_image_free(data);
 	}
 
 	if (butt->text) {
@@ -100,9 +108,4 @@ void button_handle_event(const SDL_Event *evt, struct Button *butt)
 		return;
 	}
 	button_refresh(butt);
-}
-
-void button_destroy(const struct Button *butt)
-{
-	SDL_FreeSurface(butt->cachesurf);
 }

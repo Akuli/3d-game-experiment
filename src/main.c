@@ -84,7 +84,7 @@ int main(int argc, char **argv)
 			break;
 
 		case MISC_STATE_GAMEOVER:
-			log_printf("game is over");
+			log_printf("showing game over screen");
 			s = game_over(wnd, winner);
 			break;
 
