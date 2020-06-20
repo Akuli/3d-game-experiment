@@ -92,12 +92,12 @@ static void handle_players_bumping_enemies(struct GameState *gs)
 	for (int p = 0; p < 2; p++) {
 		for (int e = gs->nenemies - 1; e >= 0; e--) {
 			if (ellipsoid_bump_amount(&gs->players[p].ellipsoid, &gs->enemies[e].ellipsoid) != 0) {
-				gs->enemies[e] = gs->enemies[--gs->nenemies];
-				log_printf("%d enemies left", gs->nenemies);
 				sound_play("farts/fart*.wav");
-
 				int nguards = --gs->players[p].nguards;   // can become negative
-				log_printf("player %d now has %d guards", p, nguards);
+
+				// If the game is over, then leave the enemy visible for game over screen
+				if (nguards >= 0)
+					gs->enemies[e] = gs->enemies[--gs->nenemies];
 			}
 		}
 	}

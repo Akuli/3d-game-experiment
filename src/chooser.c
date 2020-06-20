@@ -38,13 +38,13 @@ struct ChooserState {
 static void calculate_player_chooser_geometry_stuff(
 	int leftx, SDL_Rect *preview, SDL_Point *prevbcenter, SDL_Point *nextbcenter)
 {
-	preview->w = CAMERA_SCREEN_WIDTH/2 - 2*SMALL_BUTTON_SIZE;
+	preview->w = CAMERA_SCREEN_WIDTH/2 - 2*BUTTON_SIZE_SMALL;
 	preview->h = PLAYER_CHOOSER_HEIGHT;
 	preview->x = leftx + CAMERA_SCREEN_WIDTH/4 - preview->w/2;
 	preview->y = FONT_SIZE;
 
-	prevbcenter->x = leftx + SMALL_BUTTON_SIZE/2;
-	nextbcenter->x = leftx + CAMERA_SCREEN_WIDTH/2 - SMALL_BUTTON_SIZE/2;
+	prevbcenter->x = leftx + BUTTON_SIZE_SMALL/2;
+	nextbcenter->x = leftx + CAMERA_SCREEN_WIDTH/2 - BUTTON_SIZE_SMALL/2;
 	prevbcenter->y = FONT_SIZE + PLAYER_CHOOSER_HEIGHT/2;
 	nextbcenter->y = FONT_SIZE + PLAYER_CHOOSER_HEIGHT/2;
 }
@@ -245,8 +245,8 @@ enum MiscState chooser_run(
 out:
 	for (int i = 0; i < 2; i++) {
 		SDL_FreeSurface(st.playerch[i].cam.surface);
-		SDL_FreeSurface(st.playerch[i].prevbtn.cachesurf);
-		SDL_FreeSurface(st.playerch[i].nextbtn.cachesurf);
+		button_destroy(&st.playerch[i].prevbtn);
+		button_destroy(&st.playerch[i].nextbtn);
 	}
 
 	*plr1epic = st.playerch[0].epic;

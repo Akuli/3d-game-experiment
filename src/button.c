@@ -1,4 +1,5 @@
 #include "button.h"
+#include <assert.h>
 #include "log.h"
 #include "misc.h"
 #include "../stb/stb_image.h"
@@ -39,9 +40,31 @@ void button_refresh(struct Button *butt)
 	}
 
 	if (butt->text) {
-		SDL_Surface *s = misc_create_text_surface(butt->text, black_color, 50);
-		misc_blit_with_center(s, butt->cachesurf, NULL);
-		SDL_FreeSurface(s);
+		int fontsz = 50;   // adjust this for small buttons if needed
+
+		const char *newln = strchr(butt->text, '\n');
+		if (newln) {
+			assert(strrchr(butt->text, '\n') == newln);   // no more than one '\n'
+
+			char line1[100];
+			snprintf(line1, sizeof line1, "%.*s", (int)(newln - butt->text), butt->text);
+			const char *line2 = newln + 1;
+
+			fontsz = (int)(fontsz * 0.7f);
+			SDL_Surface *s1 = misc_create_text_surface(line1, black_color, fontsz);
+			SDL_Surface *s2 = misc_create_text_surface(line2, black_color, fontsz);
+
+			SDL_BlitSurface(s1, NULL, butt->cachesurf, &(SDL_Rect){
+				butt->cachesurf->w/2 - s1->w/2, butt->cachesurf->h/2 - s2->h, s1->w, s1->h });
+			SDL_BlitSurface(s2, NULL, butt->cachesurf, &(SDL_Rect){
+				butt->cachesurf->w/2 - s2->w/2, butt->cachesurf->h/2, s2->w, s2->h });
+			SDL_FreeSurface(s1);
+			SDL_FreeSurface(s2);
+		} else {
+			SDL_Surface *s = misc_create_text_surface(butt->text, black_color, 50);
+			misc_blit_with_center(s, butt->cachesurf, NULL);
+			SDL_FreeSurface(s);
+		}
 	}
 }
 
@@ -77,4 +100,9 @@ void button_handle_event(const SDL_Event *evt, struct Button *butt)
 		return;
 	}
 	button_refresh(butt);
+}
+
+void button_destroy(const struct Button *butt)
+{
+	SDL_FreeSurface(butt->cachesurf);
 }
