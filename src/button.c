@@ -3,7 +3,7 @@
 #include "misc.h"
 #include "../stb/stb_image.h"
 
-static const SDL_Color white_color = { 0xff, 0xff, 0xff, 0xff };
+static const SDL_Color black_color = { 0x00, 0x00, 0x00, 0xff };
 
 static SDL_Surface *create_image_surface(const char *path)
 {
@@ -39,7 +39,7 @@ void button_refresh(struct Button *butt)
 	}
 
 	if (butt->text) {
-		SDL_Surface *s = misc_create_text_surface(butt->text, white_color);
+		SDL_Surface *s = misc_create_text_surface(butt->text, black_color);
 		misc_blit_with_center(s, butt->cachesurf, NULL);
 		SDL_FreeSurface(s);
 	}
