@@ -1,9 +1,13 @@
 #include "place.h"
 #include <assert.h>
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+#include "../generated/filelist.h"
 #include "log.h"
 
 /*
-Small language for specifying places as strings:
+Small language for specifying places in ASSETS_DIR/places/placename.txt files:
 - 1x1 squares on xz plane with integer corner coordinates are built of parts like
 
 	 --
@@ -11,36 +15,74 @@ Small language for specifying places as strings:
 	 --
 
 - any of the '--' or '|' walls may be replaced with spaces
-- each string must have same length
-- the whole thing gets wrapped in a big rectangle of walls, so these walls are ignored:
-	- topmost wall (first string)
-	- bottommost wall (last string)
-	- left wall (first character of strings 1,3,5,... in 0-based indexing)
-	- right wall (last character of those strings)
+- each line is padded with spaces to have same length
+- must have these walls:
+	- topmost wall (first line)
+	- bottommost wall (last line)
+	- left wall (first character of lines 1,3,5,... in 0-based indexing)
+	- right wall (last character of those lines)
 - NULL after last row
 */
 
-static struct Place places[] = {
-	{ "Foo", {0}, 0, 0, 0, (const char *[]){
-		" -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
-		"|                                                     |",
-		"    --    -- --       --    -- --          --    --    ",
-		"|     |     |  |     |        |     |  |  |     |     |",
-		"    --                --                   --    --    ",
-		"|     |     |  |        |     |     |  |  |     |     |",
-		"    --    -- --       --             --                ",
-		"|                                                     |",
-		" -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
-		NULL,
-	}},
-};
+static void reading_error(const char *path)
+{
+	log_printf_abort("error while reading '%s': %s", path, strerror(errno));
+}
 
+static void remove_trailing_newline(char *s)
+{
+	size_t len = strlen(s);
+	if (len > 0 && s[len-1] == '\n')
+		s[len-1] = '\0';
+}
 
+// make sure that s is big enough for len+1 bytes
+static void add_trailing_spaces(char *s, size_t len)
+{
+	s[len] = '\0';
+	memset(s + strlen(s), ' ', len - strlen(s));
+	assert(strlen(s) == len);
+}
 
+static char *read_file_with_trailing_spaces_added(const char *path, int *linelen, int *nlines)
+{
+	FILE *f = fopen(path, "r");
+	if (!f)
+		log_printf_abort("opening '%s' failed: %s", path, strerror(errno));
 
+	char buf[1024];
+	*nlines = 0;
+	*linelen = 0;
+	while (fgets(buf, sizeof buf, f)) {
+		++*nlines;
+		remove_trailing_newline(buf);
+		*linelen = max(*linelen, strlen(buf));
+	}
 
-const int place_count = sizeof(places)/sizeof(places[0]);
-static bool places_inited = false;
+	if (ferror(f))
+		reading_error(path);
+	if (*linelen == 0)
+		log_printf_abort("file '%s' is empty or contains only newline characters", path);
+
+	if (fseek(f, 0, SEEK_SET) < 0)
+		log_printf_abort("seeking to beginning of file '%s' failed: %s", path, strerror(errno));
+
+	char *res = calloc(*nlines, *linelen + 1);
+	if (!res)
+		log_printf_abort("not enough memory");
+
+	for (char *ptr = res; ptr < res + (*linelen + 1)*(*nlines); ptr += *linelen + 1) {
+		if (!fgets(buf, sizeof buf, f))
+			reading_error(path);
+		remove_trailing_newline(buf);
+		assert(*linelen + 1 <= sizeof(buf));
+		add_trailing_spaces(buf, *linelen);
+		strcpy(ptr, buf);
+	}
+
+	fclose(f);
+	return res;
+}
 
 static void add_wall(struct Place *pl, int x, int z, enum WallDirection dir)
 {
@@ -74,25 +116,23 @@ static void parse_vertical_wall_string(const char *part, bool *leftwall, bool *r
 	*rightwall = (part[3] == '|');
 }
 
-static void init_place(struct Place *pl)
+static void path_to_name(const char *path, char *res, size_t sizeofres)
 {
-	assert(pl->name);
-	assert(pl->spec[0]);
+	const char *prefix = "places/";
+	assert(strstr(path, prefix) == path);
+	path += strlen(prefix);
 
-	size_t len = strlen(pl->spec[0]);
-	assert(len % 3 == 1);  // e.g. " -- " or "|  |", one more column means off by 3
-	pl->xsize = len / 3;
-	assert(pl->xsize > 0);
+	const char *dot = strrchr(path, '.');
+	assert(dot);
+	snprintf(res, sizeofres, "%.*s", (int)(dot - path), path);
+}
 
-	int n;
-	for (n = 0; pl->spec[n]; n++)
-		assert(strlen(pl->spec[pl->zsize]) == len);
+static void init_place(struct Place *pl, const char *path)
+{
+	path_to_name(path, pl->name, sizeof(pl->name));
 
-	assert(n % 2 == 1);   // e.g. { " -- ", "|  |", " -- " }, one more row means off by 2
-	pl->zsize = n/2;
-	assert(pl->zsize > 0);
-
-	pl->nwalls = 0;
+	int linelen, nlines;
+	char *fdata = read_file_with_trailing_spaces_added(path, &linelen, &nlines);
 
 	/*
 	 ---------> x
@@ -103,12 +143,23 @@ static void init_place(struct Place *pl)
 	z
 	*/
 
+	assert(linelen % 3 == 1);  // e.g. " -- " or "|  |", one more column means off by 3
+	pl->xsize = linelen / 3;
+	assert(nlines % 2 == 1);   // e.g. { " -- ", "|  |", " -- " }, one more row means off by 2
+	pl->zsize = nlines/2;
+
+	pl->nwalls = 0;
 	for (int z = 0; z < pl->zsize; z++) {
 		for (int x = 0; x < pl->xsize; x++) {
+			//log_printf("Parsing lines %d,%d,%d starting at column %d in file '%s'", 2*z, 2*z+1, 2*z+2, 3*x, path);
+			const char *toprow = fdata + (2*z    )*(linelen + 1) + 3*x;
+			const char *midrow = fdata + (2*z + 1)*(linelen + 1) + 3*x;
+			const char *botrow = fdata + (2*z + 2)*(linelen + 1) + 3*x;
+
 			bool top, bottom, left, right;
-			top = parse_horizontal_wall_string(pl->spec[2*z] + 3*x);
-			parse_vertical_wall_string(pl->spec[2*z + 1] + 3*x, &left, &right);
-			bottom = parse_horizontal_wall_string(pl->spec[2*z + 2] + 3*x);
+			top = parse_horizontal_wall_string(toprow);
+			parse_vertical_wall_string(midrow, &left, &right);
+			bottom = parse_horizontal_wall_string(botrow);
 
 			// place must have surrounding left and top walls
 			if (x == 0)
@@ -136,15 +187,23 @@ static void init_place(struct Place *pl)
 			if (right)  add_wall(pl, x+1, z,   WALL_DIR_ZY);
 		}
 	}
-	log_printf("created %d walls", pl->nwalls);
+
+	free(fdata);
+	log_printf("created %d walls for place '%s'", pl->nwalls, pl->name);
 }
 
 const struct Place *place_list(void)
 {
-	if (!places_inited) {
-		for (int i = 0; i < place_count; i++)
-			init_place(&places[i]);
-		places_inited = true;
-	}
-	return places;
+	static bool inited = false;
+	static struct Place res[FILELIST_NPLACES];
+
+	if (inited)
+		return res;
+
+	log_printf("start");
+	for (int i = 0; i < FILELIST_NPLACES; i++)
+		init_place(&res[i], filelist_places[i]);
+	log_printf("end");
+	inited = true;
+	return res;
 }

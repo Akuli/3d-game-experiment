@@ -6,21 +6,14 @@
 #define PLACE_MAX_WALLS 200
 
 struct Place {
-	const char *name;
+	char name[50];
 	struct Wall walls[PLACE_MAX_WALLS];
 	int nwalls;
-
-	// players are allowed to be between x=0 and x=xsize
-	int xsize, zsize;
-
-	// rest of this struct is only for place.c
-	const char *const *spec;
+	int xsize, zsize;    // players and enemies must have 0 <= x <= xsize, 0 <= z <= zsize
 };
 
-extern const int place_count;
-
 /*
-Returns a statically allocated array of places of length place_count (same
+Returns a statically allocated array of places of length FILELIST_NPLACES (same
 array every time). All walls are initialized.
 */
 const struct Place *place_list(void);

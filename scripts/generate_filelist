@@ -48,11 +48,10 @@ case $2 in
 esac
 
 sounds=$(find sounds -name '*.wav' | sort)
-players=$(printf '%s\n' players/*.png | LC_ALL=C sort)
-enemies=$(printf '%s\n' enemies/*.png | LC_ALL=C sort)
 
 # variable names written here as they are to make this script more greppable. All
 # the things are sorted to make ui consistent and binary searching in sound.c work.
 create_string_array filelist_sounds FILELIST_NSOUNDS $(find sounds -name '*.wav' | sort)
 create_string_array filelist_players FILELIST_NPLAYERS players/*.png
 create_string_array filelist_enemies FILELIST_NENEMIES enemies/*.png
+create_string_array filelist_places FILELIST_NPLACES places/*.txt
