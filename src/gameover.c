@@ -18,7 +18,8 @@ enum MiscState game_over(
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 
 	char msg[100];
-	snprintf(msg, sizeof msg, "%s wins!", player_getname(winnerpic));
+	player_epic_name(winnerpic, msg, sizeof(msg)/2);
+	strcat(msg, " wins!");
 	SDL_Surface *winnertext = misc_create_text_surface(msg, white_color, 60);
 
 	enum MiscState state = MISC_STATE_GAMEOVER;

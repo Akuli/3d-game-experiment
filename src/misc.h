@@ -26,5 +26,8 @@ to be much faster than blitting. Never returns NULL.
 */
 SDL_Surface *misc_create_cropped_surface(SDL_Surface *surf, SDL_Rect r);
 
+// "bla/bla/file.txt" --> "file"
+void misc_basename_without_extension(const char *path, char *name, int sizeofname);
+
 
 #endif    // MISC_H

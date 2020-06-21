@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "../generated/filelist.h"
+#include "misc.h"
 #include "log.h"
 
 /*
@@ -75,7 +76,7 @@ static char *read_file_with_trailing_spaces_added(const char *path, int *linelen
 		if (!fgets(buf, sizeof buf, f))
 			reading_error(path);
 		remove_trailing_newline(buf);
-		assert(*linelen + 1 <= sizeof(buf));
+		assert(sizeof(buf) >= *linelen + 1);
 		add_trailing_spaces(buf, *linelen);
 		strcpy(ptr, buf);
 	}
@@ -116,20 +117,9 @@ static void parse_vertical_wall_string(const char *part, bool *leftwall, bool *r
 	*rightwall = (part[3] == '|');
 }
 
-static void path_to_name(const char *path, char *res, size_t sizeofres)
-{
-	const char *prefix = "places/";
-	assert(strstr(path, prefix) == path);
-	path += strlen(prefix);
-
-	const char *dot = strrchr(path, '.');
-	assert(dot);
-	snprintf(res, sizeofres, "%.*s", (int)(dot - path), path);
-}
-
 static void init_place(struct Place *pl, const char *path)
 {
-	path_to_name(path, pl->name, sizeof(pl->name));
+	misc_basename_without_extension(path, pl->name, sizeof(pl->name));
 
 	int linelen, nlines;
 	char *fdata = read_file_with_trailing_spaces_added(path, &linelen, &nlines);

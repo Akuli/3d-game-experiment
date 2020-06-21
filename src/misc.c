@@ -45,3 +45,17 @@ SDL_Surface *misc_create_cropped_surface(SDL_Surface *surf, SDL_Rect r)
 		log_printf_abort("SDL_CreateRGBSurfaceFrom failed: %s", SDL_GetError());
 	return res;
 }
+
+void misc_basename_without_extension(const char *path, char *name, int sizeofname)
+{
+	if (strrchr(path, '/'))
+		path = strrchr(path, '/') + 1;
+	if (strrchr(path, '\\'))
+		path = strrchr(path, '\\') + 1;
+
+	const char *end = strchr(path, '.');
+	if (!end)
+		end = path + strlen(path);
+
+	snprintf(name, sizeofname, "%.*s", (int)(end - path), path);
+}

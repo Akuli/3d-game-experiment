@@ -37,32 +37,34 @@ static void calculate_player_chooser_geometry_stuff(
 	nextbcenter->y = FONT_SIZE + PLAYER_CHOOSER_HEIGHT/2;
 }
 
-static void update_name_display(struct ChooserPlayerStuff *cps)
+static void update_player_name_display(struct ChooserPlayerStuff *plrch)
 {
-	if (cps->nametextsurf)
-		SDL_FreeSurface(cps->nametextsurf);
-	cps->nametextsurf = misc_create_text_surface(
-		player_getname(cps->epic), white_color, FONT_SIZE);
+	if (plrch->nametextsurf)
+		SDL_FreeSurface(plrch->nametextsurf);
+
+	char name[100];
+	player_epic_name(plrch->epic, name, sizeof name);
+	plrch->nametextsurf = misc_create_text_surface(name, white_color, FONT_SIZE);
 }
 
-static void rotate_player_chooser(struct ChooserPlayerStuff *cps, int dir)
+static void rotate_player_chooser(struct ChooserPlayerStuff *plrch, int dir)
 {
 	assert(dir == +1 || dir == -1);
 
-	cps->epic += dir;
-	if (cps->epic == player_get_epics(NULL) - 1)
-		cps->epic += FILELIST_NPLAYERS;
-	else if (cps->epic == player_get_epics(NULL) + FILELIST_NPLAYERS)
-		cps->epic -= FILELIST_NPLAYERS;
-	update_name_display(cps);
+	plrch->epic += dir;
+	if (plrch->epic == player_get_epics(NULL) - 1)
+		plrch->epic += FILELIST_NPLAYERS;
+	else if (plrch->epic == player_get_epics(NULL) + FILELIST_NPLAYERS)
+		plrch->epic -= FILELIST_NPLAYERS;
+	update_player_name_display(plrch);
 
 	// why subtracting: more angle = clockwise from above = left in chooser
 	float pi = acosf(-1);
-	cps->anglediff -= dir * (2*pi) / (float)FILELIST_NPLAYERS;
+	plrch->anglediff -= dir * (2*pi) / (float)FILELIST_NPLAYERS;
 }
 
-static void rotate_left (void *playerch) { rotate_player_chooser(playerch, -1); }
-static void rotate_right(void *playerch) { rotate_player_chooser(playerch, +1); }
+static void rotate_left (void *plrch) { rotate_player_chooser(plrch, -1); }
+static void rotate_right(void *plrch) { rotate_player_chooser(plrch, +1); }
 
 static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int scnext)
 {
@@ -73,8 +75,8 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 	calculate_player_chooser_geometry_stuff(leftx, &preview, &prevc, &nextc);
 
 	float pi = acosf(-1);
-	struct ChooserPlayerStuff *cps = &ch->playerch[idx];
-	*cps = (struct ChooserPlayerStuff){
+	struct ChooserPlayerStuff *plrch = &ch->playerch[idx];
+	*plrch = (struct ChooserPlayerStuff){
 		.epic = ch->ellipsoids[idx].epic,
 		.leftx = leftx,
 		.prevbtn = {
@@ -83,6 +85,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 			.destsurf = ch->winsurf,
 			.center = prevc,
 			.onclick = rotate_left,
+			.onclickdata = plrch,
 		},
 		.nextbtn = {
 			.imgpath = "arrows/right.png",
@@ -90,6 +93,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 			.destsurf = ch->winsurf,
 			.center = nextc,
 			.onclick = rotate_right,
+			.onclickdata = plrch,
 		},
 		.cam = {
 			.screencentery = 0,
@@ -98,28 +102,25 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 		},
 	};
 
-	cps->prevbtn.onclickdata = cps;
-	cps->nextbtn.onclickdata = cps;
-
-	update_name_display(cps);
-	button_refresh(&cps->prevbtn);
-	button_refresh(&cps->nextbtn);
-	camera_update_caches(&cps->cam);
+	update_player_name_display(plrch);
+	button_refresh(&plrch->prevbtn);
+	button_refresh(&plrch->nextbtn);
+	camera_update_caches(&plrch->cam);
 }
 
-static void turn_camera(struct ChooserPlayerStuff *cps)
+static void turn_camera(struct ChooserPlayerStuff *plrch)
 {
 	float maxturn = 50.0f / (CAMERA_FPS * FILELIST_NPLAYERS);
 	assert(maxturn > 0);
-	float turn = max(-maxturn, min(maxturn, cps->anglediff));
+	float turn = max(-maxturn, min(maxturn, plrch->anglediff));
 
-	cps->cam.angle += turn;
-	cps->anglediff -= turn;
+	plrch->cam.angle += turn;
+	plrch->anglediff -= turn;
 
-	cps->cam.location = mat3_mul_vec3(
-		mat3_rotation_xz(cps->cam.angle),
+	plrch->cam.location = mat3_mul_vec3(
+		mat3_rotation_xz(plrch->cam.angle),
 		(Vec3){ 0, CAMERA_Y, CAMERA_XZ_DISTANCE_FROM_ORIGIN });
-	camera_update_caches(&cps->cam);
+	camera_update_caches(&plrch->cam);
 }
 
 // returns false when game should quit
@@ -136,13 +137,13 @@ static bool handle_event(const SDL_Event *evt, struct Chooser *ch)
 	return true;
 }
 
-static void show_player_chooser(const struct Chooser *ch, const struct ChooserPlayerStuff *cps)
+static void show_player_chooser(const struct Chooser *ch, const struct ChooserPlayerStuff *plrch)
 {
-	show_all(NULL, 0, ch->ellipsoids, FILELIST_NPLAYERS, &cps->cam);
-	button_show(&cps->prevbtn);
-	button_show(&cps->nextbtn);
-	misc_blit_with_center(cps->nametextsurf, ch->winsurf, &(SDL_Point){
-		cps->leftx + ch->winsurf->w/4,
+	show_all(NULL, 0, ch->ellipsoids, FILELIST_NPLAYERS, &plrch->cam);
+	button_show(&plrch->prevbtn);
+	button_show(&plrch->nextbtn);
+	misc_blit_with_center(plrch->nametextsurf, ch->winsurf, &(SDL_Point){
+		plrch->leftx + ch->winsurf->w/4,
 		FONT_SIZE + PLAYER_CHOOSER_HEIGHT + FONT_SIZE/2,
 	});
 }

@@ -43,11 +43,8 @@ has been called once with non-NULL fmt.
 */
 const struct EllipsoidPic *player_get_epics(const SDL_PixelFormat *fmt);
 
-/*
-Given a pointer to an ellipsoid pic from player_get_epics(), return name of player
-as statically allocated buffer, valid until next call of this function.
-*/
-const char *player_getname(const struct EllipsoidPic *epic);
+// Get name of player from a pointer to an ellipsoid pic from player_get_epics()
+void player_epic_name(const struct EllipsoidPic *epic, char *name, int sizeofname);
 
 // run before showing stuff to user
 void player_eachframe(struct Player *plr, const struct Wall *walls, int nwalls);

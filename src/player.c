@@ -4,6 +4,7 @@
 #include "ellipsoid.h"
 #include "log.h"
 #include "mathstuff.h"
+#include "misc.h"
 #include "sound.h"
 #include "wall.h"
 #include "../generated/filelist.h"
@@ -35,23 +36,11 @@ const struct EllipsoidPic *player_get_epics(const SDL_PixelFormat *fmt)
 	return res;
 }
 
-const char *player_getname(const struct EllipsoidPic *epic)
+void player_epic_name(const struct EllipsoidPic *epic, char *name, int sizeofname)
 {
 	int i = epic - player_get_epics(NULL);
 	assert(0 <= i && i < FILELIST_NPLAYERS);
-	const char *path = filelist_players[i];
-
-	const char *prefix = "players/";
-	assert(strstr(path, prefix) == path);
-	path += strlen(prefix);
-
-	static char name[100] = {0};
-	strncpy(name, path, sizeof(name)-1);
-	char *dot = strrchr(name, '.');
-	assert(dot);
-	*dot = '\0';
-
-	return name;
+	misc_basename_without_extension(filelist_players[i], name, sizeofname);
 }
 
 static float get_jump_height(int jumpframe)
