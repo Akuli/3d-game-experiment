@@ -78,26 +78,3 @@ $ source winbuildenv
 $ make clean
 $ make -j2 build/game.exe
 ```
-
-
-## Custom Assets
-
-Follow these instructions if you want to create your own assets for the game
-without committing them to git.
-
-Make a copy of the assets directory:
-
-```
-$ cp -r assets assets2
-```
-
-Now add or remove or modify the assets however you want. Run these commands to
-compile:
-
-```
-$ export ASSETS_DIR=assets2
-$ make clean all
-```
-
-Currently you need to `make clean` after adding or removing assets, because the
-Makefile rule that runs `scripts/generate_filelist` isn't clever enough.

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd $1
+cd assets
 
 if [ ! -f sources.txt ]; then
     echo "WARNING: sources.txt not found"

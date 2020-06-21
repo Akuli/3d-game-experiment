@@ -8,7 +8,7 @@
 #include "log.h"
 
 /*
-Small language for specifying places in ASSETS_DIR/places/placename.txt files:
+Small language for specifying places in assets/places/placename.txt files:
 - 1x1 squares on xz plane with integer corner coordinates are built of parts like
 
 	 --
