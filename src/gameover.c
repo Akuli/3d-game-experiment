@@ -47,7 +47,7 @@ enum MiscState game_over(
 	button_refresh(&playagainbtn);
 	button_refresh(&back2chooserbtn);
 
-	static struct LoopTimer lt = {0};
+	struct LoopTimer lt = {0};
 
 	while(state == MISC_STATE_GAMEOVER) {
 		SDL_Event e;
