@@ -3,9 +3,6 @@
 
 #include "wall.h"
 
-#define PLACE_XSIZE_MAX 25
-#define PLACE_ZSIZE_MAX 25
-
 #define PLACE_MAX_WALLS 200
 
 struct Place {
