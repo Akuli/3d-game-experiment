@@ -35,9 +35,11 @@ struct Button {
 	const char *imgpath;
 	const char *text;
 
-	bool big;
-	bool horizontal;
-	bool pressed;
+	enum ButtonFlags {
+		BUTTON_BIG = 0x01,
+		BUTTON_HORIZONTAL = 0x02,
+		BUTTON_PRESSED = 0x04,
+	} flags;
 
 	/*
 	Which keyboard key press corresponds to this button? Set this to -1 if you

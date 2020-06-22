@@ -204,8 +204,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 		.winsurf = winsurf,
 		.bigplaybtn = {
 			.text = "Play",
-			.big = true,
-			.horizontal = true,
+			.flags = BUTTON_BIG | BUTTON_HORIZONTAL,
 			.destsurf = winsurf,
 			.scancode = SDL_SCANCODE_RETURN,
 			.center = { CAMERA_SCREEN_WIDTH/2, (CAMERA_SCREEN_HEIGHT + PLAYER_CHOOSER_HEIGHT)/2 },

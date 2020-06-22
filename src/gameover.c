@@ -25,8 +25,7 @@ enum MiscState game_over(
 	enum MiscState state = MISC_STATE_GAMEOVER;
 	struct Button playagainbtn = {
 		.text = "Play again",
-		.big = true,
-		.horizontal = true,
+		.flags = BUTTON_BIG | BUTTON_HORIZONTAL,
 		.scancode = SDL_SCANCODE_F5,
 		.destsurf = wndsurf,
 		.center = { wndsurf->w/2, wndsurf->h/2 },
@@ -35,8 +34,7 @@ enum MiscState game_over(
 	};
 	struct Button back2chooserbtn = {
 		.text = "Change players\nor place",
-		.big = true,
-		.horizontal = true,
+		.flags = BUTTON_BIG | BUTTON_HORIZONTAL,
 		.scancode = SDL_SCANCODE_RETURN,
 		.destsurf = wndsurf,
 		.center = { playagainbtn.center.x, playagainbtn.center.y + BUTTON_SIZE_BIG },

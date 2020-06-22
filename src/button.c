@@ -33,9 +33,9 @@ void button_show(struct Button *butt)
 {
 	char path[100];
 	snprintf(path, sizeof path, "buttons/%s/%s/%s",
-		butt->big ? "big" : "small",
-		butt->horizontal ? "horizontal" : "vertical",
-		butt->pressed ? "pressed.png" : "normal.png");
+		(butt->flags & BUTTON_BIG) ? "big" : "small",
+		(butt->flags & BUTTON_HORIZONTAL) ? "horizontal" : "vertical",
+		(butt->flags & BUTTON_PRESSED) ? "pressed.png" : "normal.png");
 	add_image(path, butt->destsurf, butt->center, &butt->width, &butt->height);
 
 	if (butt->imgpath)
@@ -82,17 +82,17 @@ void button_handle_event(const SDL_Event *evt, struct Button *butt)
 	if ((
 		(evt->type == SDL_MOUSEBUTTONDOWN && mouse_on_button(&evt->button, butt)) ||
 		(evt->type == SDL_KEYDOWN && evt->key.keysym.scancode == butt->scancode)
-	) && !butt->pressed) {
-		butt->pressed = true;
+	) && !(butt->flags & BUTTON_PRESSED)) {
+		butt->flags |= BUTTON_PRESSED;
 	} else if ((
 		(evt->type == SDL_MOUSEBUTTONUP && mouse_on_button(&evt->button, butt)) ||
 		(evt->type == SDL_KEYUP && evt->key.keysym.scancode == butt->scancode)
-	) && butt->pressed) {
-		butt->pressed = false;
+	) && (butt->flags & BUTTON_PRESSED)) {
+		butt->flags &= ~BUTTON_PRESSED;
 		butt->onclick(butt->onclickdata);
-	} else if (evt->type == SDL_MOUSEBUTTONUP && butt->pressed) {
+	} else if (evt->type == SDL_MOUSEBUTTONUP && (butt->flags & BUTTON_PRESSED)) {
 		// if button has been pressed and mouse has been moved away, unpress button but don't click
-		butt->pressed = false;
+		butt->flags &= ~BUTTON_PRESSED;
 	} else {
 		// don't call button_show()
 		return;
