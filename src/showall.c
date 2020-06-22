@@ -300,6 +300,7 @@ void show_all(
 					.start = ymin,
 					.end = ymax,
 					.id = id,
+					.allowoverlap = (ID_TYPE(id) == ID_TYPE_WALL),
 				};
 			}
 		}

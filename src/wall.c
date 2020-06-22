@@ -172,6 +172,11 @@ void wall_yminmax(const struct WallCache *wc, int x, int *ymin, int *ymax)
 	}
 	*ymin = (int) linear_map(wc->top1.x, wc->top2.x, wc->top1.y, wc->top2.y, x);
 	*ymax = (int) linear_map(wc->bot1.x, wc->bot2.x, wc->bot1.y, wc->bot2.y, x);
+
+	if (*ymin < 0)
+		*ymin = 0;
+	if (*ymax >= wc->cam->surface->h)
+		*ymax = wc->cam->surface->h - 1;
 }
 
 Vec3 wall_center(const struct Wall *w)
@@ -223,7 +228,37 @@ bool wall_linedup(const struct Wall *w1, const struct Wall *w2)
 	return false;
 }
 
+static uint32_t *get_pixel_pointer(SDL_Surface *surf, int x, int y)
+{
+	unsigned char *ptr = surf->pixels;
+	ptr += y*surf->pitch;
+	ptr += x*sizeof(uint32_t);
+	return (uint32_t *)ptr;
+}
+
+/*
+My simple way to add transparency is average of red and whatever the
+color is. Works well enough for my needs.
+*/
+static inline unsigned char r_behind_wall(unsigned char r) { return r + (0xff-r)/2; }
+static inline unsigned char g_behind_wall(unsigned char g) { return g/2; }
+static inline unsigned char b_behind_wall(unsigned char b) { return b/2; }
+
 void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax)
 {
-	SDL_FillRect(wc->cam->surface, &(SDL_Rect){x, ymin, 1, ymax-ymin}, wc->color);
+	SDL_Surface *surf = wc->cam->surface;
+	const SDL_PixelFormat *fmt = wc->cam->surface->format;
+
+	assert(surf->pitch % sizeof(uint32_t) == 0);
+	int mypitch = surf->pitch / sizeof(uint32_t);
+
+	uint32_t *start = (uint32_t *)surf->pixels + ymin*mypitch + x;
+	uint32_t *end   = (uint32_t *)surf->pixels + ymax*mypitch + x;
+	for (uint32_t *ptr = start; ptr < end; ptr += mypitch) {
+		*ptr =
+			(r_behind_wall((*ptr >> fmt->Rshift) & 0xff) << fmt->Rshift) |
+			(g_behind_wall((*ptr >> fmt->Gshift) & 0xff) << fmt->Gshift) |
+			(b_behind_wall((*ptr >> fmt->Bshift) & 0xff) << fmt->Bshift) |
+			(*ptr & fmt->Amask);
+	}
 }

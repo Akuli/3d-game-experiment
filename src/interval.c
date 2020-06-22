@@ -54,10 +54,11 @@ int interval_non_overlapping(const struct Interval *in, int inlen, struct Interv
 {
 	struct Interval *top = out;
 	for (int i = 0; i < inlen; i++) {
-		remove_overlaps(in[i], out, &top);
+		if (!in[i].allowoverlap)
+			remove_overlaps(in[i], out, &top);
 		*top++ = in[i];
 	}
 
-	assert(top >= out);
+	assert(out <= top && top <= out + INTERVAL_NON_OVERLAPPING_MAX(inlen));
 	return (top - out);
 }

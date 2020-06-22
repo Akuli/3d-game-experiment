@@ -9,6 +9,12 @@ struct Interval {
 	int start;
 	int end;
 	int id;
+
+	/*
+	If this is true, then interval_non_overlapping() won't remove parts of
+	intervals that are "under" this interval
+	*/
+	bool allowoverlap;
 };
 
 // do intervals [start1,end1] and [start2,end2] overlap?
