@@ -1,13 +1,22 @@
 #ifdef _WIN32
+	#include <direct.h>
 	#include <windows.h>
+	#define my_mkdir(path) _mkdir((path))
 #else
 	#include <glob.h>
+	#include <sys/stat.h>
+	#include <sys/types.h>
+	// python uses 777 as default perms, see help(os.mkdir)
+	#define my_mkdir(path) mkdir((path), 0777)
 #endif
 
 #include "log.h"
 #include "math.h"
 #include <assert.h>
+#include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <SDL2/SDL.h>
 
@@ -17,7 +26,10 @@ static FILE *logfile = NULL;
 static void close_log_file(void) { fclose(logfile); }
 static void open_log_file(void)
 {
-	system("mkdir logs");   // works on windows and posix
+	if (my_mkdir("logs") == -1) {
+		log_printf("mkdir error: %s", strerror(errno));
+		// don't stop here, it could e.g. exist already
+	}
 
 	char fname[100] = {0};
 	strftime(
@@ -28,10 +40,8 @@ static void open_log_file(void)
 
 	if (( logfile = fopen(fname, "a") ))
 		atexit(close_log_file);
-	else {
-		// log_init() hasn't completed yet, so log_print() would do nothing
-		fprintf(stderr, "opening log file failed: %s\n", strerror(errno));
-	}
+	else
+		log_printf("opening log file failed: %s", strerror(errno));
 }
 
 static void logging_callback_for_sdl(void *userdata, int categ, SDL_LogPriority prio, const char *msg)
@@ -124,13 +134,16 @@ static void remove_old_logfiles(void)
 
 void log_init(void)
 {
-	open_log_file();
+	/*
+	Make sure that log_printf() will work while running open_log_file(), even
+	though it won't print to the log file (stderr only)
+	*/
 	SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_VERBOSE);
 	SDL_LogSetOutputFunction(logging_callback_for_sdl, NULL);
 
+	open_log_file();
 	log_printf("------------------------------");
 	log_printf("game is starting");
 	log_printf("------------------------------");
-
 	remove_old_logfiles();
 }
