@@ -5,6 +5,7 @@
 #include "log.h"
 #include "mathstuff.h"
 #include "misc.h"
+#include "place.h"
 #include "sound.h"
 #include "wall.h"
 #include "../generated/filelist.h"
@@ -63,7 +64,13 @@ static float get_y_radius(const struct Player *plr)
 	return PLAYER_YRADIUS_NOFLAT + 0.3f*get_jump_height(plr->jumpframe);
 }
 
-void player_eachframe(struct Player *plr, const struct Wall *walls, int nwalls)
+static void keep_ellipsoid_inside_place(struct Ellipsoid *el, const struct Place *pl)
+{
+	el->center.x = max(el->xzradius, min(pl->xsize - el->xzradius, el->center.x));
+	el->center.z = max(el->xzradius, min(pl->zsize - el->xzradius, el->center.z));
+}
+
+void player_eachframe(struct Player *plr, const struct Place *pl)
 {
 	if (plr->turning != 0) {
 		plr->ellipsoid.angle += (RADIANS_PER_SECOND / (float)CAMERA_FPS) * (float)plr->turning;
@@ -94,8 +101,9 @@ void player_eachframe(struct Player *plr, const struct Wall *walls, int nwalls)
 
 	plr->ellipsoid.center.y = y + plr->ellipsoid.yradius;
 
-	for (int i = 0; i < nwalls; i++)
-		wall_bumps_ellipsoid(&walls[i], &plr->ellipsoid);
+	for (int i = 0; i < pl->nwalls; i++)
+		wall_bumps_ellipsoid(&pl->walls[i], &plr->ellipsoid);
+	keep_ellipsoid_inside_place(&plr->ellipsoid, pl);
 
 	Vec3 diff = { 0, 0, CAMERA_BEHIND_PLAYER };
 	vec3_apply_matrix(&diff, mat3_rotation_xz(plr->ellipsoid.angle));

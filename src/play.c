@@ -181,7 +181,7 @@ enum MiscState play_the_game(
 		for (int i = 0; i < gs.nenemies; i++)
 			enemy_eachframe(&gs.enemies[i], pl);
 		for (int i = 0; i < 2; i++)
-			player_eachframe(&gs.players[i], pl->walls, pl->nwalls);
+			player_eachframe(&gs.players[i], pl);
 
 		handle_players_bumping_each_other(&gs.players[0], &gs.players[1]);
 		handle_players_bumping_enemies(&gs);

@@ -3,6 +3,7 @@
 
 #include "camera.h"
 #include "ellipsoid.h"
+#include "place.h"
 #include "wall.h"
 #include "../generated/filelist.h"
 #include <SDL2/SDL.h>
@@ -47,7 +48,7 @@ const struct EllipsoidPic *player_get_epics(const SDL_PixelFormat *fmt);
 void player_epic_name(const struct EllipsoidPic *epic, char *name, int sizeofname);
 
 // run before showing stuff to user
-void player_eachframe(struct Player *plr, const struct Wall *walls, int nwalls);
+void player_eachframe(struct Player *plr, const struct Place *pl);
 
 // key press callbacks. dir values: -1 for left, +1 for right
 void player_set_turning(struct Player *plr, int dir, bool turn);
