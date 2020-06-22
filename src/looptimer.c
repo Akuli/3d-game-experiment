@@ -3,7 +3,6 @@
 #include "log.h"
 #include <SDL2/SDL.h>
 
-
 void looptimer_wait(struct LoopTimer *lt)
 {
 	uint32_t curtime = SDL_GetTicks();   // milliseconds
@@ -13,9 +12,14 @@ void looptimer_wait(struct LoopTimer *lt)
 		return;
 	}
 
+	// For whatever reason, this happens sometimes in game over screen.
+	if (curtime < lt->time)
+		curtime = lt->time;
+
 	float percent = (float)(curtime - lt->time) / (1000/CAMERA_FPS) * 100.f;
 	lt->percentsum += percent;
-	if (++lt->percentcount == CAMERA_FPS/3) {
+	++lt->percentcount;
+	if (lt->percentcount == CAMERA_FPS/3) {
 		log_printf("speed percentage average = %.2f%%", lt->percentsum / (float)lt->percentcount);
 		lt->percentcount = 0;
 		lt->percentsum = 0;
