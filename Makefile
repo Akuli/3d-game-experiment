@@ -21,6 +21,9 @@ COPIED_FILES := $(addprefix $(EXEDIR)/,$(notdir $(FILES_TO_COPY)))
 # order matters, parallelizing make works best when slowly compiling things are first
 OBJ := obj/stb_image.o $(SRC:%.c=obj/%.o)
 
+# assetlist changes whenever output of 'ls -R assets' changes
+UnusedVariableName := $(shell bash -c 'diff <(ls -R assets) assetlist || (ls -R assets > assetlist)')
+
 
 all: $(EXEDIR)/game$(EXESUFFIX) test checkfuncs checkassets
 
@@ -30,9 +33,7 @@ all: $(EXEDIR)/game$(EXESUFFIX) test checkfuncs checkassets
 clean:
 	rm -rvf game generated build obj callgrind.out graph.* testrunner
 
-# currently this doesn't depend on the assets because it doesn't need to run when
-# an asset is changed
-generated/filelist.c generated/filelist.h: scripts/generate_filelist
+generated/filelist.c generated/filelist.h: scripts/generate_filelist assetlist
 	mkdir -p $(@D) && $< $(suffix $@) > $@
 
 obj/%.o: %.c $(HEADERS)
