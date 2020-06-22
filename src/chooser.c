@@ -14,7 +14,7 @@
 
 #define FONT_SIZE 40
 
-#define PLAYER_CHOOSER_HEIGHT ( 0.4f*CAMERA_SCREEN_HEIGHT )
+#define PLAYER_CHOOSER_HEIGHT ( (int)(0.4f*CAMERA_SCREEN_HEIGHT) )
 #define PLACE_CHOOSER_HEIGHT (CAMERA_SCREEN_HEIGHT - PLAYER_CHOOSER_HEIGHT)
 
 #define ELLIPSOID_XZ_DISTANCE_FROM_ORIGIN 2.0f
@@ -37,14 +37,33 @@ static void calculate_player_chooser_geometry_stuff(
 	nextbcenter->y = FONT_SIZE + PLAYER_CHOOSER_HEIGHT/2;
 }
 
+static SDL_Rect get_player_name_display_rect(const struct ChooserPlayerStuff *plrch)
+{
+	return (SDL_Rect){
+		plrch->leftx + CAMERA_SCREEN_WIDTH/4 - plrch->nametextsurf->w/2,
+		FONT_SIZE + PLAYER_CHOOSER_HEIGHT + FONT_SIZE/2 - plrch->nametextsurf->h/2,
+		plrch->nametextsurf->w,
+		plrch->nametextsurf->h,
+	};
+}
+
 static void update_player_name_display(struct ChooserPlayerStuff *plrch)
 {
-	if (plrch->nametextsurf)
+	SDL_Surface *winsurf = plrch->nextbtn.destsurf;   // TODO: this sucks slightly
+
+	if (plrch->nametextsurf) {
+		// wipe away old name
+		SDL_Rect r = get_player_name_display_rect(plrch);
+		SDL_FillRect(winsurf, &r, 0);
 		SDL_FreeSurface(plrch->nametextsurf);
+	}
 
 	char name[100];
 	player_epic_name(plrch->epic, name, sizeof name);
+
 	plrch->nametextsurf = misc_create_text_surface(name, white_color, FONT_SIZE);
+	SDL_Rect r = get_player_name_display_rect(plrch);
+	SDL_BlitSurface(plrch->nametextsurf, NULL, winsurf, &r);
 }
 
 static void rotate_player_chooser(struct ChooserPlayerStuff *plrch, int dir)
@@ -103,8 +122,8 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 	};
 
 	update_player_name_display(plrch);
-	button_refresh(&plrch->prevbtn);
-	button_refresh(&plrch->nextbtn);
+	button_show(&plrch->prevbtn);
+	button_show(&plrch->nextbtn);
 	camera_update_caches(&plrch->cam);
 }
 
@@ -137,15 +156,17 @@ static bool handle_event(const SDL_Event *evt, struct Chooser *ch)
 	return true;
 }
 
-static void show_player_chooser(const struct Chooser *ch, const struct ChooserPlayerStuff *plrch)
+static void show_player_chooser_texts_and_buttons(struct ChooserPlayerStuff *plrch)
 {
-	show_all(NULL, 0, ch->ellipsoids, FILELIST_NPLAYERS, &plrch->cam);
 	button_show(&plrch->prevbtn);
 	button_show(&plrch->nextbtn);
-	misc_blit_with_center(plrch->nametextsurf, ch->winsurf, &(SDL_Point){
-		plrch->leftx + ch->winsurf->w/4,
-		FONT_SIZE + PLAYER_CHOOSER_HEIGHT + FONT_SIZE/2,
-	});
+	update_player_name_display(plrch);
+}
+
+static void show_ellipsoids(const struct Chooser *ch, const struct ChooserPlayerStuff *plrch)
+{
+	SDL_FillRect(plrch->cam.surface, NULL, 0);
+	show_all(NULL, 0, ch->ellipsoids, FILELIST_NPLAYERS, &plrch->cam);
 }
 
 static void create_player_ellipsoids(struct Ellipsoid *arr, const SDL_PixelFormat *fmt)
@@ -191,10 +212,9 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 			.onclick = on_play_button_clicked,
 			// onclickdata is set in chooser_run()
 		},
-		.chooseplayertext = misc_create_text_surface("Choose players:", white_color, FONT_SIZE),
 	};
 
-	button_refresh(&ch->bigplaybtn);
+	button_show(&ch->bigplaybtn);
 	create_player_ellipsoids(ch->ellipsoids, ch->winsurf->format);
 	setup_player_chooser(ch, 0, SDL_SCANCODE_A, SDL_SCANCODE_D);
 	setup_player_chooser(ch, 1, SDL_SCANCODE_LEFT, SDL_SCANCODE_RIGHT);
@@ -202,19 +222,27 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 
 void chooser_destroy(const struct Chooser *ch)
 {
-	for (int i = 0; i < 2; i++) {
-		SDL_FreeSurface(ch->playerch[i].cam.surface);
-		button_destroy(&ch->playerch[i].prevbtn);
-		button_destroy(&ch->playerch[i].nextbtn);
-	}
-	button_destroy(&ch->bigplaybtn);
-	SDL_FreeSurface(ch->chooseplayertext);
+	SDL_FreeSurface(ch->playerch[0].cam.surface);
+	SDL_FreeSurface(ch->playerch[1].cam.surface);
+}
+
+static void show_choose_player_text(SDL_Surface *winsurf)
+{
+	SDL_Surface *s = misc_create_text_surface("Choose players:", white_color, FONT_SIZE);
+	misc_blit_with_center(s, winsurf, &(SDL_Point){ winsurf->w/2, FONT_SIZE/2 });
+	SDL_FreeSurface(s);
 }
 
 enum MiscState chooser_run(struct Chooser *ch)
 {
 	bool playbtnclicked = false;
 	ch->bigplaybtn.onclickdata = &playbtnclicked;
+
+	SDL_FillRect(ch->winsurf, NULL, 0);
+	button_show(&ch->bigplaybtn);
+	show_player_chooser_texts_and_buttons(&ch->playerch[0]);
+	show_player_chooser_texts_and_buttons(&ch->playerch[1]);
+	show_choose_player_text(ch->winsurf);
 
 	struct LoopTimer lt = {0};
 
@@ -233,12 +261,8 @@ enum MiscState chooser_run(struct Chooser *ch)
 		turn_camera(&ch->playerch[0]);
 		turn_camera(&ch->playerch[1]);
 
-		SDL_FillRect(ch->winsurf, NULL, 0);
-		misc_blit_with_center(ch->chooseplayertext, ch->winsurf,
-			&(SDL_Point){ch->winsurf->w/2, FONT_SIZE/2});
-		show_player_chooser(ch, &ch->playerch[0]);
-		show_player_chooser(ch, &ch->playerch[1]);
-		button_show(&ch->bigplaybtn);
+		show_ellipsoids(ch, &ch->playerch[0]);
+		show_ellipsoids(ch, &ch->playerch[1]);
 
 		SDL_UpdateWindowSurface(ch->win);
 		looptimer_wait(&lt);

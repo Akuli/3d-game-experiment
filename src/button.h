@@ -46,29 +46,27 @@ struct Button {
 	*/
 	int scancode;
 
-	// cachesurf is blitted to destsurf on each frame
-	SDL_Surface *cachesurf;
-	unsigned char *cachesurfdata;
 	SDL_Surface *destsurf;
 	SDL_Point center;
+
+	// these are set in button_show()
+	int width, height;
 
 	void (*onclick)(void *onclickdata);
 	void *onclickdata;
 };
 
 /*
-Call this after creating new button or changing anything that affects how the
-button looks
-*/
-void button_refresh(struct Button *butt);
+Call this to show a button after creating a new button, blanking the screen or
+changing anything that affects how the button looks.
 
-// draw button to its destsurf
-void button_show(const struct Button *butt);
+Don't call this in a loop that runs FPS times per second. Blitting in SDL is
+surprisingly slow, and this function needs to blit stuff.
+*/
+void button_show(struct Button *butt);
 
 // does nothing for events not related to the button
 void button_handle_event(const SDL_Event *evt, struct Button *butt);
-
-void button_destroy(const struct Button *butt);
 
 
 #endif    // BUTTON_H

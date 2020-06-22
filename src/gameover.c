@@ -44,11 +44,11 @@ enum MiscState game_over(
 		.onclickdata = &state,
 	};
 
-	button_refresh(&playagainbtn);
-	button_refresh(&back2chooserbtn);
+	button_show(&playagainbtn);
+	button_show(&back2chooserbtn);
+	misc_blit_with_center(winnertext, wndsurf, &(SDL_Point){ wndsurf->w/2, wndsurf->h/4 });
 
 	struct LoopTimer lt = {0};
-
 	while(state == MISC_STATE_GAMEOVER) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
@@ -61,17 +61,11 @@ enum MiscState game_over(
 			}
 		}
 
-		// the surface isn't cleared, whatever was left from playing is displayed there
-		misc_blit_with_center(winnertext, wndsurf, &(SDL_Point){ wndsurf->w/2, wndsurf->h/4 });
-		button_show(&playagainbtn);
-		button_show(&back2chooserbtn);
-
 		SDL_UpdateWindowSurface(wnd);
 		looptimer_wait(&lt);
 	}
 
 out:
 	SDL_FreeSurface(winnertext);
-	button_destroy(&playagainbtn);
 	return state;
 }
