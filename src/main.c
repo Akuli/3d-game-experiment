@@ -1,9 +1,11 @@
 #ifdef _WIN32
 	#include <direct.h>
 	#include <windows.h>
+	#define my_chdir _chdir
 #else
 	#define _POSIX_C_SOURCE 200809L    // for chdir()
 	#include <unistd.h>
+	#define my_chdir chdir
 #endif
 
 #include <assert.h>
@@ -22,7 +24,13 @@
 #include "../generated/filelist.h"
 
 
-static void cd_assets(void)
+/*
+Where are assets and logs?
+- on windows, in same place as the .exe file (that's where DLL's are)
+- on posix, assume current working directory, because nobody wants to actually
+  install this game permanently to their system and they run it with ./game
+*/
+static void cd_where_everything_is(void)
 {
 #ifdef _WIN32
 	// assets directory is in same directory with the exe file, like dlls are
@@ -36,26 +44,28 @@ static void cd_assets(void)
 	wchar_t dir[MAX_PATH];
 	int ret = _wsplitpath_s(exepath, NULL, 0, dir, sizeof(dir)/sizeof(dir[0]), NULL, 0, NULL, 0);
 	if (ret != 0)
-		log_printf_abort("_wsplitpath_s failed with path '%ls'", exepath);
+		log_printf_abort("_wsplitpath_s failed with path '%ls': %s", exepath, strerror(errno));
 
-	if (_wchdir(dir) != 0) log_printf_abort("_wchcir to '%ls' failed: %s", dir, strerror(errno));
-	if (_chdir("assets") != 0) log_printf_abort("_chcir to assets failed: %s", strerror(errno));
-
-#else
-	// assume that current working directory contains assets
-	if (chdir("assets") != 0)
-		log_printf_abort("chdir to assets failed: %s", strerror(errno));
+	if (_wchdir(dir) != 0)
+		log_printf_abort("_wchdir to '%ls' failed: %s", dir, strerror(errno));
 #endif
+}
+
+static void cd_assets(void)
+{
+	if (my_chdir("assets") != 0)
+		log_printf_abort("chdir to assets failed: %s", strerror(errno));
 }
 
 int main(int argc, char **argv)
 {
-	srand(time(NULL));
+	cd_where_everything_is();
+	log_init();
 	cd_assets();
 
+	srand(time(NULL));
 	if (!( argc == 2 && strcmp(argv[1], "--no-sound") == 0 ))
 		sound_init();
-
 	if (TTF_Init() == -1)
 		log_printf_abort("TTF_Init failed: %s", TTF_GetError());
 
@@ -66,7 +76,6 @@ int main(int argc, char **argv)
 
 	struct Chooser ch;
 	chooser_init(&ch, wnd);
-
 	const struct EllipsoidPic *winner;
 	const struct Place *pl = &place_list()[0];    // TODO: place chooser
 	enum MiscState s = MISC_STATE_CHOOSER;

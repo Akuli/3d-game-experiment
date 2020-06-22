@@ -190,10 +190,8 @@ const struct Place *place_list(void)
 	if (inited)
 		return res;
 
-	log_printf("start");
 	for (int i = 0; i < FILELIST_NPLACES; i++)
 		init_place(&res[i], filelist_places[i]);
-	log_printf("end");
 	inited = true;
 	return res;
 }

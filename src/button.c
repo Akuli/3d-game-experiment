@@ -1,5 +1,7 @@
 #include "button.h"
 #include <assert.h>
+#include <math.h>
+#include <string.h>
 #include "log.h"
 #include "misc.h"
 #include "../stb/stb_image.h"
