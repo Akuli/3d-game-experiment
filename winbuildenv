@@ -1,9 +1,15 @@
-export CC=x86_64-w64-mingw32-gcc
+# set ARCH=i686 for 32-bit build
+if [ -z "$ARCH" ]; then
+    export ARCH=x86_64
+fi
+
+export CC=$ARCH-w64-mingw32-gcc
 export CFLAGS=$(
-    printf -- '-I%s '      libs/*/x86_64-w64-mingw32/include &&
-    printf -- '-I%s/SDL2 ' libs/*/x86_64-w64-mingw32/include &&
+    printf -- '-I%s '      libs/*/$ARCH-w64-mingw32/include &&
+    printf -- '-I%s/SDL2 ' libs/*/$ARCH-w64-mingw32/include &&
     echo -n "-DSDL_MAIN_HANDLED "            `# SDL and MinGW seem to conflict here in some way` &&
-    echo -n "-D__USE_MINGW_ANSI_STDIO=1 "    `# https://stackoverflow.com/q/44382862`
+    echo -n "-D__USE_MINGW_ANSI_STDIO=1 "    `# https://stackoverflow.com/q/44382862` &&
+    echo -n "-mwindows"                      `# don't show cmd while playing game`
 )
 
 export EXEDIR=build
@@ -12,7 +18,7 @@ export EXESUFFIX=.exe
 export RUN=wine
 export FILES_TO_COPY=$(echo \
     assets \
-    libs/SDL2-*/x86_64-w64-mingw32/bin/SDL2.dll \
-    libs/SDL2_mixer-*/x86_64-w64-mingw32/bin/SDL2_mixer.dll \
-    libs/SDL2_ttf-*/x86_64-w64-mingw32/bin/* \
+    libs/SDL2-*/$ARCH-w64-mingw32/bin/SDL2.dll \
+    libs/SDL2_mixer-*/$ARCH-w64-mingw32/bin/SDL2_mixer.dll \
+    libs/SDL2_ttf-*/$ARCH-w64-mingw32/bin/* \
 )
