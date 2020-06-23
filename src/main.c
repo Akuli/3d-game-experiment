@@ -74,6 +74,15 @@ int main(int argc, char **argv)
 	if (!wnd)
 		log_printf_abort("SDL_CreateWindow failed: %s", SDL_GetError());
 
+	/*
+	On xmonad, consuming these first events changes return value of
+	SDL_GetWindowSurface. Rest of the code assumes that it doesn't change,
+	because the window isn't meant to be resizable, and according to docs,
+	it should only happen on resize.
+	*/
+	SDL_Event e;
+	while (SDL_PollEvent(&e)) { }
+
 	struct Chooser ch;
 	chooser_init(&ch, wnd);
 	const struct EllipsoidPic *winner;
