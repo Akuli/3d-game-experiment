@@ -124,50 +124,6 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 	camera_update_caches(&plrch->cam);
 }
 
-static void turn_camera(struct ChooserPlayerStuff *plrch)
-{
-	float maxturn = 50.0f / (CAMERA_FPS * FILELIST_NPLAYERS);
-	assert(maxturn > 0);
-	float turn = max(-maxturn, min(maxturn, plrch->anglediff));
-
-	plrch->cam.angle += turn;
-	plrch->anglediff -= turn;
-
-	plrch->cam.location = mat3_mul_vec3(
-		mat3_rotation_xz(plrch->cam.angle),
-		(Vec3){ 0, CAMERA_Y, CAMERA_XZ_DISTANCE_FROM_ORIGIN });
-	camera_update_caches(&plrch->cam);
-}
-
-// returns false when game should quit
-static bool handle_event(const SDL_Event *evt, struct Chooser *ch)
-{
-	if (evt->type == SDL_QUIT)
-		return false;
-
-	for (int i = 0; i < 2; i++) {
-		button_handle_event(evt, &ch->playerch[i].prevbtn);
-		button_handle_event(evt, &ch->playerch[i].nextbtn);
-	}
-	button_handle_event(evt, &ch->placech.prevbtn);
-	button_handle_event(evt, &ch->placech.nextbtn);
-	button_handle_event(evt, &ch->bigplaybtn);
-	return true;
-}
-
-static void show_player_chooser_in_beginning(struct ChooserPlayerStuff *plrch)
-{
-	button_show(&plrch->prevbtn);
-	button_show(&plrch->nextbtn);
-	update_player_name_display(plrch);
-}
-
-static void show_player_chooser_each_frame(const struct Chooser *ch, const struct ChooserPlayerStuff *plrch)
-{
-	SDL_FillRect(plrch->cam.surface, NULL, 0);
-	show_all(NULL, 0, ch->ellipsoids, sizeof(ch->ellipsoids)/sizeof(ch->ellipsoids[0]), &plrch->cam);
-}
-
 static void create_player_ellipsoids(struct Ellipsoid *arr, const SDL_PixelFormat *fmt)
 {
 	float pi = acosf(-1);
@@ -187,11 +143,50 @@ static void create_player_ellipsoids(struct Ellipsoid *arr, const SDL_PixelForma
 	}
 }
 
-static void show_the_place(struct ChooserPlaceStuff *plcch)
+static void rotate_player_ellipsoids(struct Ellipsoid *els, int n)
 {
-	// for some reason, subtracting makes it spin same direction as players
-	plcch->cam.angle -= 0.5f/CAMERA_FPS;
+	for (int i = 0; i < n; i++) {
+		els[i].angle += 1.0f / CAMERA_FPS;
+		ellipsoid_update_transforms(&els[i]);
+	}
+}
 
+static float restrict_absolute_value(float val, float maxabs)
+{
+	assert(maxabs >= 0);
+	if (fabsf(val) > maxabs)
+		return copysignf(maxabs, val);
+	return val;
+}
+
+static void turn_camera(struct ChooserPlayerStuff *plrch)
+{
+	float turn = restrict_absolute_value(plrch->anglediff, 50.0f / (CAMERA_FPS * FILELIST_NPLAYERS));
+	plrch->cam.angle += turn;
+	plrch->anglediff -= turn;
+
+	plrch->cam.location = mat3_mul_vec3(
+		mat3_rotation_xz(plrch->cam.angle),
+		(Vec3){ 0, CAMERA_Y, CAMERA_XZ_DISTANCE_FROM_ORIGIN });
+	camera_update_caches(&plrch->cam);
+}
+
+static void show_player_chooser_in_beginning(struct ChooserPlayerStuff *plrch)
+{
+	button_show(&plrch->prevbtn);
+	button_show(&plrch->nextbtn);
+	update_player_name_display(plrch);
+}
+
+static void show_player_chooser_each_frame(const struct Chooser *ch, struct ChooserPlayerStuff *plrch)
+{
+	turn_camera(plrch);
+	SDL_FillRect(plrch->cam.surface, NULL, 0);
+	show_all(NULL, 0, ch->ellipsoids, sizeof(ch->ellipsoids)/sizeof(ch->ellipsoids[0]), &plrch->cam);
+}
+
+static void show_place_chooser_each_frame(struct ChooserPlaceStuff *plcch)
+{
 	Vec3 placecenter = { plcch->pl->xsize/2, 0, plcch->pl->zsize/2 };
 
 	float d = hypotf(plcch->pl->xsize, plcch->pl->zsize);
@@ -199,6 +194,7 @@ static void show_the_place(struct ChooserPlaceStuff *plcch)
 	vec3_apply_matrix(&tocamera, mat3_rotation_xz(plcch->cam.angle));
 
 	plcch->cam.location = vec3_add(placecenter, tocamera);
+	plcch->cam.angle -= 0.5f/CAMERA_FPS;   // subtracting makes it spin same direction as ellipsoids
 	camera_update_caches(&plcch->cam);
 
 	SDL_FillRect(plcch->cam.surface, NULL, 0);
@@ -216,9 +212,24 @@ static void select_prev_next_place(struct ChooserPlaceStuff *ch, int diff)
 	if (start <= newpl && newpl < end)
 		ch->pl = newpl;
 }
-
 static void select_prev_place(void *ch) { select_prev_next_place(ch, -1); }
 static void select_next_place(void *ch) { select_prev_next_place(ch, +1); }
+
+// returns false when game should quit
+static bool handle_event(const SDL_Event *evt, struct Chooser *ch)
+{
+	if (evt->type == SDL_QUIT)
+		return false;
+
+	for (int i = 0; i < 2; i++) {
+		button_handle_event(evt, &ch->playerch[i].prevbtn);
+		button_handle_event(evt, &ch->playerch[i].nextbtn);
+	}
+	button_handle_event(evt, &ch->placech.prevbtn);
+	button_handle_event(evt, &ch->placech.nextbtn);
+	button_handle_event(evt, &ch->bigplaybtn);
+	return true;
+}
 
 static void on_play_button_clicked(void *ptr)
 {
@@ -298,7 +309,7 @@ void chooser_destroy(const struct Chooser *ch)
 	SDL_FreeSurface(ch->placech.cam.surface);
 }
 
-static void show_choose_player_text(SDL_Surface *winsurf)
+static void show_title_text(SDL_Surface *winsurf)
 {
 	SDL_Surface *s = misc_create_text_surface("Choose players and place:", white_color, FONT_SIZE);
 	misc_blit_with_center(s, winsurf, &(SDL_Point){ winsurf->w/2, FONT_SIZE/2 });
@@ -316,7 +327,7 @@ enum MiscState chooser_run(struct Chooser *ch)
 	button_show(&ch->placech.nextbtn);
 	show_player_chooser_in_beginning(&ch->playerch[0]);
 	show_player_chooser_in_beginning(&ch->playerch[1]);
-	show_choose_player_text(ch->winsurf);
+	show_title_text(ch->winsurf);
 
 	struct LoopTimer lt = {0};
 
@@ -327,17 +338,11 @@ enum MiscState chooser_run(struct Chooser *ch)
 				return MISC_STATE_QUIT;
 		}
 
-		for (int i = 0; i < FILELIST_NPLAYERS; i++) {
-			ch->ellipsoids[i].angle += 1.0f / CAMERA_FPS;
-			ellipsoid_update_transforms(&ch->ellipsoids[i]);
-		}
-
-		turn_camera(&ch->playerch[0]);
-		turn_camera(&ch->playerch[1]);
+		rotate_player_ellipsoids(ch->ellipsoids, FILELIST_NPLAYERS);
 		show_player_chooser_each_frame(ch, &ch->playerch[0]);
 		show_player_chooser_each_frame(ch, &ch->playerch[1]);
 
-		show_the_place(&ch->placech);
+		show_place_chooser_each_frame(&ch->placech);
 
 		SDL_UpdateWindowSurface(ch->win);
 		looptimer_wait(&lt);

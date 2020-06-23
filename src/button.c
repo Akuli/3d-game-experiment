@@ -58,7 +58,7 @@ static SDL_Surface *get_image(enum ButtonFlags f)
 }
 
 #define PADDING 15
-int button_width (enum ButtonFlags f) { return get_image(f)->w + PADDING; }
+int button_width(enum ButtonFlags f)  { return get_image(f)->w + PADDING; }
 int button_height(enum ButtonFlags f) { return get_image(f)->h + PADDING; }
 
 void button_show(struct Button *butt)
