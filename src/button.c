@@ -36,7 +36,7 @@ void button_show(struct Button *butt)
 	char path[100];
 	snprintf(path, sizeof path, "buttons/%s/%s/%s",
 		(butt->flags & BUTTON_BIG) ? "big" : "small",
-		(butt->flags & BUTTON_HORIZONTAL) ? "horizontal" : "vertical",
+		(butt->flags & BUTTON_VERTICAL) ? "vertical" : "horizontal",
 		(butt->flags & BUTTON_PRESSED) ? "pressed.png" : "normal.png");
 	add_image(path, butt->destsurf, butt->center, &butt->width, &butt->height);
 
@@ -115,19 +115,19 @@ int button_width(enum ButtonFlags f)
 {
 	// TODO: less hard-coding
 	if (f & BUTTON_BIG) {
-		if (f & BUTTON_HORIZONTAL)
-			return 320;
-		else
+		if (f & BUTTON_VERTICAL)
 			return 120;
-	} else {
-		if (f & BUTTON_HORIZONTAL)
-			return 65;
 		else
+			return 320;
+	} else {
+		if (f & BUTTON_VERTICAL)
 			return 50;
+		else
+			return 65;
 	}
 }
 
 int button_height(enum ButtonFlags f)
 {
-	return button_width(f ^ BUTTON_HORIZONTAL);
+	return button_width(f ^ BUTTON_VERTICAL);
 }

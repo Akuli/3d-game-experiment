@@ -23,9 +23,10 @@ enum MiscState game_over(
 	SDL_Surface *winnertext = misc_create_text_surface(msg, white_color, 60);
 
 	enum MiscState state = MISC_STATE_GAMEOVER;
+	enum ButtonFlags flags = BUTTON_BIG;
 	struct Button playagainbtn = {
 		.text = "Play again",
-		.flags = BUTTON_BIG | BUTTON_HORIZONTAL,
+		.flags = flags,
 		.scancodes = { SDL_SCANCODE_F5 },
 		.destsurf = wndsurf,
 		.center = { wndsurf->w/2, wndsurf->h/2 },
@@ -34,12 +35,12 @@ enum MiscState game_over(
 	};
 	struct Button back2chooserbtn = {
 		.text = "Change players\nor place",
-		.flags = BUTTON_BIG | BUTTON_HORIZONTAL,
+		.flags = flags,
 		.scancodes = { SDL_SCANCODE_RETURN },
 		.destsurf = wndsurf,
 		.center = {
 			playagainbtn.center.x,
-			playagainbtn.center.y + button_height(BUTTON_HORIZONTAL | BUTTON_BIG),
+			playagainbtn.center.y + button_height(flags),
 		},
 		.onclick = on_back_to_chooser_clicked,
 		.onclickdata = &state,

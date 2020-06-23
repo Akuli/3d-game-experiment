@@ -17,7 +17,7 @@
 
 #define PLAYER_CHOOSER_HEIGHT ( CAMERA_SCREEN_HEIGHT/2 )
 #define PLACE_CHOOSER_HEIGHT (CAMERA_SCREEN_HEIGHT - PLAYER_CHOOSER_HEIGHT)
-#define PLACE_CHOOSER_WIDTH (CAMERA_SCREEN_WIDTH - button_width(BUTTON_BIG | BUTTON_HORIZONTAL))
+#define PLACE_CHOOSER_WIDTH (CAMERA_SCREEN_WIDTH - button_width(BUTTON_BIG))
 
 #define ELLIPSOID_XZ_DISTANCE_FROM_ORIGIN 2.0f
 #define CAMERA_XZ_DISTANCE_FROM_ORIGIN 5.0f
@@ -26,15 +26,15 @@
 static const SDL_Color white_color = { 0xff, 0xff, 0xff, 0xff };
 
 static void calculate_player_chooser_geometry_stuff(
-	int leftx, SDL_Rect *preview, SDL_Point *prevbcenter, SDL_Point *nextbcenter)
+	int leftx, SDL_Rect *preview, SDL_Point *prevbcenter, SDL_Point *nextbcenter, enum ButtonFlags flags)
 {
-	preview->w = CAMERA_SCREEN_WIDTH/2 - 2*button_width(0);
+	preview->w = CAMERA_SCREEN_WIDTH/2 - 2*button_width(flags);
 	preview->h = PLAYER_CHOOSER_HEIGHT - 2*FONT_SIZE;
 	preview->x = leftx + CAMERA_SCREEN_WIDTH/4 - preview->w/2;
 	preview->y = FONT_SIZE;
 
-	prevbcenter->x = leftx + button_width(0)/2;
-	nextbcenter->x = leftx + CAMERA_SCREEN_WIDTH/2 - button_width(0)/2;
+	prevbcenter->x = leftx + button_width(flags)/2;
+	nextbcenter->x = leftx + CAMERA_SCREEN_WIDTH/2 - button_width(flags)/2;
 	prevbcenter->y = PLAYER_CHOOSER_HEIGHT/2;
 	nextbcenter->y = PLAYER_CHOOSER_HEIGHT/2;
 }
@@ -83,9 +83,10 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 {
 	int leftx = idx * (ch->winsurf->w/2);
 
+	enum ButtonFlags flags = BUTTON_VERTICAL;
 	SDL_Rect preview;
 	SDL_Point prevc, nextc;
-	calculate_player_chooser_geometry_stuff(leftx, &preview, &prevc, &nextc);
+	calculate_player_chooser_geometry_stuff(leftx, &preview, &prevc, &nextc, flags);
 
 	float pi = acosf(-1);
 	struct ChooserPlayerStuff *plrch = &ch->playerch[idx];
@@ -93,6 +94,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 		.epic = ch->ellipsoids[idx].epic,
 		.leftx = leftx,
 		.prevbtn = {
+			.flags = flags,
 			.imgpath = "arrows/left.png",
 			.scancodes = {scprev},
 			.destsurf = ch->winsurf,
@@ -101,6 +103,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 			.onclickdata = plrch,
 		},
 		.nextbtn = {
+			.flags = flags,
 			.imgpath = "arrows/right.png",
 			.scancodes = {scnext},
 			.destsurf = ch->winsurf,
@@ -228,12 +231,13 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 	if (!winsurf)
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 
+	enum ButtonFlags placechflags = 0;
 	*ch = (struct Chooser){
 		.win = win,
 		.winsurf = winsurf,
 		.bigplaybtn = {
 			.text = "Play",
-			.flags = BUTTON_BIG | BUTTON_HORIZONTAL,
+			.flags = BUTTON_BIG,
 			.destsurf = winsurf,
 			.scancodes = { SDL_SCANCODE_RETURN, SDL_SCANCODE_SPACE },
 			.center = {
@@ -249,31 +253,31 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				.screencentery = -0.55f*PLACE_CHOOSER_HEIGHT,
 				.surface = misc_create_cropped_surface(winsurf, (SDL_Rect){
 					0,
-					CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT + button_height(BUTTON_HORIZONTAL),
+					CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT + button_height(placechflags),
 					PLACE_CHOOSER_WIDTH,
-					PLACE_CHOOSER_HEIGHT - 2*button_height(BUTTON_HORIZONTAL)
+					PLACE_CHOOSER_HEIGHT - 2*button_height(placechflags)
 				}),
 				.angle = 0,
 			},
 			.prevbtn = {
 				.imgpath = "arrows/up.png",
-				.flags = BUTTON_HORIZONTAL,
+				.flags = placechflags,
 				.destsurf = winsurf,
 				.scancodes = { SDL_SCANCODE_W, SDL_SCANCODE_UP },
 				.center = {
 					PLACE_CHOOSER_WIDTH/2,
-					CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT + button_height(BUTTON_HORIZONTAL)/2,
+					CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT + button_height(placechflags)/2,
 				},
 				.onclick = select_prev_place,
 			},
 			.nextbtn = {
 				.imgpath = "arrows/down.png",
-				.flags = BUTTON_HORIZONTAL,
+				.flags = placechflags,
 				.destsurf = winsurf,
 				.scancodes = { SDL_SCANCODE_S, SDL_SCANCODE_DOWN },
 				.center = {
 					PLACE_CHOOSER_WIDTH/2,
-					CAMERA_SCREEN_HEIGHT - button_height(BUTTON_HORIZONTAL)/2,
+					CAMERA_SCREEN_HEIGHT - button_height(placechflags)/2,
 				},
 				.onclick = select_next_place,
 			},

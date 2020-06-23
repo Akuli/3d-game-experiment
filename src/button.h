@@ -11,7 +11,7 @@ struct Button {
 
 	enum ButtonFlags {
 		BUTTON_BIG = 0x01,
-		BUTTON_HORIZONTAL = 0x02,
+		BUTTON_VERTICAL = 0x02,
 		BUTTON_PRESSED = 0x04,
 	} flags;
 
@@ -51,7 +51,7 @@ void button_show(struct Button *butt);
 // does nothing for events not related to the button
 void button_handle_event(const SDL_Event *evt, struct Button *butt);
 
-// Calculate width and height with BUTTON_BIG and BUTTON_HORIZONTAL flags
+// Calculate width and height with BUTTON_BIG and BUTTON_VERTICAL flags
 int button_width(enum ButtonFlags f);
 int button_height(enum ButtonFlags f);
 
