@@ -6,45 +6,73 @@
 #include "misc.h"
 #include "../stb/stb_image.h"
 
-static const SDL_Color black_color = { 0x00, 0x00, 0x00, 0xff };
-
-static void add_image(const char *path, SDL_Surface *dest, SDL_Point center, int *wptr, int *hptr)
+static SDL_Surface *load_image(const char *path)
 {
 	int fmt, w, h;
 	unsigned char *data = stbi_load(path, &w, &h, &fmt, 4);
 	if (!data)
 		log_printf_abort("loading image from '%s' failed: %s", path, stbi_failure_reason());
 
-	if (wptr)
-		*wptr = w;
-	if (hptr)
-		*hptr = h;
-
 	// SDL_CreateRGBSurfaceWithFormatFrom docs have example code for using it with stbi :D
 	SDL_Surface *s = SDL_CreateRGBSurfaceWithFormatFrom(
 		data, w, h, 32, 4*w, SDL_PIXELFORMAT_RGBA32);
 	if (!s)
 		log_printf_abort("SDL_CreateRGBSurfaceWithFormatFrom failed: %s", SDL_GetError());
-
-	misc_blit_with_center(s, dest, &center);
-	SDL_FreeSurface(s);
-	stbi_image_free(data);
+	assert(s->pixels == data);
+	return s;
 }
+
+/*
+This must be global because it's cleaned with atexit callback, and there's
+no way to pass an argument into an atexit callback.
+*/
+static SDL_Surface *image_surfaces[BUTTON_ALLFLAGS + 1] = {0};
+
+static void free_image_surfaces(void)
+{
+	for (int i = 0; i < sizeof(image_surfaces)/sizeof(image_surfaces[0]); i++) {
+		if (image_surfaces[i]) {
+			stbi_image_free(image_surfaces[i]->pixels);
+			SDL_FreeSurface(image_surfaces[i]);
+		}
+	}
+}
+
+static SDL_Surface *get_image(enum ButtonFlags f)
+{
+	static bool atexitdone = false;
+	if (!atexitdone) {
+		atexit(free_image_surfaces);
+		atexitdone = true;
+	}
+
+	if (!image_surfaces[f]) {
+		char path[100];
+		snprintf(path, sizeof path, "buttons/%s/%s/%s",
+			(f & BUTTON_BIG) ? "big" : "small",
+			(f & BUTTON_VERTICAL) ? "vertical" : "horizontal",
+			(f & BUTTON_PRESSED) ? "pressed.png" : "normal.png");
+		image_surfaces[f] = load_image(path);
+	}
+	return image_surfaces[f];
+}
+
+#define PADDING 15
+int button_width (enum ButtonFlags f) { return get_image(f)->w + PADDING; }
+int button_height(enum ButtonFlags f) { return get_image(f)->h + PADDING; }
 
 void button_show(struct Button *butt)
 {
-	char path[100];
-	snprintf(path, sizeof path, "buttons/%s/%s/%s",
-		(butt->flags & BUTTON_BIG) ? "big" : "small",
-		(butt->flags & BUTTON_VERTICAL) ? "vertical" : "horizontal",
-		(butt->flags & BUTTON_PRESSED) ? "pressed.png" : "normal.png");
-	add_image(path, butt->destsurf, butt->center, &butt->width, &butt->height);
-
-	if (butt->imgpath)
-		add_image(butt->imgpath, butt->destsurf, butt->center, NULL, NULL);
+	misc_blit_with_center(get_image(butt->flags), butt->destsurf, &butt->center);
+	if (butt->imgpath) {
+		SDL_Surface *s = load_image(butt->imgpath);
+		misc_blit_with_center(s, butt->destsurf, &butt->center);
+		SDL_FreeSurface(s);
+	}
 
 	if (butt->text) {
-		int fontsz = 50;   // adjust this for small buttons if needed
+		SDL_Color black = { 0x00, 0x00, 0x00, 0xff };
+		int fontsz = button_height(butt->flags)/2;
 
 		const char *newln = strchr(butt->text, '\n');
 		if (newln) {
@@ -55,8 +83,8 @@ void button_show(struct Button *butt)
 			const char *line2 = newln + 1;
 
 			fontsz = (int)(fontsz * 0.7f);
-			SDL_Surface *s1 = misc_create_text_surface(line1, black_color, fontsz);
-			SDL_Surface *s2 = misc_create_text_surface(line2, black_color, fontsz);
+			SDL_Surface *s1 = misc_create_text_surface(line1, black, fontsz);
+			SDL_Surface *s2 = misc_create_text_surface(line2, black, fontsz);
 
 			misc_blit_with_center(
 				s1, butt->destsurf, &(SDL_Point){ butt->center.x, butt->center.y - s1->h/2 });
@@ -66,7 +94,7 @@ void button_show(struct Button *butt)
 			SDL_FreeSurface(s1);
 			SDL_FreeSurface(s2);
 		} else {
-			SDL_Surface *s = misc_create_text_surface(butt->text, black_color, 50);
+			SDL_Surface *s = misc_create_text_surface(butt->text, black, 50);
 			misc_blit_with_center(s, butt->destsurf, &butt->center);
 			SDL_FreeSurface(s);
 		}
@@ -75,8 +103,8 @@ void button_show(struct Button *butt)
 
 static bool mouse_on_button(const SDL_MouseButtonEvent *me, const struct Button *butt)
 {
-	return fabsf(me->x - butt->center.x) < butt->width/2 &&
-			fabsf(me->y - butt->center.y) < butt->height/2;
+	return fabsf(me->x - butt->center.x) < get_image(butt->flags)->w/2 &&
+			fabsf(me->y - butt->center.y) < get_image(butt->flags)->h/2;
 }
 
 static bool scancode_matches_button(int sc, const struct Button *butt)
@@ -109,25 +137,4 @@ void button_handle_event(const SDL_Event *evt, struct Button *butt)
 		return;
 	}
 	button_show(butt);
-}
-
-int button_width(enum ButtonFlags f)
-{
-	// TODO: less hard-coding
-	if (f & BUTTON_BIG) {
-		if (f & BUTTON_VERTICAL)
-			return 120;
-		else
-			return 320;
-	} else {
-		if (f & BUTTON_VERTICAL)
-			return 50;
-		else
-			return 65;
-	}
-}
-
-int button_height(enum ButtonFlags f)
-{
-	return button_width(f ^ BUTTON_VERTICAL);
 }

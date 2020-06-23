@@ -4,16 +4,19 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 
+enum ButtonFlags {
+	BUTTON_BIG = 0x01,
+	BUTTON_VERTICAL = 0x02,
+	BUTTON_PRESSED = 0x04,
+};
+#define BUTTON_ALLFLAGS (BUTTON_BIG | BUTTON_VERTICAL | BUTTON_PRESSED)
+
 struct Button {
 	// imgpath image and text are drawn on top of a generic button background image
 	const char *imgpath;
 	const char *text;
 
-	enum ButtonFlags {
-		BUTTON_BIG = 0x01,
-		BUTTON_VERTICAL = 0x02,
-		BUTTON_PRESSED = 0x04,
-	} flags;
+	enum ButtonFlags flags;
 
 	/*
 	Which keyboard key presses correspond to this button? Zeroes in this list are
@@ -31,9 +34,6 @@ struct Button {
 
 	SDL_Surface *destsurf;
 	SDL_Point center;
-
-	// these are set in button_show()
-	int width, height;
 
 	void (*onclick)(void *onclickdata);
 	void *onclickdata;
