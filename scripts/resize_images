@@ -1,20 +1,21 @@
 #!/bin/bash
 set -ex
 
+# Create assets/buttons/big and assets/buttons/small from assets/buttons/huge
 cd assets/buttons
 rm -rvf big small
-mkdir -vp big/horizontal small/vertical
+mkdir -vp {big,small}/{horizontal,vertical}
 
-for file in $(cd huge && echo horizontal/*); do
-    convert huge/$file -resize 300x100 big/$file
+for file in $(cd huge/narrow && echo */*.png); do
+    convert huge/narrow/$file -resize 55x55 small/$file
 done
 
-for file in $(cd huge && echo vertical/*); do
-    convert huge/$file -resize 40x100 small/$file
+for file in $(cd huge/wide && echo */*.png); do
+    convert huge/wide/$file -resize 300x300 big/$file
 done
 
+# Create all other arrows from huge-right.png
 cd ../arrows
-
 size=30x30
 convert huge-right.png -resize $size right.png
 convert huge-right.png -resize $size -rotate 90 down.png

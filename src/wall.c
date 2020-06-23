@@ -228,14 +228,6 @@ bool wall_linedup(const struct Wall *w1, const struct Wall *w2)
 	return false;
 }
 
-static uint32_t *get_pixel_pointer(SDL_Surface *surf, int x, int y)
-{
-	unsigned char *ptr = surf->pixels;
-	ptr += y*surf->pitch;
-	ptr += x*sizeof(uint32_t);
-	return (uint32_t *)ptr;
-}
-
 /*
 My simple way to add transparency is average of red and whatever the
 color is. Works well enough for my needs.

@@ -18,11 +18,20 @@ struct ChooserPlayerStuff {
 	float anglediff;    // how much the player chooser is about to spin
 	struct Button prevbtn, nextbtn;
 	struct Camera cam;
-	SDL_Surface *nametextsurf;
+	int namew, nameh;   // size of name display text
+};
+
+struct ChooserPlaceStuff {
+	const struct Place *pl;   // pointer into place_list()
+
+	// rest of this struct isn't meant to be used outside chooser.c
+	struct Button prevbtn, nextbtn;
+	struct Camera cam;
 };
 
 struct Chooser {
 	struct ChooserPlayerStuff playerch[2];
+	struct ChooserPlaceStuff placech;
 
 	// rest of this struct isn't meant to be used outside chooser.c
 	SDL_Window *win;

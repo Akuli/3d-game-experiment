@@ -77,7 +77,6 @@ int main(int argc, char **argv)
 	struct Chooser ch;
 	chooser_init(&ch, wnd);
 	const struct EllipsoidPic *winner;
-	const struct Place *pl = &place_list()[0];    // TODO: place chooser
 	enum MiscState s = MISC_STATE_CHOOSER;
 
 	while(1) {
@@ -89,7 +88,7 @@ int main(int argc, char **argv)
 
 		case MISC_STATE_PLAY:
 			log_printf("playing the game begins");
-			s = play_the_game(wnd, ch.playerch[0].epic, ch.playerch[1].epic, &winner, pl);
+			s = play_the_game(wnd, ch.playerch[0].epic, ch.playerch[1].epic, &winner, ch.placech.pl);
 			break;
 
 		case MISC_STATE_GAMEOVER:
