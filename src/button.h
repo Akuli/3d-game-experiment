@@ -36,7 +36,7 @@ struct Button {
 	SDL_Surface *destsurf;
 	SDL_Point center;
 
-	void (*onclick)(void *onclickdata);
+	void (*onclick)(void *onclickdata);   // never called when BUTTON_DISABLED is set
 	void *onclickdata;
 };
 
@@ -47,7 +47,7 @@ changing anything that affects how the button looks.
 Don't call this in a loop that runs FPS times per second. Blitting in SDL is
 surprisingly slow, and this function needs to blit stuff.
 */
-void button_show(struct Button *butt);
+void button_show(const struct Button *butt);
 
 // does nothing for events not related to the button
 void button_handle_event(const SDL_Event *evt, struct Button *butt);

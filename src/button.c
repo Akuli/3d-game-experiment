@@ -64,7 +64,7 @@ static SDL_Surface *get_image(enum ButtonFlags f)
 int button_width(enum ButtonFlags f)  { return get_image(f)->w + PADDING; }
 int button_height(enum ButtonFlags f) { return get_image(f)->h + PADDING; }
 
-void button_show(struct Button *butt)
+void button_show(const struct Button *butt)
 {
 	misc_blit_with_center(get_image(butt->flags), butt->destsurf, &butt->center);
 	if (butt->imgpath) {
@@ -121,6 +121,9 @@ static bool scancode_matches_button(int sc, const struct Button *butt)
 
 void button_handle_event(const SDL_Event *evt, struct Button *butt)
 {
+	if (butt->flags & BUTTON_DISABLED)
+		return;
+
 	if ((
 		(evt->type == SDL_MOUSEBUTTONDOWN && mouse_on_button(&evt->button, butt)) ||
 		(evt->type == SDL_KEYDOWN && scancode_matches_button(evt->key.keysym.scancode, butt))
@@ -136,7 +139,7 @@ void button_handle_event(const SDL_Event *evt, struct Button *butt)
 		// if button has been pressed and mouse has been moved away, unpress button but don't click
 		butt->flags &= ~BUTTON_PRESSED;
 	} else {
-		// don't call button_show()
+		// nothing has changed, no need to show button
 		return;
 	}
 	button_show(butt);

@@ -203,6 +203,8 @@ static void show_place_chooser_each_frame(struct ChooserPlaceStuff *plcch)
 
 static void update_place_chooser_button_disableds(struct ChooserPlaceStuff *ch)
 {
+	assert(&place_list()[0] <= ch->pl && ch->pl < &place_list()[FILELIST_NPLACES]);
+
 	if (ch->pl == &place_list()[0])
 		ch->prevbtn.flags |= BUTTON_DISABLED;
 	else
@@ -216,18 +218,10 @@ static void update_place_chooser_button_disableds(struct ChooserPlaceStuff *ch)
 
 static void select_prev_next_place(struct ChooserPlaceStuff *ch, int diff)
 {
-	const struct Place *start = place_list();
-	const struct Place *end = start + FILELIST_NPLACES;
-	assert(start <= ch->pl && ch->pl < end);
-	assert(diff == +1 || diff == -1);
-
-	const struct Place *newpl = ch->pl + diff;
-	if (start <= newpl && newpl < end) {
-		ch->pl = newpl;
-		update_place_chooser_button_disableds(ch);
-		button_show(&ch->prevbtn);
-		button_show(&ch->nextbtn);
-	}
+	ch->pl += diff;
+	update_place_chooser_button_disableds(ch);
+	button_show(&ch->prevbtn);
+	button_show(&ch->nextbtn);
 }
 static void select_prev_place(void *ch) { select_prev_next_place(ch, -1); }
 static void select_next_place(void *ch) { select_prev_next_place(ch, +1); }
