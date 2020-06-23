@@ -51,7 +51,10 @@ static SDL_Surface *get_image(enum ButtonFlags f)
 		snprintf(path, sizeof path, "buttons/%s/%s/%s",
 			(f & BUTTON_BIG) ? "big" : "small",
 			(f & BUTTON_VERTICAL) ? "vertical" : "horizontal",
-			(f & BUTTON_PRESSED) ? "pressed.png" : "normal.png");
+			(f & BUTTON_DISABLED) ? "disabled.png" : (
+				(f & BUTTON_PRESSED) ? "pressed.png" : "normal.png"
+			)
+		);
 		image_surfaces[f] = load_image(path);
 	}
 	return image_surfaces[f];

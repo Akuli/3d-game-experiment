@@ -201,6 +201,19 @@ static void show_place_chooser_each_frame(struct ChooserPlaceStuff *plcch)
 	show_all(plcch->pl->walls, plcch->pl->nwalls, NULL, 0, &plcch->cam);
 }
 
+static void update_place_chooser_button_disableds(struct ChooserPlaceStuff *ch)
+{
+	if (ch->pl == &place_list()[0])
+		ch->prevbtn.flags |= BUTTON_DISABLED;
+	else
+		ch->prevbtn.flags &= ~BUTTON_DISABLED;
+
+	if (ch->pl == &place_list()[FILELIST_NPLACES - 1])
+		ch->nextbtn.flags |= BUTTON_DISABLED;
+	else
+		ch->nextbtn.flags &= ~BUTTON_DISABLED;
+}
+
 static void select_prev_next_place(struct ChooserPlaceStuff *ch, int diff)
 {
 	const struct Place *start = place_list();
@@ -209,8 +222,12 @@ static void select_prev_next_place(struct ChooserPlaceStuff *ch, int diff)
 	assert(diff == +1 || diff == -1);
 
 	const struct Place *newpl = ch->pl + diff;
-	if (start <= newpl && newpl < end)
+	if (start <= newpl && newpl < end) {
 		ch->pl = newpl;
+		update_place_chooser_button_disableds(ch);
+		button_show(&ch->prevbtn);
+		button_show(&ch->nextbtn);
+	}
 }
 static void select_prev_place(void *ch) { select_prev_next_place(ch, -1); }
 static void select_next_place(void *ch) { select_prev_next_place(ch, +1); }
@@ -296,6 +313,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 	};
 	ch->placech.prevbtn.onclickdata = &ch->placech;
 	ch->placech.nextbtn.onclickdata = &ch->placech;
+	update_place_chooser_button_disableds(&ch->placech);
 
 	create_player_ellipsoids(ch->ellipsoids, ch->winsurf->format);
 	setup_player_chooser(ch, 0, SDL_SCANCODE_A, SDL_SCANCODE_D);

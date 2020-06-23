@@ -8,8 +8,9 @@ enum ButtonFlags {
 	BUTTON_BIG = 0x01,
 	BUTTON_VERTICAL = 0x02,
 	BUTTON_PRESSED = 0x04,
+	BUTTON_DISABLED = 0x08,
 };
-#define BUTTON_ALLFLAGS (BUTTON_BIG | BUTTON_VERTICAL | BUTTON_PRESSED)
+#define BUTTON_ALLFLAGS (BUTTON_BIG | BUTTON_VERTICAL | BUTTON_PRESSED | BUTTON_DISABLED)
 
 struct Button {
 	// imgpath image and text are drawn on top of a generic button background image

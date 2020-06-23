@@ -14,6 +14,13 @@ for file in $(cd huge/wide && echo */*.png); do
     convert huge/wide/$file -resize 300x300 big/$file
 done
 
+for dir in {big,small}/*; do
+    if [ -f $dir/normal.png ]; then
+        # MS gives the darkest out of all i tried (MS, RMS, Average, Brightness, Lightness)
+        convert $dir/normal.png -grayscale MS $dir/disabled.png
+    fi
+done
+
 # Create all other arrows from huge-right.png
 cd ../arrows
 size=30x30
