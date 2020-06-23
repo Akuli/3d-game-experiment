@@ -110,3 +110,24 @@ void button_handle_event(const SDL_Event *evt, struct Button *butt)
 	}
 	button_show(butt);
 }
+
+int button_width(enum ButtonFlags f)
+{
+	// TODO: less hard-coding
+	if (f & BUTTON_BIG) {
+		if (f & BUTTON_HORIZONTAL)
+			return 320;
+		else
+			return 120;
+	} else {
+		if (f & BUTTON_HORIZONTAL)
+			return 65;
+		else
+			return 50;
+	}
+}
+
+int button_height(enum ButtonFlags f)
+{
+	return button_width(f ^ BUTTON_HORIZONTAL);
+}

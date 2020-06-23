@@ -17,8 +17,7 @@
 
 #define PLAYER_CHOOSER_HEIGHT ( CAMERA_SCREEN_HEIGHT/2 )
 #define PLACE_CHOOSER_HEIGHT (CAMERA_SCREEN_HEIGHT - PLAYER_CHOOSER_HEIGHT)
-#define PLACE_CHOOSER_WIDTH (CAMERA_SCREEN_WIDTH - PLAY_BUTTON_AREA_WIDTH)
-#define PLAY_BUTTON_AREA_WIDTH (CAMERA_SCREEN_WIDTH * 2/5)  // TODO: add something to button.h
+#define PLACE_CHOOSER_WIDTH (CAMERA_SCREEN_WIDTH - button_width(BUTTON_BIG | BUTTON_HORIZONTAL))
 
 #define ELLIPSOID_XZ_DISTANCE_FROM_ORIGIN 2.0f
 #define CAMERA_XZ_DISTANCE_FROM_ORIGIN 5.0f
@@ -29,13 +28,13 @@ static const SDL_Color white_color = { 0xff, 0xff, 0xff, 0xff };
 static void calculate_player_chooser_geometry_stuff(
 	int leftx, SDL_Rect *preview, SDL_Point *prevbcenter, SDL_Point *nextbcenter)
 {
-	preview->w = CAMERA_SCREEN_WIDTH/2 - 2*BUTTON_SIZE_SMALL;
+	preview->w = CAMERA_SCREEN_WIDTH/2 - 2*button_width(0);
 	preview->h = PLAYER_CHOOSER_HEIGHT - 2*FONT_SIZE;
 	preview->x = leftx + CAMERA_SCREEN_WIDTH/4 - preview->w/2;
 	preview->y = FONT_SIZE;
 
-	prevbcenter->x = leftx + BUTTON_SIZE_SMALL/2;
-	nextbcenter->x = leftx + CAMERA_SCREEN_WIDTH/2 - BUTTON_SIZE_SMALL/2;
+	prevbcenter->x = leftx + button_width(0)/2;
+	nextbcenter->x = leftx + CAMERA_SCREEN_WIDTH/2 - button_width(0)/2;
 	prevbcenter->y = PLAYER_CHOOSER_HEIGHT/2;
 	nextbcenter->y = PLAYER_CHOOSER_HEIGHT/2;
 }
@@ -249,8 +248,10 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 			.cam = {
 				.screencentery = -0.55f*PLACE_CHOOSER_HEIGHT,
 				.surface = misc_create_cropped_surface(winsurf, (SDL_Rect){
-					0, CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT + BUTTON_SIZE_SMALL,
-					PLACE_CHOOSER_WIDTH, PLACE_CHOOSER_HEIGHT - 2*BUTTON_SIZE_SMALL
+					0,
+					CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT + button_height(BUTTON_HORIZONTAL),
+					PLACE_CHOOSER_WIDTH,
+					PLACE_CHOOSER_HEIGHT - 2*button_height(BUTTON_HORIZONTAL)
 				}),
 				.angle = 0,
 			},
@@ -261,7 +262,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				.scancodes = { SDL_SCANCODE_W, SDL_SCANCODE_UP },
 				.center = {
 					PLACE_CHOOSER_WIDTH/2,
-					CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT + BUTTON_SIZE_SMALL/2,
+					CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT + button_height(BUTTON_HORIZONTAL)/2,
 				},
 				.onclick = select_prev_place,
 			},
@@ -272,7 +273,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				.scancodes = { SDL_SCANCODE_S, SDL_SCANCODE_DOWN },
 				.center = {
 					PLACE_CHOOSER_WIDTH/2,
-					CAMERA_SCREEN_HEIGHT - BUTTON_SIZE_SMALL/2,
+					CAMERA_SCREEN_HEIGHT - button_height(BUTTON_HORIZONTAL)/2,
 				},
 				.onclick = select_next_place,
 			},

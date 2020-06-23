@@ -37,7 +37,10 @@ enum MiscState game_over(
 		.flags = BUTTON_BIG | BUTTON_HORIZONTAL,
 		.scancodes = { SDL_SCANCODE_RETURN },
 		.destsurf = wndsurf,
-		.center = { playagainbtn.center.x, playagainbtn.center.y + BUTTON_SIZE_BIG },
+		.center = {
+			playagainbtn.center.x,
+			playagainbtn.center.y + button_height(BUTTON_HORIZONTAL | BUTTON_BIG),
+		},
 		.onclick = on_back_to_chooser_clicked,
 		.onclickdata = &state,
 	};

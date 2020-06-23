@@ -4,32 +4,6 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 
-/*
-These button sizes is along the shorter side:
-
-	                       _
-	,---------------------. |
-	|  Horizontal button  | |size
-	`---------------------'_|
-
-
-	 ,----------.
-	 |          |
-	 |          |
-	 | Vertical |
-	 |  button  |
-	 |          |
-	 |          |
-	 `----------'
-	|____________|
-	     size
-
-The buttons are actually slightly smaller than these sizes, so you should get
-nice padding if you use these sizes.
-*/
-#define BUTTON_SIZE_SMALL 50
-#define BUTTON_SIZE_BIG 120
-
 struct Button {
 	// imgpath image and text are drawn on top of a generic button background image
 	const char *imgpath;
@@ -76,6 +50,10 @@ void button_show(struct Button *butt);
 
 // does nothing for events not related to the button
 void button_handle_event(const SDL_Event *evt, struct Button *butt);
+
+// Calculate width and height with BUTTON_BIG and BUTTON_HORIZONTAL flags
+int button_width(enum ButtonFlags f);
+int button_height(enum ButtonFlags f);
 
 
 #endif    // BUTTON_H
