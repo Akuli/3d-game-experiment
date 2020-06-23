@@ -42,11 +42,18 @@ struct Button {
 	} flags;
 
 	/*
-	Which keyboard key press corresponds to this button? Set this to -1 if you
-	don't want to associate a key with this button. That works because SDL doesn't
-	use any negative scancodes (see SDL_scancode.h).
+	Which keyboard key presses correspond to this button? Zeroes in this list are
+	ignored, so this works:
+
+		struct Button b = {
+			...
+			.scancodes = { SDL_SCANCODE_BLA },
+			...
+		};
+
+	This sets the first scancode to SDL_SCANCODE_BLA and rest to zero.
 	*/
-	int scancode;
+	int scancodes[5];
 
 	SDL_Surface *destsurf;
 	SDL_Point center;

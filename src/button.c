@@ -79,16 +79,25 @@ static bool mouse_on_button(const SDL_MouseButtonEvent *me, const struct Button 
 			fabsf(me->y - butt->center.y) < butt->height/2;
 }
 
+static bool scancode_matches_button(int sc, const struct Button *butt)
+{
+	for (int i = 0; i < sizeof(butt->scancodes)/sizeof(butt->scancodes[0]); i++) {
+		if (butt->scancodes[i] != 0 && butt->scancodes[i] == sc)
+			return true;
+	}
+	return false;
+}
+
 void button_handle_event(const SDL_Event *evt, struct Button *butt)
 {
 	if ((
 		(evt->type == SDL_MOUSEBUTTONDOWN && mouse_on_button(&evt->button, butt)) ||
-		(evt->type == SDL_KEYDOWN && evt->key.keysym.scancode == butt->scancode)
+		(evt->type == SDL_KEYDOWN && scancode_matches_button(evt->key.keysym.scancode, butt))
 	) && !(butt->flags & BUTTON_PRESSED)) {
 		butt->flags |= BUTTON_PRESSED;
 	} else if ((
 		(evt->type == SDL_MOUSEBUTTONUP && mouse_on_button(&evt->button, butt)) ||
-		(evt->type == SDL_KEYUP && evt->key.keysym.scancode == butt->scancode)
+		(evt->type == SDL_KEYUP && scancode_matches_button(evt->key.keysym.scancode, butt))
 	) && (butt->flags & BUTTON_PRESSED)) {
 		butt->flags &= ~BUTTON_PRESSED;
 		butt->onclick(butt->onclickdata);

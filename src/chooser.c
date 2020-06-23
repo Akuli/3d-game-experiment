@@ -95,7 +95,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 		.leftx = leftx,
 		.prevbtn = {
 			.imgpath = "arrows/left.png",
-			.scancode = scprev,
+			.scancodes = {scprev},
 			.destsurf = ch->winsurf,
 			.center = prevc,
 			.onclick = rotate_left,
@@ -103,7 +103,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 		},
 		.nextbtn = {
 			.imgpath = "arrows/right.png",
-			.scancode = scnext,
+			.scancodes = {scnext},
 			.destsurf = ch->winsurf,
 			.center = nextc,
 			.onclick = rotate_right,
@@ -236,7 +236,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 			.text = "Play",
 			.flags = BUTTON_BIG | BUTTON_HORIZONTAL,
 			.destsurf = winsurf,
-			.scancode = SDL_SCANCODE_RETURN,
+			.scancodes = { SDL_SCANCODE_RETURN, SDL_SCANCODE_SPACE },
 			.center = {
 				(PLACE_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
 				CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT/2,
@@ -258,7 +258,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				.imgpath = "arrows/up.png",
 				.flags = BUTTON_HORIZONTAL,
 				.destsurf = winsurf,
-				// TODO: two scancodes, 'w' and ↑
+				.scancodes = { SDL_SCANCODE_W, SDL_SCANCODE_UP },
 				.center = {
 					PLACE_CHOOSER_WIDTH/2,
 					CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT + BUTTON_SIZE_SMALL/2,
@@ -269,7 +269,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				.imgpath = "arrows/down.png",
 				.flags = BUTTON_HORIZONTAL,
 				.destsurf = winsurf,
-				// TODO: two scancodes, 's' and ↓
+				.scancodes = { SDL_SCANCODE_S, SDL_SCANCODE_DOWN },
 				.center = {
 					PLACE_CHOOSER_WIDTH/2,
 					CAMERA_SCREEN_HEIGHT - BUTTON_SIZE_SMALL/2,
