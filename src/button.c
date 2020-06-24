@@ -85,7 +85,7 @@ void button_show(const struct Button *butt)
 			snprintf(line1, sizeof line1, "%.*s", (int)(newln - butt->text), butt->text);
 			const char *line2 = newln + 1;
 
-			fontsz = (int)(fontsz * 0.7f);
+			fontsz = (int)(fontsz * 0.65f);
 			SDL_Surface *s1 = misc_create_text_surface(line1, black, fontsz);
 			SDL_Surface *s2 = misc_create_text_surface(line2, black, fontsz);
 
