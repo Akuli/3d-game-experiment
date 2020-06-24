@@ -17,6 +17,7 @@ enum EnemyDir {
 struct Enemy {
 	struct Ellipsoid ellipsoid;
 	bool turning;
+	bool neverdie;
 	enum EnemyDir dir;
 };
 

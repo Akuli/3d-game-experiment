@@ -24,6 +24,9 @@
 
 // includes all the GameObjects that all players should see
 struct GameState {
+	const struct Place *place;
+	const SDL_PixelFormat *pixfmt;
+
 	struct Player players[2];
 	struct Enemy enemies[MAX_ENEMIES];
 	int nenemies;
@@ -45,8 +48,20 @@ static bool time_to_do_something(unsigned *frameptr, unsigned thisframe, unsigne
 	return false;
 }
 
+static struct Enemy *add_enemy(struct GameState *gs)
+{
+	if (gs->nenemies >= MAX_ENEMIES) {
+		log_printf("hitting max number of enemies");
+		return NULL;
+	}
+
+	struct Enemy *en = &gs->enemies[gs->nenemies++];
+	enemy_init(en, gs->pixfmt, gs->place);
+	return en;
+}
+
 // runs each frame
-static void add_guards_and_enemies_as_needed(struct GameState *gs, const struct Place *pl, const SDL_PixelFormat *fmt)
+static void add_guards_and_enemies_as_needed(struct GameState *gs)
 {
 	// probability to get stack of 2 guards instead of 1 guard
 	float doubleguardprob = 0.2f;
@@ -80,14 +95,11 @@ static void add_guards_and_enemies_as_needed(struct GameState *gs, const struct 
 	if (time_to_do_something(&gs->lastguardframe, gs->thisframe, guarddelay)) {
 		int n = (rand() < (int)(doubleguardprob*(float)RAND_MAX)) ? 2 : 1;
 		log_printf("adding a pile of %d guards", n);
-		guard_create_unpickeds(pl, fmt, gs->unpicked_guards, &gs->n_unpicked_guards, n);
+		guard_create_unpickeds(gs->place, gs->pixfmt, gs->unpicked_guards, &gs->n_unpicked_guards, n);
 	}
 	if (time_to_do_something(&gs->lastenemyframe, gs->thisframe, enemydelay)) {
-		if (gs->nenemies >= MAX_ENEMIES)
-			log_printf("hitting max number of enemies");
-		else
-			enemy_init(&gs->enemies[gs->nenemies++], fmt, pl);
-		log_printf("should add enemy");
+		log_printf("adding an enemy");
+		add_enemy(gs);
 	}
 }
 
@@ -141,8 +153,11 @@ static void handle_players_bumping_enemies(struct GameState *gs)
 				sound_play("farts/fart*.wav");
 				int nguards = --gs->players[p].nguards;   // can become negative
 
-				// If the game is over, then leave the enemy visible for game over screen
-				if (nguards >= 0)
+				/*
+				If the game is over, then don't delete the enemy. This way it
+				shows up in game over screen.
+				*/
+				if (nguards >= 0 && !gs->enemies[e].neverdie)
 					gs->enemies[e] = gs->enemies[--gs->nenemies];
 			}
 		}
@@ -214,6 +229,8 @@ enum MiscState play_the_game(
 
 	static struct GameState gs;   // static because its big struct, avoiding stack usage
 	gs = (struct GameState){
+		.place = pl,
+		.pixfmt = winsurf->format,
 		.players = {
 			{
 				.ellipsoid = { .angle = 0, .epic = plr1pic, .center = pl->playerlocs[0] },
@@ -228,6 +245,15 @@ enum MiscState play_the_game(
 		},
 	};
 
+	for (int i = 0; i < pl->nneverdielocs; i++) {
+		struct Enemy *en = add_enemy(&gs);
+		if (!en)
+			continue;
+		SDL_assert(en->ellipsoid.center.y == pl->neverdielocs[i].y);
+		en->ellipsoid.center = pl->neverdielocs[i];
+		en->neverdie = true;
+	}
+
 	struct LoopTimer lt = {0};
 	enum MiscState ret;
 
@@ -240,7 +266,7 @@ enum MiscState play_the_game(
 			}
 		}
 
-		add_guards_and_enemies_as_needed(&gs, pl, winsurf->format);
+		add_guards_and_enemies_as_needed(&gs);
 		for (int i = 0; i < gs.nenemies; i++)
 			enemy_eachframe(&gs.enemies[i], pl);
 		for (int i = 0; i < gs.n_unpicked_guards; i++)

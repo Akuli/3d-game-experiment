@@ -4,6 +4,7 @@
 #include <string.h>
 #include <SDL2/SDL.h>
 #include "../generated/filelist.h"
+#include "max.h"
 #include "misc.h"
 #include "log.h"
 
@@ -18,6 +19,8 @@ Small language for specifying places in assets/places/placename.txt files:
 - content of square doesn't have to be spaces like above, can also be:
 	- 'p': initial player place (need two of these in the place)
 	- 'e': initial place for enemies (need one of these in the place)
+	- 'E': add an enemy that never dies. Use this for places otherwise unreacahble
+	  by enemies
 - any of the '--' or '|' walls may be replaced with spaces
 - each line is padded with spaces to have same length
 - must have these walls:
@@ -114,6 +117,7 @@ struct SquareParsingState {
 	struct Place *place;
 	Vec3 loc;
 	Vec3 *playerlocptr;   // pointer into place->playerlocs
+	Vec3 *neverdieptr;   // pointer into place->playerlocs
 };
 
 static void parse_square_content(char c, struct SquareParsingState *st)
@@ -123,6 +127,10 @@ static void parse_square_content(char c, struct SquareParsingState *st)
 		break;
 	case 'e':
 		st->place->enemyloc = st->loc;
+		break;
+	case 'E':
+		SDL_assert(st->place->nneverdielocs < MAX_ENEMIES);
+		st->place->neverdielocs[st->place->nneverdielocs++] = st->loc;
 		break;
 	case 'p':
 		SDL_assert(st->place->playerlocs <= st->playerlocptr && st->playerlocptr < st->place->playerlocs + 2);
@@ -208,6 +216,7 @@ static void init_place(struct Place *pl, const char *path)
 	log_printf("place '%s':", path);
 	log_printf("    size %dx%d", pl->xsize, pl->zsize);
 	log_printf("    %d walls", pl->nwalls);
+	log_printf("    %d enemies that never die", pl->nneverdielocs);
 	log_printf("    enemies go to (%.2f, %.2f, %.2f)", pl->enemyloc.x, pl->enemyloc.y, pl->enemyloc.z);
 	for (int i = 0; i < 2; i++)
 		log_printf("    player %d goes to (%.2f, %.2f, %.2f)", i, pl->playerlocs[i].x, pl->playerlocs[i].y, pl->playerlocs[i].z);
