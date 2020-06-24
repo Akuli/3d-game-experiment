@@ -157,7 +157,7 @@ static void handle_players_bumping_enemies(struct GameState *gs)
 				If the game is over, then don't delete the enemy. This way it
 				shows up in game over screen.
 				*/
-				if (nguards >= 0 && !gs->enemies[e].neverdie)
+				if (nguards >= 0 && !(gs->enemies[e].flags & ENEMY_NEVERDIE))
 					gs->enemies[e] = gs->enemies[--gs->nenemies];
 			}
 		}
@@ -251,7 +251,7 @@ enum MiscState play_the_game(
 			continue;
 		SDL_assert(en->ellipsoid.center.y == pl->neverdielocs[i].y);
 		en->ellipsoid.center = pl->neverdielocs[i];
-		en->neverdie = true;
+		en->flags |= ENEMY_NEVERDIE;
 	}
 
 	struct LoopTimer lt = {0};

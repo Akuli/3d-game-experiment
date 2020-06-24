@@ -6,8 +6,6 @@
 #include "ellipsoid.h"
 
 #define IMAGE_FILE_COUNT 1
-
-#define RADIANS_PER_SECOND 4.0f
 #define MOVE_UNITS_PER_SECOND 2.5f
 
 static struct EllipsoidPic *get_ellipsoid_pic(const SDL_PixelFormat *fmt)
@@ -38,7 +36,7 @@ void enemy_init(struct Enemy *en, const SDL_PixelFormat *fmt, const struct Place
 	};
 	ellipsoid_update_transforms(&en->ellipsoid);
 
-	en->turning = false;
+	en->flags &= ~ENEMY_TURNING;
 	en->dir = ENEMY_DIR_XPOS;
 }
 
@@ -59,8 +57,8 @@ for corners, i.e. when center x and z coordinates are of the form someinteger+0.
 */
 static void begin_turning(struct Enemy *en, const struct Place *pl)
 {
-	SDL_assert(!en->turning);
-	en->turning = true;
+	SDL_assert(!(en->flags & ENEMY_TURNING));
+	en->flags |= ENEMY_TURNING;
 
 	bool cango[] = {
 		[ENEMY_DIR_XPOS] = true,
@@ -110,8 +108,10 @@ static void begin_turning(struct Enemy *en, const struct Place *pl)
 	bool canturnaround = cango[opposite_direction(en->dir)];
 	cango[opposite_direction(en->dir)] = false;
 	if (!cango[0] && !cango[1] && !cango[2] && !cango[3]) {
-		SDL_assert(canturnaround);
-		en->dir = opposite_direction(en->dir);
+		if (canturnaround)
+			en->dir = opposite_direction(en->dir);
+		else
+			en->flags |= ENEMY_STUCK;
 		return;
 	}
 
@@ -162,11 +162,14 @@ static void move_coordinate(float *coord, float delta, struct Enemy *en, const s
 
 static void move(struct Enemy *en, const struct Place *pl)
 {
+	SDL_assert(!(en->flags & ENEMY_STUCK));
+
+	float amount = 2.5f / CAMERA_FPS;
 	switch(en->dir) {
-		case ENEMY_DIR_XPOS: move_coordinate(&en->ellipsoid.center.x, +MOVE_UNITS_PER_SECOND/(float)CAMERA_FPS, en, pl); break;
-		case ENEMY_DIR_XNEG: move_coordinate(&en->ellipsoid.center.x, -MOVE_UNITS_PER_SECOND/(float)CAMERA_FPS, en, pl); break;
-		case ENEMY_DIR_ZPOS: move_coordinate(&en->ellipsoid.center.z, +MOVE_UNITS_PER_SECOND/(float)CAMERA_FPS, en, pl); break;
-		case ENEMY_DIR_ZNEG: move_coordinate(&en->ellipsoid.center.z, -MOVE_UNITS_PER_SECOND/(float)CAMERA_FPS, en, pl); break;
+		case ENEMY_DIR_XPOS: move_coordinate(&en->ellipsoid.center.x, +amount, en, pl); break;
+		case ENEMY_DIR_XNEG: move_coordinate(&en->ellipsoid.center.x, -amount, en, pl); break;
+		case ENEMY_DIR_ZPOS: move_coordinate(&en->ellipsoid.center.z, +amount, en, pl); break;
+		case ENEMY_DIR_ZNEG: move_coordinate(&en->ellipsoid.center.z, -amount, en, pl); break;
 	}
 }
 
@@ -227,11 +230,15 @@ static float dir_to_angle(enum EnemyDir dir)
 
 void enemy_eachframe(struct Enemy *en, const struct Place *pl)
 {
-	if (en->turning) {
-		bool done = turn(&en->ellipsoid.angle, RADIANS_PER_SECOND / (float)CAMERA_FPS, dir_to_angle(en->dir));
+	float angleincr = 4.0f / CAMERA_FPS;
+	if (en->flags & ENEMY_STUCK) {
+		en->ellipsoid.angle += angleincr;
+		ellipsoid_update_transforms(&en->ellipsoid);
+	} else if (en->flags & ENEMY_TURNING) {
+		bool done = turn(&en->ellipsoid.angle, angleincr, dir_to_angle(en->dir));
 		ellipsoid_update_transforms(&en->ellipsoid);
 		if (done) {
-			en->turning = false;
+			en->flags &= ~ENEMY_TURNING;
 			move(en, NULL);
 		}
 	} else {
