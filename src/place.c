@@ -15,6 +15,9 @@ Small language for specifying places in assets/places/placename.txt files:
 	|  |
 	 --
 
+- content of square doesn't have to be spaces like above, can also be:
+	- 'p': initial player place (need two of these in the place)
+	- 'e': initial place for enemies (need one of these in the place)
 - any of the '--' or '|' walls may be replaced with spaces
 - each line is padded with spaces to have same length
 - must have these walls:
@@ -107,20 +110,41 @@ static bool parse_horizontal_wall_string(const char *part)
 	return (part[1] == '-');
 }
 
-static void parse_vertical_wall_string(const char *part, bool *leftwall, bool *rightwall)
+struct SquareParsingState {
+	struct Place *place;
+	Vec3 loc;
+	Vec3 *playerlocptr;   // pointer into place->playerlocs
+};
+
+static void parse_square_content(char c, struct SquareParsingState *st)
+{
+	switch(c) {
+	case ' ':
+		break;
+	case 'e':
+		st->place->enemyloc = st->loc;
+		break;
+	case 'p':
+		SDL_assert(st->place->playerlocs <= st->playerlocptr && st->playerlocptr < st->place->playerlocs + 2);
+		*st->playerlocptr++ = st->loc;
+		break;
+	default:
+		log_printf_abort("expected ' ', 'e' or 'p', got '%c'", c);
+	}
+}
+
+static void parse_vertical_wall_string(const char *part, bool *leftwall, bool *rightwall, struct SquareParsingState *st)
 {
 	SDL_assert(part[0] == '|' || part[0] == ' ');
-	SDL_assert(part[1] == ' ');
-	SDL_assert(part[2] == ' ');
 	SDL_assert(part[3] == '|' || part[3] == ' ');
 	*leftwall = (part[0] == '|');
 	*rightwall = (part[3] == '|');
+	parse_square_content(part[1], st);
+	parse_square_content(part[2], st);
 }
 
 static void init_place(struct Place *pl, const char *path)
 {
-	misc_basename_without_extension(path, pl->name, sizeof(pl->name));
-
 	int linelen, nlines;
 	char *fdata = read_file_with_trailing_spaces_added(path, &linelen, &nlines);
 
@@ -139,16 +163,18 @@ static void init_place(struct Place *pl, const char *path)
 	pl->zsize = nlines/2;
 
 	pl->nwalls = 0;
+	struct SquareParsingState st = { .place = pl, .playerlocptr = pl->playerlocs };
 	for (int z = 0; z < pl->zsize; z++) {
 		for (int x = 0; x < pl->xsize; x++) {
-			//log_printf("Parsing lines %d,%d,%d starting at column %d in file '%s'", 2*z, 2*z+1, 2*z+2, 3*x, path);
+			st.loc = (Vec3){ x+0.5f, 0, z+0.5f };    // +0.5f gives center coords
+
 			const char *toprow = fdata + (2*z    )*(linelen + 1) + 3*x;
 			const char *midrow = fdata + (2*z + 1)*(linelen + 1) + 3*x;
 			const char *botrow = fdata + (2*z + 2)*(linelen + 1) + 3*x;
 
 			bool top, bottom, left, right;
 			top = parse_horizontal_wall_string(toprow);
-			parse_vertical_wall_string(midrow, &left, &right);
+			parse_vertical_wall_string(midrow, &left, &right, &st);
 			bottom = parse_horizontal_wall_string(botrow);
 
 			// place must have surrounding left and top walls
@@ -177,16 +203,20 @@ static void init_place(struct Place *pl, const char *path)
 			if (right)  add_wall(pl, x+1, z,   WALL_DIR_ZY);
 		}
 	}
-
 	free(fdata);
-	log_printf("created %d walls for place '%s'", pl->nwalls, pl->name);
+
+	log_printf("place '%s':", path);
+	log_printf("    size %dx%d", pl->xsize, pl->zsize);
+	log_printf("    %d walls", pl->nwalls);
+	log_printf("    enemies go to (%.2f, %.2f, %.2f)", pl->enemyloc.x, pl->enemyloc.y, pl->enemyloc.z);
+	for (int i = 0; i < 2; i++)
+		log_printf("    player %d goes to (%.2f, %.2f, %.2f)", i, pl->playerlocs[i].x, pl->playerlocs[i].y, pl->playerlocs[i].z);
 }
 
 const struct Place *place_list(void)
 {
 	static bool inited = false;
-	static struct Place res[FILELIST_NPLACES];
-
+	static struct Place res[FILELIST_NPLACES] = {0};
 	if (inited)
 		return res;
 

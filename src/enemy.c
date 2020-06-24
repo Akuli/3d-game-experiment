@@ -27,10 +27,10 @@ static struct EllipsoidPic *get_ellipsoid_pic(const SDL_PixelFormat *fmt)
 	return &epics[rand() % FILELIST_NENEMIES];
 }
 
-void enemy_init(struct Enemy *en, const SDL_PixelFormat *fmt)
+void enemy_init(struct Enemy *en, const SDL_PixelFormat *fmt, const struct Place *pl)
 {
 	en->ellipsoid = (struct Ellipsoid){
-		.center = { 0.5f, 0, 0.5f },
+		.center = pl->enemyloc,
 		.epic = get_ellipsoid_pic(fmt),
 		.angle = 0,
 		.xzradius = ENEMY_XZRADIUS,

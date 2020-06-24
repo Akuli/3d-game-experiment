@@ -5,10 +5,12 @@
 #include "wall.h"
 
 struct Place {
-	char name[50];
 	struct Wall walls[MAX_WALLS];
 	int nwalls;
 	int xsize, zsize;    // players and enemies must have 0 <= x <= xsize, 0 <= z <= zsize
+
+	// y coords of these are set to 0
+	Vec3 enemyloc, playerlocs[2];
 };
 
 /*

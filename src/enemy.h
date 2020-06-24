@@ -21,7 +21,7 @@ struct Enemy {
 };
 
 // run this after creating a new enemy
-void enemy_init(struct Enemy *en, const SDL_PixelFormat *fmt);
+void enemy_init(struct Enemy *en, const SDL_PixelFormat *fmt, const struct Place *pl);
 
 // runs fps times per second
 void enemy_eachframe(struct Enemy *en, const struct Place *pl);

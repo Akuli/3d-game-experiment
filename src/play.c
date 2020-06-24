@@ -86,7 +86,7 @@ static void add_guards_and_enemies_as_needed(struct GameState *gs, const struct 
 		if (gs->nenemies >= MAX_ENEMIES)
 			log_printf("hitting max number of enemies");
 		else
-			enemy_init(&gs->enemies[gs->nenemies++], fmt);
+			enemy_init(&gs->enemies[gs->nenemies++], fmt, pl);
 		log_printf("should add enemy");
 	}
 }
@@ -212,17 +212,16 @@ enum MiscState play_the_game(
 	if (!winsurf)
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 
-	float pi = acosf(-1);
 	static struct GameState gs;   // static because its big struct, avoiding stack usage
 	gs = (struct GameState){
 		.players = {
 			{
-				.ellipsoid = { .angle = pi, .epic = plr1pic, .center = { 2.5f, 0, 0.5f } },
+				.ellipsoid = { .angle = 0, .epic = plr1pic, .center = pl->playerlocs[0] },
 				.cam = { .screencentery = winsurf->h/4, .surface = misc_create_cropped_surface(
 					winsurf, (SDL_Rect){ 0, 0, winsurf->w/2, winsurf->h }) },
 			},
 			{
-				.ellipsoid = { .angle = pi, .epic = plr2pic, .center = { 1.5f, 0, 0.5f } },
+				.ellipsoid = { .angle = 0, .epic = plr2pic, .center = pl->playerlocs[1] },
 				.cam = { .screencentery = winsurf->h/4, .surface = misc_create_cropped_surface(
 					winsurf, (SDL_Rect){ winsurf->w/2, 0, winsurf->w/2, winsurf->h }) },
 			},
