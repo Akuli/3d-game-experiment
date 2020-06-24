@@ -15,6 +15,6 @@
 	)*2                                            /* for both players */ \
 )
 
-#define MAX_WALLS 256
+#define MAX_WALLS 1024
 
 #endif    // MAX_H
