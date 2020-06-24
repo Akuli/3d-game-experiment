@@ -26,7 +26,7 @@ OBJ := obj/stb_image.o $(SRC:%.c=obj/%.o)
 UnusedVariableName := $(shell bash -c 'diff <(ls -R assets) assetlist || (ls -R assets > assetlist)')
 
 
-all: $(EXEDIR)/game$(EXESUFFIX) test checkfuncs checkassets
+all: $(EXEDIR)/game$(EXESUFFIX) test checkassets
 
 # doesn't use .gitignore because it's sometimes handy to have files being
 # ignored but not cleaned on rebuild
@@ -56,10 +56,6 @@ $(EXEDIR)/testrunner$(EXESUFFIX): $(TESTS_SRC) $(SRC) $(HEADERS) $(COPIED_FILES)
 .PHONY: test
 test: $(EXEDIR)/testrunner$(EXESUFFIX)
 	$(RUN) ./$<
-
-.PHONY: checkfuncs
-checkfuncs:
-	scripts/checkfuncs
 
 .PHONY: check_assets_sources
 checkassets:
