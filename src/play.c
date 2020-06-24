@@ -218,12 +218,12 @@ enum MiscState play_the_game(
 		.players = {
 			{
 				.ellipsoid = { .angle = pi, .epic = plr1pic, .center = { 2.5f, 0, 0.5f } },
-				.cam = { .screencentery = winsurf->h/2, .surface = misc_create_cropped_surface(
+				.cam = { .screencentery = winsurf->h/4, .surface = misc_create_cropped_surface(
 					winsurf, (SDL_Rect){ 0, 0, winsurf->w/2, winsurf->h }) },
 			},
 			{
 				.ellipsoid = { .angle = pi, .epic = plr2pic, .center = { 1.5f, 0, 0.5f } },
-				.cam = { .screencentery = winsurf->h/2, .surface = misc_create_cropped_surface(
+				.cam = { .screencentery = winsurf->h/4, .surface = misc_create_cropped_surface(
 					winsurf, (SDL_Rect){ winsurf->w/2, 0, winsurf->w/2, winsurf->h }) },
 			},
 		},

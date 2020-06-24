@@ -14,7 +14,7 @@
 #define RADIANS_PER_SECOND 5.0f
 
 #define CAMERA_BEHIND_PLAYER 4.0f
-#define CAMERA_HEIGHT 2.0f
+#define CAMERA_HEIGHT 4.0f
 
 #define JUMP_MAX_HEIGHT 3.0f
 #define JUMP_DURATION_SEC 0.6f
