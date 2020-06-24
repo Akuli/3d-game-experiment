@@ -1,10 +1,10 @@
 #include "ellipsoid.h"
-#include <assert.h>
 #include <errno.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <SDL2/SDL.h>
 #include "camera.h"
 #include "log.h"
 #include "ellipsemove.h"
@@ -174,13 +174,13 @@ static void calculate_yminmax_without_hidelowerhalf(const struct Ellipsoid *el, 
 	// Trial and error has been used to figure out which is bigger and which is smaller...
 	*ymax = (int)ceilf(camera_point_cam2screen(xcache->cam, mat3_mul_vec3(el->transform, A)).y);
 	*ymin = (int)      camera_point_cam2screen(xcache->cam, mat3_mul_vec3(el->transform, B)).y;
-	assert(*ymin <= *ymax);
+	SDL_assert(*ymin <= *ymax);
 }
 
 static int calculate_center_y(const struct Ellipsoid *el, const struct EllipsoidXCache *xcache)
 {
-	assert(xcache->xplane.constant == 0);  // goes through camera at (0,0,0)
-	assert(xcache->xplane.normal.y == 0);  // not tilted
+	SDL_assert(xcache->xplane.constant == 0);  // goes through camera at (0,0,0)
+	SDL_assert(xcache->xplane.normal.y == 0);  // not tilted
 
 	/*
 	We want to intersect these:
@@ -248,8 +248,8 @@ void ellipsoid_drawcolumn(
 	int ydiff = ymax - ymin;
 	if (ydiff <= 0)
 		return;
-	assert(0 <= ymin && ymin+ydiff <= xcache->cam->surface->h);
-	assert(ydiff <= CAMERA_SCREEN_HEIGHT);
+	SDL_assert(0 <= ymin && ymin+ydiff <= xcache->cam->surface->h);
+	SDL_assert(ydiff <= CAMERA_SCREEN_HEIGHT);
 
 	/*
 	Code is ugly but gcc vectorizes it to make it very fast. This code was the
@@ -349,7 +349,7 @@ float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid 
 	Mat3 rot = mat3_inverse(mat3_rotation_xz_sincos(diff.z/difflen, diff.x/difflen));
 	Vec3 center1 = mat3_mul_vec3(rot, el1->center);
 	Vec3 center2 = mat3_mul_vec3(rot, el2->center);
-	assert(fabsf(center1.z - center2.z) < 1e-5f);
+	SDL_assert(fabsf(center1.z - center2.z) < 1e-5f);
 
 	// Now this is a 2D problem on the xy plane (or some other plane parallel to xy plane)
 	Vec2 center1_xy = { center1.x, center1.y };
@@ -361,7 +361,7 @@ float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid 
 
 void ellipsoid_move_apart(struct Ellipsoid *el1, struct Ellipsoid *el2, float mv)
 {
-	assert(mv >= 0);
+	SDL_assert(mv >= 0);
 	Vec3 from1to2 = vec3_sub(el2->center, el1->center);
 	from1to2.y = 0;   // don't move in y direction
 	if (vec3_lengthSQUARED(from1to2) < 1e-5f) {

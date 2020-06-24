@@ -1,5 +1,4 @@
 #include "play.h"
-
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -103,8 +102,8 @@ static void handle_players_bumping_enemies(struct GameState *gs)
 	}
 }
 
-static void get_all_ellipsoids(
-	const struct GameState *gs, const struct Ellipsoid **arr, int *arrlen)
+static int get_all_ellipsoids(
+	const struct GameState *gs, const struct Ellipsoid **arr)
 {
 	static struct Ellipsoid result[SHOWALL_MAX_ELLIPSOIDS];
 	static_assert(sizeof(result[0]) < 512,
@@ -123,10 +122,10 @@ static void get_all_ellipsoids(
 	for (int i = 0; i < gs->n_unpicked_guards; i++)
 		*ptr++ = gs->unpicked_guards[i];
 
-	assert(ptr < result + sizeof(result)/sizeof(result[0]));
+	SDL_assert(ptr < result + sizeof(result)/sizeof(result[0]));
 
 	*arr = result;
-	*arrlen = ptr - result;
+	return ptr - result;
 }
 
 enum MiscState play_the_game(
@@ -189,8 +188,7 @@ enum MiscState play_the_game(
 		SDL_FillRect(winsurf, NULL, 0);
 
 		const struct Ellipsoid *els;
-		int nels;
-		get_all_ellipsoids(&gs, &els, &nels);
+		int nels = get_all_ellipsoids(&gs, &els);
 
 		for (int i = 0; i < 2; i++)
 			show_all(pl->walls, pl->nwalls, els, nels, &gs.players[i].cam);

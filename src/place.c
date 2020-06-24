@@ -1,8 +1,8 @@
 #include "place.h"
-#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <SDL2/SDL.h>
 #include "../generated/filelist.h"
 #include "misc.h"
 #include "log.h"
@@ -42,7 +42,7 @@ static void add_trailing_spaces(char *s, size_t len)
 {
 	s[len] = '\0';
 	memset(s + strlen(s), ' ', len - strlen(s));
-	assert(strlen(s) == len);
+	SDL_assert(strlen(s) == len);
 }
 
 static char *read_file_with_trailing_spaces_added(const char *path, int *linelen, int *nlines)
@@ -76,7 +76,7 @@ static char *read_file_with_trailing_spaces_added(const char *path, int *linelen
 		if (!fgets(buf, sizeof buf, f))
 			reading_error(path);
 		remove_trailing_newline(buf);
-		assert(sizeof(buf) >= *linelen + 1);
+		SDL_assert(sizeof(buf) >= *linelen + 1);
 		add_trailing_spaces(buf, *linelen);
 		strcpy(ptr, buf);
 	}
@@ -87,7 +87,7 @@ static char *read_file_with_trailing_spaces_added(const char *path, int *linelen
 
 static void add_wall(struct Place *pl, int x, int z, enum WallDirection dir)
 {
-	assert(pl->nwalls < PLACE_MAX_WALLS);
+	SDL_assert(pl->nwalls < PLACE_MAX_WALLS);
 
 	struct Wall *w = &pl->walls[pl->nwalls++];
 	w->startx = x;
@@ -100,19 +100,19 @@ static void add_wall(struct Place *pl, int x, int z, enum WallDirection dir)
 static bool parse_horizontal_wall_string(const char *part)
 {
 	// e.g. " -- "
-	assert(part[0] == ' ');
-	assert(part[1] == '-' || part[1] == ' ');
-	assert(part[2] == part[1]);
-	assert(part[3] == ' ');
+	SDL_assert(part[0] == ' ');
+	SDL_assert(part[1] == '-' || part[1] == ' ');
+	SDL_assert(part[2] == part[1]);
+	SDL_assert(part[3] == ' ');
 	return (part[1] == '-');
 }
 
 static void parse_vertical_wall_string(const char *part, bool *leftwall, bool *rightwall)
 {
-	assert(part[0] == '|' || part[0] == ' ');
-	assert(part[1] == ' ');
-	assert(part[2] == ' ');
-	assert(part[3] == '|' || part[3] == ' ');
+	SDL_assert(part[0] == '|' || part[0] == ' ');
+	SDL_assert(part[1] == ' ');
+	SDL_assert(part[2] == ' ');
+	SDL_assert(part[3] == '|' || part[3] == ' ');
 	*leftwall = (part[0] == '|');
 	*rightwall = (part[3] == '|');
 }
@@ -133,9 +133,9 @@ static void init_place(struct Place *pl, const char *path)
 	z
 	*/
 
-	assert(linelen % 3 == 1);  // e.g. " -- " or "|  |", one more column means off by 3
+	SDL_assert(linelen % 3 == 1);  // e.g. " -- " or "|  |", one more column means off by 3
 	pl->xsize = linelen / 3;
-	assert(nlines % 2 == 1);   // e.g. { " -- ", "|  |", " -- " }, one more row means off by 2
+	SDL_assert(nlines % 2 == 1);   // e.g. { " -- ", "|  |", " -- " }, one more row means off by 2
 	pl->zsize = nlines/2;
 
 	pl->nwalls = 0;
@@ -153,21 +153,21 @@ static void init_place(struct Place *pl, const char *path)
 
 			// place must have surrounding left and top walls
 			if (x == 0)
-				assert(left);
+				SDL_assert(left);
 			if (z == 0)
-				assert(top);
+				SDL_assert(top);
 
 			/*
 			same for bottom and right, and when not last iteration of loop, we let
 			another iteration of the loop to handle the wall
 			*/
 			if (x == pl->xsize - 1)
-				assert(right);
+				SDL_assert(right);
 			else
 				right = false;
 
 			if (z == pl->zsize - 1)
-				assert(bottom);
+				SDL_assert(bottom);
 			else
 				bottom = false;
 

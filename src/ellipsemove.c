@@ -1,8 +1,8 @@
-#include <assert.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <SDL2/SDL.h>
 #include "log.h"
 #include "mathstuff.h"
 
@@ -116,8 +116,8 @@ When this returns true, you always get *pointx1 <= 0 and *pointx2 >= 0.
 static bool origin_centered_ellipse_distance1_points_with_given_y(
 	float a, float b, float pointy, float *pointx1, float *pointx2)
 {
-	assert(a > 0);
-	assert(b > 0);
+	SDL_assert(a > 0);
+	SDL_assert(b > 0);
 
 	// Ensure that solution exists: b+1 is how far up or down from x axis the points can be
 	if (fabsf(pointy) > b+1)
@@ -198,12 +198,12 @@ static float ellipse_move_amount_x_for_origin_centered_unit_circle(
 	{
 		return 0;
 	}
-	assert(xmin <= xmax);
+	SDL_assert(xmin <= xmax);
 
 	// Convert back to original coordinates
 	xmin += center.x;
 	xmax += center.x;
-	assert(xmin <= xmax);
+	SDL_assert(xmin <= xmax);
 
 	if (!( xmin < 0 && 0 < xmax ))
 		return 0;
@@ -211,11 +211,11 @@ static float ellipse_move_amount_x_for_origin_centered_unit_circle(
 	// Ellipse should move
 	if (center.x > 0) {
 		// Ellipse should move right
-		assert(xmin < 0);
+		SDL_assert(xmin < 0);
 		return fabsf(xmin);
 	} else {
 		// Ellipse should move left
-		assert(xmax > 0);
+		SDL_assert(xmax > 0);
 		return xmax;
 	}
 }
@@ -224,10 +224,10 @@ float ellipse_move_amount_x(
 	float a1, float b1, Vec2 center1,
 	float a2, float b2, Vec2 center2)
 {
-	assert(a1 > 0);
-	assert(b1 > 0);
-	assert(a2 > 0);
-	assert(b2 > 0);
+	SDL_assert(a1 > 0);
+	SDL_assert(b1 > 0);
+	SDL_assert(a2 > 0);
+	SDL_assert(b2 > 0);
 
 	/*
 	Shift coordinates so that ellipse 2 is centered, and then stretch so that

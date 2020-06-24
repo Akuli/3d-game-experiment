@@ -1,7 +1,7 @@
 #include "wall.h"
-#include <assert.h>
 #include <math.h>
 #include <stdint.h>
+#include <SDL2/SDL.h>
 #include "camera.h"
 #include "mathstuff.h"
 #include "player.h"
@@ -154,8 +154,8 @@ bool wall_visible_xminmax(
 
 	fill_cache(w, wc, cam);
 
-	assert(fabsf(wc->top1.x - wc->bot1.x) < 1e-5f);
-	assert(fabsf(wc->top2.x - wc->bot2.x) < 1e-5f);
+	SDL_assert(fabsf(wc->top1.x - wc->bot1.x) < 1e-5f);
+	SDL_assert(fabsf(wc->top2.x - wc->bot2.x) < 1e-5f);
 
 	// need only top corners because others have same screen x
 	*xmin = (int)ceilf(min(wc->top1.x, wc->top2.x));
@@ -241,7 +241,7 @@ void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax)
 	SDL_Surface *surf = wc->cam->surface;
 	const SDL_PixelFormat *fmt = wc->cam->surface->format;
 
-	assert(surf->pitch % sizeof(uint32_t) == 0);
+	SDL_assert(surf->pitch % sizeof(uint32_t) == 0);
 	int mypitch = surf->pitch / sizeof(uint32_t);
 
 	uint32_t *start = (uint32_t *)surf->pixels + ymin*mypitch + x;

@@ -1,5 +1,4 @@
 #include "misc.h"
-#include <assert.h>
 #include <string.h>
 #include "log.h"
 #include <SDL2/SDL.h>
@@ -35,7 +34,7 @@ SDL_Surface *misc_create_text_surface(const char *text, SDL_Color col, int fonts
 
 SDL_Surface *misc_create_cropped_surface(SDL_Surface *surf, SDL_Rect r)
 {
-	assert(surf->format->BitsPerPixel == 8*surf->format->BytesPerPixel);
+	SDL_assert(surf->format->BitsPerPixel == 8*surf->format->BytesPerPixel);
 	SDL_Surface *res = SDL_CreateRGBSurfaceFrom(
 		(char*)surf->pixels + r.y*surf->pitch + surf->format->BytesPerPixel*r.x,
 		r.w, r.h,

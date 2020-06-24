@@ -1,7 +1,7 @@
 #include "showall.h"
-#include <assert.h>
 #include <limits.h>
 #include <math.h>
+#include <SDL2/SDL.h>
 #include "camera.h"
 #include "ellipsoid.h"
 #include "interval.h"
@@ -94,8 +94,8 @@ static void add_dependency(struct ShowingState *st, ID before, ID after)
 
 static void setup_ellipsoid_wall_dependency(struct ShowingState *st, ID eid, ID wid)
 {
-	assert(ID_TYPE(eid) == ID_TYPE_ELLIPSOID);
-	assert(ID_TYPE(wid) == ID_TYPE_WALL);
+	SDL_assert(ID_TYPE(eid) == ID_TYPE_ELLIPSOID);
+	SDL_assert(ID_TYPE(wid) == ID_TYPE_WALL);
 
 	const struct Ellipsoid *el = &st->els[ID_INDEX(eid)];
 	const struct Wall *w = &st->walls[ID_INDEX(wid)];
@@ -123,7 +123,7 @@ static void setup_ellipsoid_wall_dependency(struct ShowingState *st, ID eid, ID 
 
 static void setup_same_type_dependency(struct ShowingState *st, ID id1, ID id2)
 {
-	assert(ID_TYPE(id1) == ID_TYPE(id2));
+	SDL_assert(ID_TYPE(id1) == ID_TYPE(id2));
 	Vec3 center1, center2;
 
 	switch(ID_TYPE(id1)) {
@@ -232,7 +232,7 @@ static void create_sorted_array(struct ShowingState *st, ID *sorted)
 	ID *ptr = sorted;
 	for (int i = 0; i < st->nvisible; i++)
 		add_dependencies_and_id_to_sorted_array(st, &ptr, st->visible[i], 0);
-	assert(sorted + st->nvisible == ptr);
+	SDL_assert(sorted + st->nvisible == ptr);
 }
 
 static void get_yminmax(struct ShowingState *st, ID id, int x, int *ymin, int *ymax)
@@ -266,8 +266,8 @@ void show_all(
 	const struct Ellipsoid *els, int nels,
 	const struct Camera *cam)
 {
-	assert(nwalls <= PLACE_MAX_WALLS);
-	assert(nels <= SHOWALL_MAX_ELLIPSOIDS);
+	SDL_assert(nwalls <= PLACE_MAX_WALLS);
+	SDL_assert(nels <= SHOWALL_MAX_ELLIPSOIDS);
 
 	// static to keep stack usage down
 	static struct ShowingState st;

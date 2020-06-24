@@ -5,7 +5,8 @@ CFLAGS += -Werror=incompatible-pointer-types
 CFLAGS += -Werror=implicit-function-declaration
 CFLAGS += -Werror=discarded-qualifiers
 CFLAGS += -Werror=stack-usage=50000
-CFLAGS += -Wno-missing-field-initializers    # it's often handy to leave stuff zeroed
+CFLAGS += -Wno-missing-field-initializers   # it's often handy to leave stuff zeroed
+CFLAGS += -DSDL_ASSERT_LEVEL=2              # enable SDL_assert()
 CFLAGS += -g
 CFLAGS += -O3
 VENDOR_CFLAGS := $(CFLAGS:-W%=)   # no warnings from other people's code please

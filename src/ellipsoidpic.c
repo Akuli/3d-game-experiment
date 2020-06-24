@@ -1,7 +1,7 @@
 #include "ellipsoidpic.h"
-#include <assert.h>
 #include <errno.h>
 #include <string.h>
+#include <SDL2/SDL.h>
 #include "../stb/stb_image.h"
 #include "log.h"
 #include "mathstuff.h"
@@ -59,7 +59,7 @@ static float calculate_angle(int x, int z)
 	float res = pi/2 - atan2f(z - ELLIPSOIDPIC_SIDE/2, x - ELLIPSOIDPIC_SIDE/2);
 	if (res < 2*pi) res += 2*pi;
 	if (res > 2*pi) res -= 2*pi;
-	assert(0 <= res && res <= 2*pi);
+	SDL_assert(0 <= res && res <= 2*pi);
 	return res;
 }
 
@@ -91,7 +91,7 @@ static FILE *open_binary_file_for_reading(const char *path)
 #ifdef _WIN32
 	wchar_t wpath[1024];
 	int n = MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, sizeof(wpath)/sizeof(wpath[0]) - 1);
-	assert(0 <= n && n < sizeof(wpath)/sizeof(wpath[0]));
+	SDL_assert(0 <= n && n < sizeof(wpath)/sizeof(wpath[0]));
 	wpath[n] = L'\0';
 
 	if (n == 0)
@@ -131,11 +131,11 @@ static void read_image(const char *path, struct EllipsoidPic *epic)
 	for (int z = 0; z < ELLIPSOIDPIC_SIDE; z++)
 	{
 		int picy = (int)linear_map(ELLIPSOIDPIC_SIDE-1, 0, 0, (float)(fileh-1), (float)y);
-		assert(0 <= picy && picy < fileh);
+		SDL_assert(0 <= picy && picy < fileh);
 
 		float angle = (*angles)[x][z];
 		int picx = (int)linear_map(0, 2*pi, 0, (float)(filew-1), angle);
-		assert(0 <= picx && picx < filew);
+		SDL_assert(0 <= picx && picx < filew);
 
 		size_t i = (size_t)( (picy*filew + picx)*4 );
 		epic->cubepixels[x][y][z] = SDL_MapRGB(

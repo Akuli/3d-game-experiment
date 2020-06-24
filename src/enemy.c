@@ -1,7 +1,7 @@
 #include "enemy.h"
-#include <assert.h>
 #include <math.h>
 #include <stdlib.h>
+#include <SDL2/SDL.h>
 #include "../generated/filelist.h"
 #include "ellipsoid.h"
 
@@ -23,7 +23,7 @@ static struct EllipsoidPic *get_ellipsoid_pic(const SDL_PixelFormat *fmt)
 		ready = true;
 	}
 
-	assert(epics[0].pixfmt == fmt);
+	SDL_assert(epics[0].pixfmt == fmt);
 	return &epics[rand() % FILELIST_NENEMIES];
 }
 
@@ -50,7 +50,7 @@ static enum EnemyDir opposite_direction(enum EnemyDir d)
 		case ENEMY_DIR_ZPOS: return ENEMY_DIR_ZNEG;
 		case ENEMY_DIR_ZNEG: return ENEMY_DIR_ZPOS;
 	}
-	assert(0);
+	log_printf_abort("invalid EnemyDir: %d", d);
 }
 
 /*
@@ -59,7 +59,7 @@ for corners, i.e. when center x and z coordinates are of the form someinteger+0.
 */
 static void begin_turning(struct Enemy *en, const struct Place *pl)
 {
-	assert(!en->turning);
+	SDL_assert(!en->turning);
 	en->turning = true;
 
 	bool cango[] = {
@@ -68,7 +68,7 @@ static void begin_turning(struct Enemy *en, const struct Place *pl)
 		[ENEMY_DIR_ZPOS] = true,
 		[ENEMY_DIR_ZNEG] = true,
 	};
-	assert(sizeof(cango)/sizeof(cango)[0] == 4);   // indexes of cango are the valid enum values
+	SDL_assert(sizeof(cango)/sizeof(cango)[0] == 4);   // indexes of cango are the valid enum values
 
 	/*
 	 ---------> x
@@ -110,7 +110,7 @@ static void begin_turning(struct Enemy *en, const struct Place *pl)
 	bool canturnaround = cango[opposite_direction(en->dir)];
 	cango[opposite_direction(en->dir)] = false;
 	if (!cango[0] && !cango[1] && !cango[2] && !cango[3]) {
-		assert(canturnaround);
+		SDL_assert(canturnaround);
 		en->dir = opposite_direction(en->dir);
 		return;
 	}
@@ -133,7 +133,7 @@ static bool integer_between_floats(float a, float b, int *ptr)
 {
 	int abovesmol = (int)ceilf(min(a, b));
 	int belowbig = (int)floorf(max(a, b));
-	assert(!( abovesmol < belowbig ));   // if this fails, there's more than 1 integer between
+	SDL_assert(!( abovesmol < belowbig ));   // if this fails, there's more than 1 integer between
 
 	if (abovesmol == belowbig) {
 		*ptr = abovesmol;
@@ -180,14 +180,14 @@ static float normalize_angle(float angle)
 	if (angle < -pi)
 		angle += 2*pi;
 
-	assert(-pi <= angle && angle <= pi);
+	SDL_assert(-pi <= angle && angle <= pi);
 	return angle;
 }
 
 // returns whether destination angle was reached
 static bool turn(float *angle, float incr, float destangle)
 {
-	assert(incr > 0);
+	SDL_assert(incr > 0);
 
 	float diff = normalize_angle(destangle - *angle);
 	//*angle += diff; return false;

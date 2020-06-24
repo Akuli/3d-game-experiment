@@ -1,5 +1,4 @@
 #include "mathstuff.h"
-#include <assert.h>
 #include <math.h>
 
 /*

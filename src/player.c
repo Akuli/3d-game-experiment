@@ -1,6 +1,6 @@
 #include "player.h"
-#include <assert.h>
 #include <math.h>
+#include <SDL2/SDL.h>
 #include "ellipsoid.h"
 #include "log.h"
 #include "mathstuff.h"
@@ -26,21 +26,21 @@ const struct EllipsoidPic *player_get_epics(const SDL_PixelFormat *fmt)
 	static const SDL_PixelFormat *cachedfmt = NULL;
 
 	if (!cachedfmt) {
-		assert(fmt != NULL);
+		SDL_assert(fmt != NULL);
 		cachedfmt = fmt;
 		// this loop can cause slow startup time
 		for (int i = 0; i < FILELIST_NPLAYERS; i++)
 			ellipsoidpic_load(&res[i], filelist_players[i], fmt);
 	}
 
-	assert(fmt == NULL || fmt == cachedfmt);
+	SDL_assert(fmt == NULL || fmt == cachedfmt);
 	return res;
 }
 
 void player_epic_name(const struct EllipsoidPic *epic, char *name, int sizeofname)
 {
 	int i = epic - player_get_epics(NULL);
-	assert(0 <= i && i < FILELIST_NPLAYERS);
+	SDL_assert(0 <= i && i < FILELIST_NPLAYERS);
 	misc_basename_without_extension(filelist_players[i], name, sizeofname);
 }
 
@@ -117,7 +117,7 @@ void player_eachframe(struct Player *plr, const struct Place *pl)
 
 void player_set_turning(struct Player *plr, int dir, bool turn)
 {
-	assert(dir == 1 || dir == -1);
+	SDL_assert(dir == 1 || dir == -1);
 
 	if (turn)
 		plr->turning = dir;

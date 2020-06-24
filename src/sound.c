@@ -1,5 +1,4 @@
 #include "sound.h"
-#include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,11 +29,11 @@ void sound_init(void)
 {
 	// filenames must be sorted for binary searching
 	for (int i = 0; i < FILELIST_NSOUNDS-1; i++)
-		assert(strcmp(filelist_sounds[i], filelist_sounds[i+1]) < 0);
+		SDL_assert(strcmp(filelist_sounds[i], filelist_sounds[i+1]) < 0);
 
 	// sound_play() takes filename without "sounds/" in front
 	for (int i = 0; i < FILELIST_NSOUNDS; i++)
-		assert(string_starts_with(filelist_sounds[i], "sounds/", -1));
+		SDL_assert(string_starts_with(filelist_sounds[i], "sounds/", -1));
 
 	if (SDL_Init(SDL_INIT_AUDIO) == -1) {
 		log_printf("SDL_Init(SDL_INIT_AUDIO) failed: %s", SDL_GetError());
@@ -63,7 +62,7 @@ void sound_init(void)
 	Mix_AllocateChannels(32);
 
 	for (int i = 0; i < FILELIST_NSOUNDS; i++) {
-		assert(sound_chunks[i] == NULL);
+		SDL_assert(sound_chunks[i] == NULL);
 		if (!( sound_chunks[i] = Mix_LoadWAV(filelist_sounds[i]) ))
 			log_printf("Mix_LoadWav(\"%s\") failed: %s", filelist_sounds[i], Mix_GetError());
 	}
@@ -74,8 +73,8 @@ static int compare_sound_filename(const void *a, const void *b)
 	const char *astr = a;
 	const char *bstr = *(const char *const*)b;
 
-	assert(!string_starts_with(astr, "sounds/", -1));
-	assert(string_starts_with(bstr, "sounds/", -1));
+	SDL_assert(!string_starts_with(astr, "sounds/", -1));
+	SDL_assert(string_starts_with(bstr, "sounds/", -1));
 	return strcmp(astr, bstr + strlen("sounds/"));
 }
 
@@ -91,11 +90,11 @@ static Mix_Chunk *choose_sound(const char *pattern)
 			return NULL;
 
 		int i = ptr - filelist_sounds;
-		assert(0 <= i && i < FILELIST_NSOUNDS);
+		SDL_assert(0 <= i && i < FILELIST_NSOUNDS);
 		return sound_chunks[i];
 	}
 
-	assert(strrchr(pattern, '*') == star);   // no more than 1 wildcard
+	SDL_assert(strrchr(pattern, '*') == star);   // no more than 1 wildcard
 
 	Mix_Chunk *matching[FILELIST_NSOUNDS];
 	int nmatching = 0;

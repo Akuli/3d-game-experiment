@@ -1,6 +1,6 @@
 #include "guard.h"
-#include <assert.h>
 #include <stdbool.h>
+#include <SDL2/SDL.h>
 #include "ellipsoid.h"
 #include "ellipsoidpic.h"
 #include "mathstuff.h"
@@ -19,7 +19,7 @@ static struct EllipsoidPic *get_ellipsoid_pic(const SDL_PixelFormat *fmt)
 		ready = true;
 	}
 
-	assert(epic.pixfmt == fmt);
+	SDL_assert(epic.pixfmt == fmt);
 	return &epic;
 }
 

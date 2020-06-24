@@ -1,6 +1,6 @@
 #include "interval.h"
-#include <assert.h>
 #include <stdbool.h>
+#include <SDL2/SDL.h>
 #include "mathstuff.h"
 
 
@@ -59,6 +59,6 @@ int interval_non_overlapping(const struct Interval *in, int inlen, struct Interv
 		*top++ = in[i];
 	}
 
-	assert(out <= top && top <= out + INTERVAL_NON_OVERLAPPING_MAX(inlen));
+	SDL_assert(out <= top && top <= out + INTERVAL_NON_OVERLAPPING_MAX(inlen));
 	return (top - out);
 }

@@ -8,7 +8,6 @@
 	#define my_chdir chdir
 #endif
 
-#include <assert.h>
 #include <string.h>
 #include <time.h>
 #include <SDL2/SDL.h>
@@ -36,8 +35,8 @@ static void cd_where_everything_is(void)
 	// assets directory is in same directory with the exe file, like dlls are
 	wchar_t exepath[MAX_PATH];
 	int n = GetModuleFileNameW(NULL, exepath, sizeof(exepath)/sizeof(exepath[0]) - 1);
-	assert(n >= 0);
-	assert(n < sizeof(exepath)/sizeof(exepath[0]));
+	SDL_assert(n >= 0);
+	SDL_assert(n < sizeof(exepath)/sizeof(exepath[0]));
 	exepath[n] = L'\0';
 	log_printf("exe file: %ls\n", exepath);
 

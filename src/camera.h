@@ -1,7 +1,6 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include <assert.h>
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 #include "log.h"
@@ -85,7 +84,7 @@ void camera_update_caches(struct Camera *cam);
 
 inline Vec2 camera_point_cam2screen(const struct Camera *cam, Vec3 pt)
 {
-	assert(pt.z < 0);   // point must be in front of camera
+	SDL_assert(pt.z < 0);   // point must be in front of camera
 	return (Vec2){
 		.x = camera_xzr_to_screenx(cam, pt.x/pt.z),
 		.y = camera_yzr_to_screeny(cam, pt.y/pt.z),

@@ -1,4 +1,6 @@
 #include "chooser.h"
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 #include "../generated/filelist.h"
 #include "button.h"
 #include "camera.h"
@@ -10,8 +12,6 @@
 #include "place.h"
 #include "player.h"
 #include "showall.h"
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
 
 #define FONT_SIZE 40
 
@@ -41,7 +41,7 @@ static void calculate_player_chooser_geometry_stuff(
 
 static void update_player_name_display(struct ChooserPlayerStuff *plrch)
 {
-	assert(plrch->prevbtn.destsurf == plrch->nextbtn.destsurf);
+	SDL_assert(plrch->prevbtn.destsurf == plrch->nextbtn.destsurf);
 	SDL_Surface *winsurf = plrch->nextbtn.destsurf;
 	SDL_Point center = { plrch->leftx + CAMERA_SCREEN_WIDTH/4, PLAYER_CHOOSER_HEIGHT - FONT_SIZE/2 };
 
@@ -62,7 +62,7 @@ static void update_player_name_display(struct ChooserPlayerStuff *plrch)
 
 static void rotate_player_chooser(struct ChooserPlayerStuff *plrch, int dir)
 {
-	assert(dir == +1 || dir == -1);
+	SDL_assert(dir == +1 || dir == -1);
 
 	plrch->epic += dir;
 	if (plrch->epic == player_get_epics(NULL) - 1)
@@ -153,7 +153,7 @@ static void rotate_player_ellipsoids(struct Ellipsoid *els, int n)
 
 static float restrict_absolute_value(float val, float maxabs)
 {
-	assert(maxabs >= 0);
+	SDL_assert(maxabs >= 0);
 	if (fabsf(val) > maxabs)
 		return copysignf(maxabs, val);
 	return val;
@@ -203,7 +203,7 @@ static void show_place_chooser_each_frame(struct ChooserPlaceStuff *plcch)
 
 static void update_place_chooser_button_disableds(struct ChooserPlaceStuff *ch)
 {
-	assert(&place_list()[0] <= ch->pl && ch->pl < &place_list()[FILELIST_NPLACES]);
+	SDL_assert(&place_list()[0] <= ch->pl && ch->pl < &place_list()[FILELIST_NPLACES]);
 
 	if (ch->pl == &place_list()[0])
 		ch->prevbtn.flags |= BUTTON_DISABLED;

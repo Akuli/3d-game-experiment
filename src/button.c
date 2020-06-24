@@ -1,7 +1,7 @@
 #include "button.h"
-#include <assert.h>
 #include <math.h>
 #include <string.h>
+#include <SDL2/SDL.h>
 #include "log.h"
 #include "misc.h"
 #include "../stb/stb_image.h"
@@ -18,7 +18,7 @@ static SDL_Surface *load_image(const char *path)
 		data, w, h, 32, 4*w, SDL_PIXELFORMAT_RGBA32);
 	if (!s)
 		log_printf_abort("SDL_CreateRGBSurfaceWithFormatFrom failed: %s", SDL_GetError());
-	assert(s->pixels == data);
+	SDL_assert(s->pixels == data);
 	return s;
 }
 
@@ -79,7 +79,7 @@ void button_show(const struct Button *butt)
 
 		const char *newln = strchr(butt->text, '\n');
 		if (newln) {
-			assert(strrchr(butt->text, '\n') == newln);   // no more than one '\n'
+			SDL_assert(strrchr(butt->text, '\n') == newln);   // no more than one '\n'
 
 			char line1[100];
 			snprintf(line1, sizeof line1, "%.*s", (int)(newln - butt->text), butt->text);
