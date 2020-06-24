@@ -1,5 +1,6 @@
 sounds/boing.wav: https://freesound.org/people/reelworldstudio/sounds/161122/
-sounds/pop.wav: https://freesound.org/people/debsound/sounds/320549/
+sounds/pick.wav: https://freesound.org/people/debsound/sounds/320549/
+sounds/pop.wav: https://freesound.org/people/deraj/sounds/202230/
 sounds/lower.wav: sped up with audacity from https://freesound.org/people/Brsjak/sounds/482881/
 sounds/lemonsqueeze.wav: https://freesound.org/people/PhilllChabbb/sounds/337785/
 sounds/farts/*.wav: https://freesound.org/people/opriema/sounds/406107/

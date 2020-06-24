@@ -1,13 +1,12 @@
 #ifndef PLACE_H
 #define PLACE_H
 
+#include "max.h"
 #include "wall.h"
-
-#define PLACE_MAX_WALLS 200
 
 struct Place {
 	char name[50];
-	struct Wall walls[PLACE_MAX_WALLS];
+	struct Wall walls[MAX_WALLS];
 	int nwalls;
 	int xsize, zsize;    // players and enemies must have 0 <= x <= xsize, 0 <= z <= zsize
 };

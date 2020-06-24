@@ -6,14 +6,14 @@
 #include "player.h"
 #include <SDL2/SDL.h>
 
-// max number of guards
-#define GUARD_MAX 128
+// all added guards go on top of each other, guards array never grows larger than MAX_GUARDS
+void guard_create_unpickeds(
+	const struct Place *pl, const SDL_PixelFormat *fmt,
+	struct Ellipsoid *guards, int *nguards,
+	int howmany2add);
 
-// resulting guard has random location and hasn't been picked up by any player or destroyed by an enemy
-struct Ellipsoid guard_create_nonpicked(const struct Place *pl, const SDL_PixelFormat *fmt);
-
-// don't run this for non-picked guards
-void guard_nonpicked_eachframe(struct Ellipsoid *el);
+// don't run this for picked guards
+void guard_unpicked_eachframe(struct Ellipsoid *el);
 
 /*
 example:

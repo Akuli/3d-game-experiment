@@ -87,7 +87,7 @@ static char *read_file_with_trailing_spaces_added(const char *path, int *linelen
 
 static void add_wall(struct Place *pl, int x, int z, enum WallDirection dir)
 {
-	SDL_assert(pl->nwalls < PLACE_MAX_WALLS);
+	SDL_assert(pl->nwalls < MAX_WALLS);
 
 	struct Wall *w = &pl->walls[pl->nwalls++];
 	w->startx = x;

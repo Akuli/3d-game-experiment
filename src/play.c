@@ -14,6 +14,7 @@
 #include "log.h"
 #include "looptimer.h"
 #include "mathstuff.h"
+#include "max.h"
 #include "misc.h"
 #include "place.h"
 #include "player.h"
@@ -21,31 +22,74 @@
 #include "sound.h"
 #include "wall.h"
 
-/*
-unpicked guard = guard that no player has picked or enemy destroyed
-
-Each player has at most GUARD_MAX guards, so at most 1+GUARD_MAX ellipsoids.
-There are 2 players. Remaining ellipsoids are divided equally for unpicked
-guards and enemies.
-*/
-#define MAX_ENEMIES ( (SHOWALL_MAX_ELLIPSOIDS - 2*(1 + GUARD_MAX)) / 2 )
-#define MAX_UNPICKED_GUARDS MAX_ENEMIES
-
-static_assert(MAX_UNPICKED_GUARDS + MAX_ENEMIES + 2*(1 + GUARD_MAX) <= SHOWALL_MAX_ELLIPSOIDS, "");
-static_assert(MAX_UNPICKED_GUARDS >= 100, "");
-static_assert(MAX_ENEMIES >= 100, "");
-
 // includes all the GameObjects that all players should see
 struct GameState {
 	struct Player players[2];
 	struct Enemy enemies[MAX_ENEMIES];
 	int nenemies;
-	const struct Place *pl;
 
 	struct Ellipsoid unpicked_guards[MAX_UNPICKED_GUARDS];
 	int n_unpicked_guards;
+
+	unsigned thisframe;
+	unsigned lastenemyframe, lastguardframe;
 };
 
+static bool time_to_do_something(unsigned *frameptr, unsigned thisframe, unsigned delay)
+{
+	// https://yarchive.net/comp/linux/unsigned_arithmetic.html
+	if (thisframe - *frameptr > delay) {
+		*frameptr += delay;
+		return true;
+	}
+	return false;
+}
+
+// runs each frame
+static void add_guards_and_enemies_as_needed(struct GameState *gs, const struct Place *pl, const SDL_PixelFormat *fmt)
+{
+	// probability to get stack of 2 guards instead of 1 guard
+	float doubleguardprob = 0.2f;
+
+	/*
+	The frequency of enemies appearing, as enemies per frame on average, is
+
+		1/enemydelay,
+
+	because we get one enemy in enemydelay frames. The expected value of guards
+	to get (aka weighted average of guard counts with probabilities as weights) is
+
+		doubleguardprob*2 + (1 - doubleguardprob)*1,
+
+	so the frequency of guards appearing is
+
+		(doubleguardprob*2 + (1 - doubleguardprob)*1)/guarddelay.
+
+	If enemy and guard frequencies are equal, we have a balance of enemies and
+	guards. In practice, people make mistakes, and the enemies win eventually,
+	although good playing makes games last longer. This is exactly what I want for
+	this game.
+
+	Setting the frequencies equal allows me to solve guarddelay given enemydelay.
+	We can still set enemydelay however we want.
+	*/
+	unsigned enemydelay = 5*CAMERA_FPS;
+	unsigned guarddelay = (unsigned)( (doubleguardprob*2 + (1 - doubleguardprob)*1)*enemydelay );
+
+	gs->thisframe++;
+	if (time_to_do_something(&gs->lastguardframe, gs->thisframe, guarddelay)) {
+		int n = (rand() < (int)(doubleguardprob*(float)RAND_MAX)) ? 2 : 1;
+		log_printf("adding a pile of %d guards", n);
+		guard_create_unpickeds(pl, fmt, gs->unpicked_guards, &gs->n_unpicked_guards, n);
+	}
+	if (time_to_do_something(&gs->lastenemyframe, gs->thisframe, enemydelay)) {
+		if (gs->nenemies >= MAX_ENEMIES)
+			log_printf("hitting max number of enemies");
+		else
+			enemy_init(&gs->enemies[gs->nenemies++], fmt);
+		log_printf("should add enemy");
+	}
+}
 
 // returns whether to continue playing
 static bool handle_event(SDL_Event event, struct GameState *gs)
@@ -82,8 +126,10 @@ static bool handle_event(SDL_Event event, struct GameState *gs)
 static void handle_players_bumping_each_other(struct Player *plr1, struct Player *plr2)
 {
 	float bump = ellipsoid_bump_amount(&plr1->ellipsoid, &plr2->ellipsoid);
-	if (bump != 0)
+	if (bump != 0) {
+		log_printf("players bump into each other");
 		ellipsoid_move_apart(&plr1->ellipsoid, &plr2->ellipsoid, bump);
+	}
 }
 
 static void handle_players_bumping_enemies(struct GameState *gs)
@@ -91,6 +137,7 @@ static void handle_players_bumping_enemies(struct GameState *gs)
 	for (int p = 0; p < 2; p++) {
 		for (int e = gs->nenemies - 1; e >= 0; e--) {
 			if (ellipsoid_bump_amount(&gs->players[p].ellipsoid, &gs->enemies[e].ellipsoid) != 0) {
+				log_printf("player %d hits enemy %d", p, e);
 				sound_play("farts/fart*.wav");
 				int nguards = --gs->players[p].nguards;   // can become negative
 
@@ -102,10 +149,37 @@ static void handle_players_bumping_enemies(struct GameState *gs)
 	}
 }
 
+static void handle_enemies_bumping_unpicked_guards(struct GameState *gs)
+{
+	for (int e = gs->nenemies - 1; e >= 0; e--) {
+		for (int u = gs->n_unpicked_guards - 1; u >= 0; u--) {
+			if (ellipsoid_bump_amount(&gs->enemies[e].ellipsoid, &gs->unpicked_guards[u]) != 0) {
+				log_printf("enemy %d destroys unpicked guard %d", e, u);
+				sound_play("farts/fart*.wav");
+				gs->unpicked_guards[u] = gs->unpicked_guards[--gs->n_unpicked_guards];
+			}
+		}
+	}
+}
+
+static void handle_players_bumping_unpicked_guards(struct GameState *gs)
+{
+	for (int p = 0; p < 2; p++) {
+		for (int u = gs->n_unpicked_guards - 1; u >= 0; u--) {
+			if (ellipsoid_bump_amount(&gs->players[p].ellipsoid, &gs->unpicked_guards[u]) != 0) {
+				log_printf("player %d picks unpicked guard %d", p, u);
+				sound_play("pick.wav");
+				gs->unpicked_guards[u] = gs->unpicked_guards[--gs->n_unpicked_guards];
+				gs->players[p].nguards++;
+			}
+		}
+	}
+}
+
 static int get_all_ellipsoids(
 	const struct GameState *gs, const struct Ellipsoid **arr)
 {
-	static struct Ellipsoid result[SHOWALL_MAX_ELLIPSOIDS];
+	static struct Ellipsoid result[MAX_ELLIPSOIDS];
 	static_assert(sizeof(result[0]) < 512,
 		"Ellipsoid struct is huge, maybe switch to pointers?");
 	struct Ellipsoid *ptr = result;
@@ -139,31 +213,21 @@ enum MiscState play_the_game(
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 
 	float pi = acosf(-1);
-	struct GameState gs = {
-		.nenemies = 20,
+	static struct GameState gs;   // static because its big struct, avoiding stack usage
+	gs = (struct GameState){
 		.players = {
 			{
 				.ellipsoid = { .angle = pi, .epic = plr1pic, .center = { 2.5f, 0, 0.5f } },
 				.cam = { .screencentery = winsurf->h/2, .surface = misc_create_cropped_surface(
 					winsurf, (SDL_Rect){ 0, 0, winsurf->w/2, winsurf->h }) },
-				.nguards = 10,
 			},
 			{
 				.ellipsoid = { .angle = pi, .epic = plr2pic, .center = { 1.5f, 0, 0.5f } },
 				.cam = { .screencentery = winsurf->h/2, .surface = misc_create_cropped_surface(
 					winsurf, (SDL_Rect){ winsurf->w/2, 0, winsurf->w/2, winsurf->h }) },
-				.nguards = 10,
 			},
 		},
 	};
-
-	for (int i = 0; i < gs.nenemies; i++) {
-		enemy_init(&gs.enemies[i], winsurf->format);
-		gs.enemies[i].ellipsoid.center.x += 1;
-		gs.enemies[i].ellipsoid.center.z += 2;
-		gs.enemies[i].ellipsoid.angle += i/10.f;
-		ellipsoid_update_transforms(&gs.enemies[i].ellipsoid);
-	}
 
 	struct LoopTimer lt = {0};
 	enum MiscState ret;
@@ -177,13 +241,18 @@ enum MiscState play_the_game(
 			}
 		}
 
+		add_guards_and_enemies_as_needed(&gs, pl, winsurf->format);
 		for (int i = 0; i < gs.nenemies; i++)
 			enemy_eachframe(&gs.enemies[i], pl);
+		for (int i = 0; i < gs.n_unpicked_guards; i++)
+			guard_unpicked_eachframe(&gs.unpicked_guards[i]);
 		for (int i = 0; i < 2; i++)
 			player_eachframe(&gs.players[i], pl);
 
 		handle_players_bumping_each_other(&gs.players[0], &gs.players[1]);
 		handle_players_bumping_enemies(&gs);
+		handle_enemies_bumping_unpicked_guards(&gs);
+		handle_players_bumping_unpicked_guards(&gs);
 
 		SDL_FillRect(winsurf, NULL, 0);
 

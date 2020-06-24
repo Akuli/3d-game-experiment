@@ -8,6 +8,7 @@
 #include "place.h"
 #include "player.h"
 #include "mathstuff.h"
+#include "max.h"
 
 // fitting too much stuff into an int
 typedef int ID;
@@ -19,13 +20,13 @@ typedef int ID;
 
 // length of array indexed by id
 #define ID_ARRAYLEN max( \
-	ID_NEW(ID_TYPE_ELLIPSOID, SHOWALL_MAX_ELLIPSOIDS-1) + 1, \
-	ID_NEW(ID_TYPE_WALL, PLACE_MAX_WALLS-1) + 1 \
+	ID_NEW(ID_TYPE_ELLIPSOID, MAX_ELLIPSOIDS-1) + 1, \
+	ID_NEW(ID_TYPE_WALL, MAX_WALLS-1) + 1 \
 )
 
 struct Info {
 	// dependencies must be displayed first, they go to behind the ellipsoid or wall
-	ID deps[PLACE_MAX_WALLS + SHOWALL_MAX_ELLIPSOIDS];
+	ID deps[MAX_WALLS + MAX_ELLIPSOIDS];
 	int ndeps;
 
 	// which range of x coordinates will be showing this ellipsoid or wall?
@@ -46,7 +47,7 @@ struct ShowingState {
 	const struct Ellipsoid *els;        // indexed by ID_INDEX(ellipsoid id)
 	struct Info infos[ID_ARRAYLEN];     // indexed by id
 
-	ID visible[PLACE_MAX_WALLS + SHOWALL_MAX_ELLIPSOIDS];
+	ID visible[MAX_WALLS + MAX_ELLIPSOIDS];
 	int nvisible;
 };
 
@@ -209,7 +210,7 @@ static void debug_print_dependencies(const struct ShowingState *st)
 
 static void add_dependencies_and_id_to_sorted_array(struct ShowingState *st, ID **ptr, ID id, int depth)
 {
-	if (depth > PLACE_MAX_WALLS + SHOWALL_MAX_ELLIPSOIDS) {
+	if (depth > MAX_WALLS + MAX_ELLIPSOIDS) {
 		// don't know when this could happen, but prevent disasters
 		log_printf("hitting recursion depth limit, something weird is happening");
 		return;
@@ -266,8 +267,8 @@ void show_all(
 	const struct Ellipsoid *els, int nels,
 	const struct Camera *cam)
 {
-	SDL_assert(nwalls <= PLACE_MAX_WALLS);
-	SDL_assert(nels <= SHOWALL_MAX_ELLIPSOIDS);
+	SDL_assert(nwalls <= MAX_WALLS);
+	SDL_assert(nels <= MAX_ELLIPSOIDS);
 
 	// static to keep stack usage down
 	static struct ShowingState st;

@@ -7,8 +7,6 @@
 #include "ellipsoid.h"
 #include "wall.h"
 
-#define SHOWALL_MAX_ELLIPSOIDS 500
-
 void show_all(
 	const struct Wall *walls, int nwalls,
 	const struct Ellipsoid *els, int nels,
