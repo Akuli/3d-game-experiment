@@ -9,7 +9,7 @@
 
 #define XZRADIUS 0.25f
 #define YRADIUS_BASIC 1.0f
-#define SPACING_BASIC 0.15f
+#define SPACING_BASIC 0.2f
 
 static struct EllipsoidPic *get_ellipsoid_pic(const SDL_PixelFormat *fmt)
 {
