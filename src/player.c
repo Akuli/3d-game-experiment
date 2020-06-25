@@ -10,7 +10,17 @@
 #include "wall.h"
 #include "../generated/filelist.h"
 
-#define MOVE_UNITS_PER_SECOND 8.f
+/*
+Most keyboards don't allow arbitrarily many keys to be pressed down at the same
+time. Something like two flat, moving and turning players would likely cause
+issues with this. To avoid that, we limit things that flat players can do:
+- Flat players move slower. They do move though, which means that you can go
+  under walls and there is actually a reason to be flat, other than to jump.
+- Flat players can't turn at all.
+*/
+
+#define NORMAL_SPEED 8.f    // units per second
+#define FLAT_SPEED (NORMAL_SPEED/4)
 #define RADIANS_PER_SECOND 5.0f
 
 #define CAMERA_BEHIND_PLAYER 4.0f
@@ -72,15 +82,15 @@ static void keep_ellipsoid_inside_place(struct Ellipsoid *el, const struct Place
 
 void player_eachframe(struct Player *plr, const struct Place *pl)
 {
-	if (plr->turning != 0) {
+	// Don't turn while flat. See beginning of this file for explanation.
+	if (plr->turning != 0 && !plr->flat) {
 		plr->ellipsoid.angle += (RADIANS_PER_SECOND / (float)CAMERA_FPS) * (float)plr->turning;
 		// ellipsoid_update_transforms() called below
 	}
 
 	if (plr->moving) {
-		Vec3 diff = mat3_mul_vec3(
-			plr->cam.cam2world,
-			(Vec3){ 0, 0, -MOVE_UNITS_PER_SECOND/(float)CAMERA_FPS });
+		float speed = plr->flat ? FLAT_SPEED : NORMAL_SPEED;
+		Vec3 diff = mat3_mul_vec3(plr->cam.cam2world, (Vec3){ 0, 0, -speed/CAMERA_FPS });
 		vec3_add_inplace(&plr->ellipsoid.center, diff);
 	}
 
