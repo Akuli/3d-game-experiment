@@ -8,36 +8,59 @@
 #define IMAGE_FILE_COUNT 1
 #define MOVE_UNITS_PER_SECOND 2.5f
 
-static struct EllipsoidPic *get_ellipsoid_pic(const SDL_PixelFormat *fmt)
+// average of rgb colors works well enough
+// TODO: combine this with similar code in wall.c?
+static uint8_t more(uint8_t val) { return val + (0xff - val)/2; }
+static uint8_t less(uint8_t val) { return val/2; }
+
+static inline uint32_t make_color_more_red(uint32_t color, const SDL_PixelFormat *fmt)
 {
-	static struct EllipsoidPic epics[FILELIST_NENEMIES];
+	return
+		(more((color >> fmt->Rshift) & 0xff) << fmt->Rshift) |
+		(less((color >> fmt->Gshift) & 0xff) << fmt->Gshift) |
+		(less((color >> fmt->Bshift) & 0xff) << fmt->Bshift);
+}
+
+static struct EllipsoidPic *get_ellipsoid_pic(const SDL_PixelFormat *fmt, bool neverdie)
+{
+	static struct EllipsoidPic epics[2][FILELIST_NENEMIES];
 	static bool ready = false;
 
 	if (!ready) {
 		for (int i = 0; i < FILELIST_NENEMIES; i++) {
-			ellipsoidpic_load(&epics[i], filelist_enemies[i], fmt);
-			epics[i].hidelowerhalf = true;
+			ellipsoidpic_load(&epics[false][i], filelist_enemies[i], fmt);
+			epics[false][i].hidelowerhalf = true;
+
+			epics[true][i] = epics[false][i];
+			// triple for loop without too much nesting, lol
+			for (int x = 0; x < ELLIPSOIDPIC_SIDE; x++)
+			for (int y = 0; y < ELLIPSOIDPIC_SIDE; y++)
+			for (int z = 0; z < ELLIPSOIDPIC_SIDE; z++) {
+				uint32_t *ptr = &epics[true][i].cubepixels[x][y][z];
+				*ptr = make_color_more_red(*ptr, fmt);
+			}
 		}
 		ready = true;
 	}
 
-	SDL_assert(epics[0].pixfmt == fmt);
-	return &epics[rand() % FILELIST_NENEMIES];
+	struct EllipsoidPic *res = &epics[neverdie][rand() % FILELIST_NENEMIES];
+	SDL_assert(res->pixfmt == fmt);
+	return res;
 }
 
-void enemy_init(struct Enemy *en, const SDL_PixelFormat *fmt, const struct Place *pl)
+void enemy_init(struct Enemy *en, const SDL_PixelFormat *fmt, const struct Place *pl, enum EnemyFlags fl)
 {
 	en->ellipsoid = (struct Ellipsoid){
 		.center = pl->enemyloc,
-		.epic = get_ellipsoid_pic(fmt),
+		.epic = get_ellipsoid_pic(fmt, !!(fl & ENEMY_NEVERDIE)),
 		.angle = 0,
 		.xzradius = ENEMY_XZRADIUS,
 		.yradius = ENEMY_YRADIUS,
 	};
 	ellipsoid_update_transforms(&en->ellipsoid);
 
-	en->flags &= ~ENEMY_TURNING;
 	en->dir = ENEMY_DIR_XPOS;
+	en->flags = fl;
 }
 
 static enum EnemyDir opposite_direction(enum EnemyDir d)

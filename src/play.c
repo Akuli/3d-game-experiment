@@ -48,7 +48,7 @@ static bool time_to_do_something(unsigned *frameptr, unsigned thisframe, unsigne
 	return false;
 }
 
-static struct Enemy *add_enemy(struct GameState *gs)
+static struct Enemy *add_enemy(struct GameState *gs, enum EnemyFlags fl)
 {
 	if (gs->nenemies >= MAX_ENEMIES) {
 		log_printf("hitting max number of enemies");
@@ -56,7 +56,7 @@ static struct Enemy *add_enemy(struct GameState *gs)
 	}
 
 	struct Enemy *en = &gs->enemies[gs->nenemies++];
-	enemy_init(en, gs->pixfmt, gs->place);
+	enemy_init(en, gs->pixfmt, gs->place, fl);
 	return en;
 }
 
@@ -99,7 +99,7 @@ static void add_guards_and_enemies_as_needed(struct GameState *gs)
 	}
 	if (time_to_do_something(&gs->lastenemyframe, gs->thisframe, enemydelay)) {
 		log_printf("adding an enemy");
-		add_enemy(gs);
+		add_enemy(gs, 0);
 	}
 }
 
@@ -246,7 +246,7 @@ enum MiscState play_the_game(
 	};
 
 	for (int i = 0; i < pl->nneverdielocs; i++) {
-		struct Enemy *en = add_enemy(&gs);
+		struct Enemy *en = add_enemy(&gs, ENEMY_NEVERDIE);
 		if (!en)
 			continue;
 		SDL_assert(en->ellipsoid.center.y == pl->neverdielocs[i].y);
