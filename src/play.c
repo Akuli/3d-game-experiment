@@ -106,7 +106,7 @@ static void add_guards_and_enemies_as_needed(struct GameState *gs)
 	if (time_to_do_something(&gs->lastguardframe, gs->thisframe, guarddelay)) {
 		int toadd = (rand() < (int)(nprob*(float)RAND_MAX)) ? n : 1;
 		log_printf("There are %d unpicked guards, adding %d more", gs->n_unpicked_guards, toadd);
-		guard_create_unpickeds(gs->place, gs->unpicked_guards, &gs->n_unpicked_guards, toadd);
+		guard_create_unpickeds_random(gs->unpicked_guards, &gs->n_unpicked_guards, toadd, gs->place);
 	}
 	if (time_to_do_something(&gs->lastenemyframe, gs->thisframe, enemydelay)) {
 		log_printf("There are %d enemies, adding one more", gs->nenemies);
@@ -126,17 +126,29 @@ static bool handle_event(SDL_Event event, struct GameState *gs)
 	case SDL_KEYDOWN:
 	case SDL_KEYUP:
 		switch(event.key.keysym.scancode) {
-		case SDL_SCANCODE_A: player_set_turning(&gs->players[0], -1, down); break;
-		case SDL_SCANCODE_D: player_set_turning(&gs->players[0], +1, down); break;
-		case SDL_SCANCODE_W: player_set_moving(&gs->players[0], down); break;
-		case SDL_SCANCODE_S: player_set_flat(&gs->players[0], down); break;
+			/*
+			many keyboards have numpad with zero right next to the "→"
+			arrow, like "f" is next to "d"
+			*/
+			case SDL_SCANCODE_F:
+				if (down) player_drop_guard(&gs->players[0], gs->unpicked_guards, &gs->n_unpicked_guards);
+				break;
+			case SDL_SCANCODE_0:
+				if (down) player_drop_guard(&gs->players[1], gs->unpicked_guards, &gs->n_unpicked_guards);
+				break;
 
-		case SDL_SCANCODE_LEFT: player_set_turning(&gs->players[1], -1, down); break;
-		case SDL_SCANCODE_RIGHT: player_set_turning(&gs->players[1], +1, down); break;
-		case SDL_SCANCODE_UP: player_set_moving(&gs->players[1], down); break;
-		case SDL_SCANCODE_DOWN: player_set_flat(&gs->players[1], down); break;
+			case SDL_SCANCODE_A: player_set_turning(&gs->players[0], -1, down); break;
+			case SDL_SCANCODE_D: player_set_turning(&gs->players[0], +1, down); break;
+			case SDL_SCANCODE_W: player_set_moving(&gs->players[0], down); break;
+			case SDL_SCANCODE_S: player_set_flat(&gs->players[0], down); break;
 
-		default: break;
+			case SDL_SCANCODE_LEFT: player_set_turning(&gs->players[1], -1, down); break;
+			case SDL_SCANCODE_RIGHT: player_set_turning(&gs->players[1], +1, down); break;
+			case SDL_SCANCODE_UP: player_set_moving(&gs->players[1], down); break;
+			case SDL_SCANCODE_DOWN: player_set_flat(&gs->players[1], down); break;
+
+			default:
+				log_printf("unknown key press scancode %d", event.key.keysym.scancode);
 		}
 		break;
 
@@ -198,7 +210,9 @@ static void handle_players_bumping_unpicked_guards(struct GameState *gs)
 	for (int p = 0; p < 2; p++) {
 		for (int u = gs->n_unpicked_guards - 1; u >= 0; u--) {
 			if (ellipsoid_bump_amount(&gs->players[p].ellipsoid, &gs->unpicked_guards[u]) != 0) {
-				log_printf("player %d picks unpicked guard %d/%d", p, u, gs->n_unpicked_guards);
+				log_printf(
+					"player %d (%d guards) picks unpicked guard %d/%d",
+					p, gs->players[p].nguards, u, gs->n_unpicked_guards);
 				sound_play("pick.wav");
 				gs->unpicked_guards[u] = gs->unpicked_guards[--gs->n_unpicked_guards];
 				gs->players[p].nguards++;

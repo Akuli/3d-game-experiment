@@ -19,6 +19,10 @@ $ ./game
 
 In the game:
 - Moving around and flattening: right player uses arrow keys, left player uses W, A, S and D imagining that they are arrow keys.
+- Leaving guards behind: left player uses F, right player uses zero.
+  If the zero key isn't next to the arrow keys on your keyboard, then
+  please [let me know](https://github.com/Akuli/3d-game-experiment/issues/new)
+  which key would be more convenient for you.
 
 In the player and place choosing screen, you can click the buttons or press these keys:
 - Player chooser: right player uses left and right arrow keys, left player users A and D.

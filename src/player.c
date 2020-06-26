@@ -2,6 +2,7 @@
 #include <math.h>
 #include <SDL2/SDL.h>
 #include "ellipsoid.h"
+#include "guard.h"
 #include "log.h"
 #include "mathstuff.h"
 #include "misc.h"
@@ -150,4 +151,19 @@ void player_set_flat(struct Player *plr, bool flat)
 			plr->jumpframe = 1;
 		}
 	}
+}
+
+void player_drop_guard(struct Player *plr, struct Ellipsoid *arr, int *arrlen)
+{
+	if (plr->nguards <= 0)
+		return;
+
+	Vec3 movingdir = { cosf(plr->ellipsoid.angle+acosf(-1)/2), 0, sinf(plr->ellipsoid.angle+acosf(-1)/2) };
+	float offset = PLAYER_XZRADIUS + GUARD_XZRADIUS + 1e-5f;
+	Vec3 loc = vec3_sub(plr->ellipsoid.center, vec3_mul_float(movingdir, -offset));
+
+	int n = guard_create_unpickeds_xz(arr, arrlen, 1, loc.x, loc.z);
+	plr->nguards -= n;
+	if (n != 0)
+		sound_play("leave.wav");
 }

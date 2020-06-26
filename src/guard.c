@@ -7,7 +7,6 @@
 #include "mathstuff.h"
 #include "max.h"
 
-#define XZRADIUS 0.25f
 #define YRADIUS_BASIC 1.0f
 #define SPACING_BASIC 0.2f
 
@@ -29,8 +28,10 @@ static bool nonpicked_guard_center_in_use(Vec3 center, const struct Ellipsoid *o
 	for (int i = 0; i < nothers; i++) {
 		/*
 		It's fine to compare floats with '==' here because:
-		- x and z coords are integer+0.5f
-		- y coord is SPACING_BASIC + SPACING_BASIC + ... + SPACING_BASIC, some number of times
+		- x and z coords are integer+0.5f (or something very unlikely to
+		  collide for guards dropped by players)
+		- y coord is SPACING_BASIC + SPACING_BASIC + ... + SPACING_BASIC,
+		  some number of times
 		None of these float calculations can give inconsistent results.
 		*/
 		Vec3 oc = others[i].center;
@@ -40,8 +41,8 @@ static bool nonpicked_guard_center_in_use(Vec3 center, const struct Ellipsoid *o
 	return false;
 }
 
-void guard_create_unpickeds(
-	const struct Place *pl, struct Ellipsoid *guards, int *nguards, int howmany2add)
+int guard_create_unpickeds_xz(
+	struct Ellipsoid *guards, int *nguards, int howmany2add, float x, float z)
 {
 	int canadd = MAX_UNPICKED_GUARDS - *nguards;
 	if (howmany2add > canadd) {
@@ -51,7 +52,7 @@ void guard_create_unpickeds(
 	}
 	SDL_assert(howmany2add >= 0);
 
-	Vec3 center = { (rand() % pl->xsize) + 0.5f, SPACING_BASIC, (rand() % pl->zsize) + 0.5f };
+	Vec3 center = { x, SPACING_BASIC, z };
 
 	for (int i = 0; i < howmany2add; i++) {
 		while (nonpicked_guard_center_in_use(center, guards, *nguards))
@@ -61,13 +62,23 @@ void guard_create_unpickeds(
 			.center = center,
 			.epic = &guard_ellipsoidpic,
 			.angle = 0,
-			.xzradius = XZRADIUS,
+			.xzradius = GUARD_XZRADIUS,
 			.yradius = YRADIUS_BASIC,
 		};
 		ellipsoid_update_transforms(&el);
 		guards[(*nguards)++] = el;
 	}
 	SDL_assert(*nguards <= MAX_UNPICKED_GUARDS);
+	return howmany2add;
+}
+
+int guard_create_unpickeds_random(
+	struct Ellipsoid *guards, int *nguards, int howmany2add, const struct Place *pl)
+{
+	return guard_create_unpickeds_xz(
+		guards, nguards, howmany2add,
+		(rand() % pl->xsize) + 0.5f,
+		(rand() % pl->zsize) + 0.5f);
 }
 
 void guard_unpicked_eachframe(struct Ellipsoid *el)
@@ -97,7 +108,7 @@ int guard_create_picked(struct Ellipsoid *arr, const struct Player *plr)
 		},
 		.epic = &guard_ellipsoidpic,
 		.angle = plr->ellipsoid.angle,
-		.xzradius = XZRADIUS,
+		.xzradius = GUARD_XZRADIUS,
 		.yradius = yradius,
 	};
 	ellipsoid_update_transforms(&arr[0]);

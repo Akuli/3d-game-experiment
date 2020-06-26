@@ -50,5 +50,13 @@ void player_set_turning(struct Player *plr, int dir, bool turn);
 void player_set_moving(struct Player *plr, bool mv);
 void player_set_flat(struct Player *plr, bool flat);
 
+/*
+If the player has picked up guards and is moving, leave one behind the players
+so that others can get it.
+
+The array never becomes longer than MAX_UNPICKED_GUARDS.
+*/
+void player_drop_guard(struct Player *plr, struct Ellipsoid *arr, int *arrlen);
+
 
 #endif   // PLAYER_H

@@ -6,12 +6,21 @@
 #include "player.h"
 #include <SDL2/SDL.h>
 
+#define GUARD_XZRADIUS 0.25f
+
 // call this before any other guard functions
 void guard_init_epic(const SDL_PixelFormat *fmt);
 
-// all added guards go on top of each other, guards array never grows larger than MAX_UNPICKED_GUARDS
-void guard_create_unpickeds(
-	const struct Place *pl, struct Ellipsoid *guards, int *nguards, int howmany2add);
+/*
+All guards added to exactly the same x and z values go on top of each other.
+Guards array never grows larger than MAX_UNPICKED_GUARDS.
+The _random suffixed function chooses x and z randomly to fit the place.
+These functions return the number of guards actually added (without overflowing the array)
+*/
+int guard_create_unpickeds_xz(
+	struct Ellipsoid *guards, int *nguards, int howmany2add, float x, float z);
+int guard_create_unpickeds_random(
+	struct Ellipsoid *guards, int *nguards, int howmany2add, const struct Place *pl);
 
 // don't run this for picked guards
 void guard_unpicked_eachframe(struct Ellipsoid *el);
