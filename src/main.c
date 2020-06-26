@@ -60,6 +60,7 @@ static void cd_assets(void)
 
 static void show_loading(const char *msg, SDL_Window *wnd, SDL_Surface *wndsurf, int yidx)
 {
+	log_printf("loading begins: %s", msg);
 	int fontsz = 50;
 	SDL_Color white = { 0xff, 0xff, 0xff, 0xff };
 
