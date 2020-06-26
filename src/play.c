@@ -51,7 +51,7 @@ static bool time_to_do_something(unsigned *frameptr, unsigned thisframe, unsigne
 static struct Enemy *add_enemy(struct GameState *gs, enum EnemyFlags fl)
 {
 	if (gs->nenemies >= MAX_ENEMIES) {
-		log_printf("hitting max number of enemies");
+		log_printf("hitting MAX_ENEMIES=%d", MAX_ENEMIES);
 		return NULL;
 	}
 
@@ -94,11 +94,11 @@ static void add_guards_and_enemies_as_needed(struct GameState *gs)
 	gs->thisframe++;
 	if (time_to_do_something(&gs->lastguardframe, gs->thisframe, guarddelay)) {
 		int toadd = (rand() < (int)(nprob*(float)RAND_MAX)) ? n : 1;
-		log_printf("adding a pile of %d guards", n);
+		log_printf("There are %d unpicked guards, adding %d more", gs->n_unpicked_guards, toadd);
 		guard_create_unpickeds(gs->place, gs->pixfmt, gs->unpicked_guards, &gs->n_unpicked_guards, toadd);
 	}
 	if (time_to_do_something(&gs->lastenemyframe, gs->thisframe, enemydelay)) {
-		log_printf("adding an enemy");
+		log_printf("There are %d enemies, adding one more", gs->nenemies);
 		add_enemy(gs, 0);
 	}
 }
@@ -149,7 +149,11 @@ static void handle_players_bumping_enemies(struct GameState *gs)
 	for (int p = 0; p < 2; p++) {
 		for (int e = gs->nenemies - 1; e >= 0; e--) {
 			if (ellipsoid_bump_amount(&gs->players[p].ellipsoid, &gs->enemies[e].ellipsoid) != 0) {
-				log_printf("player %d hits enemy %d", p, e);
+				log_printf(
+					"enemy %d/%d (%s) hits player %d (%d guards)",
+					e, gs->nenemies,
+					(gs->enemies[e].flags & ENEMY_NEVERDIE) ? "neverdie" : "non-neverdie",
+					p, gs->players[p].nguards);
 				sound_play("farts/fart*.wav");
 				int nguards = --gs->players[p].nguards;   // can become negative
 
@@ -169,7 +173,8 @@ static void handle_enemies_bumping_unpicked_guards(struct GameState *gs)
 	for (int e = gs->nenemies - 1; e >= 0; e--) {
 		for (int u = gs->n_unpicked_guards - 1; u >= 0; u--) {
 			if (ellipsoid_bump_amount(&gs->enemies[e].ellipsoid, &gs->unpicked_guards[u]) != 0) {
-				log_printf("enemy %d destroys unpicked guard %d", e, u);
+				log_printf("enemy %d/%d destroys unpicked guard %d/%d",
+					e, gs->nenemies, u, gs->n_unpicked_guards);
 				sound_play("farts/fart*.wav");
 				gs->unpicked_guards[u] = gs->unpicked_guards[--gs->n_unpicked_guards];
 			}
@@ -182,7 +187,7 @@ static void handle_players_bumping_unpicked_guards(struct GameState *gs)
 	for (int p = 0; p < 2; p++) {
 		for (int u = gs->n_unpicked_guards - 1; u >= 0; u--) {
 			if (ellipsoid_bump_amount(&gs->players[p].ellipsoid, &gs->unpicked_guards[u]) != 0) {
-				log_printf("player %d picks unpicked guard %d", p, u);
+				log_printf("player %d picks unpicked guard %d/%d", p, u, gs->n_unpicked_guards);
 				sound_play("pick.wav");
 				gs->unpicked_guards[u] = gs->unpicked_guards[--gs->n_unpicked_guards];
 				gs->players[p].nguards++;
