@@ -40,7 +40,7 @@ inline float vec3_lengthSQUARED(Vec3 v) { return vec3_dot(v, v); }
 /*
 Return a vector in same direction as v but with the given length.
 
-Somewhat slow because calculates sqrt.
+Direction gets reversed if len is negative. Somewhat slow because calculates sqrt.
 */
 inline Vec3 vec3_withlength(Vec3 v, float len)
 {

@@ -8,13 +8,13 @@
 #include "mathstuff.h"
 
 /*
-An Ellipsoid is a stretched ball, given by
+An Ellipsoid is a stretched ball shifted by the center vector, as in
 
-	((x - center.x) / xzradius)^2 + ((y - center.y) / yradius)^2 + ((z - center.z) / xzradius)^2 = 1,
+	((x - center.x) / xzradius)^2 + ((y - center.y) / yradius)^2 + ((z - center.z) / xzradius)^2 = 1.
 
-but shifted by the center vector. So, we take the origin-centered unit ball
-x^2+y^2+z^2=1, stretch it in x and z directions by xzradius and in y direction
-by yradius, and move it to change the center.
+So, we take the origin-centered unit ball x^2+y^2+z^2=1, stretch it in
+x and z directions by xzradius and in y direction by yradius, and move
+it to change the center.
 */
 struct Ellipsoid {
 	Vec3 center;
@@ -36,7 +36,8 @@ struct Ellipsoid {
 Information shared in multiple functions, specific to screen x coordinate
 */
 struct EllipsoidXCache {
-	int x;
+	int screenx;
+	float ballcenterscreenx;    // where is ellipsoid->center on screen?
 	float xzr;
 	const struct Camera *cam;
 

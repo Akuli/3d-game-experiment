@@ -142,17 +142,21 @@ static void fill_xcache(
 	const struct Ellipsoid *el, const struct Camera *cam,
 	int x, struct EllipsoidXCache *xcache)
 {
-	xcache->x = x;
+	xcache->screenx = x;
 	xcache->cam = cam;
-	xcache->xzr = camera_screenx_to_xzr(cam, (float)x);
+	xcache->xzr = camera_screenx_to_xzr(cam, x);
 
-	// Equation of plane of points having this screen x:
-	// x/z = xzr, aka 1x + 0y + (-xzr)z = 0
-	xcache->xplane = (struct Plane) { .normal = {1, 0, -xcache->xzr}, .constant = 0 };
+	/*
+	Equation of plane of points having this screen x:
+	x/z = xzr, aka 1x + 0y + (-xzr)z = 0
+	Note that xplane's normal vector always points towards positive camera x direction.
+	*/
+	xcache->xplane = (struct Plane) { .normal = { 1, 0, -xcache->xzr }, .constant = 0 };
 	plane_apply_mat3_INVERSE(&xcache->xplane, el->transform);
 
-	xcache->ballcenter = mat3_mul_vec3(
-		el->transform_inverse, camera_point_world2cam(cam, el->center));
+	Vec3 ballcenter = camera_point_world2cam(cam, el->center);
+	xcache->ballcenter = mat3_mul_vec3(el->transform_inverse, ballcenter);
+	xcache->ballcenterscreenx = camera_point_cam2screen(xcache->cam, ballcenter).x;
 
 	xcache->dSQUARED = plane_point_distanceSQUARED(xcache->xplane, xcache->ballcenter);
 	if (xcache->dSQUARED >= 1) {
@@ -163,9 +167,14 @@ static void fill_xcache(
 
 static void calculate_yminmax_without_hidelowerhalf(const struct Ellipsoid *el, const struct EllipsoidXCache *xcache, int *ymin, int *ymax)
 {
-	// Intersection of xplane and unit ball is a circle
+	// center and radiusSQUARED describe intersection of xplane and unit ball, which is a circle
+	float len = sqrtf(xcache->dSQUARED);
+	if (xcache->screenx < xcache->ballcenterscreenx) {
+		// xplane normal vector points to right, but we need to go left instead
+		len = -len;
+	}
+	Vec3 center = vec3_add(xcache->ballcenter, vec3_withlength(xcache->xplane.normal, len));
 	float radiusSQUARED = 1 - xcache->dSQUARED;   // Pythagorean theorem
-	Vec3 center = vec3_add(xcache->ballcenter, vec3_withlength(xcache->xplane.normal, sqrtf(xcache->dSQUARED)));
 
 	// camera is at (0,0,0) and tangent lines correspond to first and last visible y pixel of the ball
 	Vec3 A, B;
@@ -315,7 +324,7 @@ void ellipsoid_drawcolumn(
 
 	uint32_t px[CAMERA_SCREEN_HEIGHT];
 	LOOP px[i] = el->epic->cubepixels[ex[i]][ey[i]][ez[i]];
-	LOOP set_pixel(xcache->cam->surface, xcache->x, ymin + i, px[i]);
+	LOOP set_pixel(xcache->cam->surface, xcache->screenx, ymin + i, px[i]);
 #undef LOOP
 }
 
