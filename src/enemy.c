@@ -1,4 +1,5 @@
 #include "enemy.h"
+#include <assert.h>
 #include <math.h>
 #include <stdlib.h>
 #include <SDL2/SDL.h>
@@ -21,46 +22,46 @@ static inline uint32_t make_color_more_red(uint32_t color, const SDL_PixelFormat
 		(less((color >> fmt->Bshift) & 0xff) << fmt->Bshift);
 }
 
-static struct EllipsoidPic *get_ellipsoid_pic(const SDL_PixelFormat *fmt, bool neverdie)
+// usage: ellipsoid_pics[neverdie as bool][random number between 0 and FILELIST_NENEMIES]
+static struct EllipsoidPic ellipsoid_pics[2][FILELIST_NENEMIES];
+
+void enemy_init_epics(const SDL_PixelFormat *fmt)
 {
-	static struct EllipsoidPic epics[2][FILELIST_NENEMIES];
 	static bool ready = false;
+	SDL_assert(!ready);
+	ready = true;
 
-	if (!ready) {
-		for (int i = 0; i < FILELIST_NENEMIES; i++) {
-			ellipsoidpic_load(&epics[false][i], filelist_enemies[i], fmt);
-			epics[false][i].hidelowerhalf = true;
+	for (int i = 0; i < FILELIST_NENEMIES; i++) {
+		ellipsoidpic_load(&ellipsoid_pics[false][i], filelist_enemies[i], fmt);
+		ellipsoid_pics[false][i].hidelowerhalf = true;
 
-			epics[true][i] = epics[false][i];
-			// triple for loop without too much nesting, lol
-			for (int x = 0; x < ELLIPSOIDPIC_SIDE; x++)
-			for (int y = 0; y < ELLIPSOIDPIC_SIDE; y++)
-			for (int z = 0; z < ELLIPSOIDPIC_SIDE; z++) {
-				uint32_t *ptr = &epics[true][i].cubepixels[x][y][z];
-				*ptr = make_color_more_red(*ptr, fmt);
-			}
+		ellipsoid_pics[true][i] = ellipsoid_pics[false][i];
+		// triple for loop without too much nesting, lol
+		for (int x = 0; x < ELLIPSOIDPIC_SIDE; x++)
+		for (int y = 0; y < ELLIPSOIDPIC_SIDE; y++)
+		for (int z = 0; z < ELLIPSOIDPIC_SIDE; z++) {
+			uint32_t *ptr = &ellipsoid_pics[true][i].cubepixels[x][y][z];
+			*ptr = make_color_more_red(*ptr, fmt);
 		}
-		ready = true;
 	}
-
-	struct EllipsoidPic *res = &epics[neverdie][rand() % FILELIST_NENEMIES];
-	SDL_assert(res->pixfmt == fmt);
-	return res;
 }
 
-void enemy_init(struct Enemy *en, const SDL_PixelFormat *fmt, const struct Place *pl, enum EnemyFlags fl)
+struct Enemy enemy_new(const struct Place *pl, enum EnemyFlags fl)
 {
-	en->ellipsoid = (struct Ellipsoid){
-		.center = pl->enemyloc,
-		.epic = get_ellipsoid_pic(fmt, !!(fl & ENEMY_NEVERDIE)),
-		.angle = 0,
-		.xzradius = ENEMY_XZRADIUS,
-		.yradius = ENEMY_YRADIUS,
+	struct Enemy res = {
+		.ellipsoid = {
+			.center = pl->enemyloc,
+			.epic = &ellipsoid_pics[!!(fl & ENEMY_NEVERDIE)][rand() % FILELIST_NENEMIES],
+			.angle = 0,
+			.xzradius = ENEMY_XZRADIUS,
+			.yradius = ENEMY_YRADIUS,
+		},
+		.dir = ENEMY_DIR_XPOS,
+		.flags = fl,
+		.place = pl,
 	};
-	ellipsoid_update_transforms(&en->ellipsoid);
-
-	en->dir = ENEMY_DIR_XPOS;
-	en->flags = fl;
+	ellipsoid_update_transforms(&res.ellipsoid);
+	return res;
 }
 
 static enum EnemyDir opposite_direction(enum EnemyDir d)
@@ -78,7 +79,7 @@ static enum EnemyDir opposite_direction(enum EnemyDir d)
 This runs when the enemy is in the middle of a 1x1 square with integer coordinates
 for corners, i.e. when center x and z coordinates are of the form someinteger+0.5
 */
-static void begin_turning(struct Enemy *en, const struct Place *pl)
+static void begin_turning(struct Enemy *en)
 {
 	SDL_assert(!(en->flags & ENEMY_TURNING));
 	en->flags |= ENEMY_TURNING;
@@ -89,7 +90,7 @@ static void begin_turning(struct Enemy *en, const struct Place *pl)
 		[ENEMY_DIR_ZPOS] = true,
 		[ENEMY_DIR_ZNEG] = true,
 	};
-	SDL_assert(sizeof(cango)/sizeof(cango)[0] == 4);   // indexes of cango are the valid enum values
+	static_assert(sizeof(cango)/sizeof(cango)[0] == 4, "");   // indexes of cango are the valid enum values
 
 	/*
 	 ---------> x
@@ -107,23 +108,22 @@ static void begin_turning(struct Enemy *en, const struct Place *pl)
 	int x = (int) floorf(en->ellipsoid.center.x);
 	int z = (int) floorf(en->ellipsoid.center.z);
 
-	for (int i = 0; i < pl->nwalls; i++) {
-		switch(pl->walls[i].dir) {
+	for (int i = 0; i < en->place->nwalls; i++) {
+		struct Wall w = en->place->walls[i];
 
+		switch(w.dir) {
 		case WALL_DIR_XY:
-			if (pl->walls[i].startx == x && pl->walls[i].startz == z)
+			if (w.startx == x && w.startz == z)
 				cango[ENEMY_DIR_ZNEG] = false;
-			if (pl->walls[i].startx == x && pl->walls[i].startz == z+1)
+			if (w.startx == x && w.startz == z+1)
 				cango[ENEMY_DIR_ZPOS] = false;
 			break;
-
 		case WALL_DIR_ZY:
-			if (pl->walls[i].startx == x && pl->walls[i].startz == z)
+			if (w.startx == x && w.startz == z)
 				cango[ENEMY_DIR_XNEG] = false;
-			if (pl->walls[i].startx == x+1 && pl->walls[i].startz == z)
+			if (w.startx == x+1 && w.startz == z)
 				cango[ENEMY_DIR_XPOS] = false;
 			break;
-
 		}
 	}
 
@@ -165,34 +165,32 @@ static bool integer_between_floats(float a, float b, int *ptr)
 	return false;
 }
 
-/*
-If pl is NULL, then don't check whether the enemy should turn instead of moving more
-*/
-static void move_coordinate(float *coord, float delta, struct Enemy *en, const struct Place *pl)
+// If checkturn is false, then don't check whether the enemy should turn instead of moving more
+static void move_coordinate(float *coord, float delta, struct Enemy *en, bool checkturn)
 {
 	float old = *coord - 0.5f;    // integer coordinate = turning point
 	float new = old + delta;
 
 	int turningpoint;
-	if (pl != NULL && integer_between_floats(old, new, &turningpoint)) {
+	if (checkturn && integer_between_floats(old, new, &turningpoint)) {
 		// must move to turning point and then turn
 		*coord = (float)turningpoint + 0.5f;
-		begin_turning(en, pl);
+		begin_turning(en);
 	} else {
 		*coord = new + 0.5f;
 	}
 }
 
-static void move(struct Enemy *en, const struct Place *pl)
+static void move(struct Enemy *en, bool checkturn)
 {
 	SDL_assert(!(en->flags & ENEMY_STUCK));
 
 	float amount = 2.5f / CAMERA_FPS;
 	switch(en->dir) {
-		case ENEMY_DIR_XPOS: move_coordinate(&en->ellipsoid.center.x, +amount, en, pl); break;
-		case ENEMY_DIR_XNEG: move_coordinate(&en->ellipsoid.center.x, -amount, en, pl); break;
-		case ENEMY_DIR_ZPOS: move_coordinate(&en->ellipsoid.center.z, +amount, en, pl); break;
-		case ENEMY_DIR_ZNEG: move_coordinate(&en->ellipsoid.center.z, -amount, en, pl); break;
+		case ENEMY_DIR_XPOS: move_coordinate(&en->ellipsoid.center.x, +amount, en, checkturn); break;
+		case ENEMY_DIR_XNEG: move_coordinate(&en->ellipsoid.center.x, -amount, en, checkturn); break;
+		case ENEMY_DIR_ZPOS: move_coordinate(&en->ellipsoid.center.z, +amount, en, checkturn); break;
+		case ENEMY_DIR_ZNEG: move_coordinate(&en->ellipsoid.center.z, -amount, en, checkturn); break;
 	}
 }
 
@@ -251,10 +249,12 @@ static float dir_to_angle(enum EnemyDir dir)
 	return atan2f((float)zdiff, (float)xdiff) + pi/2;
 }
 
-void enemy_eachframe(struct Enemy *en, const struct Place *pl)
+void enemy_eachframe(struct Enemy *en)
 {
 	float angleincr = 4.0f / CAMERA_FPS;
+
 	if (en->flags & ENEMY_STUCK) {
+		// just spin forever...
 		en->ellipsoid.angle += angleincr;
 		ellipsoid_update_transforms(&en->ellipsoid);
 	} else if (en->flags & ENEMY_TURNING) {
@@ -262,9 +262,9 @@ void enemy_eachframe(struct Enemy *en, const struct Place *pl)
 		ellipsoid_update_transforms(&en->ellipsoid);
 		if (done) {
 			en->flags &= ~ENEMY_TURNING;
-			move(en, NULL);
+			move(en, false);
 		}
 	} else {
-		move(en, pl);
+		move(en, true);
 	}
 }

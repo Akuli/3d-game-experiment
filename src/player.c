@@ -29,27 +29,21 @@ issues with this. To avoid that, we limit things that flat players can do:
 #define JUMP_MAX_HEIGHT 3.0f
 #define JUMP_DURATION_SEC 0.6f
 
+struct EllipsoidPic player_ellipsoidpics[FILELIST_NPLAYERS];
 
-const struct EllipsoidPic *player_get_epics(const SDL_PixelFormat *fmt)
+void player_init_epics(const SDL_PixelFormat *fmt)
 {
-	static struct EllipsoidPic res[FILELIST_NPLAYERS];
-	static const SDL_PixelFormat *cachedfmt = NULL;
+	static bool inited = false;
+	SDL_assert(!inited);
+	inited = true;
 
-	if (!cachedfmt) {
-		SDL_assert(fmt != NULL);
-		cachedfmt = fmt;
-		// this loop can cause slow startup time
-		for (int i = 0; i < FILELIST_NPLAYERS; i++)
-			ellipsoidpic_load(&res[i], filelist_players[i], fmt);
-	}
-
-	SDL_assert(fmt == NULL || fmt == cachedfmt);
-	return res;
+	for (int i = 0; i < FILELIST_NPLAYERS; i++)
+		ellipsoidpic_load(&player_ellipsoidpics[i], filelist_players[i], fmt);
 }
 
 void player_epic_name(const struct EllipsoidPic *epic, char *name, int sizeofname)
 {
-	int i = epic - player_get_epics(NULL);
+	int i = epic - player_ellipsoidpics;
 	SDL_assert(0 <= i && i < FILELIST_NPLAYERS);
 	misc_basename_without_extension(filelist_players[i], name, sizeofname);
 }

@@ -64,11 +64,12 @@ static void rotate_player_chooser(struct ChooserPlayerStuff *plrch, int dir)
 {
 	SDL_assert(dir == +1 || dir == -1);
 
-	plrch->epic += dir;
-	if (plrch->epic == player_get_epics(NULL) - 1)
-		plrch->epic += FILELIST_NPLAYERS;
-	else if (plrch->epic == player_get_epics(NULL) + FILELIST_NPLAYERS)
-		plrch->epic -= FILELIST_NPLAYERS;
+	if (plrch->epic == &player_ellipsoidpics[0] && dir == -1)
+		plrch->epic = &player_ellipsoidpics[FILELIST_NPLAYERS-1];
+	else if (plrch->epic == &player_ellipsoidpics[FILELIST_NPLAYERS-1] && dir == +1)
+		plrch->epic = &player_ellipsoidpics[0];
+	else
+		plrch->epic += dir;
 	update_player_name_display(plrch);
 
 	// why subtracting: more angle = clockwise from above = left in chooser
@@ -124,7 +125,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 	camera_update_caches(&plrch->cam);
 }
 
-static void create_player_ellipsoids(struct Ellipsoid *arr, const SDL_PixelFormat *fmt)
+static void create_player_ellipsoids(struct Ellipsoid *arr)
 {
 	float pi = acosf(-1);
 
@@ -133,7 +134,7 @@ static void create_player_ellipsoids(struct Ellipsoid *arr, const SDL_PixelForma
 		float angle = pi/2 - ( i/(float)FILELIST_NPLAYERS * (2*pi) );
 
 		arr[i] = (struct Ellipsoid){
-			.epic = &player_get_epics(fmt)[i],
+			.epic = &player_ellipsoidpics[i],
 			.center = mat3_mul_vec3(mat3_rotation_xz(angle), (Vec3){ ELLIPSOID_XZ_DISTANCE_FROM_ORIGIN, 0, 0 }),
 			.angle = angle,
 			.xzradius = PLAYER_XZRADIUS,
@@ -309,7 +310,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 	ch->placech.nextbtn.onclickdata = &ch->placech;
 	update_place_chooser_button_disableds(&ch->placech);
 
-	create_player_ellipsoids(ch->ellipsoids, ch->winsurf->format);
+	create_player_ellipsoids(ch->ellipsoids);
 	setup_player_chooser(ch, 0, SDL_SCANCODE_A, SDL_SCANCODE_D);
 	setup_player_chooser(ch, 1, SDL_SCANCODE_LEFT, SDL_SCANCODE_RIGHT);
 }

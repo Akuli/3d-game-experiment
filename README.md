@@ -27,6 +27,39 @@ $ ./game
 ## Feature Ideas
 
 - stereo sound: if left player jumps then jump sound (mostly?) to left speaker
+- network multiplayer lol?
+
+
+## Conventions in this project
+
+- To avoid a global variable, it's fine to do this...
+
+    ```c
+    struct Foo *get_foos()
+    {
+        static struct Foo res[N_FOOS];
+        static bool ready = false;
+        if (ready)
+            return res;
+
+        for (int i = 0; i < N_FOOS; i++)
+            res[i] = create_foo();
+        ready = true;
+        return res;
+    }
+    ```
+
+    ...except when that takes a long time on startup. In that case, I use a
+    global variable instead. This isn't as bad as you might think because:
+    - As opposed to lazy-loading everything, I can display meaningful
+      "Loading bla..." texts while the game starts.
+    - I don't need to pass around a lot of variables everywhere.
+    - All global variables are intended to be immutable, and there should be no
+      mutable global state to cause problems.
+
+- My coding style is linux-kernel-ish, but I'm not at all nit-picky about it.
+  Contributions are welcome, although I usually don't get many, especially in
+  projects written in C.
 
 
 ## Windows Build

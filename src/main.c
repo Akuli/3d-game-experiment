@@ -14,6 +14,8 @@
 #include <SDL2/SDL_ttf.h>
 #include "camera.h"
 #include "chooser.h"
+#include "enemy.h"
+#include "guard.h"
 #include "play.h"
 #include "gameover.h"
 #include "misc.h"
@@ -62,16 +64,16 @@ int main(int argc, char **argv)
 	log_init();
 	cd_assets();
 
+	SDL_Window *wnd = SDL_CreateWindow(
+		"3D game experiment", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, CAMERA_SCREEN_WIDTH, CAMERA_SCREEN_HEIGHT, 0);
+	if (!wnd)
+		log_printf_abort("SDL_CreateWindow failed: %s", SDL_GetError());
+
 	srand(time(NULL));
 	if (!( argc == 2 && strcmp(argv[1], "--no-sound") == 0 ))
 		sound_init();
 	if (TTF_Init() == -1)
 		log_printf_abort("TTF_Init failed: %s", TTF_GetError());
-
-	SDL_Window *wnd = SDL_CreateWindow(
-		"3D game experiment", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, CAMERA_SCREEN_WIDTH, CAMERA_SCREEN_HEIGHT, 0);
-	if (!wnd)
-		log_printf_abort("SDL_CreateWindow failed: %s", SDL_GetError());
 
 	/*
 	On xmonad, consuming these first events changes return value of
@@ -81,6 +83,14 @@ int main(int argc, char **argv)
 	*/
 	SDL_Event e;
 	while (SDL_PollEvent(&e)) { }
+
+	SDL_Surface *wndsurf = SDL_GetWindowSurface(wnd);
+	if (!wndsurf)
+		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
+
+	player_init_epics(wndsurf->format);
+	enemy_init_epics(wndsurf->format);
+	guard_init_epic(wndsurf->format);
 
 	struct Chooser ch;
 	chooser_init(&ch, wnd);

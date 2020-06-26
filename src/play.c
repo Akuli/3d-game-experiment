@@ -56,7 +56,7 @@ static struct Enemy *add_enemy(struct GameState *gs, enum EnemyFlags fl)
 	}
 
 	struct Enemy *en = &gs->enemies[gs->nenemies++];
-	enemy_init(en, gs->pixfmt, gs->place, fl);
+	*en = enemy_new(gs->place, fl);
 	return en;
 }
 
@@ -95,7 +95,7 @@ static void add_guards_and_enemies_as_needed(struct GameState *gs)
 	if (time_to_do_something(&gs->lastguardframe, gs->thisframe, guarddelay)) {
 		int toadd = (rand() < (int)(nprob*(float)RAND_MAX)) ? n : 1;
 		log_printf("There are %d unpicked guards, adding %d more", gs->n_unpicked_guards, toadd);
-		guard_create_unpickeds(gs->place, gs->pixfmt, gs->unpicked_guards, &gs->n_unpicked_guards, toadd);
+		guard_create_unpickeds(gs->place, gs->unpicked_guards, &gs->n_unpicked_guards, toadd);
 	}
 	if (time_to_do_something(&gs->lastenemyframe, gs->thisframe, enemydelay)) {
 		log_printf("There are %d enemies, adding one more", gs->nenemies);
@@ -273,7 +273,7 @@ enum MiscState play_the_game(
 
 		add_guards_and_enemies_as_needed(&gs);
 		for (int i = 0; i < gs.nenemies; i++)
-			enemy_eachframe(&gs.enemies[i], pl);
+			enemy_eachframe(&gs.enemies[i]);
 		for (int i = 0; i < gs.n_unpicked_guards; i++)
 			guard_unpicked_eachframe(&gs.unpicked_guards[i]);
 		for (int i = 0; i < 2; i++)

@@ -35,14 +35,9 @@ struct Player {
 	int nguards;
 };
 
-/*
-Return value is same at each call, an array of same length FILELIST_NPLAYERS
-(from "../generated/filelist.h"). Its indexes are compatible with filelist_players.
-
-fmt is needed for creating the ellipsoid pics, but may be NULL once this function
-has been called once with non-NULL fmt.
-*/
-const struct EllipsoidPic *player_get_epics(const SDL_PixelFormat *fmt);
+// Call player_init_epics() before accessing player_ellipsoidpics
+extern struct EllipsoidPic player_ellipsoidpics[FILELIST_NPLAYERS];
+void player_init_epics(const SDL_PixelFormat *fmt);
 
 // Get name of player from a pointer to an ellipsoid pic from player_get_epics()
 void player_epic_name(const struct EllipsoidPic *epic, char *name, int sizeofname);

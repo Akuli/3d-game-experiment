@@ -6,11 +6,12 @@
 #include "player.h"
 #include <SDL2/SDL.h>
 
-// all added guards go on top of each other, guards array never grows larger than MAX_GUARDS
+// call this before any other guard functions
+void guard_init_epic(const SDL_PixelFormat *fmt);
+
+// all added guards go on top of each other, guards array never grows larger than MAX_UNPICKED_GUARDS
 void guard_create_unpickeds(
-	const struct Place *pl, const SDL_PixelFormat *fmt,
-	struct Ellipsoid *guards, int *nguards,
-	int howmany2add);
+	const struct Place *pl, struct Ellipsoid *guards, int *nguards, int howmany2add);
 
 // don't run this for picked guards
 void guard_unpicked_eachframe(struct Ellipsoid *el);
@@ -18,7 +19,7 @@ void guard_unpicked_eachframe(struct Ellipsoid *el);
 /*
 example:
 
-	struct Ellipsoid arr[GUARD_MAX];
+	struct Ellipsoid arr[MAX_PICKED_GUARDS_TO_DISPLAY_PER_PLAYER];
 	int arrlen = guard_create_picked(arr, plr);
 	for (int i = 0; i < n; i++)
 		draw_ellipsoid_on_screen(arr[i]);

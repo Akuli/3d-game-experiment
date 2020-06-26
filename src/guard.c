@@ -11,19 +11,16 @@
 #define YRADIUS_BASIC 1.0f
 #define SPACING_BASIC 0.2f
 
-static struct EllipsoidPic *get_ellipsoid_pic(const SDL_PixelFormat *fmt)
+static struct EllipsoidPic guard_ellipsoidpic;
+
+void guard_init_epic(const SDL_PixelFormat *fmt)
 {
-	static struct EllipsoidPic epic;
 	static bool ready = false;
+	SDL_assert(!ready);
+	ready = true;
 
-	if (!ready) {
-		ellipsoidpic_load(&epic, "guard.png", fmt);
-		epic.hidelowerhalf = true;
-		ready = true;
-	}
-
-	SDL_assert(epic.pixfmt == fmt);
-	return &epic;
+	ellipsoidpic_load(&guard_ellipsoidpic, "guard.png", fmt);
+	guard_ellipsoidpic.hidelowerhalf = true;
 }
 
 // this function could be slow wiht many nonpicked guards
@@ -44,13 +41,12 @@ static bool nonpicked_guard_center_in_use(Vec3 center, const struct Ellipsoid *o
 }
 
 void guard_create_unpickeds(
-	const struct Place *pl, const SDL_PixelFormat *fmt,
-	struct Ellipsoid *guards, int *nguards,
-	int howmany2add)
+	const struct Place *pl, struct Ellipsoid *guards, int *nguards, int howmany2add)
 {
 	int canadd = MAX_UNPICKED_GUARDS - *nguards;
 	if (howmany2add > canadd) {
-		log_printf("hitting max number of unpicked guards");
+		log_printf("hitting MAX_UNPICKED_GUARDS=%d and adding only %d guards (%d requested)",
+			MAX_UNPICKED_GUARDS, canadd, howmany2add);
 		howmany2add = canadd;
 	}
 	SDL_assert(howmany2add >= 0);
@@ -63,7 +59,7 @@ void guard_create_unpickeds(
 
 		struct Ellipsoid el = {
 			.center = center,
-			.epic = get_ellipsoid_pic(fmt),
+			.epic = &guard_ellipsoidpic,
 			.angle = 0,
 			.xzradius = XZRADIUS,
 			.yradius = YRADIUS_BASIC,
@@ -99,7 +95,7 @@ int guard_create_picked(struct Ellipsoid *arr, const struct Player *plr)
 			plr->ellipsoid.center.y + plr->ellipsoid.yradius - yradius/5,
 			plr->ellipsoid.center.z,
 		},
-		.epic = get_ellipsoid_pic(plr->ellipsoid.epic->pixfmt),
+		.epic = &guard_ellipsoidpic,
 		.angle = plr->ellipsoid.angle,
 		.xzradius = XZRADIUS,
 		.yradius = yradius,

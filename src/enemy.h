@@ -21,16 +21,18 @@ enum EnemyFlags {
 };
 
 struct Enemy {
+	const struct Place *place;
 	struct Ellipsoid ellipsoid;
 	enum EnemyFlags flags;
 	enum EnemyDir dir;
 };
 
-// run this after creating a new enemy
-void enemy_init(struct Enemy *en, const SDL_PixelFormat *fmt, const struct Place *pl, enum EnemyFlags fl);
+// call enemy_init_epics() once before calling enemy_new() as many times as you like
+void enemy_init_epics(const SDL_PixelFormat *fmt);
+struct Enemy enemy_new(const struct Place *pl, enum EnemyFlags fl);
 
 // runs fps times per second
-void enemy_eachframe(struct Enemy *en, const struct Place *pl);
+void enemy_eachframe(struct Enemy *en);
 
 
 #endif   // ENEMY_H
