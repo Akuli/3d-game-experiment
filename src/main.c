@@ -58,8 +58,44 @@ static void cd_assets(void)
 		log_printf_abort("chdir to assets failed: %s", strerror(errno));
 }
 
+static void show_loading(const char *msg, SDL_Window *wnd, SDL_Surface *wndsurf)
+{
+	SDL_Color white = { 0xff, 0xff, 0xff, 0xff };
+	SDL_Surface *msgsurf = misc_create_text_surface(msg, white, 50);
+
+	SDL_FillRect(wndsurf, NULL, 0);
+	SDL_BlitSurface(msgsurf, NULL, wndsurf, &(SDL_Rect){
+		50, wndsurf->h / 2,
+		123, 456,   // ignored
+	});
+
+	SDL_FreeSurface(msgsurf);
+	SDL_UpdateWindowSurface(wnd);
+}
+
+static void load_the_stuff(SDL_Window *wnd, SDL_Surface *wndsurf, bool sound)
+{
+	show_loading("Loading player pictures...", wnd, wndsurf);
+	player_init_epics(wndsurf->format);
+
+	show_loading("Loading enemy pictures", wnd, wndsurf);
+	enemy_init_epics(wndsurf->format);
+
+	show_loading("Loading the guard picture...", wnd, wndsurf);
+	guard_init_epic(wndsurf->format);
+
+	if (sound) {
+		show_loading("Loading sounds...", wnd, wndsurf);
+		sound_init();
+	}
+
+	show_loading("Loading some other stuff...", wnd, wndsurf);
+}
+
 int main(int argc, char **argv)
 {
+	bool sound = !(argc == 2 && strcmp(argv[1], "--no-sound") == 0);
+
 	cd_where_everything_is();
 	log_init();
 	cd_assets();
@@ -70,8 +106,6 @@ int main(int argc, char **argv)
 		log_printf_abort("SDL_CreateWindow failed: %s", SDL_GetError());
 
 	srand(time(NULL));
-	if (!( argc == 2 && strcmp(argv[1], "--no-sound") == 0 ))
-		sound_init();
 	if (TTF_Init() == -1)
 		log_printf_abort("TTF_Init failed: %s", TTF_GetError());
 
@@ -87,10 +121,7 @@ int main(int argc, char **argv)
 	SDL_Surface *wndsurf = SDL_GetWindowSurface(wnd);
 	if (!wndsurf)
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
-
-	player_init_epics(wndsurf->format);
-	enemy_init_epics(wndsurf->format);
-	guard_init_epic(wndsurf->format);
+	load_the_stuff(wnd, wndsurf, sound);
 
 	struct Chooser ch;
 	chooser_init(&ch, wnd);
