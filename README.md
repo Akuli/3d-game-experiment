@@ -22,10 +22,6 @@ $ ./game
   of the wall before the each-frame-running collision check. Current
   workaround is to not make the players go so fast that this would
   happen at 30fps. (Yes, I know that 30fps is really slow for any gamer)
-- Guard-player and guard-enemy collision checking detects a collision
-  slightly before the collision actually happens. This is because guard
-  balls also have a lower half, and that's just hidden when drawing the
-  guards.
 
 
 ## Feature Ideas
