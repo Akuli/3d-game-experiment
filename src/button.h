@@ -30,6 +30,8 @@ struct Button {
 		};
 
 	This sets the first scancode to SDL_SCANCODE_BLA and rest to zero.
+
+	Key bindings are listed in README. Try to keep that up to date.
 	*/
 	int scancodes[5];
 

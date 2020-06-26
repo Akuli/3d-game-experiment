@@ -15,6 +15,21 @@ $ make -j2
 $ ./game
 ```
 
+## Key Bindings
+
+In the game:
+- Moving around and flattening: right player uses arrow keys, left player uses W, A, S and D imagining that they are arrow keys.
+
+In the player and place choosing screen, you can click the buttons or press these keys:
+- Player chooser: right player uses left and right arrow keys, left player users A and D.
+- Place chooser: up and down arrow keys, or W and S. The purpose is that both players can use the place chooser.
+- Play button: enter or space.
+
+In the game over screen, you can again click buttons or press these keys:
+- Play again button: F5. This is for compatibility with games where you can play again by refreshing the browser window.
+- Player and place chooser button: enter or space.
+
+
 ## Broken Things
 
 - With low enough fps and high enough player speed, it's possible to run

@@ -36,7 +36,7 @@ enum MiscState game_over(
 	struct Button back2chooserbtn = {
 		.text = "Change players\nor place",
 		.flags = flags,
-		.scancodes = { SDL_SCANCODE_RETURN },
+		.scancodes = { SDL_SCANCODE_RETURN, SDL_SCANCODE_SPACE },
 		.destsurf = wndsurf,
 		.center = {
 			playagainbtn.center.x,
