@@ -82,7 +82,7 @@ static void load_the_stuff(SDL_Window *wnd, SDL_Surface *wndsurf, bool sound)
 	show_loading("Loading player pictures...", wnd, wndsurf, yidx++);
 	player_init_epics(wndsurf->format);
 
-	show_loading("Loading enemy pictures", wnd, wndsurf, yidx++);
+	show_loading("Loading enemy pictures...", wnd, wndsurf, yidx++);
 	enemy_init_epics(wndsurf->format);
 
 	show_loading("Loading the guard picture...", wnd, wndsurf, yidx++);
