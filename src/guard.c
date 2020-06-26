@@ -76,7 +76,7 @@ void guard_create_unpickeds(
 
 void guard_unpicked_eachframe(struct Ellipsoid *el)
 {
-	el->angle += 1.0f / CAMERA_FPS;
+	el->angle += 3.0f / CAMERA_FPS;
 	ellipsoid_update_transforms(el);
 }
 
