@@ -33,7 +33,7 @@ $ ./game
 
 You can build a Windows `.exe` file of this game on Linux.
 
-Start by downloading the Windows "Development Libraries" of SDL2 and SDL_mixer.
+Start by downloading the Windows "Development Libraries" of SDL2, SDL_mixer and SDL_ttf.
 Choose MinGW when you need to choose between MinGW and Visual C++.
 
 https://www.libsdl.org/download-2.0.php
