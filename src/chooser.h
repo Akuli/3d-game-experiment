@@ -33,11 +33,16 @@ struct Chooser {
 	struct ChooserPlayerStuff playerch[2];
 	struct ChooserPlaceStuff placech;
 
+	// is "practice without enemies" easter egg selected?
+	bool withoutenemies;
+
 	// rest of this struct isn't meant to be used outside chooser.c
 	SDL_Window *win;
 	SDL_Surface *winsurf;
 	struct Ellipsoid ellipsoids[FILELIST_NPLAYERS];
 	struct Button bigplaybtn;
+	SDL_Surface *withoutenemiestxt;
+	SDL_Rect withoutenemiesrect;
 };
 
 /*

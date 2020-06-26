@@ -28,6 +28,11 @@ struct GameState {
 	const SDL_PixelFormat *pixfmt;
 
 	struct Player players[2];
+
+	/*
+	nenemies is -1 for enemies disabled easter egg. Note that loop conditions
+	like 'i < nenemies' and 'i >= 0' work even in that case.
+	*/
 	struct Enemy enemies[MAX_ENEMIES];
 	int nenemies;
 
@@ -50,6 +55,12 @@ static bool time_to_do_something(unsigned *frameptr, unsigned thisframe, unsigne
 
 static struct Enemy *add_enemy(struct GameState *gs, enum EnemyFlags fl)
 {
+	if (gs->nenemies == -1) {
+		log_printf("not adding an enemy because enemies are disabled");
+		return NULL;
+	}
+	SDL_assert(gs->nenemies >= 0);
+
 	if (gs->nenemies >= MAX_ENEMIES) {
 		log_printf("hitting MAX_ENEMIES=%d", MAX_ENEMIES);
 		return NULL;
@@ -226,7 +237,7 @@ enum MiscState play_the_game(
 	SDL_Window *wnd,
 	const struct EllipsoidPic *plr1pic, const struct EllipsoidPic *plr2pic,
 	const struct EllipsoidPic **winnerpic,
-	const struct Place *pl)
+	const struct Place *pl, bool enemies)
 {
 	SDL_Surface *winsurf = SDL_GetWindowSurface(wnd);
 	if (!winsurf)
@@ -234,6 +245,7 @@ enum MiscState play_the_game(
 
 	static struct GameState gs;   // static because its big struct, avoiding stack usage
 	gs = (struct GameState){
+		.nenemies = enemies ? 0 : -1,
 		.place = pl,
 		.pixfmt = winsurf->format,
 		.players = {

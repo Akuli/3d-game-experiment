@@ -140,8 +140,12 @@ int main(int argc, char **argv)
 			break;
 
 		case MISC_STATE_PLAY:
-			log_printf("playing the game begins");
-			s = play_the_game(wnd, ch.playerch[0].epic, ch.playerch[1].epic, &winner, ch.placech.pl);
+			log_printf(
+				"playing the game begins (enemies %s)",
+				ch.withoutenemies ? "disabled" : "enabled");
+			s = play_the_game(
+				wnd, ch.playerch[0].epic, ch.playerch[1].epic, &winner,
+				ch.placech.pl, !ch.withoutenemies);
 			break;
 
 		case MISC_STATE_GAMEOVER:
