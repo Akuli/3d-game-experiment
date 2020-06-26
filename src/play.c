@@ -63,8 +63,8 @@ static struct Enemy *add_enemy(struct GameState *gs, enum EnemyFlags fl)
 // runs each frame
 static void add_guards_and_enemies_as_needed(struct GameState *gs)
 {
-	// probability to get stack of 2 guards instead of 1 guard
-	float doubleguardprob = 0.2f;
+	int n = 3;
+	float nprob = 0.2f;    // probability to get stack of n guards instead of 1 guard
 
 	/*
 	The frequency of enemies appearing, as enemies per frame on average, is
@@ -74,11 +74,11 @@ static void add_guards_and_enemies_as_needed(struct GameState *gs)
 	because we get one enemy in enemydelay frames. The expected value of guards
 	to get (aka weighted average of guard counts with probabilities as weights) is
 
-		doubleguardprob*2 + (1 - doubleguardprob)*1,
+		nprob*n + (1 - nprob)*1,
 
 	so the frequency of guards appearing is
 
-		(doubleguardprob*2 + (1 - doubleguardprob)*1)/guarddelay.
+		(nprob*n + (1 - nprob)*1)/guarddelay.
 
 	If enemy and guard frequencies are equal, we have a balance of enemies and
 	guards. In practice, people make mistakes, and the enemies win eventually,
@@ -89,11 +89,11 @@ static void add_guards_and_enemies_as_needed(struct GameState *gs)
 	We can still set enemydelay however we want.
 	*/
 	unsigned enemydelay = 5*CAMERA_FPS;
-	unsigned guarddelay = (unsigned)( (doubleguardprob*2 + (1 - doubleguardprob)*1)*enemydelay );
+	unsigned guarddelay = (unsigned)( (nprob*n + (1 - nprob)*1)*enemydelay );
 
 	gs->thisframe++;
 	if (time_to_do_something(&gs->lastguardframe, gs->thisframe, guarddelay)) {
-		int n = (rand() < (int)(doubleguardprob*(float)RAND_MAX)) ? 2 : 1;
+		int n = (rand() < (int)(nprob*(float)RAND_MAX)) ? n : 1;
 		log_printf("adding a pile of %d guards", n);
 		guard_create_unpickeds(gs->place, gs->pixfmt, gs->unpicked_guards, &gs->n_unpicked_guards, n);
 	}
