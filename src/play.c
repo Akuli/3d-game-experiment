@@ -93,9 +93,9 @@ static void add_guards_and_enemies_as_needed(struct GameState *gs)
 
 	gs->thisframe++;
 	if (time_to_do_something(&gs->lastguardframe, gs->thisframe, guarddelay)) {
-		int n = (rand() < (int)(nprob*(float)RAND_MAX)) ? n : 1;
+		int toadd = (rand() < (int)(nprob*(float)RAND_MAX)) ? n : 1;
 		log_printf("adding a pile of %d guards", n);
-		guard_create_unpickeds(gs->place, gs->pixfmt, gs->unpicked_guards, &gs->n_unpicked_guards, n);
+		guard_create_unpickeds(gs->place, gs->pixfmt, gs->unpicked_guards, &gs->n_unpicked_guards, toadd);
 	}
 	if (time_to_do_something(&gs->lastenemyframe, gs->thisframe, enemydelay)) {
 		log_printf("adding an enemy");
