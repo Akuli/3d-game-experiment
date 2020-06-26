@@ -58,38 +58,41 @@ static void cd_assets(void)
 		log_printf_abort("chdir to assets failed: %s", strerror(errno));
 }
 
-static void show_loading(const char *msg, SDL_Window *wnd, SDL_Surface *wndsurf)
+static void show_loading(const char *msg, SDL_Window *wnd, SDL_Surface *wndsurf, int yidx)
 {
+	int fontsz = 50;
 	SDL_Color white = { 0xff, 0xff, 0xff, 0xff };
-	SDL_Surface *msgsurf = misc_create_text_surface(msg, white, 50);
 
-	SDL_FillRect(wndsurf, NULL, 0);
+	SDL_Surface *msgsurf = misc_create_text_surface(msg, white, fontsz);
 	SDL_BlitSurface(msgsurf, NULL, wndsurf, &(SDL_Rect){
-		50, wndsurf->h / 2,
+		fontsz/5, fontsz*yidx,
 		123, 456,   // ignored
 	});
-
 	SDL_FreeSurface(msgsurf);
+
 	SDL_UpdateWindowSurface(wnd);
 }
 
 static void load_the_stuff(SDL_Window *wnd, SDL_Surface *wndsurf, bool sound)
 {
-	show_loading("Loading player pictures...", wnd, wndsurf);
+	SDL_FillRect(wndsurf, NULL, 0);
+	int yidx = 0;
+
+	show_loading("Loading player pictures...", wnd, wndsurf, yidx++);
 	player_init_epics(wndsurf->format);
 
-	show_loading("Loading enemy pictures", wnd, wndsurf);
+	show_loading("Loading enemy pictures", wnd, wndsurf, yidx++);
 	enemy_init_epics(wndsurf->format);
 
-	show_loading("Loading the guard picture...", wnd, wndsurf);
+	show_loading("Loading the guard picture...", wnd, wndsurf, yidx++);
 	guard_init_epic(wndsurf->format);
 
 	if (sound) {
-		show_loading("Loading sounds...", wnd, wndsurf);
+		show_loading("Loading sounds...", wnd, wndsurf, yidx++);
 		sound_init();
 	}
 
-	show_loading("Loading some other stuff...", wnd, wndsurf);
+	show_loading("Loading some other stuff...", wnd, wndsurf, yidx++);
 }
 
 int main(int argc, char **argv)
