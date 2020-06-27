@@ -2,7 +2,7 @@
 #
 # Putting games on USB sticks is handy for sharing them with friends. Everyone
 # uses Windows, so this makes a Window build of the game and puts it to a USB
-# stick. It also creates a Windows link to it.
+# stick.
 #
 # Usage:
 #
