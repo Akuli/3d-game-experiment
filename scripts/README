@@ -1,0 +1,3 @@
+The scripts are NOT meant to be ran from the `scripts` directory.
+Instead, run them from the project root directory (the directory
+containing the Makefile).
