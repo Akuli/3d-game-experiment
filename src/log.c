@@ -1,13 +1,14 @@
 #ifdef _WIN32
 	#include <direct.h>
 	#include <windows.h>
-	#define my_mkdir(path) _mkdir((path))
 #else
+	#define _POSIX_C_SOURCE 200112L  // for gethostname
 	#include <glob.h>
 	#include <sys/stat.h>
 	#include <sys/types.h>
+	#include <unistd.h>
 	// python uses 777 as default perms, see help(os.mkdir)
-	#define my_mkdir(path) mkdir((path), 0777)
+	#define _mkdir(path) mkdir((path), 0777)
 #endif
 
 #include "log.h"
@@ -25,7 +26,7 @@ static FILE *logfile = NULL;
 static void close_log_file(void) { fclose(logfile); }
 static void open_log_file(void)
 {
-	if (my_mkdir("logs") == -1) {
+	if (_mkdir("logs") == -1) {
 		log_printf("mkdir error: %s", strerror(errno));
 		// don't stop here, it could e.g. exist already
 	}
@@ -131,6 +132,25 @@ static void remove_old_logfiles(void)
 #endif
 }
 
+// useful for putting the game on usb stick, helps distinguish logs from different computers
+static void log_computer_name(void)
+{
+#ifdef _WIN32
+	wchar_t buf[1024] = {0};
+	DWORD sz = sizeof(buf)/sizeof(buf[0]) - 1;
+	if (GetComputerNameW(buf, &sz))
+		log_printf("computer name: %ls", buf);
+	else
+		log_printf("error when getting computer name: %s", strerror(errno));
+#else
+	char buf[1024] = {0};
+	if (gethostname(buf, sizeof(buf)-1) == 0)
+		log_printf("hostname: %s", buf);
+	else
+		log_printf("error when getting hostname: %s", strerror(errno));
+#endif
+}
+
 void log_init(void)
 {
 	/*
@@ -144,5 +164,6 @@ void log_init(void)
 	log_printf("------------------------------");
 	log_printf("game is starting");
 	log_printf("------------------------------");
+	log_computer_name();
 	remove_old_logfiles();
 }
