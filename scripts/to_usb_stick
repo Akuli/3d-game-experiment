@@ -6,14 +6,29 @@
 #
 # Usage:
 #
-#   $ sudo apt install wine rsync
+#   $ sudo apt install wine
 #   $ make clean
 #   $ scripts/to_usb_stick '/media/<user>/<usb stick name>'
 #
-# You can skip 'make clean' if you haven't recently ran non-Windows builds.
+# You can skip 'make clean' if you don't have obj/ files from non-Windows builds.
 
 set -ex
+[ $# -eq 1 ]        # if this fails, you forgot the argument to the script
 dest="$1"
 
 (source winbuildenv && make -j2 build/game.exe)
-rsync -rvu --delete build "$dest"
+
+# I couldn't get rsync to do the right thing, so here we go...
+find build -type f | (
+    while read -r srcfile; do
+        destfile="$dest/$srcfile"
+        mkdir -p "$(dirname "$destfile")"
+        case "$srcfile" in
+            build/logs/*)
+                ;;
+            *)
+                diff "$destfile" "$srcfile" || cp -v "$srcfile" "$destfile"
+                ;;
+        esac
+    done
+)
