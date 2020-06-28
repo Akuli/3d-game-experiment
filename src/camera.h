@@ -1,9 +1,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include <stdbool.h>
 #include <SDL2/SDL.h>
-#include "log.h"
 #include "mathstuff.h"
 
 // surfaces can be smaller than this, but these are handy for array sizes

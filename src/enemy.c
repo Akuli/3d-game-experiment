@@ -2,9 +2,16 @@
 #include <assert.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <SDL2/SDL.h>
 #include "../generated/filelist.h"
 #include "ellipsoid.h"
+#include "ellipsoidpic.h"
+#include "camera.h"
+#include "mathstuff.h"
+#include "wall.h"
+#include "log.h"
 
 #define IMAGE_FILE_COUNT 1
 #define MOVE_UNITS_PER_SECOND 2.5f

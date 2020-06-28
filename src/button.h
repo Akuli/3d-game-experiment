@@ -1,7 +1,6 @@
 #ifndef BUTTON_H
 #define BUTTON_H
 
-#include <stdbool.h>
 #include <SDL2/SDL.h>
 
 enum ButtonFlags {

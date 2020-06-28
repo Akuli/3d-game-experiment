@@ -1,6 +1,7 @@
 #ifndef WALL_H
 #define WALL_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include "ellipsoid.h"
 #include "camera.h"

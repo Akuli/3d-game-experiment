@@ -8,8 +8,11 @@
 	#define my_chdir chdir
 #endif
 
+#include <errno.h>
 #include <string.h>
 #include <time.h>
+#include <stdbool.h>
+#include <stdlib.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include "../generated/filelist.h"
@@ -21,9 +24,9 @@
 #include "gameover.h"
 #include "misc.h"
 #include "player.h"
-#include "showall.h"
 #include "sound.h"
-#include "../generated/filelist.h"
+#include "log.h"
+#include "place.h"
 
 
 /*

@@ -2,7 +2,6 @@
 #define INTERVAL_H
 
 #include <stdbool.h>
-#include <stddef.h>
 
 // think of this as [start, end], i.e. real number interval with start and end included
 struct Interval {

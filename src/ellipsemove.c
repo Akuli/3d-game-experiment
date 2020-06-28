@@ -1,7 +1,5 @@
 #include <math.h>
 #include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <SDL2/SDL.h>
 #include "log.h"
 #include "mathstuff.h"

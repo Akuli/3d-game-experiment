@@ -1,12 +1,13 @@
 #ifndef PLAYER_H
 #define PLAYER_H
 
+#include <stdbool.h>
+#include <SDL2/SDL.h>
 #include "camera.h"
 #include "ellipsoid.h"
+#include "ellipsoidpic.h"
 #include "place.h"
-#include "wall.h"
 #include "../generated/filelist.h"
-#include <SDL2/SDL.h>
 
 // smallest possible height of the player (then ellipsoid.yradius is half of this)
 #define PLAYER_HEIGHT_FLAT 0.1f

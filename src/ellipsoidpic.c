@@ -1,6 +1,8 @@
 #include "ellipsoidpic.h"
 #include <errno.h>
 #include <string.h>
+#include <math.h>
+#include <stdio.h>
 #include <SDL2/SDL.h>
 #include "../stb/stb_image.h"
 #include "log.h"

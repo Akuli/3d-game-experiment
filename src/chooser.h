@@ -3,12 +3,13 @@
 #ifndef CHOOSER_H
 #define CHOOSER_H
 
+#include <stdbool.h>
+#include <SDL2/SDL.h>
 #include "../generated/filelist.h"
 #include "button.h"
-#include "ellipsoidpic.h"
+#include "camera.h"
+#include "ellipsoid.h"
 #include "misc.h"
-#include "place.h"
-#include <SDL2/SDL.h>
 
 struct ChooserPlayerStuff {
 	const struct EllipsoidPic *epic;   // pointer into player_getepics()

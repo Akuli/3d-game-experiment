@@ -2,9 +2,7 @@
 #define ELLIPSOID_H
 
 #include <stdbool.h>
-#include <SDL2/SDL.h>
 #include "camera.h"
-#include "ellipsoidpic.h"
 #include "mathstuff.h"
 
 /*

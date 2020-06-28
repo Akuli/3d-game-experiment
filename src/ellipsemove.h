@@ -1,6 +1,8 @@
 #ifndef ELLIPSEMOVE_H
 #define ELLIPSEMOVE_H
 
+#include "mathstuff.h"
+
 /*
 How much should ellipses be moved apart in x direction to make them not intersect
 each other? Never returns a negative value. Zero means that the ellipses don't

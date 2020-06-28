@@ -3,7 +3,6 @@
 #include <SDL2/SDL.h>
 #include "ellipsoid.h"
 #include "guard.h"
-#include "log.h"
 #include "mathstuff.h"
 #include "misc.h"
 #include "place.h"

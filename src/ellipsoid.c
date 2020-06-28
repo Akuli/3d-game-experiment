@@ -1,15 +1,14 @@
 #include "ellipsoid.h"
-#include <errno.h>
 #include <math.h>
 #include <stdbool.h>
-#include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <SDL2/SDL.h>
 #include "camera.h"
 #include "log.h"
 #include "ellipsemove.h"
+#include "ellipsoidpic.h"
 #include "mathstuff.h"
-#include "showall.h"
 
 static bool ellipsoid_intersects_plane(const struct Ellipsoid *el, struct Plane pl)
 {

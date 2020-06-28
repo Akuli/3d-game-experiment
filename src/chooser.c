@@ -1,10 +1,12 @@
 #include "chooser.h"
+#include <math.h>
+#include <stddef.h>
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
 #include "../generated/filelist.h"
 #include "button.h"
 #include "camera.h"
 #include "ellipsoid.h"
+#include "ellipsoidpic.h"
 #include "log.h"
 #include "looptimer.h"
 #include "mathstuff.h"

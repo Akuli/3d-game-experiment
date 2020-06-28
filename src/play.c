@@ -1,11 +1,8 @@
 #include "play.h"
 #include <assert.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <time.h>
 #include <SDL2/SDL.h>
 #include "camera.h"
 #include "ellipsoid.h"
@@ -20,7 +17,6 @@
 #include "player.h"
 #include "showall.h"
 #include "sound.h"
-#include "wall.h"
 
 // includes all the GameObjects that all players should see
 struct GameState {

@@ -2,10 +2,11 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
+#include <stdlib.h>
 #include <SDL2/SDL.h>
 #include "../generated/filelist.h"
 #include "max.h"
-#include "misc.h"
 #include "log.h"
 
 /*

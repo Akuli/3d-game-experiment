@@ -1,5 +1,6 @@
 #include "camera.h"
 #include <assert.h>
+#include <string.h>
 #include <SDL2/SDL.h>
 #include "mathstuff.h"
 

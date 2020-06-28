@@ -2,17 +2,18 @@
 	#include <direct.h>
 	#include <windows.h>
 #else
+	// includes are from glob(3), mkdir(2) gethostname(2)
 	#define _POSIX_C_SOURCE 200112L  // for gethostname
 	#include <glob.h>
 	#include <sys/stat.h>
-	#include <sys/types.h>
+	#include <sys/types.h>   // IWYU pragma: keep
 	#include <unistd.h>
 	// python uses 777 as default perms, see help(os.mkdir)
 	#define _mkdir(path) mkdir((path), 0777)
 #endif
 
 #include "log.h"
-#include "math.h"
+#include <math.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>

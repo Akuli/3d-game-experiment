@@ -1,6 +1,7 @@
 #ifndef ENEMY_H
 #define ENEMY_H
 
+#include <SDL2/SDL.h>
 #include "ellipsoid.h"
 #include "place.h"
 

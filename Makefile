@@ -65,6 +65,44 @@ $(COPIED_FILES): $(FILES_TO_COPY)
 	mkdir -p $(@D) && cp -r $(shell printf '%s\n' $^ | grep $(notdir $@)) $(EXEDIR)
 
 
+# include checking stuff
+#
+#	https://github.com/include-what-you-use/include-what-you-use
+#
+# use autocomplete to figure out which clang/llvm version to use:
+#
+#	$ sudo apt install clang-<Tab><Tab>
+#
+# (here <Tab> denotes pressing the Tab key)
+#
+# add the resulting build/bin directory into your PATH by e.g. putting
+# something like this to your ~/.bashrc:
+#
+#	PATH="$PATH:$HOME/iwyu/build/bin
+#
+# then open a new terminal to make sure you use the modified bashrc and:
+#
+#	$ make iwyu
+
+# iwyu doesn't find stddef.h on my system by default (modify this if you
+# use a different llvm/clang version with iwyu)
+IWYUFLAGS += -I$(wildcard /usr/lib/llvm-8/lib/clang/8.*/include)
+
+# please iwyu, don't warn me about stuff that c compilers warn about anyway...
+IWYUFLAGS += -Wno-static-local-in-inline -Wno-absolute-value
+
+IWYUFLAGS += -Xiwyu --mapping_file=iwyumappings.imp
+IWYUFLAGS += -Xiwyu --no_fwd_decls
+
+# iwyu/bla.c is not an actual file, just a name for makefile rule
+# ||true because iwyu exits always with error status, lol
+iwyu/%: %
+	include-what-you-use $(IWYUFLAGS) $^ || true
+
+.PHONY: iwyu
+iwyu: $(addprefix iwyu/, $(wildcard src/*.c src/*.h))
+
+
 # profiling stuff
 #
 #	$ sudo apt install valgrind

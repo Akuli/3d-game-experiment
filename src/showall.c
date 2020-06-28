@@ -1,14 +1,12 @@
 #include "showall.h"
-#include <limits.h>
-#include <math.h>
+#include <stdbool.h>
 #include <SDL2/SDL.h>
 #include "camera.h"
 #include "ellipsoid.h"
 #include "interval.h"
-#include "place.h"
-#include "player.h"
 #include "mathstuff.h"
 #include "max.h"
+#include "log.h"
 
 // fitting too much stuff into an int
 typedef int ID;

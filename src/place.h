@@ -3,6 +3,7 @@
 
 #include "max.h"
 #include "wall.h"
+#include "mathstuff.h"
 
 struct Place {
 	struct Wall walls[MAX_WALLS];

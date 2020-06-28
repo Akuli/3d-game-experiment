@@ -1,11 +1,13 @@
 #include "guard.h"
 #include <stdbool.h>
+#include <stdlib.h>
 #include <SDL2/SDL.h>
 #include "camera.h"
 #include "ellipsoid.h"
 #include "ellipsoidpic.h"
 #include "mathstuff.h"
 #include "max.h"
+#include "log.h"
 
 #define YRADIUS_BASIC 1.0f
 #define SPACING_BASIC 0.2f

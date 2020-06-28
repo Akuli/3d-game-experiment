@@ -1,10 +1,7 @@
 #ifndef LOG_H
 #define LOG_H
 
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <SDL2/SDL.h>
+#include <SDL2/SDL.h>      // IWYU pragma: keep
 
 void log_init(void);
 
