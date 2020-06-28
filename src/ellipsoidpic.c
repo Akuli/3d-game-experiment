@@ -7,6 +7,7 @@
 #include "../stb/stb_image.h"
 #include "log.h"
 #include "mathstuff.h"
+#include "misc.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -93,22 +94,18 @@ static FILE *open_binary_file_for_reading(const char *path)
 #ifdef _WIN32
 	wchar_t wpath[1024];
 	int n = MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, sizeof(wpath)/sizeof(wpath[0]) - 1);
-	SDL_assert(0 <= n && n < sizeof(wpath)/sizeof(wpath[0]));
-	wpath[n] = L'\0';
-
 	if (n == 0)
 		log_printf_abort("MultiByteToWideChar with utf8 string '%s' failed", path);
 
+	SDL_assert(0 < n && n < sizeof(wpath)/sizeof(wpath[0]));
+	wpath[n] = L'\0';
 	FILE *f = _wfopen(wpath, L"rb");
-	if (!f)
-		log_printf_abort("opening '%ls' failed: %s", wpath, strerror(errno));
-
 #else
 	FILE *f = fopen(path, "rb");
-	if (!f)
-		log_printf_abort("opening '%s' failed: %s", path, strerror(errno));
 #endif
 
+	if (!f)
+		log_printf_abort("opening '%s' failed: %s", path, strerror(errno));
 	return f;
 }
 

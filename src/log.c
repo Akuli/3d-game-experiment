@@ -20,6 +20,7 @@
 #include <string.h>
 #include <time.h>
 #include <SDL2/SDL.h>
+#include "misc.h"
 
 // must be global because there's no other way to pass data to atexit callbacks
 static FILE *logfile = NULL;
@@ -39,7 +40,8 @@ static void open_log_file(void)
 		localtime((time_t[]){ time(NULL) })
 	);
 
-	if (( logfile = fopen(fname, "a") ))
+	// "b" instead of text mode to make sure that windows doesn't destroy utf8 characters
+	if (( logfile = fopen(fname, "ab") ))
 		atexit(close_log_file);
 	else
 		log_printf("opening log file failed: %s", strerror(errno));
@@ -140,7 +142,7 @@ static void log_computer_name(void)
 	wchar_t buf[1024] = {0};
 	DWORD sz = sizeof(buf)/sizeof(buf[0]) - 1;
 	if (GetComputerNameW(buf, &sz))
-		log_printf("computer name: %ls", buf);
+		log_printf("computer name: %s", misc_windows_to_utf8(buf));
 	else
 		log_printf("error when getting computer name: %s", strerror(errno));
 #else

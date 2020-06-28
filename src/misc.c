@@ -1,9 +1,15 @@
+#ifdef _WIN32
+#include <windows.h>
+#include <wchar.h>
+#endif
+
 #include "misc.h"
 #include <string.h>
 #include <stdio.h>
 #include "log.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
+
 
 void misc_blit_with_center(SDL_Surface *src, SDL_Surface *dst, const SDL_Point *center)
 {
@@ -60,3 +66,21 @@ void misc_basename_without_extension(const char *path, char *name, int sizeofnam
 
 	snprintf(name, sizeofname, "%.*s", (int)(end - path), path);
 }
+
+// TODO: most of my code uses strerror(errno) for windows errors which is wrong?
+#ifdef _WIN32
+const char *misc_windows_to_utf8(const wchar_t *winstr)
+{
+	static char utf8[1024];
+	int n = WideCharToMultiByte(
+		CP_UTF8, 0,
+		winstr, wcslen(winstr),
+		utf8, sizeof(utf8) - 1,
+		NULL, NULL);
+
+	// if it fails, then we return empty string... which is somewhat sane-ish?
+	SDL_assert(0 <= n && n < sizeof(utf8));
+	utf8[n] = 0;
+	return utf8;
+}
+#endif

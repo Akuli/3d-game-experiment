@@ -44,15 +44,15 @@ static void cd_where_everything_is(void)
 	SDL_assert(n >= 0);
 	SDL_assert(n < sizeof(exepath)/sizeof(exepath[0]));
 	exepath[n] = L'\0';
-	log_printf("exe file: %ls\n", exepath);
+	log_printf("exe file: %s\n", misc_windows_to_utf8(exepath));
 
 	wchar_t dir[MAX_PATH];
 	int ret = _wsplitpath_s(exepath, NULL, 0, dir, sizeof(dir)/sizeof(dir[0]), NULL, 0, NULL, 0);
 	if (ret != 0)
-		log_printf_abort("_wsplitpath_s failed with path '%ls': %s", exepath, strerror(errno));
+		log_printf_abort("_wsplitpath_s failed with path '%s': %s", misc_windows_to_utf8(exepath), strerror(errno));
 
 	if (_wchdir(dir) != 0)
-		log_printf_abort("_wchdir to '%ls' failed: %s", dir, strerror(errno));
+		log_printf_abort("_wchdir to '%s' failed: %s", misc_windows_to_utf8(dir), strerror(errno));
 #endif
 }
 

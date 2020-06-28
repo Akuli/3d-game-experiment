@@ -29,5 +29,13 @@ SDL_Surface *misc_create_cropped_surface(SDL_Surface *surf, SDL_Rect r);
 // "bla/bla/file.txt" --> "file"
 void misc_basename_without_extension(const char *path, char *name, int sizeofname);
 
+/*
+Convert a funny windows string to \0-terminated utf-8 statically allocated
+string of limited length. winstrsz should be '\0' terminated.
+*/
+#ifdef _WIN32
+const char *misc_windows_to_utf8(const wchar_t *winstr);
+#endif
+
 
 #endif    // MISC_H
