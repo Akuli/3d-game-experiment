@@ -4,9 +4,8 @@
 # uses Windows, so this makes a Window build of the game and puts it to a USB
 # stick.
 #
-# Usage:
+# Install all windows build stuff as explained in ../README.md. Then:
 #
-#   $ sudo apt install wine
 #   $ make clean
 #   $ scripts/to_usb_stick '/media/<user>/<usb stick name>'
 #
