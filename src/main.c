@@ -12,6 +12,7 @@
 #include <time.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
+#include "../generated/filelist.h"
 #include "camera.h"
 #include "chooser.h"
 #include "enemy.h"
@@ -141,7 +142,8 @@ int main(int argc, char **argv)
 
 		case MISC_STATE_PLAY:
 			log_printf(
-				"playing the game begins (enemies %s)",
+				"playing the game begins (place '%s', enemies %s)",
+				filelist_places[ch.placech.pl - place_list()],
 				ch.withoutenemies ? "disabled" : "enabled");
 			s = play_the_game(
 				wnd, ch.playerch[0].epic, ch.playerch[1].epic, &winner,
