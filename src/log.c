@@ -1,6 +1,7 @@
 #ifdef _WIN32
 	#include <direct.h>
 	#include <windows.h>
+	#include "misc.h"
 #else
 	// includes are from glob(3), mkdir(2) gethostname(2)
 	#define _POSIX_C_SOURCE 200112L  // for gethostname
@@ -20,7 +21,6 @@
 #include <string.h>
 #include <time.h>
 #include <SDL2/SDL.h>
-#include "misc.h"
 
 // must be global because there's no other way to pass data to atexit callbacks
 static FILE *logfile = NULL;
@@ -61,10 +61,12 @@ static void logging_callback_for_sdl(void *userdata, int categ, SDL_LogPriority 
 	if (tlen > 0 && tstr[tlen-1] == '\n')
 		tlen--;
 
+	// this doesn't print the utf8 correctly on windows, but windows cmd.exe is a joke anyway
 	fprintf(stderr, "%s\n", msg);
 	fflush(stderr);
 
 	if (logfile) {
+		// all strings are utf8 here, log file will be utf8
 		fprintf(logfile, "[%.*s] %s\n", tlen, tstr, msg);
 		fflush(logfile);
 	}

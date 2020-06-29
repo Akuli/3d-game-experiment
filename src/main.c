@@ -46,12 +46,21 @@ static void cd_where_everything_is(void)
 	exepath[n] = L'\0';
 	log_printf("exe file: %s\n", misc_windows_to_utf8(exepath));
 
-	wchar_t dir[MAX_PATH];
-	int ret = _wsplitpath_s(exepath, NULL, 0, dir, sizeof(dir)/sizeof(dir[0]), NULL, 0, NULL, 0);
+	wchar_t drive[10] = {0};
+	wchar_t dir[MAX_PATH] = {0};
+	int ret = _wsplitpath_s(
+		exepath,
+		drive, sizeof(drive)/sizeof(drive[0]) - 1,
+		dir, sizeof(dir)/sizeof(dir[0]) - 1,
+		NULL, 0, NULL, 0);
 	if (ret != 0)
 		log_printf_abort("_wsplitpath_s failed with path '%s': %s", misc_windows_to_utf8(exepath), strerror(errno));
 
-	if (_wchdir(dir) != 0)
+	wchar_t fulldir[sizeof(drive)/sizeof(drive[0]) + sizeof(dir)/sizeof(dir[0])];
+	wcscpy(fulldir, drive);
+	wcscat(fulldir, dir);
+
+	if (_wchdir(fulldir) != 0)
 		log_printf_abort("_wchdir to '%s' failed: %s", misc_windows_to_utf8(dir), strerror(errno));
 #endif
 }
