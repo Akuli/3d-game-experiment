@@ -158,11 +158,11 @@ void player_drop_guard(struct Player *plr, struct Ellipsoid *arr, int *arrlen)
 		return;
 
 	// Adding the little 1e-5f helps to prevent picking up guard immediately
-	Vec3 dropdiff = { 0, 0, PLAYER_XZRADIUS + GUARD_XZRADIUS + 1e-5f };
+	Vec3 dropdiff = { 0, -plr->ellipsoid.yradius, PLAYER_XZRADIUS + GUARD_XZRADIUS + 1e-5f };
 	vec3_apply_matrix(&dropdiff, plr->cam.cam2world);
 	Vec3 loc = vec3_add(plr->ellipsoid.center, dropdiff);
 
-	int n = guard_create_unpickeds_xz(arr, arrlen, 1, loc.x, loc.z);
+	int n = guard_create_unpickeds_center(arr, arrlen, 1, loc);
 	plr->nguards -= n;
 	if (n != 0)
 		sound_play("leave.wav");

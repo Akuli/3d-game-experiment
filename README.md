@@ -21,8 +21,8 @@ $ ./game
 
 In the game:
 - Moving around and flattening: right player uses arrow keys, left player uses W, A, S and D imagining that they are arrow keys.
-- Leaving guards behind: left player uses F, right player uses zero.
-  If the zero key isn't next to the arrow keys on your keyboard, then
+- Dropping guards behind: left player uses F, right player uses zero.
+  If there's no zero key next to the arrow keys on your keyboard, then
   please [let me know](https://github.com/Akuli/3d-game-experiment/issues/new)
   which key would be more convenient for you.
 
@@ -43,13 +43,11 @@ In the game over screen, you can again click buttons or press these keys:
   of the wall before the each-frame-running collision check. Current
   workaround is to not make the players go so fast that this would
   happen at 30fps. (Yes, I know that 30fps is really slow for any gamer)
-- It's possible to create very high piles of guards by collecting and dropping
-  them. Then walking through the pile removes some of the lower guards while
-  leaving the top guards there. This is intended, but a somewhat broken thing
-  is that some very high-floating guards can be picked up again without
+- Unpicked guards that are far above ground can be picked up again without
   actually touching them. The reason is that guards are ellipsoids (stretched
   balls) that also have a hidden lower half, but the collision checking isn't
-  aware of that lower half.
+  aware of that lower half. Unpicked guards can be put high up by either dropping
+  many guards to exactly the same place or jumping and dropping.
 
 
 ## Feature Ideas

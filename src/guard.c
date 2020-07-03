@@ -43,8 +43,8 @@ static bool nonpicked_guard_center_in_use(Vec3 center, const struct Ellipsoid *o
 	return false;
 }
 
-int guard_create_unpickeds_xz(
-	struct Ellipsoid *guards, int *nguards, int howmany2add, float x, float z)
+int guard_create_unpickeds_center(
+	struct Ellipsoid *guards, int *nguards, int howmany2add, Vec3 center)
 {
 	int canadd = MAX_UNPICKED_GUARDS - *nguards;
 	if (howmany2add > canadd) {
@@ -53,8 +53,6 @@ int guard_create_unpickeds_xz(
 		howmany2add = canadd;
 	}
 	SDL_assert(howmany2add >= 0);
-
-	Vec3 center = { x, SPACING_BASIC, z };
 
 	for (int i = 0; i < howmany2add; i++) {
 		while (nonpicked_guard_center_in_use(center, guards, *nguards))
@@ -77,10 +75,8 @@ int guard_create_unpickeds_xz(
 int guard_create_unpickeds_random(
 	struct Ellipsoid *guards, int *nguards, int howmany2add, const struct Place *pl)
 {
-	return guard_create_unpickeds_xz(
-		guards, nguards, howmany2add,
-		(rand() % pl->xsize) + 0.5f,
-		(rand() % pl->zsize) + 0.5f);
+	Vec3 center = { (rand() % pl->xsize) + 0.5f, 0, (rand() % pl->zsize) + 0.5f };
+	return guard_create_unpickeds_center(guards, nguards, howmany2add, center);
 }
 
 void guard_unpicked_eachframe(struct Ellipsoid *el)
