@@ -7,7 +7,6 @@
 #include <SDL2/SDL.h>
 #include "../generated/filelist.h"
 #include "ellipsoid.h"
-#include "ellipsoidpic.h"
 #include "camera.h"
 #include "mathstuff.h"
 #include "wall.h"

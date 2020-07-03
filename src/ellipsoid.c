@@ -6,8 +6,6 @@
 #include <SDL2/SDL.h>
 #include "camera.h"
 #include "log.h"
-#include "ellipsemove.h"
-#include "ellipsoidpic.h"
 #include "mathstuff.h"
 
 static bool ellipsoid_intersects_plane(const struct Ellipsoid *el, struct Plane pl)
@@ -342,29 +340,6 @@ void ellipsoid_update_transforms(struct Ellipsoid *el)
 		diag(el->xzradius, el->yradius, el->xzradius),
 		mat3_rotation_xz(el->angle));
 	el->transform_inverse = mat3_inverse(el->transform);
-}
-
-float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid *el2)
-{
-	Vec3 diff = vec3_sub(el1->center, el2->center);
-	float difflen = hypotf(diff.x, diff.z);   // ignore diff.y
-	if (difflen < 1e-5f) {
-		// centers very near each other
-		return el1->xzradius + el2->xzradius;
-	}
-
-	// Rotate centers so that ellipsoid centers have same z coordinate
-	Mat3 rot = mat3_inverse(mat3_rotation_xz_sincos(diff.z/difflen, diff.x/difflen));
-	Vec3 center1 = mat3_mul_vec3(rot, el1->center);
-	Vec3 center2 = mat3_mul_vec3(rot, el2->center);
-	SDL_assert(fabsf(center1.z - center2.z) < 1e-5f);
-
-	// Now this is a 2D problem on the xy plane (or some other plane parallel to xy plane)
-	Vec2 center1_xy = { center1.x, center1.y };
-	Vec2 center2_xy = { center2.x, center2.y };
-	return ellipse_move_amount_x(
-		el1->xzradius, el1->yradius, center1_xy,
-		el2->xzradius, el2->yradius, center2_xy);
 }
 
 void ellipsoid_move_apart(struct Ellipsoid *el1, struct Ellipsoid *el2, float mv)

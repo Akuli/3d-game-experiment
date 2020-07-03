@@ -6,7 +6,6 @@
 #include "button.h"
 #include "camera.h"
 #include "ellipsoid.h"
-#include "ellipsoidpic.h"
 #include "log.h"
 #include "looptimer.h"
 #include "mathstuff.h"

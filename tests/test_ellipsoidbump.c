@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
-#include "../src/ellipsemove.c"
+#include "../src/ellipsoidbump.c"
 
 
 static bool close3(float a, float b, float maxerror)

@@ -1,5 +1,4 @@
 #include "player.h"
-#include <math.h>
 #include <SDL2/SDL.h>
 #include "ellipsoid.h"
 #include "guard.h"

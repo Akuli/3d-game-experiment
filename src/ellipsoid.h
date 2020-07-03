@@ -2,8 +2,37 @@
 #define ELLIPSOID_H
 
 #include <stdbool.h>
+#include <stdint.h>
+#include <SDL2/SDL.h>
 #include "camera.h"
 #include "mathstuff.h"
+
+
+// DON'T MAKE THIS TOO BIG, it uses this^3 amount of memory...
+#define ELLIPSOIDPIC_SIDE 150
+
+// picture wrapped around an ellipsoid, may be shared by more than one ellipsoid
+// this struct is BIG
+struct EllipsoidPic {
+	/*
+	Image pixels stored in whatever pixel format needed for drawing to avoid
+	conversions in tight loops (actually made a difference)
+	*/
+	const SDL_PixelFormat *pixfmt;
+
+	/*
+	Which color to show for a given vector? Avoid slow atan2 calls when looking it
+	up by providing an array that essentially lets you do cubepixels[x][y][z].
+	*/
+	uint32_t cubepixels[ELLIPSOIDPIC_SIDE][ELLIPSOIDPIC_SIDE][ELLIPSOIDPIC_SIDE];
+
+	// if true, then only the upper half of the ellipsoid is visible
+	bool hidelowerhalf;
+};
+
+// epic lmao
+void ellipsoidpic_load(
+	struct EllipsoidPic *epic, const char *path, const SDL_PixelFormat *fmt);
 
 /*
 An Ellipsoid is a stretched ball shifted by the center vector, as in
@@ -76,8 +105,7 @@ Never returns negative. If this returns 0, then the ellipsoids don't intersect
 each other.
 
 Currently this does not account for the fact that the lower half of an
-ellipsoid can be hidden, but that doesn't affect any collision checks done in
-the game.
+ellipsoid can be hidden.
 */
 float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid *el2);
 

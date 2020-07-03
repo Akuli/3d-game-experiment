@@ -5,7 +5,7 @@
 
 #include <stdbool.h>
 #include <SDL2/SDL.h>
-#include "ellipsoidpic.h"
+#include "ellipsoid.h"
 #include "misc.h"
 #include "place.h"
 

@@ -5,7 +5,6 @@
 #include <SDL2/SDL.h>
 #include "camera.h"
 #include "ellipsoid.h"
-#include "ellipsoidpic.h"
 #include "place.h"
 #include "../generated/filelist.h"
 

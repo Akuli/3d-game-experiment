@@ -1,5 +1,7 @@
-#include "ellipsoidpic.h"
+#include "ellipsoid.h"
 #include <errno.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <string.h>
 #include <math.h>
 #include <stdio.h>

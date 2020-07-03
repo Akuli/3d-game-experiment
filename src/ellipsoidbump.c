@@ -1,3 +1,4 @@
+#include "ellipsoid.h"
 #include <math.h>
 #include <stdbool.h>
 #include <SDL2/SDL.h>
@@ -218,7 +219,7 @@ static float ellipse_move_amount_x_for_origin_centered_unit_circle(
 	}
 }
 
-float ellipse_move_amount_x(
+static float ellipse_move_amount_x(
 	float a1, float b1, Vec2 center1,
 	float a2, float b2, Vec2 center2)
 {
@@ -239,4 +240,27 @@ float ellipse_move_amount_x(
 
 	// Result is difference of x coords, unaffected by shifting, but must be unstretched
 	return xdiff * a2;
+}
+
+float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid *el2)
+{
+	Vec3 diff = vec3_sub(el1->center, el2->center);
+	float difflen = hypotf(diff.x, diff.z);   // ignore diff.y
+	if (difflen < 1e-5f) {
+		// centers very near each other
+		return el1->xzradius + el2->xzradius;
+	}
+
+	// Rotate centers so that ellipsoid centers have same z coordinate
+	Mat3 rot = mat3_inverse(mat3_rotation_xz_sincos(diff.z/difflen, diff.x/difflen));
+	Vec3 center1 = mat3_mul_vec3(rot, el1->center);
+	Vec3 center2 = mat3_mul_vec3(rot, el2->center);
+	SDL_assert(fabsf(center1.z - center2.z) < 1e-5f);
+
+	// Now this is a 2D problem on the xy plane (or some other plane parallel to xy plane)
+	Vec2 center1_xy = { center1.x, center1.y };
+	Vec2 center2_xy = { center2.x, center2.y };
+	return ellipse_move_amount_x(
+		el1->xzradius, el1->yradius, center1_xy,
+		el2->xzradius, el2->yradius, center2_xy);
 }

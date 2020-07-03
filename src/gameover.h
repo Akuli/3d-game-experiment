@@ -2,7 +2,7 @@
 #define GAMEOVER_H
 
 #include <SDL2/SDL.h>
-#include "ellipsoidpic.h"
+#include "ellipsoid.h"
 #include "misc.h"
 
 enum MiscState game_over(

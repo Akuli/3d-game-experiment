@@ -1,10 +1,11 @@
 #ifndef GUARD_H
 #define GUARD_H
 
+#include <SDL2/SDL.h>
+#include "mathstuff.h"
 #include "ellipsoid.h"
 #include "place.h"
 #include "player.h"
-#include <SDL2/SDL.h>
 
 #define GUARD_XZRADIUS 0.25f
 
