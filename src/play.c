@@ -130,6 +130,7 @@ static bool handle_event(SDL_Event event, struct GameState *gs)
 				if (down) player_drop_guard(&gs->players[0], gs->unpicked_guards, &gs->n_unpicked_guards);
 				break;
 			case SDL_SCANCODE_0:
+			case SDL_SCANCODE_KP_0:
 				if (down) player_drop_guard(&gs->players[1], gs->unpicked_guards, &gs->n_unpicked_guards);
 				break;
 
