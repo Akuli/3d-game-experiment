@@ -43,6 +43,13 @@ In the game over screen, you can again click buttons or press these keys:
   of the wall before the each-frame-running collision check. Current
   workaround is to not make the players go so fast that this would
   happen at 30fps. (Yes, I know that 30fps is really slow for any gamer)
+- It's possible to create very high piles of guards by collecting and dropping
+  them. Then walking through the pile removes some of the lower guards while
+  leaving the top guards there. This is intended, but a somewhat broken thing
+  is that some very high-floating guards can be picked up again without
+  actually touching them. The reason is that guards are ellipsoids (stretched
+  balls) that also have a hidden lower half, but the collision checking isn't
+  aware of that lower half.
 
 
 ## Feature Ideas
