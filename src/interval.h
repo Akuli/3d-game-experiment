@@ -40,7 +40,8 @@ f(n) can be solved from these equations.
 
 /*
 The out array must have room for INTERVAL_NON_OVERLAPPING_MAX(inlen) elements.
-Actual length of out array is returned.
+Actual length of out array is returned. The allowoverlap values of the resulting
+intervals are not meaningful.
 */
 int interval_non_overlapping(const struct Interval *in, int inlen, struct Interval *out);
 

@@ -14,13 +14,14 @@ LDFLAGS += -lSDL2 -lSDL2_mixer -lSDL2_ttf
 LDFLAGS += -lm
 
 SRC := $(wildcard src/*.c) generated/filelist.c
-TESTS_SRC := $(wildcard tests/*.c)
-HEADERS := $(wildcard src/*.h) generated/filelist.h
+TESTS_SRC := $(wildcard tests/test_*.c)
+HEADERS := $(wildcard src/*.h) $(wildcard tests/*.h) generated/filelist.h
 EXEDIR ?= .
 COPIED_FILES := $(addprefix $(EXEDIR)/,$(notdir $(FILES_TO_COPY)))
 
-# order matters, parallelizing make works best when slowly compiling things are first
+# OBJ order matters, parallelizing make works best when slowly compiling things are first
 OBJ := obj/stb_image.o $(SRC:%.c=obj/%.o)
+TESTS_OBJ := $(TESTS_SRC:%.c=obj/%.o)
 
 # assetlist changes whenever output of 'ls -R assets' changes
 UnusedVariableName := $(shell bash -c 'diff <(ls -R assets) assetlist || (ls -R assets > assetlist)')
@@ -49,9 +50,12 @@ obj/stb_image.o: $(wildcard stb/*.h)
 $(EXEDIR)/game$(EXESUFFIX): $(OBJ) $(HEADERS) $(COPIED_FILES)
 	mkdir -p $(@D) && $(CC) $(CFLAGS) $(OBJ) -o $@ $(LDFLAGS)
 
-# this will need to be changed if i add more than one file of tests
-$(EXEDIR)/testrunner$(EXESUFFIX): $(TESTS_SRC) $(SRC) $(HEADERS) $(COPIED_FILES)
-	mkdir -p $(@D) && $(CC) -o $@ $(TESTS_SRC) $(CFLAGS) $(LDFLAGS)
+# this is lol
+generated/run_tests.h: $(TESTS_OBJ)
+	mkdir -p $(@D) && strings $(TESTS_OBJ) | grep '^test_[a-z0-9_]*$$' | sort | uniq | awk '{ printf "RUN(%s);", $$1 }' > $@
+
+$(EXEDIR)/testrunner$(EXESUFFIX): tests/main.c generated/run_tests.h $(TESTS_OBJ)
+	mkdir -p $(@D) && $(CC) -o $@ $< $(TESTS_OBJ) $(CFLAGS) $(LDFLAGS)
 
 .PHONY: test
 test: $(EXEDIR)/testrunner$(EXESUFFIX)

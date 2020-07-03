@@ -15,7 +15,7 @@ static bool close(float a, float b)
 	return close3(a, b, PRECISION_REQUIREMENT);
 }
 
-static void test_equation_solver(void)
+void test_equation_solver(void)
 {
 	// (x + 1) sqrt(x^2 + 1) - 3x = 0
 	float root = solve_the_equation(1, 1, 1, 1, -3);
@@ -23,7 +23,7 @@ static void test_equation_solver(void)
 	assert(close(root, actual));
 }
 
-static void test_origin_centered_ellipse_distance1_points_with_given_y(void)
+void test_origin_centered_ellipse_distance1_points_with_given_y(void)
 {
 	float x1, x2;
 
@@ -55,7 +55,7 @@ static void test_origin_centered_ellipse_distance1_points_with_given_y(void)
 	assert(close3(x2, 2.3f, 0.1f));
 }
 
-static void test_ellipse_move_amount_x_for_origin_centered_unit_circle(void)
+void test_ellipse_move_amount_x_for_origin_centered_unit_circle(void)
 {
 	// ellipse equations and correct results come from experimenting with a grapher
 	assert(ellipse_move_amount_x_for_origin_centered_unit_circle(2, 2.5, (Vec2){2, 3}) == 0);
@@ -68,13 +68,4 @@ static void test_ellipse_move_amount_x_for_origin_centered_unit_circle(void)
 	mv = ellipse_move_amount_x_for_origin_centered_unit_circle(2, 2.5, (Vec2){-1, 3});
 	assert(mv > 0);
 	assert(close3(mv, 0.6f, 0.1f));
-}
-
-int main(void)
-{
-	test_equation_solver();
-	test_origin_centered_ellipse_distance1_points_with_given_y();
-	test_ellipse_move_amount_x_for_origin_centered_unit_circle();
-	printf("ok\n");
-	return 0;
 }
