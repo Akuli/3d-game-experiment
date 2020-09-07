@@ -88,15 +88,17 @@ static void add_guards_and_enemies_as_needed(struct GameState *gs)
 		(nprob*n + (1 - nprob)*1)/guarddelay.
 
 	If enemy and guard frequencies are equal, we have a balance of enemies and
-	guards. In practice, people make mistakes, and the enemies win eventually,
-	although good playing makes games last longer. This is exactly what I want for
-	this game.
-
-	Setting the frequencies equal allows me to solve guarddelay given enemydelay.
+	guards. Setting the frequencies equal allows me to solve guarddelay given enemydelay.
 	We can still set enemydelay however we want.
 	*/
 	unsigned enemydelay = 5*CAMERA_FPS;
 	unsigned guarddelay = (unsigned)( (nprob*n + (1 - nprob)*1)*enemydelay );
+
+	/*
+	People make mistakes, and the enemies win eventually, even with the variables we have
+	now, but that can take a very long time. Making this slightly off makes games shorter.
+	*/
+	enemydelay = (unsigned)(enemydelay * 0.8f);
 
 	gs->thisframe++;
 	if (time_to_do_something(&gs->lastguardframe, gs->thisframe, guarddelay)) {
