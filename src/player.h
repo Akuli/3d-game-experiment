@@ -40,9 +40,6 @@ extern const struct EllipsoidPic *player_epics;
 extern int player_nepics;
 void player_init_epics(const SDL_PixelFormat *fmt);
 
-// Get name of player from a pointer to an ellipsoid pic from player_get_epics()
-void player_epic_name(const struct EllipsoidPic *epic, char *name, int sizeofname);
-
 // run before showing stuff to user
 void player_eachframe(struct Player *plr, const struct Place *pl);
 

@@ -51,7 +51,7 @@ static void update_player_name_display(struct ChooserPlayerStuff *plrch)
 	}
 
 	char name[100];
-	player_epic_name(plrch->epic, name, sizeof name);
+	misc_basename_without_extension(plrch->epic->path, name, sizeof name);
 
 	SDL_Surface *s = misc_create_text_surface(name, white_color, FONT_SIZE);
 	plrch->namew = s->w;

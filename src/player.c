@@ -52,11 +52,6 @@ void player_init_epics(const SDL_PixelFormat *fmt)
 	globfree(&gl);
 }
 
-void player_epic_name(const struct EllipsoidPic *epic, char *name, int sizeofname)
-{
-	misc_basename_without_extension(epic->path, name, sizeofname);
-}
-
 static float get_jump_height(int jumpframe)
 {
 	float time = (float)jumpframe / (float)CAMERA_FPS;
