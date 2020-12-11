@@ -14,6 +14,9 @@
 // picture wrapped around an ellipsoid, may be shared by more than one ellipsoid
 // this struct is BIG
 struct EllipsoidPic {
+	// File name where this came from
+	char path[1024];
+
 	/*
 	Image pixels stored in whatever pixel format needed for drawing to avoid
 	conversions in tight loops (actually made a difference)

@@ -4,7 +4,6 @@
 #include "button.h"
 #include "log.h"
 #include "looptimer.h"
-#include "player.h"
 
 static const SDL_Color white_color = { 0xff, 0xff, 0xff, 0xff };
 
@@ -19,7 +18,7 @@ enum MiscState game_over(
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 
 	char msg[100];
-	player_epic_name(winnerpic, msg, sizeof(msg)/2);
+	misc_basename_without_extension(winnerpic->path, msg, sizeof(msg)/2);
 	strcat(msg, " wins!");
 	SDL_Surface *winnertext = misc_create_text_surface(msg, white_color, 60);
 

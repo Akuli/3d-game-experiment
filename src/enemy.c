@@ -5,9 +5,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <SDL2/SDL.h>
-#include "../generated/filelist.h"
 #include "ellipsoid.h"
 #include "camera.h"
+#include "glob.h"
 #include "mathstuff.h"
 #include "wall.h"
 #include "log.h"
@@ -28,24 +28,31 @@ static inline uint32_t make_color_more_red(uint32_t color, const SDL_PixelFormat
 		(less((color >> fmt->Bshift) & 0xff) << fmt->Bshift);
 }
 
-// usage: ellipsoid_pics[neverdie as bool][random number between 0 and FILELIST_NENEMIES]
-static struct EllipsoidPic ellipsoid_pics[2][FILELIST_NENEMIES];
+// usage: ellipsoid_pics[neverdie as bool][random number between 0 and n_ellipsoid_pics]
+static int n_ellipsoid_pics = -1;
+static struct EllipsoidPic ellipsoid_pics[2][20];
 
 void enemy_init_epics(const SDL_PixelFormat *fmt)
 {
-	static bool ready = false;
-	SDL_assert(!ready);
-	ready = true;
+	SDL_assert(n_ellipsoid_pics == -1);
 
-	for (int i = 0; i < FILELIST_NENEMIES; i++) {
-		ellipsoidpic_load(&ellipsoid_pics[false][i], filelist_enemies[i], fmt);
+	glob_t gl;
+	if (glob("enemies/*.png", 0, NULL, &gl) != 0)
+		log_printf_abort("can't find enemy pictures");
+
+	n_ellipsoid_pics = gl.gl_pathc;
+	SDL_assert(n_ellipsoid_pics <= sizeof(ellipsoid_pics[0])/sizeof(ellipsoid_pics[0][0]));
+
+	for (int i = 0; i < n_ellipsoid_pics; i++) {
+		ellipsoidpic_load(&ellipsoid_pics[false][i], gl.gl_pathv[i], fmt);
 		ellipsoid_pics[false][i].hidelowerhalf = true;
 
 		ellipsoid_pics[true][i] = ellipsoid_pics[false][i];
 		// triple for loop without too much nesting, lol
 		for (int x = 0; x < ELLIPSOIDPIC_SIDE; x++)
 		for (int y = 0; y < ELLIPSOIDPIC_SIDE; y++)
-		for (int z = 0; z < ELLIPSOIDPIC_SIDE; z++) {
+		for (int z = 0; z < ELLIPSOIDPIC_SIDE; z++)
+		{
 			uint32_t *ptr = &ellipsoid_pics[true][i].cubepixels[x][y][z];
 			*ptr = make_color_more_red(*ptr, fmt);
 		}
@@ -57,7 +64,7 @@ struct Enemy enemy_new(const struct Place *pl, enum EnemyFlags fl)
 	struct Enemy res = {
 		.ellipsoid = {
 			.center = pl->enemyloc,
-			.epic = &ellipsoid_pics[!!(fl & ENEMY_NEVERDIE)][rand() % FILELIST_NENEMIES],
+			.epic = &ellipsoid_pics[!!(fl & ENEMY_NEVERDIE)][rand() % n_ellipsoid_pics],
 			.angle = 0,
 			.xzradius = ENEMY_XZRADIUS,
 			.yradius = ENEMY_YRADIUS,

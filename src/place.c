@@ -1,3 +1,4 @@
+#include "glob.h"
 #include "place.h"
 #include <errno.h>
 #include <stdio.h>
@@ -5,8 +6,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <SDL2/SDL.h>
-#include "../generated/filelist.h"
 #include "max.h"
+#include "misc.h"
 #include "log.h"
 
 /*
@@ -154,6 +155,7 @@ static void parse_vertical_wall_string(const char *part, bool *leftwall, bool *r
 
 static void init_place(struct Place *pl, const char *path)
 {
+	misc_basename_without_extension(path, pl->name, sizeof(pl->name));
 	int linelen, nlines;
 	char *fdata = read_file_with_trailing_spaces_added(path, &linelen, &nlines);
 
@@ -223,15 +225,26 @@ static void init_place(struct Place *pl, const char *path)
 		log_printf("    player %d goes to (%.2f, %.2f, %.2f)", i, pl->playerlocs[i].x, pl->playerlocs[i].y, pl->playerlocs[i].z);
 }
 
-const struct Place *place_list(void)
+const struct Place *place_list(int *nplaces)
 {
-	static bool inited = false;
-	static struct Place res[FILELIST_NPLACES] = {0};
-	if (inited)
-		return res;
+	static int n = -1;
+	static struct Place places[50];
 
-	for (int i = 0; i < FILELIST_NPLACES; i++)
-		init_place(&res[i], filelist_places[i]);
-	inited = true;
-	return res;
+	if (n == -1) {
+		// not ready yet, called for first time
+		glob_t gl;
+		if (glob("places/*.txt", 0, NULL, &gl) != 0)
+			log_printf_abort("can't find place files");
+
+		n = gl.gl_pathc;
+		SDL_assert(n <= sizeof(places)/sizeof(places[0]));
+		for (int i = 0; i < n; i++)
+			init_place(&places[i], gl.gl_pathv[i]);
+
+		globfree(&gl);
+	}
+
+	if(nplaces)
+		*nplaces = n;
+	return places;
 }

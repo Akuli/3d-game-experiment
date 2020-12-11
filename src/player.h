@@ -6,7 +6,6 @@
 #include "camera.h"
 #include "ellipsoid.h"
 #include "place.h"
-#include "../generated/filelist.h"
 
 // smallest possible height of the player (then ellipsoid.yradius is half of this)
 #define PLAYER_HEIGHT_FLAT 0.1f
@@ -36,11 +35,9 @@ struct Player {
 };
 
 // Call player_init_epics() before accessing player_ellipsoidpics
-extern struct EllipsoidPic player_ellipsoidpics[FILELIST_NPLAYERS];
+extern const struct EllipsoidPic *player_epics;
+extern int player_nepics;
 void player_init_epics(const SDL_PixelFormat *fmt);
-
-// Get name of player from a pointer to an ellipsoid pic from player_get_epics()
-void player_epic_name(const struct EllipsoidPic *epic, char *name, int sizeofname);
 
 // run before showing stuff to user
 void player_eachframe(struct Player *plr, const struct Place *pl);

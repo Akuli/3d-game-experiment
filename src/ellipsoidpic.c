@@ -110,16 +110,16 @@ static FILE *open_binary_file_for_reading(const char *path)
 	return f;
 }
 
-static void read_image(const char *path, struct EllipsoidPic *epic)
+static void read_image(struct EllipsoidPic *epic)
 {
 	const AngleArray *angles = get_angle_array();
 
-	FILE *f = open_binary_file_for_reading(path);
+	FILE *f = open_binary_file_for_reading(epic->path);
 	int chansinfile, filew, fileh;
 	unsigned char *filedata = stbi_load_from_file(f, &filew, &fileh, &chansinfile, 4);
 	fclose(f);
 	if (!filedata)
-		log_printf_abort("stbi_load failed for file opened from '%s': %s", path, stbi_failure_reason());
+		log_printf_abort("stbi_load failed for file opened from '%s': %s", epic->path, stbi_failure_reason());
 
 	replace_alpha_with_average(filedata, (size_t)filew*(size_t)fileh);
 
@@ -148,7 +148,8 @@ static void read_image(const char *path, struct EllipsoidPic *epic)
 void ellipsoidpic_load(
 	struct EllipsoidPic *epic, const char *path, const SDL_PixelFormat *fmt)
 {
+	snprintf(epic->path, sizeof(epic->path), "%s", path);
 	epic->pixfmt = fmt;
-	read_image(path, epic);
+	read_image(epic);
 	epic->hidelowerhalf = false;
 }

@@ -5,7 +5,6 @@
 
 #include <stdbool.h>
 #include <SDL2/SDL.h>
-#include "../generated/filelist.h"
 #include "button.h"
 #include "camera.h"
 #include "ellipsoid.h"
@@ -40,7 +39,7 @@ struct Chooser {
 	// rest of this struct isn't meant to be used outside chooser.c
 	SDL_Window *win;
 	SDL_Surface *winsurf;
-	struct Ellipsoid ellipsoids[FILELIST_NPLAYERS];
+	struct Ellipsoid ellipsoids[50];
 	struct Button bigplaybtn;
 	SDL_Surface *withoutenemiestxt;
 	SDL_Rect withoutenemiesrect;
