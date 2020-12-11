@@ -112,7 +112,7 @@ static void remove_old_logfiles(void)
 		case GLOB_NOSPACE: log_printf("glob ran out of memory"); return;
 		case GLOB_ABORTED: log_printf("glob error: %s", strerror(errno)); return;
 		case GLOB_NOMATCH: log_printf("no log files found"); return;
-		default:           log_printf("got unexpected return value from glob(): %d", r); return;
+		default: log_printf("got unexpected return value from glob(): %d", r); return;
 	}
 
 	for (int i = 0; i < gl.gl_pathc; i++)
