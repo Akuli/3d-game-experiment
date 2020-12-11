@@ -26,9 +26,6 @@ TESTS_OBJ := $(TESTS_SRC:%.c=obj/%.o)
 # each tests/test_bla.c file includes corresponding src/bla.c file, don't link both of them
 TESTS_LINK_OBJ := $(TESTS_OBJ) $(filter-out obj/src/main.o $(TESTS_SRC:tests/test_%.c=obj/src/%.o), $(OBJ))
 
-# assetlist changes whenever output of 'ls -R assets' changes
-UnusedVariableName := $(shell bash -c 'diff <(ls -R assets) assetlist || (ls -R assets > assetlist)')
-
 
 all: $(EXEDIR)/game$(EXESUFFIX) test checkassets
 
