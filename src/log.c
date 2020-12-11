@@ -3,9 +3,8 @@
 	#include <windows.h>
 	#include "misc.h"
 #else
-	// includes are from glob(3), mkdir(2) gethostname(2)
+	// includes are from mkdir(2), gethostname(2)
 	#define _POSIX_C_SOURCE 200112L  // for gethostname
-	#include <glob.h>
 	#include <sys/stat.h>
 	#include <sys/types.h>   // IWYU pragma: keep
 	#include <unistd.h>
@@ -13,6 +12,7 @@
 	#define _mkdir(path) mkdir((path), 0777)
 #endif
 
+#include "glob.h"
 #include "log.h"
 #include <math.h>
 #include <errno.h>
@@ -105,22 +105,6 @@ static void remove_old_logfile(const char *path)
 
 static void remove_old_logfiles(void)
 {
-#ifdef _WIN32
-	WIN32_FIND_DATAA fdata;
-	HANDLE h = FindFirstFileA("logs\\*.txt", &fdata);
-	if (h == INVALID_HANDLE_VALUE) {
-		log_printf("error while listing log files: %s", strerror(errno));
-		return;
-	}
-
-	do {
-		char path[MAX_PATH];
-		snprintf(path, sizeof path, "logs/%s", fdata.cFileName);   // must be forward slash for sscanf()
-		remove_old_logfile(path);
-	} while (FindNextFileA(h, &fdata));
-	FindClose(h);
-
-#else
 	glob_t gl;
 	int r = glob("logs/*.txt", 0, NULL, &gl);
 	switch(r) {
@@ -134,7 +118,6 @@ static void remove_old_logfiles(void)
 	for (int i = 0; i < gl.gl_pathc; i++)
 		remove_old_logfile(gl.gl_pathv[i]);
 	globfree(&gl);
-#endif
 }
 
 // useful for putting the game on usb stick, helps distinguish logs from different computers
