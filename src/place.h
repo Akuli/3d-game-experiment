@@ -6,6 +6,7 @@
 #include "mathstuff.h"
 
 struct Place {
+	char name[128];
 	struct Wall walls[MAX_WALLS];
 	int nwalls;
 	int xsize, zsize;    // players and enemies must have 0 <= x <= xsize, 0 <= z <= zsize
@@ -19,11 +20,8 @@ struct Place {
 	int nneverdielocs;
 };
 
-/*
-Returns a statically allocated array of places of length FILELIST_NPLACES (same
-array every time). All walls are initialized.
-*/
-const struct Place *place_list(void);
+// Result is same array every time, cleaned when program exits
+const struct Place *place_list(int *nplaces);
 
 struct Wall *place_load(const char *const *spec, int *nwalls);
 

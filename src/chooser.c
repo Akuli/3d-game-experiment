@@ -2,7 +2,6 @@
 #include <math.h>
 #include <stddef.h>
 #include <SDL2/SDL.h>
-#include "../generated/filelist.h"
 #include "button.h"
 #include "camera.h"
 #include "ellipsoid.h"
@@ -211,14 +210,16 @@ static void show_place_chooser_each_frame(struct ChooserPlaceStuff *plcch)
 
 static void update_place_chooser_button_disableds(struct ChooserPlaceStuff *ch)
 {
-	SDL_assert(&place_list()[0] <= ch->pl && ch->pl < &place_list()[FILELIST_NPLACES]);
+	int nplaces;
+	const struct Place *places = place_list(&nplaces);
+	SDL_assert(&places[0] <= ch->pl && ch->pl < &places[nplaces]);
 
-	if (ch->pl == &place_list()[0])
+	if (ch->pl == &places[0])
 		ch->prevbtn.flags |= BUTTON_DISABLED;
 	else
 		ch->prevbtn.flags &= ~BUTTON_DISABLED;
 
-	if (ch->pl == &place_list()[FILELIST_NPLACES - 1])
+	if (ch->pl == &places[nplaces - 1])
 		ch->nextbtn.flags |= BUTTON_DISABLED;
 	else
 		ch->nextbtn.flags &= ~BUTTON_DISABLED;
@@ -298,7 +299,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 			// onclickdata is set in chooser_run()
 		},
 		.placech = {
-			.pl = &place_list()[0],
+			.pl = &place_list(NULL)[0],
 			.cam = {
 				.screencentery = -0.55f*PLACE_CHOOSER_HEIGHT,
 				.surface = misc_create_cropped_surface(winsurf, (SDL_Rect){

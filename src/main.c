@@ -155,7 +155,7 @@ int main(int argc, char **argv)
 		case MISC_STATE_PLAY:
 			log_printf(
 				"playing the game begins (place '%s', enemies %s)",
-				filelist_places[ch.placech.pl - place_list()],
+				ch.placech.pl->name,
 				ch.withoutenemies ? "disabled" : "enabled");
 			s = play_the_game(
 				wnd, ch.playerch[0].epic, ch.playerch[1].epic, &winner,

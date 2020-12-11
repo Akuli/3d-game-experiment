@@ -54,17 +54,7 @@ void player_init_epics(const SDL_PixelFormat *fmt)
 
 void player_epic_name(const struct EllipsoidPic *epic, char *name, int sizeofname)
 {
-	const char *path = epic->path;
-	if (strrchr(path, '/'))
-		path = strrchr(path, '/') + 1;
-	if (strrchr(path, '\\'))
-		path = strrchr(path, '\\') + 1;
-
-	const char *end = strchr(path, '.');
-	if (!end)
-		end = path + strlen(path);
-
-	snprintf(name, sizeofname, "%.*s", (int)(end - path), path);
+	misc_basename_without_extension(epic->path, name, sizeofname);
 }
 
 static float get_jump_height(int jumpframe)
