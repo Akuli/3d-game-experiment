@@ -4,7 +4,6 @@
 #include "button.h"
 #include "log.h"
 #include "looptimer.h"
-#include "player.h"
 
 static const SDL_Color white_color = { 0xff, 0xff, 0xff, 0xff };
 

@@ -1,11 +1,11 @@
 #include "player.h"
+#include <stddef.h>
 #include <SDL2/SDL.h>
 #include "ellipsoid.h"
 #include "glob.h"
 #include "guard.h"
 #include "log.h"
 #include "mathstuff.h"
-#include "misc.h"
 #include "place.h"
 #include "sound.h"
 #include "wall.h"
