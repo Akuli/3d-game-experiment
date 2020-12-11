@@ -13,9 +13,9 @@ VENDOR_CFLAGS := $(CFLAGS:-W%=)   # no warnings from other people's code please
 LDFLAGS += -lSDL2 -lSDL2_mixer -lSDL2_ttf
 LDFLAGS += -lm
 
-SRC := $(wildcard src/*.c src/*/*.c) generated/filelist.c
+SRC := $(wildcard src/*.c src/*/*.c)
 TESTS_SRC := $(wildcard tests/test_*.c)
-HEADERS := $(wildcard src/*.h src/*/*.h tests/*.h) generated/filelist.h
+HEADERS := $(wildcard src/*.h src/*/*.h tests/*.h)
 EXEDIR ?= .
 COPIED_FILES := $(addprefix $(EXEDIR)/,$(notdir $(FILES_TO_COPY)))
 
@@ -37,9 +37,6 @@ all: $(EXEDIR)/game$(EXESUFFIX) test checkassets
 .PHONY: clean
 clean:
 	rm -rvf game generated build obj callgrind.out graph.* testrunner
-
-generated/filelist.c generated/filelist.h: scripts/generate_filelist assetlist
-	mkdir -p $(@D) && $< $(suffix $@) > $@
 
 obj/%.o: %.c $(HEADERS)
 	mkdir -p $(@D) && $(CC) -c -o $@ $< $(CFLAGS)

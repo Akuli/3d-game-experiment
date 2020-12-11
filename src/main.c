@@ -15,7 +15,6 @@
 #include <stdlib.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
-#include "../generated/filelist.h"
 #include "camera.h"
 #include "chooser.h"
 #include "enemy.h"

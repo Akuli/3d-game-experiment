@@ -5,7 +5,6 @@
 
 #include <stdbool.h>
 #include <SDL2/SDL.h>
-#include "../generated/filelist.h"
 #include "button.h"
 #include "camera.h"
 #include "ellipsoid.h"

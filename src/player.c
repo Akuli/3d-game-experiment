@@ -9,7 +9,6 @@
 #include "place.h"
 #include "sound.h"
 #include "wall.h"
-#include "../generated/filelist.h"
 
 /*
 Most keyboards don't allow arbitrarily many keys to be pressed down at the same
