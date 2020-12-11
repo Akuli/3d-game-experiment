@@ -35,7 +35,7 @@ struct Wall {
 
 	now some 3D ascii art (imagine top1 and bot1 being closer to you)
 
-           top2
+	       top2
 	      / |
 	     /  |
 	    /   |
