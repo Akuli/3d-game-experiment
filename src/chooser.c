@@ -125,29 +125,24 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 	camera_update_caches(&plrch->cam);
 }
 
-static struct Ellipsoid *create_player_ellipsoids(void)
+static void create_player_ellipsoids(struct Chooser *ch)
 {
+	SDL_assert(player_nepics <= sizeof(ch->ellipsoids)/sizeof(ch->ellipsoids[0]));
 	float pi = acosf(-1);
-	struct Ellipsoid *res = malloc(sizeof(res[0]) * player_nepics);
-	if (!res) {
-		log_printf_abort("allocating mem for player chooser ellipsoids failed");
-	}
 
 	for (int i = 0; i < player_nepics; i++) {
 		// pi/2 to make first players (i=0 and i=1) look at camera
 		float angle = pi/2 - ( i/(float)player_nepics * (2*pi) );
 
-		res[i] = (struct Ellipsoid){
+		ch->ellipsoids[i] = (struct Ellipsoid){
 			.epic = &player_epics[i],
 			.center = mat3_mul_vec3(mat3_rotation_xz(angle), (Vec3){ ELLIPSOID_XZ_DISTANCE_FROM_ORIGIN, 0, 0 }),
 			.angle = angle,
 			.xzradius = PLAYER_XZRADIUS,
 			.yradius = PLAYER_YRADIUS_NOFLAT,
 		};
-		ellipsoid_update_transforms(&res[i]);
+		ellipsoid_update_transforms(&ch->ellipsoids[i]);
 	}
-
-	return res;
 }
 
 static void rotate_player_ellipsoids(struct Ellipsoid *els)
@@ -347,7 +342,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 	ch->placech.nextbtn.onclickdata = &ch->placech;
 	update_place_chooser_button_disableds(&ch->placech);
 
-	ch->ellipsoids = create_player_ellipsoids();
+	create_player_ellipsoids(ch);
 	setup_player_chooser(ch, 0, SDL_SCANCODE_A, SDL_SCANCODE_D);
 	setup_player_chooser(ch, 1, SDL_SCANCODE_LEFT, SDL_SCANCODE_RIGHT);
 }
@@ -358,7 +353,6 @@ void chooser_destroy(const struct Chooser *ch)
 	SDL_FreeSurface(ch->playerch[1].cam.surface);
 	SDL_FreeSurface(ch->placech.cam.surface);
 	SDL_FreeSurface(ch->withoutenemiestxt);
-	free(ch->ellipsoids);
 }
 
 static void show_title_text(SDL_Surface *winsurf)

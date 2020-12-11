@@ -225,12 +225,10 @@ static void init_place(struct Place *pl, const char *path)
 		log_printf("    player %d goes to (%.2f, %.2f, %.2f)", i, pl->playerlocs[i].x, pl->playerlocs[i].y, pl->playerlocs[i].z);
 }
 
-static struct Place *places;
-static void free_places(void) { free(places); }
-
 const struct Place *place_list(int *nplaces)
 {
 	static int n = -1;
+	static struct Place places[50];
 
 	if (n == -1) {
 		// not ready yet, called for first time
@@ -238,16 +236,12 @@ const struct Place *place_list(int *nplaces)
 		if (glob("places/*.txt", 0, NULL, &gl) != 0)
 			log_printf_abort("can't find place files");
 
-		places = malloc(sizeof(places[0]) * gl.gl_pathc);
-		if (!places)
-			log_printf_abort("can't allocate memory for place array");
-
 		n = gl.gl_pathc;
+		SDL_assert(n <= sizeof(places)/sizeof(places[0]));
 		for (int i = 0; i < n; i++)
 			init_place(&places[i], gl.gl_pathv[i]);
 
 		globfree(&gl);
-		atexit(free_places);
 	}
 
 	if(nplaces)
