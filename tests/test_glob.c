@@ -5,12 +5,12 @@
 void test_glob_success(void)
 {
 	glob_t gl;
-	assert(glob("checkfuncs.*", 0, NULL, &gl) == 0);
-	assert(glob("sounds/farts/*5.wav", GLOB_APPEND, NULL, &gl) == 0);
+	assert(glob("README.*", 0, NULL, &gl) == 0);
+	assert(glob("assets/sounds/farts/*5.wav", GLOB_APPEND, NULL, &gl) == 0);
 
 	assert(gl.gl_pathc == 2);
-	assert(strcmp(gl.gl_pathv[0], "checkfuncs.py") == 0);
-	assert(strcmp(gl.gl_pathv[1], "sounds/farts/fart5.wav") == 0);
+	assert(strcmp(gl.gl_pathv[0], "README.md") == 0);
+	assert(strcmp(gl.gl_pathv[1], "assets/sounds/farts/fart5.wav") == 0);
 
 	globfree(&gl);
 }
