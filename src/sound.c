@@ -98,7 +98,7 @@ static Mix_Chunk *choose_sound(const char *pattern)
 			return NULL;
 		case GLOB_ABORTED:
 			log_printf("glob error with pattern \"%s\": %s", fullpat, strerror(errno));
-			return NULL
+			return NULL;
 		default:
 			log_printf("unexpected glob() return value with pattern \"%s\"", fullpat);
 			return NULL;
