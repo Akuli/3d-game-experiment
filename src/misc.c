@@ -53,20 +53,6 @@ SDL_Surface *misc_create_cropped_surface(SDL_Surface *surf, SDL_Rect r)
 	return res;
 }
 
-void misc_basename_without_extension(const char *path, char *name, int sizeofname)
-{
-	if (strrchr(path, '/'))
-		path = strrchr(path, '/') + 1;
-	if (strrchr(path, '\\'))
-		path = strrchr(path, '\\') + 1;
-
-	const char *end = strchr(path, '.');
-	if (!end)
-		end = path + strlen(path);
-
-	snprintf(name, sizeofname, "%.*s", (int)(end - path), path);
-}
-
 // TODO: most of my code uses strerror(errno) for windows errors which is wrong?
 #ifdef _WIN32
 const char *misc_windows_to_utf8(const wchar_t *winstr)

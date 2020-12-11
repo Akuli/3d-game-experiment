@@ -1,7 +1,9 @@
 #include "player.h"
 #include <SDL2/SDL.h>
 #include "ellipsoid.h"
+#include "glob.h"
 #include "guard.h"
+#include "log.h"
 #include "mathstuff.h"
 #include "misc.h"
 #include "place.h"
@@ -28,7 +30,9 @@ issues with this. To avoid that, we limit things that flat players can do:
 #define JUMP_MAX_HEIGHT 3.0f
 #define JUMP_DURATION_SEC 0.6f
 
-struct EllipsoidPic player_ellipsoidpics[FILELIST_NPLAYERS];
+static struct EllipsoidPic epics[50];
+const struct EllipsoidPic *player_epics = epics;
+int player_nepics = -1;
 
 void player_init_epics(const SDL_PixelFormat *fmt)
 {
@@ -36,15 +40,31 @@ void player_init_epics(const SDL_PixelFormat *fmt)
 	SDL_assert(!inited);
 	inited = true;
 
-	for (int i = 0; i < FILELIST_NPLAYERS; i++)
-		ellipsoidpic_load(&player_ellipsoidpics[i], filelist_players[i], fmt);
+	glob_t gl;
+	if (glob("players/*.png", 0, NULL, &gl) != 0)
+		log_printf_abort("player pictures not found");
+
+	player_nepics = gl.gl_pathc;
+	SDL_assert(0 < player_nepics && player_nepics <= sizeof(epics)/sizeof(epics[0]));
+	for (int i = 0; i < player_nepics; i++)
+		ellipsoidpic_load(&epics[i], gl.gl_pathv[i], fmt);
+
+	globfree(&gl);
 }
 
 void player_epic_name(const struct EllipsoidPic *epic, char *name, int sizeofname)
 {
-	int i = epic - player_ellipsoidpics;
-	SDL_assert(0 <= i && i < FILELIST_NPLAYERS);
-	misc_basename_without_extension(filelist_players[i], name, sizeofname);
+	const char *path = epic->path;
+	if (strrchr(path, '/'))
+		path = strrchr(path, '/') + 1;
+	if (strrchr(path, '\\'))
+		path = strrchr(path, '\\') + 1;
+
+	const char *end = strchr(path, '.');
+	if (!end)
+		end = path + strlen(path);
+
+	snprintf(name, sizeofname, "%.*s", (int)(end - path), path);
 }
 
 static float get_jump_height(int jumpframe)

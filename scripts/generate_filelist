@@ -50,6 +50,5 @@ esac
 # variable names written here as they are to make this script more greppable. All
 # the things are sorted to make ui consistent and binary searching in sound.c work.
 create_string_array filelist_sounds FILELIST_NSOUNDS $(find sounds -name '*.wav' | sort)
-create_string_array filelist_players FILELIST_NPLAYERS players/*.png
 create_string_array filelist_enemies FILELIST_NENEMIES enemies/*.png
 create_string_array filelist_places FILELIST_NPLACES places/*.txt

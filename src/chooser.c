@@ -65,17 +65,17 @@ static void rotate_player_chooser(struct ChooserPlayerStuff *plrch, int dir)
 {
 	SDL_assert(dir == +1 || dir == -1);
 
-	if (plrch->epic == &player_ellipsoidpics[0] && dir == -1)
-		plrch->epic = &player_ellipsoidpics[FILELIST_NPLAYERS-1];
-	else if (plrch->epic == &player_ellipsoidpics[FILELIST_NPLAYERS-1] && dir == +1)
-		plrch->epic = &player_ellipsoidpics[0];
+	if (plrch->epic == &player_epics[0] && dir == -1)
+		plrch->epic = &player_epics[player_nepics - 1];
+	else if (plrch->epic == &player_epics[player_nepics - 1] && dir == +1)
+		plrch->epic = &player_epics[0];
 	else
 		plrch->epic += dir;
 	update_player_name_display(plrch);
 
 	// why subtracting: more angle = clockwise from above = left in chooser
 	float pi = acosf(-1);
-	plrch->anglediff -= dir * (2*pi) / (float)FILELIST_NPLAYERS;
+	plrch->anglediff -= dir * (2*pi) / (float)player_nepics;
 }
 
 static void rotate_left (void *plrch) { rotate_player_chooser(plrch, -1); }
@@ -116,7 +116,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 		.cam = {
 			.screencentery = -preview.h / 10,
 			.surface = misc_create_cropped_surface(ch->winsurf, preview),
-			.angle = -(2*pi)/FILELIST_NPLAYERS * idx,
+			.angle = -(2*pi)/player_nepics * idx,
 		},
 	};
 
@@ -126,28 +126,34 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 	camera_update_caches(&plrch->cam);
 }
 
-static void create_player_ellipsoids(struct Ellipsoid *arr)
+static struct Ellipsoid *create_player_ellipsoids(void)
 {
 	float pi = acosf(-1);
+	struct Ellipsoid *res = malloc(sizeof(res[0]) * player_nepics);
+	if (!res) {
+		log_printf_abort("allocating mem for player chooser ellipsoids failed");
+	}
 
-	for (int i = 0; i < FILELIST_NPLAYERS; i++) {
+	for (int i = 0; i < player_nepics; i++) {
 		// pi/2 to make first players (i=0 and i=1) look at camera
-		float angle = pi/2 - ( i/(float)FILELIST_NPLAYERS * (2*pi) );
+		float angle = pi/2 - ( i/(float)player_nepics * (2*pi) );
 
-		arr[i] = (struct Ellipsoid){
-			.epic = &player_ellipsoidpics[i],
+		res[i] = (struct Ellipsoid){
+			.epic = &player_epics[i],
 			.center = mat3_mul_vec3(mat3_rotation_xz(angle), (Vec3){ ELLIPSOID_XZ_DISTANCE_FROM_ORIGIN, 0, 0 }),
 			.angle = angle,
 			.xzradius = PLAYER_XZRADIUS,
 			.yradius = PLAYER_YRADIUS_NOFLAT,
 		};
-		ellipsoid_update_transforms(&arr[i]);
+		ellipsoid_update_transforms(&res[i]);
 	}
+
+	return res;
 }
 
-static void rotate_player_ellipsoids(struct Ellipsoid *els, int n)
+static void rotate_player_ellipsoids(struct Ellipsoid *els)
 {
-	for (int i = 0; i < n; i++) {
+	for (int i = 0; i < player_nepics; i++) {
 		els[i].angle += 1.0f / CAMERA_FPS;
 		ellipsoid_update_transforms(&els[i]);
 	}
@@ -163,7 +169,7 @@ static float restrict_absolute_value(float val, float maxabs)
 
 static void turn_camera(struct ChooserPlayerStuff *plrch)
 {
-	float turn = restrict_absolute_value(plrch->anglediff, 50.0f / (CAMERA_FPS * FILELIST_NPLAYERS));
+	float turn = restrict_absolute_value(plrch->anglediff, 50.0f / (CAMERA_FPS * player_nepics));
 	plrch->cam.angle += turn;
 	plrch->anglediff -= turn;
 
@@ -184,7 +190,7 @@ static void show_player_chooser_each_frame(const struct Chooser *ch, struct Choo
 {
 	turn_camera(plrch);
 	SDL_FillRect(plrch->cam.surface, NULL, 0);
-	show_all(NULL, 0, ch->ellipsoids, sizeof(ch->ellipsoids)/sizeof(ch->ellipsoids[0]), &plrch->cam);
+	show_all(NULL, 0, ch->ellipsoids, player_nepics, &plrch->cam);
 }
 
 static void show_place_chooser_each_frame(struct ChooserPlaceStuff *plcch)
@@ -340,7 +346,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 	ch->placech.nextbtn.onclickdata = &ch->placech;
 	update_place_chooser_button_disableds(&ch->placech);
 
-	create_player_ellipsoids(ch->ellipsoids);
+	ch->ellipsoids = create_player_ellipsoids();
 	setup_player_chooser(ch, 0, SDL_SCANCODE_A, SDL_SCANCODE_D);
 	setup_player_chooser(ch, 1, SDL_SCANCODE_LEFT, SDL_SCANCODE_RIGHT);
 }
@@ -351,6 +357,7 @@ void chooser_destroy(const struct Chooser *ch)
 	SDL_FreeSurface(ch->playerch[1].cam.surface);
 	SDL_FreeSurface(ch->placech.cam.surface);
 	SDL_FreeSurface(ch->withoutenemiestxt);
+	free(ch->ellipsoids);
 }
 
 static void show_title_text(SDL_Surface *winsurf)
@@ -383,7 +390,7 @@ enum MiscState chooser_run(struct Chooser *ch)
 				return s;
 		}
 
-		rotate_player_ellipsoids(ch->ellipsoids, FILELIST_NPLAYERS);
+		rotate_player_ellipsoids(ch->ellipsoids);
 		show_player_chooser_each_frame(ch, &ch->playerch[0]);
 		show_player_chooser_each_frame(ch, &ch->playerch[1]);
 

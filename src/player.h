@@ -36,7 +36,8 @@ struct Player {
 };
 
 // Call player_init_epics() before accessing player_ellipsoidpics
-extern struct EllipsoidPic player_ellipsoidpics[FILELIST_NPLAYERS];
+extern const struct EllipsoidPic *player_epics;
+extern int player_nepics;
 void player_init_epics(const SDL_PixelFormat *fmt);
 
 // Get name of player from a pointer to an ellipsoid pic from player_get_epics()
