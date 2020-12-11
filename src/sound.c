@@ -4,37 +4,35 @@
 #include <string.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
-#include "../generated/filelist.h"
+#include "glob.h"
 #include "log.h"
 
-static bool string_starts_with(const char *s, const char *pre, int prelen)
-{
-	if (prelen < 0)
-		prelen = strlen(pre);
-	return (strncmp(s, pre, prelen) == 0);
-}
+struct Sound {
+	Mix_Chunk *chunk;
+	char name[1024];    // includes "sounds/" prefix
+};
 
-static bool string_ends_with(const char *s, const char *suff)
-{
-	if (strlen(s) < strlen(suff))
-		return false;
-	return (strcmp(s + strlen(s) - strlen(suff), suff) == 0);
-}
-
-static Mix_Chunk *sound_chunks[FILELIST_NSOUNDS] = {0};
+static struct Sound sounds[100] = {0};
+static int nsounds = 0;
 
 #define CHUNK_SIZE 1024
 
+static int compare_sound_filename(const void *a, const void *b)
+{
+	const char *astr = a;
+	const char *bstr = ((struct Sound *)b)->name;
+	return strcmp(astr, bstr);
+}
+
+static int compare_sounds(const void *a, const void *b)
+{
+	const char *astr = ((struct Sound *)a)->name;
+	const char *bstr = ((struct Sound *)b)->name;
+	return strcmp(astr, bstr);
+}
+
 void sound_init(void)
 {
-	// filenames must be sorted for binary searching
-	for (int i = 0; i < FILELIST_NSOUNDS-1; i++)
-		SDL_assert(strcmp(filelist_sounds[i], filelist_sounds[i+1]) < 0);
-
-	// sound_play() takes filename without "sounds/" in front
-	for (int i = 0; i < FILELIST_NSOUNDS; i++)
-		SDL_assert(string_starts_with(filelist_sounds[i], "sounds/", -1));
-
 	if (SDL_Init(SDL_INIT_AUDIO) == -1) {
 		log_printf("SDL_Init(SDL_INIT_AUDIO) failed: %s", SDL_GetError());
 		return;
@@ -47,12 +45,6 @@ void sound_init(void)
 	*/
 	Mix_Init(0);
 
-	if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, 2, CHUNK_SIZE) == -1)
-	{
-		log_printf("Mix_OpenAudio failed: %s", Mix_GetError());
-		return;
-	}
-
 	/*
 	Make sure that we can play all the needed sounds at the same time, even
 	when smashing buttons. With 20 channels, I could barely smash buttons fast
@@ -61,75 +53,77 @@ void sound_init(void)
 	*/
 	Mix_AllocateChannels(32);
 
-	for (int i = 0; i < FILELIST_NSOUNDS; i++) {
-		SDL_assert(sound_chunks[i] == NULL);
-		if (!( sound_chunks[i] = Mix_LoadWAV(filelist_sounds[i]) ))
-			log_printf("Mix_LoadWav(\"%s\") failed: %s", filelist_sounds[i], Mix_GetError());
+	if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, 2, CHUNK_SIZE) == -1)
+	{
+		log_printf("Mix_OpenAudio failed: %s", Mix_GetError());
+		return;
 	}
-}
 
-static int compare_sound_filename(const void *a, const void *b)
-{
-	const char *astr = a;
-	const char *bstr = *(const char *const*)b;
+	glob_t gl = {0};
+	if (glob("sounds/*.wav", GLOB_APPEND, NULL, &gl) != 0)
+		log_printf("can't find non-fart sounds");
+	if (glob("sounds/farts/*.wav", GLOB_APPEND, NULL, &gl) != 0)
+		log_printf("can't find fart sounds");
 
-	SDL_assert(!string_starts_with(astr, "sounds/", -1));
-	SDL_assert(string_starts_with(bstr, "sounds/", -1));
-	return strcmp(astr, bstr + strlen("sounds/"));
+	for (int i = 0; i < gl.gl_pathc; i++) {
+		SDL_assert(sounds[nsounds].chunk == NULL);
+		if (( sounds[nsounds].chunk = Mix_LoadWAV(gl.gl_pathv[i]) )) {
+			snprintf(sounds[nsounds].name, sizeof(sounds[nsounds].name), "%s", gl.gl_pathv[i]);
+			nsounds++;
+			SDL_assert(nsounds < sizeof(sounds)/sizeof(sounds[0]));
+		} else {
+			log_printf("Mix_LoadWav(\"%s\") failed: %s", gl.gl_pathv[i], Mix_GetError());
+		}
+	}
+	globfree(&gl);
+
+	qsort(sounds, nsounds, sizeof(sounds[0]), compare_sounds);   // for binary searching
 }
 
 static Mix_Chunk *choose_sound(const char *pattern)
 {
-	const char *star = strchr(pattern, '*');
-	if (!star) {
-		// no wildcard being used, binary search with filename
-		const char *const *ptr = bsearch(
-			pattern, filelist_sounds, FILELIST_NSOUNDS, sizeof(filelist_sounds[0]),
-			compare_sound_filename);
-		if (!ptr)
+	char fullpat[1024];
+	snprintf(fullpat, sizeof fullpat, "sounds/%s", pattern);
+
+	glob_t gl;
+	switch(glob(fullpat, 0, NULL, &gl)) {
+		case 0:
+			break;
+		case GLOB_NOMATCH:
+			log_printf("no sounds match pattern \"%s\"", pattern);
 			return NULL;
-
-		int i = ptr - filelist_sounds;
-		SDL_assert(0 <= i && i < FILELIST_NSOUNDS);
-		return sound_chunks[i];
+		case GLOB_NOSPACE:
+			log_printf("no sounds match pattern \"%s\"", pattern);
+			return NULL;
+		default:
+			log_printf("unexpected glob() return value with pattern \"%s\"", pattern);
+			return NULL;
 	}
 
-	SDL_assert(strrchr(pattern, '*') == star);   // no more than 1 wildcard
+	SDL_assert(gl.gl_pathc >= 1);
+	const char *path = gl.gl_pathv[rand() % gl.gl_pathc];
+	const struct Sound *s = bsearch(path, sounds, nsounds, sizeof(sounds[0]), compare_sound_filename);
 
-	Mix_Chunk *matching[FILELIST_NSOUNDS];
-	int nmatching = 0;
+	if (s)
+		log_printf("playing soon: %s", path);
+	else
+		log_printf("sound not loaded: %s", path);
+	globfree(&gl);
 
-	for (int i = 0; i < FILELIST_NSOUNDS; i++) {
-		const char *fnam = filelist_sounds[i] + strlen("sounds/");
-		if (string_starts_with(fnam, pattern, star - pattern) &&
-			string_ends_with(fnam, star+1) &&
-			sound_chunks[i] != NULL)
-		{
-			matching[nmatching++] = sound_chunks[i];
-		}
-	}
-
-	if (nmatching == 0)
-		return NULL;
-	return matching[rand() % nmatching];
+	return s ? s->chunk : NULL;
 }
 
 void sound_play(const char *fnpattern)
 {
 	Mix_Chunk *c = choose_sound(fnpattern);
-	if (!c)
-		log_printf("no sounds match the pattern '%s'", fnpattern);
-	else if (Mix_PlayChannel(-1, c, 0) == -1)
+	if (c != NULL && Mix_PlayChannel(-1, c, 0) == -1)
 		log_printf("Mix_PlayChannel failed: %s", Mix_GetError());
 }
 
 void sound_deinit(void)
 {
-	for (int i = 0; i < FILELIST_NSOUNDS; i++) {
-		if (sound_chunks[i])
-			Mix_FreeChunk(sound_chunks[i]);
-	}
-
+	for (int i = 0; i < nsounds; i++)
+		Mix_FreeChunk(sounds[i].chunk);
 	Mix_CloseAudio();
 	Mix_Quit();
 }
