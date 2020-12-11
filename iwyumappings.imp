@@ -21,4 +21,7 @@
 
 	# don't know why this is needed
 	{ include: ["<bits/types/struct_tm.h>", "private", "<time.h>", "public"] },
+
+	# custom glob implementation
+	{ include: ["<glob.h>", "private", "\"glob.h\"", "public"] },
 ]

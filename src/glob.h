@@ -45,6 +45,7 @@ Caveats:
 
 #define GLOB_NOSPACE 1
 #define GLOB_NOMATCH 2
+#define GLOB_ABORTED 3   // never used
 
 #define GLOB_APPEND 0x01
 

@@ -1,4 +1,5 @@
 #include "sound.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -90,13 +91,16 @@ static Mix_Chunk *choose_sound(const char *pattern)
 		case 0:
 			break;
 		case GLOB_NOMATCH:
-			log_printf("no sounds match pattern \"%s\"", pattern);
+			log_printf("no sounds match pattern \"%s\"", fullpat);
 			return NULL;
 		case GLOB_NOSPACE:
-			log_printf("no sounds match pattern \"%s\"", pattern);
+			log_printf("no sounds match pattern \"%s\"", fullpat);
 			return NULL;
+		case GLOB_ABORTED:
+			log_printf("glob error with pattern \"%s\": %s", fullpat, strerror(errno));
+			return NULL
 		default:
-			log_printf("unexpected glob() return value with pattern \"%s\"", pattern);
+			log_printf("unexpected glob() return value with pattern \"%s\"", fullpat);
 			return NULL;
 	}
 

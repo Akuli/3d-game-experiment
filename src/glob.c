@@ -69,7 +69,8 @@ int glob(const char *pat, int flags, int (*errfunc)(const char *, int), glob_t *
 		PathBuf *buf = get_next_glob_pointer(pglob);
 		if (!buf) {
 			FindClose(hnd);
-			free(pglob->gl_pathv);
+			if (!(flags & GLOB_APPEND))
+				free(pglob->gl_pathv);
 			return GLOB_NOSPACE;
 		}
 
