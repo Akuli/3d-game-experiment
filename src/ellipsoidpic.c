@@ -18,12 +18,12 @@
 #define IS_TRANSPARENT(alpha) ((alpha) < 0x80)
 
 // yes, rgb math is bad ikr
-static void replace_alpha_with_average(unsigned char *bytes, size_t nbytes)
+static void replace_alpha_with_average(unsigned char *bytes, size_t npixels)
 {
 	long long rsum = 0, gsum = 0, bsum = 0;
 	size_t count = 0;
 
-	for (size_t i = 0; i < 4*nbytes; i += 4) {
+	for (size_t i = 0; i < 4*npixels; i += 4) {
 		if (!IS_TRANSPARENT(bytes[i+3])) {
 			rsum += bytes[i];
 			gsum += bytes[i+1];
@@ -35,7 +35,7 @@ static void replace_alpha_with_average(unsigned char *bytes, size_t nbytes)
 	if (count == 0)
 		return;
 
-	for (size_t i = 0; i < 4*nbytes; i += 4) {
+	for (size_t i = 0; i < 4*npixels; i += 4) {
 		if (IS_TRANSPARENT(bytes[i+3])) {
 			bytes[i] = CLAMP_TO_U8(rsum / count);
 			bytes[i+1] = CLAMP_TO_U8(gsum / count);
