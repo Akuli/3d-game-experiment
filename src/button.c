@@ -1,5 +1,4 @@
 #include "button.h"
-#include <math.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -109,8 +108,8 @@ void button_show(const struct Button *butt)
 
 static bool mouse_on_button(const SDL_MouseButtonEvent *me, const struct Button *butt)
 {
-	return fabsf(me->x - butt->center.x) < get_image(butt->flags)->w/2 &&
-			fabsf(me->y - butt->center.y) < get_image(butt->flags)->h/2;
+	return abs(me->x - butt->center.x) < get_image(butt->flags)->w/2 &&
+			abs(me->y - butt->center.y) < get_image(butt->flags)->h/2;
 }
 
 static bool scancode_matches_button(int sc, const struct Button *butt)

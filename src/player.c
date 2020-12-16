@@ -42,7 +42,7 @@ void player_init_epics(const SDL_PixelFormat *fmt)
 	glob_t gl;
 	if (glob("players/*.png", 0, NULL, &gl) != 0)
 		log_printf_abort("player pictures not found");
-	log_printf("found %d players", gl.gl_pathc);
+	log_printf("found %zu players", gl.gl_pathc);
 
 	player_nepics = gl.gl_pathc;
 	SDL_assert(0 < player_nepics && player_nepics <= sizeof(epics)/sizeof(epics[0]));
