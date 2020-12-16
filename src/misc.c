@@ -11,6 +11,29 @@
 #include <SDL2/SDL_ttf.h>
 
 
+int misc_handle_scancode(int sc)
+{
+	switch(sc) {
+		// numpad 0 --> usual 0
+		case SDL_SCANCODE_KP_0:
+			return SDL_SCANCODE_0;
+
+		// numpad arrow keys --> actual arrow keys
+		case SDL_SCANCODE_KP_4:
+			return SDL_SCANCODE_LEFT;
+		case SDL_SCANCODE_KP_6:
+			return SDL_SCANCODE_RIGHT;
+		case SDL_SCANCODE_KP_8:
+			return SDL_SCANCODE_UP;
+		case SDL_SCANCODE_KP_5:
+		case SDL_SCANCODE_KP_2:
+			return SDL_SCANCODE_DOWN;
+
+		default:
+			return sc;
+	}
+}
+
 void misc_blit_with_center(SDL_Surface *src, SDL_Surface *dst, const SDL_Point *center)
 {
 	int cx, cy;

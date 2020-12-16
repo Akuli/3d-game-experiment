@@ -11,6 +11,13 @@ enum MiscState {
 };
 
 /*
+In this game, we don't want to distinguish some scancodes from each other to allow
+multiple ways to do the same thing. For all different scan codes that should do the same
+thing, this function returns the same scancode.
+*/
+int misc_handle_scancode(int sc);
+
+/*
 Blit src onto dst so that center of src goes to *center. If center is NULL, then
 center of src goes to center of dst.
 */
