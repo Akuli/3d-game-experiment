@@ -124,10 +124,7 @@ static bool handle_event(SDL_Event event, struct GameState *gs)
 	case SDL_KEYDOWN:
 	case SDL_KEYUP:
 		switch(event.key.keysym.scancode) {
-			/*
-			many keyboards have numpad with zero right next to the "→"
-			arrow, like "f" is next to "d"
-			*/
+			// many keyboards have numpad with zero right next to the "→" arrow, like "f" is next to "d"
 			case SDL_SCANCODE_F:
 				if (down) player_drop_guard(&gs->players[0], gs->unpicked_guards, &gs->n_unpicked_guards);
 				break;
@@ -141,10 +138,17 @@ static bool handle_event(SDL_Event event, struct GameState *gs)
 			case SDL_SCANCODE_W: player_set_moving(&gs->players[0], down); break;
 			case SDL_SCANCODE_S: player_set_flat(&gs->players[0], down); break;
 
-			case SDL_SCANCODE_LEFT: player_set_turning(&gs->players[1], -1, down); break;
-			case SDL_SCANCODE_RIGHT: player_set_turning(&gs->players[1], +1, down); break;
-			case SDL_SCANCODE_UP: player_set_moving(&gs->players[1], down); break;
-			case SDL_SCANCODE_DOWN: player_set_flat(&gs->players[1], down); break;
+			// right player can use arrow keys or numpad
+			case SDL_SCANCODE_LEFT: case SDL_SCANCODE_KP_4:
+				player_set_turning(&gs->players[1], -1, down); break;
+			case SDL_SCANCODE_RIGHT: case SDL_SCANCODE_KP_6:
+				player_set_turning(&gs->players[1], +1, down); break;
+			case SDL_SCANCODE_UP: case SDL_SCANCODE_KP_8:
+				player_set_moving(&gs->players[1], down);
+				break;
+			case SDL_SCANCODE_DOWN: case SDL_SCANCODE_KP_5: case SDL_SCANCODE_KP_2:
+				player_set_flat(&gs->players[1], down);
+				break;
 
 			default:
 				log_printf("unknown key press scancode %d", event.key.keysym.scancode);
