@@ -88,24 +88,6 @@ bool wall_visible_xminmax(
 // Which range of screen y coordinates is showing the wall?
 void wall_yminmax(const struct WallCache *wc, int x, int *ymin, int *ymax);
 
-/*
-Is a point directly in front of or behind the wall? below pic is viewing from
-above, and the return values of this function are denoted with T for true, and
-F for false:
-
-	F F T T T T T T T T T T F F
-	F F T T T T T T T T T T F F
-	F F T T T T T T T T T T F F
-	F F T T =========== T T F F
-	F F T T T T T T T T T T F F
-	F F T T T T T T T T T T F F
-	   |___|           |___|
-	   offmax          offmax
-
-Nothing is checked in y direction, aka "up/down" direction.
-*/
-bool wall_aligned_with_point(const struct Wall *w, Vec3 pt, float offmax);
-
 // same for any two points on same side of the wall
 bool wall_side(const struct Wall *w, Vec3 pt);
 
