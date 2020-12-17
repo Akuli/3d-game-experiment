@@ -214,24 +214,9 @@ bool wall_side(const struct Wall *w, Vec3 pt)
 	return false;
 }
 
-bool wall_linedup(const struct Wall *w1, const struct Wall *w2)
-{
-	if (w1->dir != w2->dir)
-		return false;
+inline bool wall_linedup(const struct Wall *w1, const struct Wall *w2);
 
-	switch(w1->dir) {
-		case WALL_DIR_XY: return (w1->startz == w2->startz);
-		case WALL_DIR_ZY: return (w1->startx == w2->startx);
-	}
-
-	// never actually runs, makes compiler happy
-	return false;
-}
-
-/*
-My simple way to add transparency is average of RGB colors. Works well enough
-for my needs.
-*/
+// My simple way to add transparency is average of RGB colors. Works well enough for my needs.
 static inline unsigned char bigger_value(unsigned char val) { return val + (0xff - val)/2; }
 static inline unsigned char smoler_value(unsigned char val) { return val/2; }
 

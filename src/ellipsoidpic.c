@@ -148,6 +148,7 @@ static void read_image(struct EllipsoidPic *epic)
 void ellipsoidpic_load(
 	struct EllipsoidPic *epic, const char *path, const SDL_PixelFormat *fmt)
 {
+	log_printf("Loading ellipsoid pic: %s\n", path);
 	snprintf(epic->path, sizeof(epic->path), "%s", path);
 	epic->pixfmt = fmt;
 	read_image(epic);

@@ -110,7 +110,16 @@ bool wall_aligned_with_point(const struct Wall *w, Vec3 pt, float offmax);
 bool wall_side(const struct Wall *w, Vec3 pt);
 
 // two walls are lined up if they are parallel and on the same plane
-bool wall_linedup(const struct Wall *w1, const struct Wall *w2);
+inline bool wall_linedup(const struct Wall *w1, const struct Wall *w2)
+{
+	if (w1->dir == w2->dir) {
+		switch(w1->dir) {
+			case WALL_DIR_XY: return (w1->startz == w2->startz);
+			case WALL_DIR_ZY: return (w1->startx == w2->startx);
+		}
+	}
+	return false;
+}
 
 /*
 Draw all pixels of wall corresponding to range of y coordinates. May be
