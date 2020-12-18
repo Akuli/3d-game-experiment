@@ -207,9 +207,11 @@ bool wall_side(const struct Wall *w, Vec3 pt)
 
 inline bool wall_linedup(const struct Wall *w1, const struct Wall *w2);
 
-// My simple way to add transparency is average of RGB colors. Works well enough for my needs.
-static inline unsigned char bigger_value(unsigned char val) { return val + (0xff - val)/2; }
-static inline unsigned char smoler_value(unsigned char val) { return val/2; }
+// 24 rightmost bits used, 8 bits for each of R,G,B
+// this is perf critical
+static inline uint32_t rgb_average(uint32_t a, uint32_t b) {
+	return ((a & 0xfefefe) >> 1) + ((b & 0xfefefe) >> 1);
+}
 
 void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax)
 {
@@ -221,12 +223,11 @@ void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax)
 
 	uint32_t *start = (uint32_t *)surf->pixels + ymin*mypitch + x;
 	uint32_t *end   = (uint32_t *)surf->pixels + ymax*mypitch + x;
-	for (uint32_t *ptr = start; ptr < end; ptr += mypitch) {
-		// change between bigger_value and smoler_value to change wall color
-		*ptr =
-			(smoler_value((*ptr >> fmt->Rshift) & 0xff) << fmt->Rshift) |
-			(bigger_value((*ptr >> fmt->Gshift) & 0xff) << fmt->Gshift) |
-			(bigger_value((*ptr >> fmt->Bshift) & 0xff) << fmt->Bshift) |
-			(*ptr & fmt->Amask);
-	}
+
+	// making wallcolor a compile-time constant speeds up slightly
+	SDL_assert(fmt->Rmask == 0xff0000 && fmt->Gmask == 0x00ff00 && fmt->Bmask == 0x0000ff);
+	uint32_t wallcolor = 0x00ffff;
+
+	for (uint32_t *ptr = start; ptr < end; ptr += mypitch)
+		*ptr = rgb_average(*ptr, wallcolor);
 }
