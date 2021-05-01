@@ -9,6 +9,7 @@
 #include "../stb/stb_image.h"
 #include "log.h"
 #include "mathstuff.h"
+#include "misc.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -85,36 +86,23 @@ static const AngleArray *get_angle_array(void)
 	return (const AngleArray *) &res;
 }
 
-/*
-Currently there's no way to give a utf-8 filename to stbi_load(), unless you
-use Microsoft's compiler. There's also a buffer overflow.
-https://github.com/nothings/stb/issues/939
-*/
-static FILE *open_binary_file_for_reading(const char *path)
-{
-#ifdef _WIN32
-	wchar_t wpath[1024];
-	int n = MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, sizeof(wpath)/sizeof(wpath[0]) - 1);
-	if (n == 0)
-		log_printf_abort("MultiByteToWideChar with utf8 string '%s' failed", path);
-
-	SDL_assert(0 < n && n < sizeof(wpath)/sizeof(wpath[0]));
-	wpath[n] = L'\0';
-	FILE *f = _wfopen(wpath, L"rb");
-#else
-	FILE *f = fopen(path, "rb");
-#endif
-
-	if (!f)
-		log_printf_abort("opening '%s' failed: %s", path, strerror(errno));
-	return f;
-}
-
 static void read_image(struct EllipsoidPic *epic)
 {
 	const AngleArray *angles = get_angle_array();
 
-	FILE *f = open_binary_file_for_reading(epic->path);
+	/*
+	Currently there's no way to give a utf-8 filename to stbi_load(), unless you
+	use Microsoft's compiler. There's also a buffer overflow.
+	https://github.com/nothings/stb/issues/939
+	*/
+#ifdef _WIN32
+	FILE *f = _wfopen(misc_utf8_to_windows(epic->path), L"rb");
+#else
+	FILE *f = fopen(epic->path, "rb");
+#endif
+	if (!f)
+		log_printf_abort("opening '%s' failed: %s", epic->path, strerror(errno));
+
 	int chansinfile, filew, fileh;
 	unsigned char *filedata = stbi_load_from_file(f, &filew, &fileh, &chansinfile, 4);
 	fclose(f);

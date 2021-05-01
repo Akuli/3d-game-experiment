@@ -60,7 +60,8 @@ static void cd_where_everything_is(void)
 	wcscat(fulldir, dir);
 
 	if (_wchdir(fulldir) != 0)
-		log_printf_abort("_wchdir to '%s' failed: %s", misc_windows_to_utf8(dir), strerror(errno));
+		log_printf_abort("_wchdir to '%s' failed: %s", misc_windows_to_utf8(fulldir), strerror(errno));
+	log_printf("Changed directory: %s", misc_windows_to_utf8(fulldir));
 #endif
 }
 
@@ -68,6 +69,7 @@ static void cd_assets(void)
 {
 	if (my_chdir("assets") != 0)
 		log_printf_abort("chdir to assets failed: %s", strerror(errno));
+	log_printf("Changed directory: assets");
 }
 
 static void show_loading(const char *msg, SDL_Window *wnd, SDL_Surface *wndsurf, int yidx)

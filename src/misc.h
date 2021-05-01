@@ -37,11 +37,14 @@ SDL_Surface *misc_create_cropped_surface(SDL_Surface *surf, SDL_Rect r);
 void misc_basename_without_extension(const char *path, char *name, int sizeofname);
 
 /*
-Convert a funny windows string to \0-terminated utf-8 statically allocated
-string of limited length. winstrsz should be '\0' terminated.
+Convert between sane utf-8 and fucking insane windows strings.
+All strings are \0-terminated.
+Returned strings are statically allocated.
+Strings must not be insanely long.
 */
 #ifdef _WIN32
 const char *misc_windows_to_utf8(const wchar_t *winstr);
+const wchar_t *misc_utf8_to_windows(const char *utf8);
 #endif
 
 

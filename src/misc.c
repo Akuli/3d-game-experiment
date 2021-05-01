@@ -91,19 +91,33 @@ void misc_basename_without_extension(const char *path, char *name, int sizeofnam
 }
 
 // TODO: most of my code uses strerror(errno) for windows errors which is wrong?
+
 #ifdef _WIN32
 const char *misc_windows_to_utf8(const wchar_t *winstr)
 {
 	static char utf8[1024];
 	int n = WideCharToMultiByte(
 		CP_UTF8, 0,
-		winstr, wcslen(winstr),
+		winstr, -1,
 		utf8, sizeof(utf8) - 1,
 		NULL, NULL);
 
 	// if it fails, then we return empty string... which is somewhat sane-ish?
+	// can't call log_printf because it wants utf8 string
 	SDL_assert(0 <= n && n < sizeof(utf8));
 	utf8[n] = 0;
 	return utf8;
+}
+
+const wchar_t *misc_utf8_to_windows(const char *utf8)
+{
+	static wchar_t winstr[1024];
+	int n = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, winstr, sizeof(winstr)/sizeof(winstr[0]) - 1);
+	if (n == 0)
+		log_printf_abort("MultiByteToWideChar with utf8 string '%s' failed", utf8);
+
+	SDL_assert(0 < n && n < sizeof(winstr)/sizeof(winstr[0]));
+	winstr[n] = L'\0';
+	return winstr;
 }
 #endif

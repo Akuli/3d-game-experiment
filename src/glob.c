@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <windows.h>
+#include "misc.h"
 
 
 typedef char PathBuf[MAX_PATH];
@@ -54,16 +55,16 @@ int glob(const char *pat, int flags, int (*errfunc)(const char *, int), glob_t *
 	if (!(flags & GLOB_APPEND))
 		*pglob = (glob_t){0};
 
-	WIN32_FIND_DATAA dat;
-	HANDLE hnd = FindFirstFileA(pat, &dat);
-	if (hnd == INVALID_HANDLE_VALUE)
-		return GLOB_NOMATCH;
-
 	/*
 	windows doesn't support wildcards in the directory, so we can find it by
 	looking for last slash.
 	*/
 	const char *lastslash = find_last_slash(pat);
+
+	WIN32_FIND_DATAW dat;
+	HANDLE hnd = FindFirstFileW(misc_utf8_to_windows(pat), &dat);
+	if (hnd == INVALID_HANDLE_VALUE)
+		return GLOB_NOMATCH;
 
 	do {
 		PathBuf *buf = get_next_glob_pointer(pglob);
@@ -75,10 +76,10 @@ int glob(const char *pat, int flags, int (*errfunc)(const char *, int), glob_t *
 		}
 
 		if (lastslash == NULL)
-			snprintf(*buf, sizeof(*buf), "%s", dat.cFileName);
+			snprintf(*buf, sizeof(*buf), "%s", misc_windows_to_utf8(dat.cFileName));
 		else
-			snprintf(*buf, sizeof(*buf), "%.*s/%s", (int)(lastslash - pat), pat, dat.cFileName);
-	} while (FindNextFileA(hnd, &dat));
+			snprintf(*buf, sizeof(*buf), "%.*s/%s", (int)(lastslash - pat), pat, misc_windows_to_utf8(dat.cFileName));
+	} while (FindNextFileW(hnd, &dat));
 
 	FindClose(hnd);
 	return 0;
