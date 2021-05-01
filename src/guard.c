@@ -23,20 +23,11 @@ void guard_init_epic(const SDL_PixelFormat *fmt)
 	guard_ellipsoidpic.hidelowerhalf = true;
 }
 
-// this function could be slow wiht many nonpicked guards
+// this function could be slow with many nonpicked guards
 static bool nonpicked_guard_center_in_use(Vec3 center, const struct Ellipsoid *others, int nothers)
 {
 	for (int i = 0; i < nothers; i++) {
-		/*
-		It's fine to compare floats with '==' here because:
-		- x and z coords are integer+0.5f (or something very unlikely to
-		  collide for guards dropped by players)
-		- y coord is SPACING_BASIC + SPACING_BASIC + ... + SPACING_BASIC,
-		  some number of times
-		None of these float calculations can give inconsistent results.
-		*/
-		Vec3 oc = others[i].center;
-		if (center.x == oc.x && center.y == oc.y && center.z == oc.z)
+		if (vec3_lengthSQUARED(vec3_sub(center, others[i].center)) < 0.001)
 			return true;
 	}
 	return false;
