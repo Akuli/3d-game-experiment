@@ -10,7 +10,7 @@ jobs:
     - uses: actions/checkout@v2
     - run: git submodule init && git submodule update
     - run: sudo apt install make mingw-w64
-    # Download links used (choose mingw when instead of visual studio):
+    # Download links used (choose mingw instead of visual studio):
     #  https://www.libsdl.org/download-2.0.php
     #  https://www.libsdl.org/projects/SDL_mixer/
     #  https://www.libsdl.org/projects/SDL_ttf/
