@@ -5,7 +5,7 @@
 #define MAX_PICKED_GUARDS_TO_DISPLAY_PER_PLAYER 64
 
 #define MAX_UNPICKED_GUARDS 1024        // big max just for fun
-#define MAX_ENEMIES 128
+#define MAX_ENEMIES 256
 #define MAX_ELLIPSOIDS ( \
 	MAX_ENEMIES \
 	+ MAX_UNPICKED_GUARDS \
