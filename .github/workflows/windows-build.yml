@@ -2,7 +2,6 @@ on:
   push:
     branches:
       - master
-      - gh-actions   # TODO: remove when works
 
 jobs:
   build:
