@@ -57,8 +57,7 @@ void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el)
 	If the ellipsoid is very far away from wall, then it surely doesn't bump. We
 	use this idea to optimize the common case. But how much is "very far away"?
 
-	Suppose that the ellipsoid and wall intersect at some point p. Let c be
-	the corner of the wall that is most far away from the ellipsoid. Let
+	Suppose that the ellipsoid and wall intersect at some point p. Let
 	diam(w) denote the distance between opposite corners of a wall. Then
 
 			|center(w) - center(el)|
