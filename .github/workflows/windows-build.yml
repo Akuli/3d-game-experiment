@@ -1,0 +1,56 @@
+on:
+  push:
+    branches:
+      - master
+      - gh-actions   # TODO: remove when works
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - run: sudo apt install make mingw-w64
+    # Download links used (choose mingw when instead of visual studio):
+    #  https://www.libsdl.org/download-2.0.php
+    #  https://www.libsdl.org/projects/SDL_mixer/
+    #  https://www.libsdl.org/projects/SDL_ttf/
+    - run: |
+        mkdir libs
+        cd libs
+        wget https://www.libsdl.org/release/SDL2-devel-2.0.14-mingw.tar.gz
+        wget https://www.libsdl.org/projects/SDL_mixer/release/SDL2_mixer-devel-2.0.4-mingw.tar.gz
+        wget https://www.libsdl.org/projects/SDL_ttf/release/SDL2_ttf-devel-2.0.15-mingw.tar.gz
+        tar xf SDL2-*
+        tar xf SDL2_mixer-*
+        tar xf SDL2_ttf-*
+    - run: source winbuildenv && make -j2 build/game.exe
+    - run: zip -r build.zip build
+    # https://stackoverflow.com/a/60942437
+    - id: date
+      run: echo "::set-output name=date::$(date +'%Y-%m-%d-%H-%M')"
+    # https://stackoverflow.com/a/64479344
+    - uses: actions/github-script@v3
+      with:
+        github-token: ${{ github.token }}
+        script: |
+          github.git.createRef({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            ref: "refs/tags/${{ github.ref }}-${{ steps.date.outputs.date }}",
+            sha: context.sha
+          })
+    - id: create_release
+      uses: actions/create-release@v1.0.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}-${{ steps.date.outputs.date }}
+        release_name: ${{ github.ref }}-${{ steps.date.outputs.date }}
+    - uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: build.zip
+        asset_name: 3D_game_${{ steps.date.outputs.date }}.zip
+        asset_content_type: application/zip
