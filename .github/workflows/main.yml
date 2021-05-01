@@ -1,0 +1,20 @@
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  compile-and-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - run: git submodule init && git submodule update
+    - run: sudo apt install gcc make libsdl2-dev libsdl2-mixer-dev libsdl2-ttf-dev
+    - run: make -j2
+  iwyu:
+    - uses: actions/checkout@v2
+    - run: git submodule init && git submodule update
+    - run: sudo apt install gcc make libsdl2-dev libsdl2-mixer-dev libsdl2-ttf-dev
+    - run: make -j2
+    - run
