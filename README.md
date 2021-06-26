@@ -54,6 +54,8 @@ In the game over screen, you can again click buttons or press these keys:
 
 - stereo sound: if left player jumps then jump sound (mostly?) to left speaker
 - network multiplayer lol?
+- map editor gui
+- A player that looks exactly like an enemy
 
 
 ## Conventions in this project
