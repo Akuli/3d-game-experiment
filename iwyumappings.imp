@@ -17,17 +17,17 @@
 	{ include: ["<SDL2/SDL_video.h>", "private", "<SDL2/SDL.h>", "public"] },
 
 	# Quote versions because idk what happens on github actions
-	{ include: ["\"SDL2/SDL_assert.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL2/SDL_error.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL2/SDL_events.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL2/SDL_keyboard.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL2/SDL_log.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL2/SDL_pixels.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL2/SDL_rect.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL2/SDL_scancode.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL2/SDL_surface.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL2/SDL_timer.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL2/SDL_video.h\"", "private", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL2/SDL_assert.h\"", "public", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL2/SDL_error.h\"", "public", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL2/SDL_events.h\"", "public", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL2/SDL_keyboard.h\"", "public", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL2/SDL_log.h\"", "public", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL2/SDL_pixels.h\"", "public", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL2/SDL_rect.h\"", "public", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL2/SDL_scancode.h\"", "public", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL2/SDL_surface.h\"", "public", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL2/SDL_timer.h\"", "public", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL2/SDL_video.h\"", "public", "<SDL2/SDL.h>", "public"] },
 
 	# don't know why iwyu is wrong about these
 	{ include: ["<bits/stdint-uintn.h>", "private", "<stdint.h>", "public"] },
