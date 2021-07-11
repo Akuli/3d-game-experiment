@@ -15,13 +15,7 @@ for file in src/*.c src/*.h; do
 
 	echo $file
 
-	# -W options to hide stuff that c compilers warn about anyway
-	command="iwyu \
-		-Wno-static-local-in-inline -Wno-absolute-value \
-		-Xiwyu --mapping_file=iwyumappings.imp \
-		-Xiwyu --no_fwd_decls \
-		$file"
-	($command || true) &> iwyu.out
+	(iwyu $FLAGS $file || true) &> iwyu.out
 
 	# Delete non-errors
 	sed -i '/has correct #includes/d' iwyu.out
