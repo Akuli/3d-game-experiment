@@ -18,4 +18,7 @@
 
 	# custom glob
 	{ include: ["<glob.h>", "private", "\"glob.h\"", "public"] },
+
+	# idk why needed
+	{ include: ["<bits/types/struct_tm.h>", "private", "<time.h>", "public"] },
 ]
