@@ -22,6 +22,7 @@ jobs:
     - run: git submodule init && git submodule update
     - run: sudo apt install $APT_PACKAGES iwyu
     - run: ls -l /usr/lib/llvm-*/lib/clang/*/include/
+    - run: iwyu --version
     - run: |
         # https://bugs.launchpad.net/ubuntu/+source/libsdl2-ttf/+bug/1872023
         # Explicitly adding clang dir to avoid:
