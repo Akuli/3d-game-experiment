@@ -18,5 +18,5 @@ jobs:
   iwyu:
     - uses: actions/checkout@v2
     - run: git submodule init && git submodule update
-    - run: sudo apt install $APT_PACKAGES
+    - run: sudo apt install $APT_PACKAGES iwyu
     - run: ./iwyu.sh
