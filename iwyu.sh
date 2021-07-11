@@ -15,6 +15,7 @@ for file in src/*.c src/*.h; do
 
 	echo $file
 
+	# Iwyu always exits with status 1
 	(iwyu $FLAGS $file || true) &> iwyu.out
 
 	# Delete non-errors
