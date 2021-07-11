@@ -19,6 +19,10 @@
 	# custom glob
 	{ include: ["<glob.h>", "private", "\"glob.h\"", "public"] },
 
-	# idk why needed
+	# needed on github actions, idk why
 	{ include: ["<bits/types/struct_tm.h>", "private", "<time.h>", "public"] },
+
+	# needed only on my computer, idk why
+	{ include: ["<bits/stdint-uintn.h>", "private", "<stdint.h>", "public"] },
+	{ include: ["<bits/types/time_t.h>", "private", "<time.h>", "public"] },
 ]

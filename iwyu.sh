@@ -1,11 +1,13 @@
 #!/bin/bash
 set -e
-
 FLAGS="$FLAGS -Xiwyu --mapping_file=iwyumappings.imp"
 FLAGS="$FLAGS -Xiwyu --no_fwd_decls"
 
 # Hide stuff that C compilers warn about anyway
 FLAGS="$FLAGS -Wno-static-local-in-inline -Wno-absolute-value"
+
+# https://bugs.launchpad.net/ubuntu/+source/libsdl2-ttf/+bug/1872023
+FLAGS="$FLAGS -I/usr/include/SDL2 "
 
 echo "IWYU flags: $FLAGS"
 
