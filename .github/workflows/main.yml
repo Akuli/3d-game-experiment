@@ -21,4 +21,5 @@ jobs:
     - uses: actions/checkout@v2
     - run: git submodule init && git submodule update
     - run: sudo apt install $APT_PACKAGES iwyu
-    - run: ./iwyu.sh
+    # https://bugs.launchpad.net/ubuntu/+source/libsdl2-ttf/+bug/1872023
+    - run: FLAGS=-I/usr/include/SDL2 ./iwyu.sh
