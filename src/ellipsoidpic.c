@@ -9,7 +9,6 @@
 #include "../stb/stb_image.h"
 #include "log.h"
 #include "mathstuff.h"
-#include "misc.h"
 
 #ifdef _WIN32
 #include <windows.h>

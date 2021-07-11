@@ -66,17 +66,6 @@ $(COPIED_FILES): $(FILES_TO_COPY)
 	mkdir -p $(@D) && cp -r $(shell printf '%s\n' $^ | grep $(notdir $@)) $(EXEDIR)
 
 
-# include checking stuff (sudo apt install iwyu)
-
-# please iwyu, don't warn me about stuff that c compilers warn about anyway...
-IWYUFLAGS += -Wno-static-local-in-inline -Wno-absolute-value
-
-IWYUFLAGS += -Xiwyu --mapping_file=iwyumappings.imp
-IWYUFLAGS += -Xiwyu --no_fwd_decls
-
-iwyu:
-	for file in src/*.c src/*.h; do iwyu $(IWYUFLAGS) $$file || true; done
-
 # profiling stuff
 #
 #	$ sudo apt install valgrind

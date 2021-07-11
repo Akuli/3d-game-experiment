@@ -16,12 +16,11 @@
 	{ include: ["<SDL2/SDL_timer.h>", "private", "<SDL2/SDL.h>", "public"] },
 	{ include: ["<SDL2/SDL_video.h>", "private", "<SDL2/SDL.h>", "public"] },
 
-	# my -I hack in Makefile makes iwyu suggest "" instead of <> for whatever reason
-	{ include: ["\"stdbool.h\"", "private", "<stdbool.h>", "public"] },
-
-	# don't know why this is needed
+	# don't know why iwyu is wrong about these
+	{ include: ["<bits/stdint-uintn.h>", "private", "<stdint.h>", "public"] },
 	{ include: ["<bits/types/struct_tm.h>", "private", "<time.h>", "public"] },
+	{ include: ["<bits/types/time_t.h>", "private", "<time.h>", "public"] },
 
-	# custom glob implementation
+	# custom glob
 	{ include: ["<glob.h>", "private", "\"glob.h\"", "public"] },
 ]
