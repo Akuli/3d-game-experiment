@@ -120,7 +120,6 @@ struct SquareParsingState {
 	struct Place *place;
 	Vec3 loc;
 	Vec3 *playerlocptr;   // pointer into place->playerlocs
-	Vec3 *neverdieptr;   // pointer into place->playerlocs
 };
 
 static void parse_square_content(char c, struct SquareParsingState *st)
@@ -154,8 +153,9 @@ static void parse_vertical_wall_string(const char *part, bool *leftwall, bool *r
 	parse_square_content(part[2], st);
 }
 
-static void init_place(struct Place *pl, const char *path)
+static void read_place_from_file(struct Place *pl, const char *path)
 {
+	log_printf("Reading place from '%s'...", path);
 	if (strstr(path, "default_places") == path)
 		pl->custom = false;
 	else if (strstr(path, "custom_places") == path)
@@ -224,7 +224,6 @@ static void init_place(struct Place *pl, const char *path)
 	}
 	free(fdata);
 
-	log_printf("Loaded place from '%s':", path);
 	log_printf("    %s", pl->custom ? "custom" : "default");
 	log_printf("    name '%s'", pl->name);
 	log_printf("    size %dx%d", pl->xsize, pl->zsize);
@@ -254,7 +253,7 @@ const struct Place *place_list(int *nplaces)
 		n = gl.gl_pathc;
 		size_t i;
 		for (i = 0; i < gl.gl_pathc && i < sizeof(places)/sizeof(places[0]); i++)
-			init_place(&places[i], gl.gl_pathv[i]);
+			read_place_from_file(&places[i], gl.gl_pathv[i]);
 		for ( ; i < gl.gl_pathc; i++)
 			log_printf("ignoring place because there's too many: %s", gl.gl_pathv[i]);
 
