@@ -156,6 +156,13 @@ static void parse_vertical_wall_string(const char *part, bool *leftwall, bool *r
 
 static void init_place(struct Place *pl, const char *path)
 {
+	if (strstr(path, "default_places") == path)
+		pl->custom = false;
+	else if (strstr(path, "custom_places") == path)
+		pl->custom = true;
+	else
+		SDL_assert(0);
+
 	misc_basename_without_extension(path, pl->name, sizeof(pl->name));
 	int linelen, nlines;
 	char *fdata = read_file_with_trailing_spaces_added(path, &linelen, &nlines);
@@ -217,7 +224,9 @@ static void init_place(struct Place *pl, const char *path)
 	}
 	free(fdata);
 
-	log_printf("place '%s':", path);
+	log_printf("Loaded place from '%s':", path);
+	log_printf("    %s", pl->custom ? "custom" : "default");
+	log_printf("    name '%s'", pl->name);
 	log_printf("    size %dx%d", pl->xsize, pl->zsize);
 	log_printf("    %d walls", pl->nwalls);
 	log_printf("    %d enemies that never die", pl->nneverdielocs);

@@ -7,6 +7,7 @@
 
 struct Place {
 	char name[128];
+	bool custom;
 	struct Wall walls[MAX_WALLS];
 	int nwalls;
 	int xsize, zsize;    // players and enemies must have 0 <= x <= xsize, 0 <= z <= zsize
