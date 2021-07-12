@@ -79,18 +79,7 @@ void button_show(const struct Button *butt)
 
 	if (butt->text) {
 		SDL_Color black = { 0x00, 0x00, 0x00, 0xff };
-
-		// TODO: don't use button_height for this, hard-coding is fine
-		// FIXME: fontsz doesn't seem to do anything?
-		SDL_assert(!( (butt->flags & BUTTON_BIG) && (butt->flags & BUTTON_SMALL) ));
-		int fontsz;
-		if (butt->flags & BUTTON_BIG)
-			fontsz = button_height(butt->flags)/2;
-		else if (butt->flags & BUTTON_SMALL)
-			fontsz = button_height(butt->flags)/2;
-		else
-			fontsz = button_height(butt->flags)/3;
-		log_printf("flags=%d fontsz=%d", butt->flags, fontsz);
+		int fontsz = button_height(butt->flags)/2;
 
 		const char *newln = strchr(butt->text, '\n');
 		if (newln) {
@@ -112,7 +101,7 @@ void button_show(const struct Button *butt)
 			SDL_FreeSurface(s1);
 			SDL_FreeSurface(s2);
 		} else {
-			SDL_Surface *s = misc_create_text_surface(butt->text, black, 50);
+			SDL_Surface *s = misc_create_text_surface(butt->text, black, fontsz);
 			misc_blit_with_center(s, butt->destsurf, &butt->center);
 			SDL_FreeSurface(s);
 		}
