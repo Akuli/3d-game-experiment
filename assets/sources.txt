@@ -22,5 +22,5 @@ arrows/right.png: see scripts/resize_images
 arrows/up.png:    see scripts/resize_images
 arrows/down.png:  see scripts/resize_images
 
-places/*.txt: I wrote myself
+default_places/*.txt: I wrote myself
 DejaVuSans.ttf: /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf from Debian package fonts-dejavu-core, version 2.37-1

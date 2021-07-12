@@ -11,7 +11,7 @@
 #include "log.h"
 
 /*
-Small language for specifying places in assets/places/placename.txt files:
+Small language for specifying places in assets/(default|custom)_places/placename.txt files:
 - 1x1 squares on xz plane with integer corner coordinates are built of parts like
 
 	 --
@@ -55,6 +55,7 @@ static void add_trailing_spaces(char *s, size_t len)
 
 static char *read_file_with_trailing_spaces_added(const char *path, int *linelen, int *nlines)
 {
+	// TODO: windows can have issue with unicode in file names
 	FILE *f = fopen(path, "r");
 	if (!f)
 		log_printf_abort("opening '%s' failed: %s", path, strerror(errno));
@@ -231,15 +232,22 @@ const struct Place *place_list(int *nplaces)
 	static struct Place places[50];
 
 	if (n == -1) {
-		// not ready yet, called for first time
+		// called for first time
 		glob_t gl;
-		if (glob("places/*.txt", 0, NULL, &gl) != 0)
-			log_printf_abort("can't find place files");
+		if (glob("default_places/*.txt", 0, NULL, &gl) != 0)
+			log_printf_abort("can't find default places");
+
+		// TODO: does this error on windows when custom_places not exists?
+		int r = glob("custom_places/*.txt", GLOB_APPEND, NULL, &gl);
+		if (r != 0 && r != GLOB_NOMATCH)
+			log_printf_abort("error while globbing custom places");
 
 		n = gl.gl_pathc;
-		SDL_assert(n <= sizeof(places)/sizeof(places[0]));
-		for (int i = 0; i < n; i++)
+		size_t i;
+		for (i = 0; i < gl.gl_pathc && i < sizeof(places)/sizeof(places[0]); i++)
 			init_place(&places[i], gl.gl_pathv[i]);
+		for ( ; i < gl.gl_pathc; i++)
+			log_printf("ignoring place because there's too many: %s", gl.gl_pathv[i]);
 
 		globfree(&gl);
 	}
