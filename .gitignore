@@ -7,3 +7,4 @@ libs/
 build/
 generated/
 logs/
+iwyu.out

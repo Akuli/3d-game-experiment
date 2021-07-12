@@ -2,26 +2,27 @@
 # I don't understand what "private" and "public" do below
 
 [
-	# replace e.g. <SDL2/SDL_events.h> with just <SDL2/SDL.h>
-	# but there is e.g. SDL_ttf.h which isn't exported in SDL2.h
-	{ include: ["<SDL2/SDL_assert.h>", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["<SDL2/SDL_error.h>", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["<SDL2/SDL_events.h>", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["<SDL2/SDL_keyboard.h>", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["<SDL2/SDL_log.h>", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["<SDL2/SDL_pixels.h>", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["<SDL2/SDL_rect.h>", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["<SDL2/SDL_scancode.h>", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["<SDL2/SDL_surface.h>", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["<SDL2/SDL_timer.h>", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["<SDL2/SDL_video.h>", "private", "<SDL2/SDL.h>", "public"] },
+	# replace e.g. "SDL_events.h" with just <SDL2/SDL.h>
+	# but don't touch e.g. SDL_ttf.h, it's not exported in SDL2.h
+	{ include: ["\"SDL_assert.h\"", "private", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL_error.h\"", "private", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL_events.h\"", "private", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL_keyboard.h\"", "private", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL_log.h\"", "private", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL_pixels.h\"", "private", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL_rect.h\"", "private", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL_scancode.h\"", "private", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL_surface.h\"", "private", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL_timer.h\"", "private", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL_video.h\"", "private", "<SDL2/SDL.h>", "public"] },
 
-	# my -I hack in Makefile makes iwyu suggest "" instead of <> for whatever reason
-	{ include: ["\"stdbool.h\"", "private", "<stdbool.h>", "public"] },
+	# custom glob
+	{ include: ["<glob.h>", "private", "\"glob.h\"", "public"] },
 
-	# don't know why this is needed
+	# needed on github actions, idk why
 	{ include: ["<bits/types/struct_tm.h>", "private", "<time.h>", "public"] },
 
-	# custom glob implementation
-	{ include: ["<glob.h>", "private", "\"glob.h\"", "public"] },
+	# needed only on my computer, idk why
+	{ include: ["<bits/stdint-uintn.h>", "private", "<stdint.h>", "public"] },
+	{ include: ["<bits/types/time_t.h>", "private", "<time.h>", "public"] },
 ]
