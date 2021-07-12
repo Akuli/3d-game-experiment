@@ -42,6 +42,7 @@ static void free_image_surfaces(void)
 
 static SDL_Surface *get_image(enum ButtonFlags f)
 {
+	SDL_assert(!( (f & BUTTON_BIG) && (f & BUTTON_SMALL) ));
 	static bool atexitdone = false;
 	if (!atexitdone) {
 		atexit(free_image_surfaces);
@@ -51,7 +52,7 @@ static SDL_Surface *get_image(enum ButtonFlags f)
 	if (!image_surfaces[f]) {
 		char path[100];
 		snprintf(path, sizeof path, "buttons/%s/%s/%s",
-			(f & BUTTON_BIG) ? "big" : "small",
+			(f & BUTTON_BIG) ? "big" : (f & BUTTON_SMALL) ? "small" : "medium",
 			(f & BUTTON_VERTICAL) ? "vertical" : "horizontal",
 			(f & BUTTON_DISABLED) ? "disabled.png" : (
 				(f & BUTTON_PRESSED) ? "pressed.png" : "normal.png"
@@ -62,9 +63,10 @@ static SDL_Surface *get_image(enum ButtonFlags f)
 	return image_surfaces[f];
 }
 
-#define PADDING 15
-int button_width(enum ButtonFlags f)  { return get_image(f)->w + PADDING; }
-int button_height(enum ButtonFlags f) { return get_image(f)->h + PADDING; }
+#define MARGIN 15
+int button_width(enum ButtonFlags f)  { return get_image(f)->w + MARGIN; }
+int button_height(enum ButtonFlags f) { return get_image(f)->h + MARGIN; }
+#undef MARGIN
 
 void button_show(const struct Button *butt)
 {
@@ -77,7 +79,18 @@ void button_show(const struct Button *butt)
 
 	if (butt->text) {
 		SDL_Color black = { 0x00, 0x00, 0x00, 0xff };
-		int fontsz = button_height(butt->flags)/2;
+
+		// TODO: don't use button_height for this, hard-coding is fine
+		// FIXME: fontsz doesn't seem to do anything?
+		SDL_assert(!( (butt->flags & BUTTON_BIG) && (butt->flags & BUTTON_SMALL) ));
+		int fontsz;
+		if (butt->flags & BUTTON_BIG)
+			fontsz = button_height(butt->flags)/2;
+		else if (butt->flags & BUTTON_SMALL)
+			fontsz = button_height(butt->flags)/2;
+		else
+			fontsz = button_height(butt->flags)/3;
+		log_printf("flags=%d fontsz=%d", butt->flags, fontsz);
 
 		const char *newln = strchr(butt->text, '\n');
 		if (newln) {

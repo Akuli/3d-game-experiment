@@ -84,7 +84,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 {
 	int leftx = idx * (ch->winsurf->w/2);
 
-	enum ButtonFlags flags = BUTTON_VERTICAL;
+	enum ButtonFlags flags = BUTTON_VERTICAL | BUTTON_SMALL;
 	SDL_Rect preview;
 	SDL_Point prevc, nextc;
 	calculate_player_chooser_geometry_stuff(leftx, &preview, &prevc, &nextc, flags);
@@ -257,6 +257,7 @@ static enum MiscState handle_event(const SDL_Event *evt, struct Chooser *ch)
 	button_handle_event(evt, &ch->placech.prevbtn);
 	button_handle_event(evt, &ch->placech.nextbtn);
 	button_handle_event(evt, &ch->bigplaybtn);
+	button_handle_event(evt, &ch->editbtn);
 
 	if (evt->type == SDL_MOUSEMOTION)
 		show_or_hide_without_enemies_text(ch, evt->motion.x, evt->motion.y);
@@ -266,7 +267,7 @@ static enum MiscState handle_event(const SDL_Event *evt, struct Chooser *ch)
 	return MISC_STATE_CHOOSER;
 }
 
-static void on_play_button_clicked(void *ptr)
+static void on_play_or_edit_button_clicked(void *ptr)
 {
 	*(bool *)ptr = true;
 }
@@ -278,6 +279,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 
 	enum ButtonFlags placechflags = 0;
+
 	*ch = (struct Chooser){
 		.win = win,
 		.winsurf = winsurf,
@@ -288,9 +290,21 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 			.scancodes = { SDL_SCANCODE_RETURN, SDL_SCANCODE_SPACE },
 			.center = {
 				(PLACE_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
-				CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT/2,
+				CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT/2 - button_height(BUTTON_BIG)/2,
 			},
-			.onclick = on_play_button_clicked,
+			.onclick = on_play_or_edit_button_clicked,
+			// onclickdata is set in chooser_run()
+		},
+		.editbtn = {
+			.text = "Edit",
+			.flags = 0,
+			.destsurf = winsurf,
+			.scancodes = { SDL_SCANCODE_E },
+			.center = {
+				(PLACE_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
+				CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT/2 + button_height(BUTTON_BIG)/2,
+			},
+			.onclick = on_play_or_edit_button_clicked,
 			// onclickdata is set in chooser_run()
 		},
 		.placech = {
@@ -332,8 +346,8 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 	};
 
 	ch->withoutenemiesrect = (SDL_Rect){
-		ch->bigplaybtn.center.x - ch->withoutenemiestxt->w/2,
-		(ch->bigplaybtn.center.y + CAMERA_SCREEN_HEIGHT)/2,
+		ch->editbtn.center.x - ch->withoutenemiestxt->w/2,
+		(ch->editbtn.center.y + CAMERA_SCREEN_HEIGHT)/2,
 		ch->withoutenemiestxt->w,
 		ch->withoutenemiestxt->h,
 	};
@@ -364,11 +378,14 @@ static void show_title_text(SDL_Surface *winsurf)
 
 enum MiscState chooser_run(struct Chooser *ch)
 {
-	bool playbtnclicked = false;
-	ch->bigplaybtn.onclickdata = &playbtnclicked;
+	bool playclicked = false;
+	bool editclicked = false;
+	ch->bigplaybtn.onclickdata = &playclicked;
+	ch->editbtn.onclickdata = &editclicked;
 
 	SDL_FillRect(ch->winsurf, NULL, 0);
 	button_show(&ch->bigplaybtn);
+	button_show(&ch->editbtn);
 	button_show(&ch->placech.prevbtn);
 	button_show(&ch->placech.nextbtn);
 	show_player_chooser_in_beginning(&ch->playerch[0]);
@@ -377,7 +394,7 @@ enum MiscState chooser_run(struct Chooser *ch)
 
 	struct LoopTimer lt = {0};
 
-	while(!playbtnclicked) {
+	while(!playclicked && !editclicked) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
 			enum MiscState s = handle_event(&e, ch);
@@ -394,5 +411,7 @@ enum MiscState chooser_run(struct Chooser *ch)
 		SDL_UpdateWindowSurface(ch->win);
 		looptimer_wait(&lt);
 	}
+	if (editclicked)
+		log_printf("TODO should edit");
 	return MISC_STATE_PLAY;
 }

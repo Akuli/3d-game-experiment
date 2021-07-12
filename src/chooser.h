@@ -40,7 +40,7 @@ struct Chooser {
 	SDL_Window *win;
 	SDL_Surface *winsurf;
 	struct Ellipsoid ellipsoids[50];
-	struct Button bigplaybtn;
+	struct Button bigplaybtn, editbtn;
 	SDL_Surface *withoutenemiestxt;
 	SDL_Rect withoutenemiesrect;
 };

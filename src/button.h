@@ -5,11 +5,12 @@
 
 enum ButtonFlags {
 	BUTTON_BIG = 0x01,
-	BUTTON_VERTICAL = 0x02,
-	BUTTON_PRESSED = 0x04,
-	BUTTON_DISABLED = 0x08,
+	BUTTON_SMALL = 0x02,
+	BUTTON_VERTICAL = 0x04,
+	BUTTON_PRESSED = 0x08,
+	BUTTON_DISABLED = 0x10,
 };
-#define BUTTON_ALLFLAGS (BUTTON_BIG | BUTTON_VERTICAL | BUTTON_PRESSED | BUTTON_DISABLED)
+#define BUTTON_ALLFLAGS (BUTTON_BIG | BUTTON_SMALL | BUTTON_VERTICAL | BUTTON_PRESSED | BUTTON_DISABLED)
 
 struct Button {
 	// imgpath image and text are drawn on top of a generic button background image
@@ -53,7 +54,7 @@ void button_show(const struct Button *butt);
 // does nothing for events not related to the button
 void button_handle_event(const SDL_Event *evt, struct Button *butt);
 
-// Calculate width and height with BUTTON_BIG and BUTTON_VERTICAL flags
+// Calculate width and height based on BUTTON_BIG, BUTTON_SMALL, BUTTON_VERTICAL
 int button_width(enum ButtonFlags f);
 int button_height(enum ButtonFlags f);
 

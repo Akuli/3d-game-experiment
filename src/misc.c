@@ -58,7 +58,7 @@ SDL_Surface *misc_create_text_surface(const char *text, SDL_Color col, int fonts
 	SDL_Surface *s = TTF_RenderUTF8_Blended(font, text, col);
 	TTF_CloseFont(font);
 	if (!s)
-		log_printf_abort("TTF_RenderUTF8_Solid failed: %s", TTF_GetError());
+		log_printf_abort("TTF_RenderUTF8_Blended failed: %s", TTF_GetError());
 	return s;
 }
 
