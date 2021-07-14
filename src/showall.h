@@ -10,7 +10,9 @@
 void show_all(
 	const struct Wall *walls, int nwalls,
 	const struct Ellipsoid *els, int nels,
-	const struct Camera *cam);
+	const struct Camera *cam,
+	const struct Wall *hlwall  // wall to highlight, can be NULL, not necessarily in walls array
+);
 
 
 #endif     // SHOWALL_H

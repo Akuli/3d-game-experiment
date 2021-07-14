@@ -26,7 +26,7 @@ static void rotate_camera(struct PlaceEditor *pe, float speed)
 
 	camera_update_caches(&pe->cam);
 	SDL_FillRect(pe->cam.surface, NULL, 0);
-	show_all(pe->pl->walls, pe->pl->nwalls, NULL, 0, &pe->cam);
+	show_all(pe->pl->walls, pe->pl->nwalls, NULL, 0, &pe->cam, &pe->pl->walls[0]);
 }
 
 void handle_event(struct PlaceEditor *pe, SDL_Event e)

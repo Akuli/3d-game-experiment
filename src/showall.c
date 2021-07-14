@@ -30,8 +30,8 @@ struct Info {
 	// which range of x coordinates will be showing this ellipsoid or wall?
 	int xmin, xmax;
 
-	// for sorting infos to display them in correct order
-	bool insortedarray;
+	bool insortedarray;  // for sorting infos to display them in correct order
+	bool highlight;
 
 	union {
 		struct WallCache wallc;
@@ -59,10 +59,11 @@ static void add_ellipsoid_if_visible(struct ShowingState *st, int idx)
 		st->infos[id].xmin = xmin;
 		st->infos[id].xmax = xmax;
 		st->infos[id].insortedarray = false;
+		st->infos[id].highlight = false;
 	}
 }
 
-static void add_wall_if_visible(struct ShowingState *st, int idx)
+static void add_wall_if_visible(struct ShowingState *st, int idx, bool highlight)
 {
 	int xmin, xmax;
 	struct WallCache wc;
@@ -73,6 +74,7 @@ static void add_wall_if_visible(struct ShowingState *st, int idx)
 		st->infos[id].xmin = xmin;
 		st->infos[id].xmax = xmax;
 		st->infos[id].insortedarray = false;
+		st->infos[id].highlight = highlight;
 		st->infos[id].cache.wallc = wc;
 	}
 }
@@ -242,14 +244,14 @@ static void get_yminmax(struct ShowingState *st, ID id, int x, int *ymin, int *y
 	}
 }
 
-static void draw_column(const struct ShowingState *st, int x, ID id, int ymin, int ymax)
+static void draw_column(const struct ShowingState *st, int x, ID id, int ymin, int ymax, bool highlight)
 {
 	switch(ID_TYPE(id)) {
 	case ID_TYPE_ELLIPSOID:
 		ellipsoid_drawcolumn(&st->els[ID_INDEX(id)], &st->infos[id].cache.ellipsoidc, ymin, ymax);
 		break;
 	case ID_TYPE_WALL:
-		wall_drawcolumn(&st->infos[id].cache.wallc, x, ymin, ymax);
+		wall_drawcolumn(&st->infos[id].cache.wallc, x, ymin, ymax, highlight);
 		break;
 	}
 }
@@ -259,7 +261,8 @@ static void draw_column(const struct ShowingState *st, int x, ID id, int ymin, i
 void show_all(
 	const struct Wall *walls, int nwalls,
 	const struct Ellipsoid *els, int nels,
-	const struct Camera *cam)
+	const struct Camera *cam,
+	const struct Wall *hlwall)
 {
 	SDL_assert(nwalls <= MAX_WALLS);
 	SDL_assert(nels <= MAX_ELLIPSOIDS);
@@ -271,8 +274,17 @@ void show_all(
 	st.els = els;
 	st.nvisible = 0;
 
-	for (int i = 0; i < nwalls; i++) add_wall_if_visible(&st, i);
-	for (int i = 0; i < nels; i++)   add_ellipsoid_if_visible(&st, i);
+	for (int i = 0; i < nwalls; i++) {
+		bool highlight =
+			hlwall
+			&& walls[i].startx == hlwall->startx
+			&& walls[i].startz == hlwall->startz
+			&& walls[i].dir == hlwall->dir;
+		add_wall_if_visible(&st, i, highlight);
+	}
+	for (int i = 0; i < nels; i++) {
+		add_ellipsoid_if_visible(&st, i);
+	}
 
 	setup_dependencies(&st);
 
@@ -304,6 +316,6 @@ void show_all(
 		int nnonoverlap = interval_non_overlapping(intervals, nintervals, nonoverlap);
 
 		for (int i = 0; i < nnonoverlap; i++)
-			draw_column(&st, x, nonoverlap[i].id, nonoverlap[i].start, nonoverlap[i].end);
+			draw_column(&st, x, nonoverlap[i].id, nonoverlap[i].start, nonoverlap[i].end, st.infos[nonoverlap[i].id].highlight);
 	}
 }

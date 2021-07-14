@@ -212,7 +212,7 @@ static inline uint32_t rgb_average(uint32_t a, uint32_t b) {
 	return ((a & 0xfefefe) >> 1) + ((b & 0xfefefe) >> 1);
 }
 
-void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax)
+void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax, bool highlight)
 {
 	SDL_Surface *surf = wc->cam->surface;
 	const SDL_PixelFormat *fmt = wc->cam->surface->format;
@@ -225,8 +225,11 @@ void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax)
 
 	// making wallcolor a compile-time constant speeds up slightly
 	SDL_assert(fmt->Rmask == 0xff0000 && fmt->Gmask == 0x00ff00 && fmt->Bmask == 0x0000ff);
-	uint32_t wallcolor = 0x00ffff;
-
-	for (uint32_t *ptr = start; ptr < end; ptr += mypitch)
-		*ptr = rgb_average(*ptr, wallcolor);
+	if (highlight) {
+		for (uint32_t *ptr = start; ptr < end; ptr += mypitch)
+			*ptr = rgb_average(*ptr, 0xff0000);
+	} else {
+		for (uint32_t *ptr = start; ptr < end; ptr += mypitch)
+			*ptr = rgb_average(*ptr, 0x00ffff);
+	}
 }

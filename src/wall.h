@@ -107,7 +107,7 @@ inline bool wall_linedup(const struct Wall *w1, const struct Wall *w2)
 Draw all pixels of wall corresponding to range of y coordinates. May be
 called more than once with same xcache but different ymin and ymax.
 */
-void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax);
+void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax, bool highlight);
 
 
 #endif    // WALL_H
