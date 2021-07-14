@@ -1,6 +1,3 @@
-// this file contains functions that i wrote and later didn't need them anymore
-
-
 /*
 Where on the ellipsoid's surface will each pixel go? This function calculates vectors
 so that we don't need to call slow trig functions every time an ellipsoid is drawn.
