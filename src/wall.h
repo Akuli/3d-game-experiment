@@ -90,12 +90,16 @@ struct WallCache {
 };
 
 /*
-Returns whether wall is visible. If it is, values of xmin and xmax tell where on
-the screen it will be shown.
+Returns whether wall is visible.
 
-Also, this function is how to fill a WallCache.
+Many things in one function, hard to separate. Cache is needed for visibility checking,
+but can't be created if not visible. Visibility checking also produces xmin and xmax.
 */
-bool wall_visible_xminmax(const struct Wall *wall, const struct Camera *cam, int *xmin, int *xmax, struct WallCache *wc);
+bool wall_visible_xminmax_fillcache(
+	const struct Wall *wall, const struct Camera *cam,
+	int *xmin, int *xmax,   // If returns true, set to where on screen will wall go
+	struct WallCache *wc    // Filled if returns true
+);
 
 // Which range of screen y coordinates is showing the wall?
 void wall_yminmax(const struct WallCache *wc, int x, int *ymin, int *ymax);
