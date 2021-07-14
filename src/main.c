@@ -12,6 +12,7 @@
 #include <string.h>
 #include <time.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -115,6 +116,10 @@ int main(int argc, char **argv)
 {
 	printf("Main function starts\n");
 	bool sound = !(argc == 2 && strcmp(argv[1], "--no-sound") == 0);
+	if (argc > 1 && sound) {
+		fprintf(stderr, "Usage: %s [--no-sound]\n", argv[0]);
+		return 2;
+	}
 
 	cd_where_everything_is();
 	log_init();
