@@ -66,7 +66,7 @@ static void add_wall_if_visible(struct ShowingState *st, int idx)
 {
 	int xmin, xmax;
 	struct WallCache wc;
-	if (wall_visible_xminmax(&st->walls[idx], st->cam, &xmin, &xmax, &wc)) {
+	if (wall_visible_xminmax_fillcache(&st->walls[idx], st->cam, &xmin, &xmax, &wc)) {
 		ID id = ID_NEW(ID_TYPE_WALL, idx);
 		st->visible[st->nvisible++] = id;
 		st->infos[id].ndeps = 0;

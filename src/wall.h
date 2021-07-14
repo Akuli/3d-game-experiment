@@ -2,7 +2,6 @@
 #define WALL_H
 
 #include <stdbool.h>
-#include <stdint.h>
 #include "ellipsoid.h"
 #include "camera.h"
 #include "mathstuff.h"
@@ -67,27 +66,6 @@ void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el);
 // center point of wall in world coordinates
 Vec3 wall_center(const struct Wall *w);
 
-/*
-Information shared in multiple functions
-*/
-struct WallCache {
-	const struct Camera *cam;
-	uint32_t color;
-
-	// screen points
-	Vec2 top1, top2, bot1, bot2;
-};
-
-/*
-Returns whether wall is visible. If it is, values of xmin and xmax tell where on
-the screen it will be shown and cache is filled.
-*/
-bool wall_visible_xminmax(
-	const struct Wall *w, const struct Camera *cam, int *xmin, int *xmax, struct WallCache *wc);
-
-// Which range of screen y coordinates is showing the wall?
-void wall_yminmax(const struct WallCache *wc, int x, int *ymin, int *ymax);
-
 // same for any two points on same side of the wall
 bool wall_side(const struct Wall *w, Vec3 pt);
 
@@ -103,10 +81,29 @@ inline bool wall_linedup(const struct Wall *w1, const struct Wall *w2)
 	return false;
 }
 
+// for drawing functions
+struct WallCache {
+	const struct Wall *wall;
+	const struct Camera *cam;
+	Vec2 top1, top2, bot1, bot2;  // screen points
+};
+
 /*
-Draw all pixels of wall corresponding to range of y coordinates. May be
-called more than once with same xcache but different ymin and ymax.
+Returns whether wall is visible.
+
+Many things in one function, hard to separate. Cache is needed for visibility checking,
+but can't be created if not visible. Visibility checking also produces xmin and xmax.
 */
+bool wall_visible_xminmax_fillcache(
+	const struct Wall *wall, const struct Camera *cam,
+	int *xmin, int *xmax,   // If returns true, set to where on screen will wall go
+	struct WallCache *wc    // Filled if returns true
+);
+
+// Which range of screen y coordinates is showing the wall?
+void wall_yminmax(const struct WallCache *wc, int x, int *ymin, int *ymax);
+
+// Draw all pixels of wall corresponding to range of y coordinates
 void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax);
 
 
