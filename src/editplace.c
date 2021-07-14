@@ -26,7 +26,12 @@ static void rotate_camera(struct PlaceEditor *pe, float speed)
 
 	camera_update_caches(&pe->cam);
 	SDL_FillRect(pe->cam.surface, NULL, 0);
-	show_all(pe->pl->walls, pe->pl->nwalls, NULL, 0, &pe->cam, &pe->pl->walls[0]);
+	show_all(pe->pl->walls, pe->pl->nwalls, NULL, 0, &pe->cam, NULL);
+
+	struct WallCache wc;
+	int dummy1, dummy2;
+	if (wall_visible_xminmax_fillcache(&pe->pl->walls[0], &pe->cam, &dummy1, &dummy2, &wc))
+		wall_drawborder(&wc);
 }
 
 void handle_event(struct PlaceEditor *pe, SDL_Event e)
@@ -66,7 +71,7 @@ void handle_event(struct PlaceEditor *pe, SDL_Event e)
 
 enum MiscState editplace_run(SDL_Window *wnd, struct Place *pl)
 {
-SDL_Surface *wndsurf = SDL_GetWindowSurface(wnd);
+	SDL_Surface *wndsurf = SDL_GetWindowSurface(wnd);
 	if (!wndsurf)
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 	SDL_FillRect(wndsurf, NULL, 0);

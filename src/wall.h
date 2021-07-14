@@ -106,5 +106,7 @@ void wall_yminmax(const struct WallCache *wc, int x, int *ymin, int *ymax);
 // Draw all pixels of wall corresponding to range of y coordinates
 void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax, bool highlight);
 
+void wall_drawborder(const struct WallCache *wc);
+
 
 #endif    // WALL_H
