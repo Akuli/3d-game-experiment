@@ -160,7 +160,7 @@ bool wall_side(const struct Wall *w, Vec3 pt)
 
 inline bool wall_linedup(const struct Wall *w1, const struct Wall *w2);
 
-bool wall_visible_xminmax(const struct Wall *w, const struct Camera *cam, int *xmin, int *xmax, struct WallCache *wc)
+bool wall_visible_xminmax_fillcache(const struct Wall *w, const struct Camera *cam, int *xmin, int *xmax, struct WallCache *wc)
 {
 	if (!wall_is_visible(w, cam)) {
 		// Can't fill cache in this case
