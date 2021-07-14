@@ -12,6 +12,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include "misc.h"
 #endif
 
 #define CLAMP_TO_U8(val) ( (unsigned char) min(max(val, 0), 0xff) )
