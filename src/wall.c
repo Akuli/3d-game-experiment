@@ -132,52 +132,6 @@ static bool wall_is_visible(const struct Wall *w, const struct Camera *cam)
 	return false;
 }
 
-static void fill_cache(const struct Wall *w, struct WallCache *wc, const struct Camera *cam)
-{
-	wc->cam = cam;
-
-	float dSQUARED = vec3_lengthSQUARED(vec3_sub(cam->location, wall_center(w)));
-	wc->color = SDL_MapRGB(cam->surface->format, (int)( 0xaa*expf(-dSQUARED / 300.f) ), 0, 0);
-
-	wc->top1 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->top1));
-	wc->top2 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->top2));
-	wc->bot1 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->bot1));
-	wc->bot2 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->bot2));
-}
-
-bool wall_visible_xminmax(
-	const struct Wall *w, const struct Camera *cam, int *xmin, int *xmax, struct WallCache *wc)
-{
-	if (!wall_is_visible(w, cam))
-		return false;
-
-	fill_cache(w, wc, cam);
-
-	SDL_assert(fabsf(wc->top1.x - wc->bot1.x) < 1e-5f);
-	SDL_assert(fabsf(wc->top2.x - wc->bot2.x) < 1e-5f);
-
-	// need only top corners because others have same screen x
-	*xmin = (int)ceilf(min(wc->top1.x, wc->top2.x));
-	*xmax = (int)      max(wc->top1.x, wc->top2.x);
-	return (*xmin <= *xmax);
-}
-
-void wall_yminmax(const struct WallCache *wc, int x, int *ymin, int *ymax)
-{
-	if (fabsf(wc->top1.x - wc->top2.x) < 1e-5f) {
-		// would get issues in linear_map()
-		*ymin = 0;
-		*ymax = 0;
-	}
-	*ymin = (int) linear_map(wc->top1.x, wc->top2.x, wc->top1.y, wc->top2.y, x);
-	*ymax = (int) linear_map(wc->bot1.x, wc->bot2.x, wc->bot1.y, wc->bot2.y, x);
-
-	if (*ymin < 0)
-		*ymin = 0;
-	if (*ymax >= wc->cam->surface->h)
-		*ymax = wc->cam->surface->h - 1;
-}
-
 Vec3 wall_center(const struct Wall *w)
 {
 	float x = (float)w->startx;
@@ -206,6 +160,47 @@ bool wall_side(const struct Wall *w, Vec3 pt)
 
 inline bool wall_linedup(const struct Wall *w1, const struct Wall *w2);
 
+bool wall_visible_xminmax(const struct Wall *w, const struct Camera *cam, int *xmin, int *xmax, struct WallCache *wc)
+{
+	if (!wall_is_visible(w, cam)) {
+		// Can't run fill_cache() in this case
+		return false;
+	}
+
+	*wc = (struct WallCache){
+		.wall = w,
+		.cam = cam,
+		.top1 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->top1)),
+		.top2 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->top2)),
+		.bot1 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->bot1)),
+		.bot2 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->bot2)),
+	};
+
+	SDL_assert(fabsf(wc->top1.x - wc->bot1.x) < 1e-5f);
+	SDL_assert(fabsf(wc->top2.x - wc->bot2.x) < 1e-5f);
+
+	// need only top corners because others have same screen x
+	*xmin = (int)ceilf(min(wc->top1.x, wc->top2.x));
+	*xmax = (int)      max(wc->top1.x, wc->top2.x);
+	return (*xmin <= *xmax);
+}
+
+void wall_yminmax(const struct WallCache *wc, int x, int *ymin, int *ymax)
+{
+	if (fabsf(wc->top1.x - wc->top2.x) < 1e-5f) {
+		// would get issues in linear_map()
+		*ymin = 0;
+		*ymax = 0;
+	}
+	*ymin = (int) linear_map(wc->top1.x, wc->top2.x, wc->top1.y, wc->top2.y, x);
+	*ymax = (int) linear_map(wc->bot1.x, wc->bot2.x, wc->bot1.y, wc->bot2.y, x);
+
+	if (*ymin < 0)
+		*ymin = 0;
+	if (*ymax >= wc->cam->surface->h)
+		*ymax = wc->cam->surface->h - 1;
+}
+
 // 24 rightmost bits used, 8 bits for each of R,G,B
 // this is perf critical
 static inline uint32_t rgb_average(uint32_t a, uint32_t b) {
@@ -215,7 +210,6 @@ static inline uint32_t rgb_average(uint32_t a, uint32_t b) {
 void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax)
 {
 	SDL_Surface *surf = wc->cam->surface;
-	const SDL_PixelFormat *fmt = wc->cam->surface->format;
 
 	SDL_assert(surf->pitch % sizeof(uint32_t) == 0);
 	int mypitch = surf->pitch / sizeof(uint32_t);
@@ -224,7 +218,8 @@ void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax)
 	uint32_t *end   = (uint32_t *)surf->pixels + ymax*mypitch + x;
 
 	// making wallcolor a compile-time constant speeds up slightly
-	SDL_assert(fmt->Rmask == 0xff0000 && fmt->Gmask == 0x00ff00 && fmt->Bmask == 0x0000ff);
+	const SDL_PixelFormat *f = surf->format;
+	SDL_assert(f->Rmask == 0xff0000 && f->Gmask == 0x00ff00 && f->Bmask == 0x0000ff);
 	uint32_t wallcolor = 0x00ffff;
 
 	for (uint32_t *ptr = start; ptr < end; ptr += mypitch)
