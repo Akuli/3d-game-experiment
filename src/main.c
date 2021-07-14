@@ -26,6 +26,7 @@
 #include "sound.h"
 #include "log.h"
 #include "place.h"
+#include "editplace.h"
 
 
 /*
@@ -112,6 +113,7 @@ static void load_the_stuff(SDL_Window *wnd, SDL_Surface *wndsurf, bool sound)
 
 int main(int argc, char **argv)
 {
+	printf("Main function starts\n");
 	bool sound = !(argc == 2 && strcmp(argv[1], "--no-sound") == 0);
 
 	cd_where_everything_is();
@@ -166,6 +168,11 @@ int main(int argc, char **argv)
 		case MISC_STATE_GAMEOVER:
 			log_printf("showing game over screen");
 			s = game_over(wnd, winner);
+			break;
+
+		case MISC_STATE_EDITPLACE:
+			log_printf("starting place editor");
+			s = editplace_run(wnd, ch.placech.pl);
 			break;
 
 		case MISC_STATE_QUIT:

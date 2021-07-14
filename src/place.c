@@ -234,7 +234,7 @@ static void read_place_from_file(struct Place *pl, const char *path)
 		log_printf("    player %d goes to (%.2f, %.2f, %.2f)", i, pl->playerlocs[i].x, pl->playerlocs[i].y, pl->playerlocs[i].z);
 }
 
-const struct Place *place_list(int *nplaces)
+struct Place *place_list(int *nplaces)
 {
 	static int n = -1;
 	static struct Place places[50];

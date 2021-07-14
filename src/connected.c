@@ -1,6 +1,11 @@
+#include "editplace.h"
 #include "log.h"
+#include "misc.h"
 #include "place.h"
 #include "wall.h"
+#include "looptimer.h"
+#include "showall.h"
+#include "camera.h"
 
 enum ConnectedRegionFlags {
 	CRF_WALL_XPOS = 0x01,

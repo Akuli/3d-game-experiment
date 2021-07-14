@@ -22,7 +22,7 @@ struct Place {
 };
 
 // Result is same array every time, cleaned when program exits
-const struct Place *place_list(int *nplaces);
+struct Place *place_list(int *nplaces);
 
 struct Wall *place_load(const char *const *spec, int *nwalls);
 

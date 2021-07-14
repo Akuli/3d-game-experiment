@@ -394,7 +394,7 @@ enum MiscState chooser_run(struct Chooser *ch)
 
 	struct LoopTimer lt = {0};
 
-	while(!playclicked && !editclicked) {
+	while(1) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
 			enum MiscState s = handle_event(&e, ch);
@@ -402,16 +402,17 @@ enum MiscState chooser_run(struct Chooser *ch)
 				return s;
 		}
 
+		if (playclicked)
+			return MISC_STATE_PLAY;
+		if (editclicked)
+			return MISC_STATE_EDITPLACE;
+
 		rotate_player_ellipsoids(ch->ellipsoids);
 		show_player_chooser_each_frame(ch, &ch->playerch[0]);
 		show_player_chooser_each_frame(ch, &ch->playerch[1]);
-
 		show_place_chooser_each_frame(&ch->placech);
 
 		SDL_UpdateWindowSurface(ch->win);
 		looptimer_wait(&lt);
 	}
-	if (editclicked)
-		log_printf("TODO should edit");
-	return MISC_STATE_PLAY;
 }
