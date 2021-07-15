@@ -96,7 +96,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 		.leftx = leftx,
 		.prevbtn = {
 			.flags = flags,
-			.imgpath = "arrows/left.png",
+			.imgpath = "assets/arrows/left.png",
 			.scancodes = {scprev},
 			.destsurf = ch->winsurf,
 			.center = prevc,
@@ -105,7 +105,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 		},
 		.nextbtn = {
 			.flags = flags,
-			.imgpath = "arrows/right.png",
+			.imgpath = "assets/arrows/right.png",
 			.scancodes = {scnext},
 			.destsurf = ch->winsurf,
 			.center = nextc,
@@ -320,7 +320,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				.angle = 0,
 			},
 			.prevbtn = {
-				.imgpath = "arrows/up.png",
+				.imgpath = "assets/arrows/up.png",
 				.flags = placechflags,
 				.destsurf = winsurf,
 				.scancodes = { SDL_SCANCODE_W, SDL_SCANCODE_UP },
@@ -331,7 +331,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				.onclick = select_prev_place,
 			},
 			.nextbtn = {
-				.imgpath = "arrows/down.png",
+				.imgpath = "assets/arrows/down.png",
 				.flags = placechflags,
 				.destsurf = winsurf,
 				.scancodes = { SDL_SCANCODE_S, SDL_SCANCODE_DOWN },

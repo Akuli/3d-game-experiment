@@ -51,7 +51,7 @@ static SDL_Surface *get_image(enum ButtonFlags f)
 
 	if (!image_surfaces[f]) {
 		char path[100];
-		snprintf(path, sizeof path, "buttons/%s/%s/%s",
+		snprintf(path, sizeof path, "assets/buttons/%s/%s/%s",
 			(f & BUTTON_BIG) ? "big" : (f & BUTTON_SMALL) ? "small" : "medium",
 			(f & BUTTON_VERTICAL) ? "vertical" : "horizontal",
 			(f & BUTTON_DISABLED) ? "disabled.png" : (

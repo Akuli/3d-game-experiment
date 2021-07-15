@@ -156,9 +156,9 @@ static void parse_vertical_wall_string(const char *part, bool *leftwall, bool *r
 static void read_place_from_file(struct Place *pl, const char *path)
 {
 	log_printf("Reading place from '%s'...", path);
-	if (strstr(path, "default_places") == path)
+	if (strstr(path, "assets/default_places") == path)
 		pl->custom = false;
-	else if (strstr(path, "custom_places") == path)
+	else if (strstr(path, "assets/custom_places") == path)
 		pl->custom = true;
 	else
 		SDL_assert(0);
@@ -242,8 +242,8 @@ struct Place *place_list(int *nplaces)
 	if (n == -1) {
 		// called for first time
 		glob_t gl;
-		if (glob("default_places/*.txt", 0, NULL, &gl) != 0)
-			log_printf_abort("can't find default places");
+		if (glob("assets/default_places/*.txt", 0, NULL, &gl) != 0)
+			log_printf_abort("default places not found");
 
 		// TODO: does this error on windows when custom_places not exists?
 		int r = glob("custom_places/*.txt", GLOB_APPEND, NULL, &gl);

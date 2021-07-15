@@ -61,9 +61,9 @@ void sound_init(void)
 	}
 
 	glob_t gl = {0};
-	if (glob("sounds/*.wav", GLOB_APPEND, NULL, &gl) != 0)
+	if (glob("assets/sounds/*.wav", GLOB_APPEND, NULL, &gl) != 0)
 		log_printf("can't find non-fart sounds");
-	if (glob("sounds/farts/*.wav", GLOB_APPEND, NULL, &gl) != 0)
+	if (glob("assets/sounds/farts/*.wav", GLOB_APPEND, NULL, &gl) != 0)
 		log_printf("can't find fart sounds");
 
 	for (int i = 0; i < gl.gl_pathc; i++) {
@@ -84,7 +84,7 @@ void sound_init(void)
 static Mix_Chunk *choose_sound(const char *pattern)
 {
 	char fullpat[1024];
-	snprintf(fullpat, sizeof fullpat, "sounds/%s", pattern);
+	snprintf(fullpat, sizeof fullpat, "assets/sounds/%s", pattern);
 
 	glob_t gl;
 	switch(glob(fullpat, 0, NULL, &gl)) {

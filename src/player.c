@@ -40,7 +40,7 @@ void player_init_epics(const SDL_PixelFormat *fmt)
 	inited = true;
 
 	glob_t gl;
-	if (glob("players/*.png", 0, NULL, &gl) != 0)
+	if (glob("assets/players/*.png", 0, NULL, &gl) != 0)
 		log_printf_abort("player pictures not found");
 	log_printf("found %d players", (int)gl.gl_pathc);   // no %zu on windows
 
