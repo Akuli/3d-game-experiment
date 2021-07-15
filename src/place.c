@@ -335,3 +335,11 @@ int place_copy(struct Place **places, int *nplaces, int srcidx)
 	place_save(&arr[n]);
 	return n;
 }
+
+void place_delete(struct Place *places, int *nplaces, int delidx)
+{
+	log_printf("removing \"%s\"", places[delidx].path);
+	if (remove(places[delidx].path) != 0)
+		log_printf_abort("remove(\"%s\") failed: %s", places[delidx].path, strerror(errno));
+	memmove(places + delidx, places + delidx + 1, --*nplaces - delidx);
+}

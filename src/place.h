@@ -27,8 +27,11 @@ struct Place *place_list(int *nplaces);
 // for custom places only
 void place_save(const struct Place *pl);
 
-// Returns index into *places
+// May reallocate *places, returns index into it
 int place_copy(struct Place **places, int *nplaces, int srcidx);
+
+// Doesn't reallocate places
+void place_delete(struct Place *places, int *nplaces, int srcidx);
 
 
 #endif   // PLACE_H

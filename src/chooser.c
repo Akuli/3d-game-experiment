@@ -302,8 +302,6 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 			// onclickdata is set in chooser_run()
 		},
 		.placech = {
-			.places = NULL,
-			.nplaces = 0,
 			.placeidx = 0,
 			.cam = {
 				.screencentery = -0.55f*PLACE_CHOOSER_HEIGHT,
@@ -364,6 +362,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 		},
 		.withoutenemiestxt = misc_create_text_surface("Practice without enemies", white_color, 10),
 	};
+	ch->placech.places = place_list(&ch->placech.nplaces);
 
 	ch->withoutenemiesrect = (SDL_Rect){
 		20,
@@ -403,8 +402,6 @@ static void copy_current_place(struct ChooserPlaceStuff *plcch)
 
 enum MiscState chooser_run(struct Chooser *ch)
 {
-	free(ch->placech.places);
-	ch->placech.places = place_list(&ch->placech.nplaces);
 	if (ch->placech.placeidx >= ch->placech.nplaces)
 		ch->placech.placeidx = ch->placech.nplaces-1;
 	update_place_chooser_buttons(&ch->placech);

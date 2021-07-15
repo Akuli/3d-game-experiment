@@ -52,6 +52,7 @@ surprisingly slow, and this function needs to blit stuff.
 void button_show(const struct Button *butt);
 
 // does nothing for events not related to the button
+// calls button_show() as needed
 void button_handle_event(const SDL_Event *evt, struct Button *butt);
 
 // Calculate width and height based on BUTTON_BIG, BUTTON_SMALL, BUTTON_VERTICAL

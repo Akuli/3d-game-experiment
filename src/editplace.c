@@ -1,6 +1,7 @@
 // FIXME: make copy when editing non-custom place
 
 #include "editplace.h"
+#include "button.h"
 #include "log.h"
 #include "max.h"
 #include "misc.h"
@@ -11,10 +12,12 @@
 #include "camera.h"
 
 struct PlaceEditor {
+	enum MiscState state;
 	struct Place *place;
 	struct Camera cam;
 	int rotatedir;
 	struct Wall selwall;   // selected wall
+	struct Button deletebtn, donebtn;
 };
 
 static void rotate_camera(struct PlaceEditor *pe, float speed)
@@ -121,13 +124,15 @@ static void delete_wall(struct PlaceEditor *pe)
 }
 
 // Returns whether redrawing needed
-bool handle_event(struct PlaceEditor *pe, SDL_Event e)
+bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 {
-	enum AngleKind ak = angle_kind(pe->cam.angle);
+	button_handle_event(e, &pe->deletebtn);
+	button_handle_event(e, &pe->donebtn);
 
-	switch(e.type) {
+	enum AngleKind ak = angle_kind(pe->cam.angle);
+	switch(e->type) {
 	case SDL_KEYDOWN:
-		switch(misc_handle_scancode(e.key.keysym.scancode)) {
+		switch(misc_handle_scancode(e->key.keysym.scancode)) {
 		case SDL_SCANCODE_LEFT:
 			ak = rotate_90deg(ak);
 			// fall through
@@ -159,20 +164,11 @@ bool handle_event(struct PlaceEditor *pe, SDL_Event e)
 			add_wall(pe);
 			return true;
 		default:
-			log_printf("unknown key press scancode %d", e.key.keysym.scancode);
 			return false;
 		}
 
 	case SDL_KEYUP:
-		switch(misc_handle_scancode(e.key.keysym.scancode)) {
-		case SDL_SCANCODE_LEFT:
-		case SDL_SCANCODE_DOWN:
-		case SDL_SCANCODE_RIGHT:
-		case SDL_SCANCODE_UP:
-		case SDL_SCANCODE_DELETE:
-		case SDL_SCANCODE_INSERT:
-			// Only key press is meaningful
-			return false;
+		switch(misc_handle_scancode(e->key.keysym.scancode)) {
 		case SDL_SCANCODE_A:
 			if (pe->rotatedir == 1)
 				pe->rotatedir = 0;
@@ -182,7 +178,6 @@ bool handle_event(struct PlaceEditor *pe, SDL_Event e)
 				pe->rotatedir = 0;
 			return false;
 		default:
-			log_printf("unknown key release scancode %d", e.key.keysym.scancode);
 			return false;
 		}
 
@@ -217,14 +212,37 @@ static void draw_walls(struct PlaceEditor *pe)
 	show_all(front, nfront, NULL, NULL, 0, &pe->cam);
 }
 
-enum MiscState editplace_run(SDL_Window *wnd, struct Place *pl)
+static void on_done_clicked(void *data)
 {
+	struct PlaceEditor *pe = data;
+	pe->state = MISC_STATE_CHOOSER;
+}
+
+struct DeleteData {
+	struct PlaceEditor *editor;
+	struct Place *places;
+	int *nplaces;
+};
+
+static void delete_this_place(void *data)
+{
+	// TODO: confirm if user really wants
+	const struct DeleteData *dd = data;
+	place_delete(dd->places, dd->nplaces, dd->editor->place - dd->places);
+	dd->editor->state = MISC_STATE_CHOOSER;
+}
+
+enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces, int placeidx)
+{
+	struct Place *pl = &places[placeidx];
+
 	SDL_Surface *wndsurf = SDL_GetWindowSurface(wnd);
 	if (!wndsurf)
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 	SDL_FillRect(wndsurf, NULL, 0);
 
 	struct PlaceEditor pe = {
+		.state = MISC_STATE_EDITPLACE,
 		.place = pl,
 		.cam = {
 			.screencentery = 0,
@@ -235,17 +253,44 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *pl)
 			.angle = 0,
 		},
 		.rotatedir = 0,
+		.donebtn = {
+			.text = "Done",
+			.destsurf = wndsurf,
+			.center = {
+				button_width(0)/2,
+				button_height(0)/2
+			},
+			.onclick = on_done_clicked,
+			.onclickdata = &pe,
+		},
+		.deletebtn = {
+			.text = "Delete\nthis place",
+			.destsurf = wndsurf,
+			.center = {
+				button_width(0)/2,
+				button_height(0)*3/2
+			},
+			.onclick = delete_this_place,
+			.onclickdata = &(struct DeleteData){
+				.editor = &pe,
+				.places = places,
+				.nplaces = nplaces,
+			},
+		},
 	};
 	rotate_camera(&pe, 0);
 
 	struct LoopTimer lt = {0};
+
 	for (bool redraw = true; ; redraw = false) { // First iteration always redraws
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
 			if (e.type == SDL_QUIT)
 				return MISC_STATE_QUIT;
-			if (handle_event(&pe, e))
+			if (handle_event(&pe, &e))
 				redraw = true;
+			if (pe.state != MISC_STATE_EDITPLACE)
+				return pe.state;
 		}
 
 		if (pe.rotatedir != 0)
@@ -268,6 +313,8 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *pl)
 
 			SDL_FillRect(pe.cam.surface, NULL, 0);
 			draw_walls(&pe);
+			button_show(&pe.donebtn);
+			button_show(&pe.deletebtn);
 			SDL_UpdateWindowSurface(wnd);
 		}
 		looptimer_wait(&lt);
