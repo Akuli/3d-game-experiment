@@ -75,6 +75,26 @@ static bool walls_match(const struct Wall *w1, const struct Wall *w2)
 	return w1->dir == w2->dir && w1->startx == w2->startx && w1->startz == w2->startz;
 }
 
+static void add_wall(struct PlaceEditor *pe)
+{
+	SDL_assert(pe->place->nwalls <= MAX_WALLS);
+	if (pe->place->nwalls == MAX_WALLS) {
+		log_printf("hitting max number of walls, can't add more");
+		return;
+	}
+
+	for (struct Wall *w = pe->place->walls; w < &pe->place->walls[pe->place->nwalls]; w++)
+	{
+		if (walls_match(w, &pe->selwall))
+			return;
+	}
+
+	struct Wall *ptr = &pe->place->walls[pe->place->nwalls++];
+	log_printf("Added wall, now there are %d walls", pe->place->nwalls);
+	*ptr = pe->selwall;
+	wall_init(ptr);
+}
+
 static bool is_at_edge(const struct Wall *w, const struct Place *pl)
 {
 	switch(w->dir) {
@@ -90,7 +110,8 @@ static void delete_wall(struct PlaceEditor *pe)
 	{
 		if (walls_match(w, &pe->selwall) && !is_at_edge(w, pe->place)) {
 			*w = pe->place->walls[--pe->place->nwalls];
-			break;
+			log_printf("Deleted wall, now there are %d walls", pe->place->nwalls);
+			return;
 		}
 	}
 }
@@ -130,6 +151,9 @@ bool handle_event(struct PlaceEditor *pe, SDL_Event e)
 		case SDL_SCANCODE_DELETE:
 			delete_wall(pe);
 			return true;
+		case SDL_SCANCODE_INSERT:
+			add_wall(pe);
+			return true;
 		default:
 			log_printf("unknown key press scancode %d", e.key.keysym.scancode);
 			return false;
@@ -141,6 +165,9 @@ bool handle_event(struct PlaceEditor *pe, SDL_Event e)
 		case SDL_SCANCODE_DOWN:
 		case SDL_SCANCODE_RIGHT:
 		case SDL_SCANCODE_UP:
+		case SDL_SCANCODE_DELETE:
+		case SDL_SCANCODE_INSERT:
+			// Only key press is meaningful
 			return false;
 		case SDL_SCANCODE_A:
 			if (pe->rotatedir == 1)
