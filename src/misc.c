@@ -51,7 +51,7 @@ void misc_blit_with_center(SDL_Surface *src, SDL_Surface *dst, const SDL_Point *
 SDL_Surface *misc_create_text_surface(const char *text, SDL_Color col, int fontsz)
 {
 	// font not cached because this isn't called in perf critical loops
-	TTF_Font *font = TTF_OpenFont("DejaVuSans.ttf", fontsz);
+	TTF_Font *font = TTF_OpenFont("assets/DejaVuSans.ttf", fontsz);
 	if (!font)
 		log_printf_abort("TTF_OpenFont failed: %s", TTF_GetError());
 

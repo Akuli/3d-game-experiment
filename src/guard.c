@@ -19,7 +19,7 @@ void guard_init_epic(const SDL_PixelFormat *fmt)
 	SDL_assert(!ready);
 	ready = true;
 
-	ellipsoidpic_load(&guard_ellipsoidpic, "guard.png", fmt);
+	ellipsoidpic_load(&guard_ellipsoidpic, "assets/guard.png", fmt);
 	guard_ellipsoidpic.hidelowerhalf = true;
 }
 

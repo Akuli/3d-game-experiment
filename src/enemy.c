@@ -37,8 +37,8 @@ void enemy_init_epics(const SDL_PixelFormat *fmt)
 	SDL_assert(n_ellipsoid_pics == -1);
 
 	glob_t gl;
-	if (glob("enemies/*.png", 0, NULL, &gl) != 0)
-		log_printf_abort("can't find enemy pictures");
+	if (glob("assets/enemies/*.png", 0, NULL, &gl) != 0)
+		log_printf_abort("enemy pictures not found");
 
 	n_ellipsoid_pics = gl.gl_pathc;
 	SDL_assert(n_ellipsoid_pics <= sizeof(ellipsoid_pics[0])/sizeof(ellipsoid_pics[0][0]));
