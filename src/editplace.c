@@ -1,3 +1,5 @@
+// FIXME: make copy when editing non-custom place
+
 #include "editplace.h"
 #include "log.h"
 #include "max.h"
@@ -93,6 +95,7 @@ static void add_wall(struct PlaceEditor *pe)
 	log_printf("Added wall, now there are %d walls", pe->place->nwalls);
 	*ptr = pe->selwall;
 	wall_init(ptr);
+	place_save(pe->place);
 }
 
 static bool is_at_edge(const struct Wall *w, const struct Place *pl)
@@ -111,6 +114,7 @@ static void delete_wall(struct PlaceEditor *pe)
 		if (walls_match(w, &pe->selwall) && !is_at_edge(w, pe->place)) {
 			*w = pe->place->walls[--pe->place->nwalls];
 			log_printf("Deleted wall, now there are %d walls", pe->place->nwalls);
+			place_save(pe->place);
 			return;
 		}
 	}
@@ -241,7 +245,7 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *pl)
 			if (e.type == SDL_QUIT)
 				return MISC_STATE_QUIT;
 			if (handle_event(&pe, e))
-				redraw = true;;
+				redraw = true;
 		}
 
 		if (pe.rotatedir != 0)
@@ -249,6 +253,7 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *pl)
 
 		if (redraw) {
 			rotate_camera(&pe, pe.rotatedir * 3.0f);
+
 			switch (angle_kind(pe.cam.angle)) {
 				case AK_XPOS:
 				case AK_XNEG:
@@ -262,13 +267,7 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *pl)
 			keep_selected_wall_within_place(&pe);
 
 			SDL_FillRect(pe.cam.surface, NULL, 0);
-			/*
-			int nwalls = highlight_selected_wall(&pe);
-			show_all(pe.place->walls, nwalls, NULL, 0, &pe.cam);
-			unhighlight_walls(pe.place);
-			*/
 			draw_walls(&pe);
-
 			SDL_UpdateWindowSurface(wnd);
 		}
 		looptimer_wait(&lt);

@@ -6,6 +6,7 @@
 #include "interval.h"
 #include "mathstuff.h"
 #include "max.h"
+#include "wall.h"
 #include "log.h"
 
 // fitting too much stuff into an int

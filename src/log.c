@@ -1,19 +1,15 @@
 #ifdef _WIN32
 	#include <direct.h>
 	#include <windows.h>
-	#include "misc.h"
 #else
-	// includes are from mkdir(2), gethostname(2)
+	// includes are from gethostname(2)
 	#define _POSIX_C_SOURCE 200112L  // for gethostname
-	#include <sys/stat.h>
-	#include <sys/types.h>   // IWYU pragma: keep
 	#include <unistd.h>
-	// python uses 777 as default perms, see help(os.mkdir)
-	#define _mkdir(path) mkdir((path), 0777)
 #endif
 
-#include "glob.h"
 #include "log.h"
+#include "glob.h"
+#include "misc.h"
 #include <math.h>
 #include <errno.h>
 #include <stdio.h>
@@ -28,11 +24,7 @@ static FILE *logfile = NULL;
 static void close_log_file(void) { fclose(logfile); }
 static void open_log_file(void)
 {
-	if (_mkdir("logs") == -1) {
-		log_printf("mkdir error: %s", strerror(errno));
-		// don't stop here, it could e.g. exist already
-	}
-
+	misc_mkdir("logs");
 	char fname[100] = {0};
 	strftime(
 		fname, sizeof(fname)-1,    // null-terminate even if strftime fails

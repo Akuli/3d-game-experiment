@@ -1,15 +1,35 @@
 #ifdef _WIN32
-#include <windows.h>
-#include <wchar.h>
+	#include <windows.h>
+	#include <wchar.h>
+#else
+	// includes from mkdir(2)
+	#include <sys/stat.h>
+	#include <sys/types.h>
 #endif
 
 #include "misc.h"
+#include <errno.h>
 #include <string.h>
 #include <stdio.h>
 #include "log.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
+
+void misc_mkdir(const char *path)
+{
+#ifdef _WIN32
+	int ret = _mkdir(path);
+#else
+	// python uses 777 as default perms, see help(os.mkdir)
+	// It's ANDed with current umask
+	int ret = mkdir(path, 0777);
+#endif
+
+	// TODO: better windows error handling than errno
+	if (ret != 0)
+		log_printf("mkdir(\"%s\") failed: %s", path, strerror(errno));
+}
 
 int misc_handle_scancode(int sc)
 {

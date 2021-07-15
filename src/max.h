@@ -15,6 +15,7 @@
 	)*2                                            /* for both players */ \
 )
 
+#define MAX_PLACE_SIZE 30
 #define MAX_WALLS 1024
 
 #endif    // MAX_H

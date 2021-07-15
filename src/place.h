@@ -25,6 +25,7 @@ struct Place {
 struct Place *place_list(int *nplaces);
 
 struct Wall *place_load(const char *const *spec, int *nwalls);
+void place_save(const struct Place *pl);
 
 
 #endif   // PLACE_H

@@ -11,6 +11,9 @@ enum MiscState {
 	MISC_STATE_QUIT,
 };
 
+// logs errors, won't work with non-ascii paths on windows
+void misc_mkdir(const char *path);
+
 /*
 In this game, we don't want to distinguish some scancodes from each other to allow
 multiple ways to do the same thing. For all different scan codes that should do the same

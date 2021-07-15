@@ -10,6 +10,8 @@
 #include "misc.h"
 #include "log.h"
 
+#define COMPILE_TIME_STRLEN(s) (sizeof(s)-1)
+
 /*
 Small language for specifying places in assets/(default|custom)_places/placename.txt files:
 - 1x1 squares on xz plane with integer corner coordinates are built of parts like
@@ -60,7 +62,7 @@ static char *read_file_with_trailing_spaces_added(const char *path, int *linelen
 	if (!f)
 		log_printf_abort("opening '%s' failed: %s", path, strerror(errno));
 
-	char buf[1024];
+	char buf[COMPILE_TIME_STRLEN("|--")*MAX_PLACE_SIZE + COMPILE_TIME_STRLEN("|\n") + sizeof("")];
 	*nlines = 0;
 	*linelen = 0;
 	while (fgets(buf, sizeof buf, f)) {
@@ -156,12 +158,7 @@ static void parse_vertical_wall_string(const char *part, bool *leftwall, bool *r
 static void read_place_from_file(struct Place *pl, const char *path)
 {
 	log_printf("Reading place from '%s'...", path);
-	if (strstr(path, "assets/default_places") == path)
-		pl->custom = false;
-	else if (strstr(path, "assets/custom_places") == path)
-		pl->custom = true;
-	else
-		SDL_assert(0);
+	pl->custom = (strstr(path, "custom_places") == path);
 
 	misc_basename_without_extension(path, pl->name, sizeof(pl->name));
 	int linelen, nlines;
@@ -263,4 +260,54 @@ struct Place *place_list(int *nplaces)
 	if(nplaces)
 		*nplaces = n;
 	return places;
+}
+
+static void set_char(char *data, int linesz, int x, int z, char c, int offset)
+{
+	int idx = (2*z + (c != '-'))*linesz + strlen("|--")*x + offset;
+	data[idx] = c;
+}
+
+void place_save(const struct Place *pl)
+{
+	int linesz = strlen("|--")*pl->xsize + strlen("|\n");
+	int linecount = 2*pl->zsize + 1;
+
+	char *data = malloc(linesz*linecount);
+	if (!data)
+		log_printf_abort("not enough memory");
+
+	memset(data, ' ', linesz*linecount);
+	for (int lineno = 0; lineno < linecount; lineno++)
+		data[lineno*linesz + (linesz-1)] = '\n';
+
+	for (const struct Wall *w = pl->walls; w < &pl->walls[pl->nwalls]; w++) {
+		switch(w->dir) {
+		case WALL_DIR_XY:
+			set_char(data, linesz, w->startx, w->startz, '-', 1);
+			set_char(data, linesz, w->startx, w->startz, '-', 2);
+			break;
+		case WALL_DIR_ZY:
+			set_char(data, linesz, w->startx, w->startz, '|', 0);
+			break;
+		}
+	}
+
+	set_char(data, linesz, (int)pl->enemyloc.x, (int)pl->enemyloc.z, 'e', 1);
+	for (int i = 0; i < 2; i++)
+		set_char(data, linesz, (int)pl->playerlocs[i].x, (int)pl->playerlocs[i].z, 'p', 1);
+
+	char fname[1024];
+	snprintf(fname, sizeof fname, "custom_places/%s.txt", pl->name);
+
+	misc_mkdir("custom_places");
+	FILE *f = fopen(fname, "w");
+	if (!f)
+		log_printf_abort("opening \"%s\" failed: %s", fname, strerror(errno));
+	if (fwrite(data, 1, linesz*linecount, f) != linesz*linecount)
+		log_printf_abort("writing to \"%s\" failed: %s", fname, strerror(errno));
+	fclose(f);
+
+	log_printf("wrote \"%s\"", fname);
+	free(data);
 }

@@ -159,7 +159,8 @@ bool wall_side(const struct Wall *w, Vec3 pt)
 	return false;
 }
 
-inline bool wall_linedup(const struct Wall *w1, const struct Wall *w2);
+// don't know why -O0 build fails if this is "inline bool"
+bool wall_linedup(const struct Wall *w1, const struct Wall *w2);
 
 static void draw_rect(SDL_Surface *surf, SDL_Rect r)
 {
