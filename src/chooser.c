@@ -203,7 +203,7 @@ static void show_place_chooser_each_frame(struct ChooserPlaceStuff *plcch)
 	show_all(plcch->pl->walls, plcch->pl->nwalls, NULL, NULL, 0, &plcch->cam);
 }
 
-static void update_place_chooser_button_disableds(struct ChooserPlaceStuff *ch)
+static void update_place_chooser_buttons(struct ChooserPlaceStuff *ch)
 {
 	int nplaces;
 	const struct Place *places = place_list(&nplaces);
@@ -223,7 +223,7 @@ static void update_place_chooser_button_disableds(struct ChooserPlaceStuff *ch)
 static void select_prev_next_place(struct ChooserPlaceStuff *ch, int diff)
 {
 	ch->pl += diff;
-	update_place_chooser_button_disableds(ch);
+	update_place_chooser_buttons(ch);
 	button_show(&ch->prevbtn);
 	button_show(&ch->nextbtn);
 }
@@ -256,8 +256,14 @@ static enum MiscState handle_event(const SDL_Event *evt, struct Chooser *ch)
 	}
 	button_handle_event(evt, &ch->placech.prevbtn);
 	button_handle_event(evt, &ch->placech.nextbtn);
+	button_handle_event(evt, &ch->placech.editbtn);
+	button_handle_event(evt, &ch->placech.cpbtn);
 	button_handle_event(evt, &ch->bigplaybtn);
-	button_handle_event(evt, &ch->editbtn);
+
+	if (ch->placech.pl->custom != !(ch->placech.editbtn.flags & BUTTON_DISABLED)) {
+		ch->placech.editbtn.flags ^= BUTTON_DISABLED;
+		button_show(&ch->placech.editbtn);
+	}
 
 	if (evt->type == SDL_MOUSEMOTION)
 		show_or_hide_without_enemies_text(ch, evt->motion.x, evt->motion.y);
@@ -291,18 +297,6 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 			.center = {
 				(PLACE_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
 				CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT/2 - button_height(BUTTON_BIG)/2,
-			},
-			.onclick = on_play_or_edit_button_clicked,
-			// onclickdata is set in chooser_run()
-		},
-		.editbtn = {
-			.text = "Edit",
-			.flags = 0,
-			.destsurf = winsurf,
-			.scancodes = { SDL_SCANCODE_E },
-			.center = {
-				(PLACE_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
-				CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT/2 + button_height(BUTTON_BIG)/2,
 			},
 			.onclick = on_play_or_edit_button_clicked,
 			// onclickdata is set in chooser_run()
@@ -341,20 +335,44 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				},
 				.onclick = select_next_place,
 			},
+			.editbtn = {
+				.text = "Edit",
+				.flags = 0,
+				.destsurf = winsurf,
+				.scancodes = { SDL_SCANCODE_E },
+				.center = {
+					(PLACE_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
+					CAMERA_SCREEN_HEIGHT - button_height(0)*3/2
+				},
+				.onclick = on_play_or_edit_button_clicked,
+				// onclickdata is set in chooser_run()
+			},
+			.cpbtn = {
+				.text = "Copy and\nedit",
+				.flags = 0,
+				.destsurf = winsurf,
+				.scancodes = { SDL_SCANCODE_C },
+				.center = {
+					(PLACE_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
+					CAMERA_SCREEN_HEIGHT - button_height(0)/2,
+				},
+				.onclick = on_play_or_edit_button_clicked,
+				// onclickdata is set in chooser_run()
+			},
 		},
 		.withoutenemiestxt = misc_create_text_surface("Practice without enemies", white_color, 10),
 	};
 
 	ch->withoutenemiesrect = (SDL_Rect){
-		ch->editbtn.center.x - ch->withoutenemiestxt->w/2,
-		(ch->editbtn.center.y + CAMERA_SCREEN_HEIGHT)/2,
+		20,
+		CAMERA_SCREEN_HEIGHT - ch->withoutenemiestxt->h - 20,
 		ch->withoutenemiestxt->w,
 		ch->withoutenemiestxt->h,
 	};
 
 	ch->placech.prevbtn.onclickdata = &ch->placech;
 	ch->placech.nextbtn.onclickdata = &ch->placech;
-	update_place_chooser_button_disableds(&ch->placech);
+	update_place_chooser_buttons(&ch->placech);
 
 	create_player_ellipsoids(ch);
 	setup_player_chooser(ch, 0, SDL_SCANCODE_A, SDL_SCANCODE_D);
@@ -381,13 +399,14 @@ enum MiscState chooser_run(struct Chooser *ch)
 	bool playclicked = false;
 	bool editclicked = false;
 	ch->bigplaybtn.onclickdata = &playclicked;
-	ch->editbtn.onclickdata = &editclicked;
+	ch->placech.editbtn.onclickdata = &editclicked;
 
 	SDL_FillRect(ch->winsurf, NULL, 0);
-	button_show(&ch->bigplaybtn);
-	button_show(&ch->editbtn);
 	button_show(&ch->placech.prevbtn);
 	button_show(&ch->placech.nextbtn);
+	button_show(&ch->placech.editbtn);
+	button_show(&ch->placech.cpbtn);
+	button_show(&ch->bigplaybtn);
 	show_player_chooser_in_beginning(&ch->playerch[0]);
 	show_player_chooser_in_beginning(&ch->playerch[1]);
 	show_title_text(ch->winsurf);

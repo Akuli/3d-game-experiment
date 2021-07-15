@@ -25,7 +25,7 @@ struct ChooserPlaceStuff {
 	struct Place *pl;   // pointer into place_list()
 
 	// rest of this struct isn't meant to be used outside chooser.c
-	struct Button prevbtn, nextbtn;
+	struct Button prevbtn, nextbtn, editbtn, cpbtn;
 	struct Camera cam;
 };
 
@@ -40,7 +40,7 @@ struct Chooser {
 	SDL_Window *win;
 	SDL_Surface *winsurf;
 	struct Ellipsoid ellipsoids[50];
-	struct Button bigplaybtn, editbtn;
+	struct Button bigplaybtn;
 	SDL_Surface *withoutenemiestxt;
 	SDL_Rect withoutenemiesrect;
 };
