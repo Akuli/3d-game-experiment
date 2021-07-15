@@ -10,6 +10,7 @@
 #include "looptimer.h"
 #include "showall.h"
 #include "camera.h"
+#include "gameover.h"
 
 struct PlaceEditor {
 	enum MiscState state;
@@ -226,10 +227,66 @@ struct DeleteData {
 
 static void delete_this_place(void *data)
 {
-	// TODO: confirm if user really wants
 	const struct DeleteData *dd = data;
 	place_delete(dd->places, dd->nplaces, dd->editor->place - dd->places);
 	dd->editor->state = MISC_STATE_CHOOSER;
+}
+
+static void set_to_true(void *ptr)
+{
+	bool *b = ptr;
+	*b = true;
+}
+
+static void confirm_delete(struct DeleteData *dd, SDL_Window *wnd, SDL_Surface *wndsurf)
+{
+	log_printf("Delete button clicked, entering confirm loop");
+	SDL_FillRect(wndsurf, NULL, 0);
+	SDL_Surface *textsurf = misc_create_text_surface(
+		"Are you sure you want to permanently delete this place?",
+		(SDL_Color){0xff,0xff,0xff}, 25);
+
+	bool noclicked = false;
+	struct Button yesbtn = {
+		.text = "Yes, please\ndelete it",
+		.destsurf = wndsurf,
+		.scancodes = { SDL_SCANCODE_Y },
+		.center = { wndsurf->w/2, wndsurf->h/2 },
+		.onclick = delete_this_place,
+		.onclickdata = dd,
+	};
+	struct Button nobtn = {
+		.text = "No, don't\ntouch it",
+		.scancodes = { SDL_SCANCODE_N, SDL_SCANCODE_ESCAPE },
+		.destsurf = wndsurf,
+		.center = {
+			yesbtn.center.x,
+			yesbtn.center.y + button_height(0),
+		},
+		.onclick = set_to_true,
+		.onclickdata = &noclicked,
+	};
+
+	button_show(&yesbtn);
+	button_show(&nobtn);
+	misc_blit_with_center(textsurf, wndsurf, &(SDL_Point){ wndsurf->w/2, wndsurf->h/4 });
+
+	struct LoopTimer lt = {0};
+	while(dd->editor->state == MISC_STATE_EDITPLACE && !noclicked) {
+		SDL_Event e;
+		while (SDL_PollEvent(&e)) {
+			if (e.type == SDL_QUIT)
+				dd->editor->state = MISC_STATE_QUIT;
+			button_handle_event(&e, &yesbtn);
+			button_handle_event(&e, &nobtn);
+		}
+
+		SDL_UpdateWindowSurface(wnd);
+		looptimer_wait(&lt);
+	}
+
+	log_printf("Exiting confirm loop");
+	SDL_FreeSurface(textsurf);
 }
 
 enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces, int placeidx)
@@ -241,6 +298,7 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 	SDL_FillRect(wndsurf, NULL, 0);
 
+	bool delclicked = false;
 	struct PlaceEditor pe = {
 		.state = MISC_STATE_EDITPLACE,
 		.place = pl,
@@ -260,6 +318,7 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces
 				button_width(0)/2,
 				button_height(0)/2
 			},
+			.scancodes = { SDL_SCANCODE_ESCAPE },
 			.onclick = on_done_clicked,
 			.onclickdata = &pe,
 		},
@@ -270,13 +329,14 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces
 				button_width(0)/2,
 				button_height(0)*3/2
 			},
-			.onclick = delete_this_place,
-			.onclickdata = &(struct DeleteData){
-				.editor = &pe,
-				.places = places,
-				.nplaces = nplaces,
-			},
+			.onclick = set_to_true,
+			.onclickdata = &delclicked,
 		},
+	};
+	struct DeleteData dd = {
+		.editor = &pe,
+		.places = places,
+		.nplaces = nplaces,
 	};
 	rotate_camera(&pe, 0);
 
@@ -287,8 +347,15 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces
 		while (SDL_PollEvent(&e)) {
 			if (e.type == SDL_QUIT)
 				return MISC_STATE_QUIT;
+
 			if (handle_event(&pe, &e))
 				redraw = true;
+			// TODO: handle_event() should include delclicked stuff
+			if (delclicked) {
+				confirm_delete(&dd, wnd, wndsurf);
+				delclicked = false;
+				redraw = true;
+			}
 			if (pe.state != MISC_STATE_EDITPLACE)
 				return pe.state;
 		}
@@ -297,6 +364,7 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces
 			redraw = true;
 
 		if (redraw) {
+			log_printf("redraw");
 			rotate_camera(&pe, pe.rotatedir * 3.0f);
 
 			switch (angle_kind(pe.cam.angle)) {
@@ -311,12 +379,13 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces
 			}
 			keep_selected_wall_within_place(&pe);
 
-			SDL_FillRect(pe.cam.surface, NULL, 0);
+			SDL_FillRect(wndsurf, NULL, 0);
 			draw_walls(&pe);
 			button_show(&pe.donebtn);
 			button_show(&pe.deletebtn);
-			SDL_UpdateWindowSurface(wnd);
 		}
+
+		SDL_UpdateWindowSurface(wnd);  // Run every time, in case buttons redraw themselves
 		looptimer_wait(&lt);
 	}
 }
