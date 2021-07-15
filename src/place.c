@@ -157,7 +157,6 @@ static void parse_vertical_wall_string(const char *part, bool *leftwall, bool *r
 static void print_place_info(const struct Place *pl)
 {
 	log_printf("    path = %s", pl->path);
-	log_printf("    custom = %s", pl->custom ? "true" : "false");
 	log_printf("    size %dx%d", pl->xsize, pl->zsize);
 	log_printf("    %d walls", pl->nwalls);
 	log_printf("    %d enemies that never die", pl->nneverdielocs);

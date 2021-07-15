@@ -22,7 +22,9 @@ struct ChooserPlayerStuff {
 };
 
 struct ChooserPlaceStuff {
-	const struct Place *pl;   // pointer into place_list()
+	struct Place *places;   // pointer into places
+	int nplaces;
+	int placeidx;
 
 	// rest of this struct isn't meant to be used outside chooser.c
 	struct Button prevbtn, nextbtn;

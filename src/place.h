@@ -20,10 +20,11 @@ struct Place {
 	int nneverdielocs;
 };
 
-// Result is same array every time, cleaned when program exits
-const struct Place *place_list(int *nplaces);
+// Result array changes only when places are added or removed
+struct Place *place_list(int *nplaces);
 
-struct Wall *place_load(const char *const *spec, int *nwalls);
+// Returns index into *places
+int place_copy(struct Place **places, int *nplaces, int srcidx);
 
 
 #endif   // PLACE_H
