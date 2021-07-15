@@ -1,5 +1,6 @@
 #include "editplace.h"
 #include "log.h"
+#include "max.h"
 #include "misc.h"
 #include "place.h"
 #include "wall.h"
@@ -54,7 +55,7 @@ static enum AngleKind rotate_90deg(enum AngleKind ak)
 	return AK_ZPOS;   // never runs, but makes compiler happy
 }
 
-static void clamp_selwall_to_place(struct PlaceEditor *pe)
+static void keep_selected_wall_within_place(struct PlaceEditor *pe)
 {
 	int xmax = pe->place->xsize, zmax = pe->place->zsize;
 
@@ -72,61 +73,103 @@ static void clamp_selwall_to_place(struct PlaceEditor *pe)
 // Returns whether redrawing needed
 bool handle_event(struct PlaceEditor *pe, SDL_Event e)
 {
-	bool down = false;
 	enum AngleKind ak = angle_kind(pe->cam.angle);
 
 	switch(e.type) {
-
 	case SDL_KEYDOWN:
-		down = true;
-
 		switch(misc_handle_scancode(e.key.keysym.scancode)) {
-			case SDL_SCANCODE_LEFT:
-				ak = rotate_90deg(ak);
-				// fall through
-			case SDL_SCANCODE_DOWN:
-				ak = rotate_90deg(ak);
-				// fall through
-			case SDL_SCANCODE_RIGHT:
-				ak = rotate_90deg(ak);
-				// fall through
-			case SDL_SCANCODE_UP:
-				switch(ak) {
-					case AK_XPOS: pe->selwall.startx++; break;
-					case AK_XNEG: pe->selwall.startx--; break;
-					case AK_ZPOS: pe->selwall.startz++; break;
-					case AK_ZNEG: pe->selwall.startz--; break;
-				}
-				clamp_selwall_to_place(pe);
-				return true;
-			default:
-				break;
+		case SDL_SCANCODE_LEFT:
+			ak = rotate_90deg(ak);
+			// fall through
+		case SDL_SCANCODE_DOWN:
+			ak = rotate_90deg(ak);
+			// fall through
+		case SDL_SCANCODE_RIGHT:
+			ak = rotate_90deg(ak);
+			// fall through
+		case SDL_SCANCODE_UP:
+			switch(ak) {
+				case AK_XPOS: pe->selwall.startx++; break;
+				case AK_XNEG: pe->selwall.startx--; break;
+				case AK_ZPOS: pe->selwall.startz++; break;
+				case AK_ZNEG: pe->selwall.startz--; break;
+			}
+			keep_selected_wall_within_place(pe);
+			return true;
+		case SDL_SCANCODE_A:
+			pe->rotatedir = 1;
+			return false;
+		case SDL_SCANCODE_D:
+			pe->rotatedir = -1;
+			return false;  // go to keyup case
+		default:
+			log_printf("unknown key press scancode %d", e.key.keysym.scancode);
+			return false;
 		}
 
-		// fall through
 	case SDL_KEYUP:
 		switch(misc_handle_scancode(e.key.keysym.scancode)) {
-			case SDL_SCANCODE_A:
-				if (down)
-					pe->rotatedir = 1;
-				if (!down && pe->rotatedir == 1)
-					pe->rotatedir = 0;
-				return false;
-			case SDL_SCANCODE_D:
-				if (down)
-					pe->rotatedir = -1;
-				if (!down && pe->rotatedir == -1)
-					pe->rotatedir = 0;
-				return false;
+		case SDL_SCANCODE_LEFT:
+		case SDL_SCANCODE_DOWN:
+		case SDL_SCANCODE_RIGHT:
+		case SDL_SCANCODE_UP:
+			return false;
+		case SDL_SCANCODE_A:
+			if (pe->rotatedir == 1)
+				pe->rotatedir = 0;
+			return false;
+		case SDL_SCANCODE_D:
+			if (pe->rotatedir == -1)
+				pe->rotatedir = 0;
+			return false;
+		default:
+			log_printf("unknown key release scancode %d", e.key.keysym.scancode);
+			return false;
 		}
-		log_printf("unknown key press/release scancode %d", e.key.keysym.scancode);
-		break;
 
 	default:
-		break;
+		return false;
+	}
+}
+
+static void draw_walls(struct PlaceEditor *pe)
+{
+	int idx = -1;
+	for (int i = 0; i < pe->place->nwalls; i++) {
+		if (idx == -1 &&
+			pe->place->walls[i].dir == pe->selwall.dir &&
+			pe->place->walls[i].startx == pe->selwall.startx &&
+			pe->place->walls[i].startz == pe->selwall.startz)
+		{
+			idx = i;
+			break;
+		}
 	}
 
-	return false;
+	// static to keep down stack usage
+	static struct Wall behind[MAX_WALLS], front[MAX_WALLS];
+	int nbehind = 0, nfront = 0;
+
+	int hlidx = -1;
+	Vec3 hlcenter = wall_center(&pe->selwall);
+	for (const struct Wall *w = pe->place->walls; w < pe->place->walls + pe->place->nwalls; w++) {
+		if (wall_linedup(w, &pe->selwall) || wall_side(w, hlcenter) == wall_side(w, pe->cam.location)) {
+			behind[nbehind++] = *w;
+			if (w->dir == pe->selwall.dir &&
+				w->startx == pe->selwall.startx &&
+				w->startz == pe->selwall.startz)
+			{
+				hlidx = nbehind-1;
+			}
+		} else {
+			front[nfront++] = *w;
+		}
+	}
+
+	show_all(behind, nbehind, behind + hlidx, NULL, 0, &pe->cam);
+	wall_init(&pe->selwall);
+	wall_drawborder(&pe->selwall, &pe->cam);
+	show_all(front, nfront, NULL, NULL, 0, &pe->cam);
 }
 
 enum MiscState editplace_run(SDL_Window *wnd, struct Place *pl)
@@ -147,11 +190,6 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *pl)
 			.angle = 0,
 		},
 		.rotatedir = 0,
-		.selwall = {
-			.startx = 0,
-			.startz = 0,
-			.highlight = WALL_HL_BORDER_ONLY,
-		},
 	};
 	rotate_camera(&pe, 0);
 
@@ -180,16 +218,15 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *pl)
 					pe.selwall.dir = WALL_DIR_XY;
 					break;
 			}
-			clamp_selwall_to_place(&pe);
+			keep_selected_wall_within_place(&pe);
 
 			SDL_FillRect(pe.cam.surface, NULL, 0);
-
-			SDL_assert(pe.place->nwalls <= MAX_WALLS - 1);
-			pe.place->walls[pe.place->nwalls] = pe.selwall;
-			show_all(pe.place->walls, pe.place->nwalls + 1, NULL, 0, &pe.cam);
-
-			wall_init(&pe.selwall);
-			wall_drawborder(&pe.selwall, &pe.cam);
+			/*
+			int nwalls = highlight_selected_wall(&pe);
+			show_all(pe.place->walls, nwalls, NULL, 0, &pe.cam);
+			unhighlight_walls(pe.place);
+			*/
+			draw_walls(&pe);
 
 			SDL_UpdateWindowSurface(wnd);
 		}

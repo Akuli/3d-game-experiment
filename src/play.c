@@ -307,7 +307,7 @@ enum MiscState play_the_game(
 		int nels = get_all_ellipsoids(&gs, &els);
 
 		for (int i = 0; i < 2; i++)
-			show_all(pl->walls, pl->nwalls, els, nels, &gs.players[i].cam);
+			show_all(pl->walls, pl->nwalls, NULL, els, nels, &gs.players[i].cam);
 
 		// horizontal line
 		SDL_FillRect(winsurf, &(SDL_Rect){ winsurf->w/2, 0, 1, winsurf->h }, SDL_MapRGB(winsurf->format, 0xff, 0xff, 0xff));

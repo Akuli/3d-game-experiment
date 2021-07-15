@@ -201,7 +201,6 @@ static void draw_line(SDL_Surface *surf, Vec2 start, Vec2 end)
 	int y1 = (int)start.y;
 	int x2 = (int)end.x;
 	int y2 = (int)end.y;
-	log_printf("draw_line %d %d %d %d", x1, y1, x2, y2);
 
 	if (x1 == x2) {
 		// Vertical line

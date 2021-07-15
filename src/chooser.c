@@ -184,7 +184,7 @@ static void show_player_chooser_each_frame(const struct Chooser *ch, struct Choo
 {
 	turn_camera(plrch);
 	SDL_FillRect(plrch->cam.surface, NULL, 0);
-	show_all(NULL, 0, ch->ellipsoids, player_nepics, &plrch->cam);
+	show_all(NULL, 0, NULL, ch->ellipsoids, player_nepics, &plrch->cam);
 }
 
 static void show_place_chooser_each_frame(struct ChooserPlaceStuff *plcch)
@@ -200,7 +200,7 @@ static void show_place_chooser_each_frame(struct ChooserPlaceStuff *plcch)
 	camera_update_caches(&plcch->cam);
 
 	SDL_FillRect(plcch->cam.surface, NULL, 0);
-	show_all(plcch->pl->walls, plcch->pl->nwalls, NULL, 0, &plcch->cam);
+	show_all(plcch->pl->walls, plcch->pl->nwalls, NULL, NULL, 0, &plcch->cam);
 }
 
 static void update_place_chooser_button_disableds(struct ChooserPlaceStuff *ch)

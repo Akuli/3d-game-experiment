@@ -31,7 +31,7 @@ struct Info {
 	int xmin, xmax;
 
 	bool insortedarray;  // for sorting infos to display them in correct order
-	enum WallHighlight highlight;
+	bool highlight;      // for walls
 
 	union {
 		struct WallCache wallc;
@@ -64,7 +64,7 @@ static void add_ellipsoid_if_visible(struct ShowingState *st, int idx)
 	}
 }
 
-static void add_wall_if_visible(struct ShowingState *st, int idx)
+static void add_wall_if_visible(struct ShowingState *st, int idx, bool highlight)
 {
 	int xmin, xmax;
 	struct WallCache wc;
@@ -76,7 +76,7 @@ static void add_wall_if_visible(struct ShowingState *st, int idx)
 			.xmin = xmin,
 			.xmax = xmax,
 			.insortedarray = false,
-			.highlight = st->walls[idx].highlight,
+			.highlight = highlight,
 			.cache = {.wallc = wc},
 		};
 	}
@@ -247,14 +247,14 @@ static void get_yminmax(struct ShowingState *st, ID id, int x, int *ymin, int *y
 	}
 }
 
-static void draw_column(const struct ShowingState *st, int x, ID id, int ymin, int ymax, bool highlight)
+static void draw_column(const struct ShowingState *st, int x, ID id, int ymin, int ymax)
 {
 	switch(ID_TYPE(id)) {
 	case ID_TYPE_ELLIPSOID:
 		ellipsoid_drawcolumn(&st->els[ID_INDEX(id)], &st->infos[id].cache.ellipsoidc, ymin, ymax);
 		break;
 	case ID_TYPE_WALL:
-		wall_drawcolumn(&st->infos[id].cache.wallc, x, ymin, ymax, highlight);
+		wall_drawcolumn(&st->infos[id].cache.wallc, x, ymin, ymax, st->infos[id].highlight);
 		break;
 	}
 }
@@ -263,6 +263,7 @@ static void draw_column(const struct ShowingState *st, int x, ID id, int ymin, i
 
 void show_all(
 	const struct Wall *walls, int nwalls,
+	const struct Wall *hlwall,
 	const struct Ellipsoid *els, int nels,
 	const struct Camera *cam)
 {
@@ -277,7 +278,7 @@ void show_all(
 	st.nvisible = 0;
 
 	for (int i = 0; i < nwalls; i++)
-		add_wall_if_visible(&st, i);
+		add_wall_if_visible(&st, i, &walls[i] == hlwall);
 	for (int i = 0; i < nels; i++)
 		add_ellipsoid_if_visible(&st, i);
 
@@ -311,6 +312,6 @@ void show_all(
 		int nnonoverlap = interval_non_overlapping(intervals, nintervals, nonoverlap);
 
 		for (int i = 0; i < nnonoverlap; i++)
-			draw_column(&st, x, nonoverlap[i].id, nonoverlap[i].start, nonoverlap[i].end, st.infos[nonoverlap[i].id].highlight);
+			draw_column(&st, x, nonoverlap[i].id, nonoverlap[i].start, nonoverlap[i].end);
 	}
 }

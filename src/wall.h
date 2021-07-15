@@ -12,12 +12,6 @@ x or z direction from there, as specified by this.
 */
 enum WallDirection { WALL_DIR_XY, WALL_DIR_ZY };
 
-enum WallHighlight {
-	WALL_HL_NOTHING,
-	WALL_HL_BORDER_ONLY,
-	WALL_HL_FILL_AND_BORDER
-};
-
 /*
 I thought about doing collision checking by dividing it into these cases:
 - The ellipsoid could touch the corner points of the wall.
@@ -35,7 +29,6 @@ struct Wall {
 	int startx;
 	int startz;
 	enum WallDirection dir;
-	enum WallHighlight highlight;
 
 	/* corners in world coordinates, always up to date because walls don't move.
 
@@ -64,7 +57,7 @@ struct Wall {
 	Vec3 collpoints[WALL_CP_COUNT][WALL_CP_COUNT];
 };
 
-// Call this after setting startx,startz,dir,highlight of a new wall
+// Call this after setting startx,startz,dir of a new wall
 // Can be called multiple times
 void wall_init(struct Wall *w);
 
