@@ -6,7 +6,8 @@
 #include "mathstuff.h"
 
 struct Place {
-	char customnum;  // -1 for places that come with the game
+	char path[1024];
+	bool custom;  // whether path starts with "custom_places"
 	struct Wall walls[MAX_WALLS];
 	int nwalls;
 	int xsize, zsize;    // players and enemies must have 0 <= x <= xsize, 0 <= z <= zsize

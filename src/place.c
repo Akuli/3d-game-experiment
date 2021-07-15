@@ -158,7 +158,8 @@ static void parse_vertical_wall_string(const char *part, bool *leftwall, bool *r
 
 static void log_stats(const struct Place *pl)
 {
-	log_printf("    customnum = %d", pl->customnum);
+	log_printf("    path = %s", pl->path);
+	log_printf("    custom = %s", pl->custom ? "true" : "false");
 	log_printf("    size %dx%d", pl->xsize, pl->zsize);
 	log_printf("    %d walls", pl->nwalls);
 	log_printf("    %d enemies that never die", pl->nneverdielocs);
@@ -167,20 +168,11 @@ static void log_stats(const struct Place *pl)
 		log_printf("    player %d goes to (%.2f, %.2f, %.2f)", i, pl->playerlocs[i].x, pl->playerlocs[i].y, pl->playerlocs[i].z);
 }
 
-static void read_place_from_file(struct Place *pl, const char *path)
+static void read_place_from_file(struct Place *pl, const char *path, bool custom)
 {
 	log_printf("Reading place from '%s'...", path);
-	int n;
-	char c;
-#ifdef _WIN32
-	const char *seps = "\\/";
-#else
-	const char *seps = "/";
-#endif
-	if (sscanf(path, "custom_places%ccustom-%d", &c, &n) == 2 && strchr(seps, c))
-		pl->customnum = n;
-	else
-		pl->customnum = -1;
+	snprintf(pl->path, sizeof pl->path, "%s", path);
+	pl->custom = custom;
 
 	int linelen, nlines;
 	char *fdata = read_file_with_trailing_spaces_added(path, &linelen, &nlines);
@@ -249,6 +241,7 @@ struct Place *place_list(int *nplaces)
 	if (glob("assets/default_places/*.txt", 0, NULL, &gl) != 0)
 		log_printf_abort("default places not found");
 
+	int ndefault = gl.gl_pathc;
 	int r = glob("custom_places/custom-*.txt", GLOB_APPEND, NULL, &gl);
 	if (r != 0 && r != GLOB_NOMATCH)
 		log_printf_abort("error while globbing custom places");
@@ -258,7 +251,7 @@ struct Place *place_list(int *nplaces)
 		log_printf_abort("not enough memory for %d places", *nplaces);
 
 	for (int i = 0; i < gl.gl_pathc; i++)
-		read_place_from_file(&places[i], gl.gl_pathv[i]);
+		read_place_from_file(&places[i], gl.gl_pathv[i], i >= ndefault);
 	globfree(&gl);
 
 	*nplaces = gl.gl_pathc;
@@ -273,7 +266,7 @@ static void set_char(char *data, int linesz, int x, int z, char c, int offset)
 
 void place_save(const struct Place *pl)
 {
-	SDL_assert(pl->customnum != -1);
+	SDL_assert(pl->custom);
 	int linesz = strlen("|--")*pl->xsize + strlen("|\n");
 	int linecount = 2*pl->zsize + 1;
 
@@ -301,18 +294,15 @@ void place_save(const struct Place *pl)
 	for (int i = 0; i < 2; i++)
 		set_char(data, linesz, (int)pl->playerlocs[i].x, (int)pl->playerlocs[i].z, 'p', 1);
 
-	char fname[1024];
-	snprintf(fname, sizeof fname, "custom_places/custom-%05d.txt", pl->customnum);
-
-	misc_mkdir("custom_places");
-	FILE *f = fopen(fname, "w");
+	misc_mkdir("custom_places");  // pl->path is like "custom_places/custom-00006.txt"
+	FILE *f = fopen(pl->path, "w");
 	if (!f)
-		log_printf_abort("opening \"%s\" failed: %s", fname, strerror(errno));
+		log_printf_abort("opening \"%s\" failed: %s", pl->path, strerror(errno));
 	if (fwrite(data, 1, linesz*linecount, f) != linesz*linecount)
-		log_printf_abort("writing to \"%s\" failed: %s", fname, strerror(errno));
+		log_printf_abort("writing to \"%s\" failed: %s", pl->path, strerror(errno));
 	fclose(f);
 
-	log_printf("wrote \"%s\"", fname);
+	log_printf("wrote \"%s\"", pl->path);
 	log_stats(pl);
 	free(data);
 }
@@ -326,9 +316,19 @@ int place_copy(struct Place **places, int *nplaces, int srcidx)
 		log_printf_abort("out of mem");
 	*places = arr;
 
+	int newnum = 0;
+	for (int i = 0; i < n; i++) {
+		if (arr[i].custom) {
+			// Can have backslash on windows
+			SDL_assert(strlen(arr[i].path) == strlen("custom_places/custom-12345.txt"));
+			int oldnum = atoi(arr[i].path + strlen("custom_places/custom-"));
+			newnum = max(newnum, oldnum+1);
+		}
+	}
+
 	// Custom places are at end of places array and sorted by customnum
 	memcpy(&arr[n], &arr[srcidx], sizeof arr[0]);
-	arr[n].customnum = arr[n-1].customnum + 1;
+	sprintf(arr[n].path, "custom_places/custom-%05d.txt", newnum);
 	place_save(&arr[n]);
 	return n;
 }

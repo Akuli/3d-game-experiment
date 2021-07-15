@@ -260,8 +260,7 @@ static enum MiscState handle_event(const SDL_Event *evt, struct Chooser *ch)
 	button_handle_event(evt, &ch->placech.cpbtn);
 	button_handle_event(evt, &ch->bigplaybtn);
 
-	bool custom = (ch->placech.places[ch->placech.placeidx].customnum != -1);
-	if (custom != !(ch->placech.editbtn.flags & BUTTON_DISABLED)) {
+	if (ch->placech.places[ch->placech.placeidx].custom != !(ch->placech.editbtn.flags & BUTTON_DISABLED)) {
 		ch->placech.editbtn.flags ^= BUTTON_DISABLED;
 		button_show(&ch->placech.editbtn);
 	}
