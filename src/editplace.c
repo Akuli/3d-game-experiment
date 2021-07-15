@@ -8,21 +8,21 @@
 #include "camera.h"
 
 struct PlaceEditor {
-	struct Place *pl;
+	struct Place *place;
 	struct Camera cam;
 	int rotatedir;
-	int selx, selz;  // selected rectangle
+	struct Wall selwall;   // selected wall
 };
 
 static void rotate_camera(struct PlaceEditor *pe, float speed)
 {
 	pe->cam.angle += speed/CAMERA_FPS;
 
-	float d = hypotf(pe->pl->xsize, pe->pl->zsize);
+	float d = hypotf(pe->place->xsize, pe->place->zsize);
 	Vec3 tocamera = vec3_mul_float((Vec3){ 0, 0.5f, 0.7f }, d);
 	vec3_apply_matrix(&tocamera, mat3_rotation_xz(pe->cam.angle));
 
-	Vec3 placecenter = { pe->pl->xsize/2, 0, pe->pl->zsize/2 };
+	Vec3 placecenter = { pe->place->xsize/2, 0, pe->place->zsize/2 };
 	pe->cam.location = vec3_add(placecenter, tocamera);
 	camera_update_caches(&pe->cam);
 }
@@ -54,6 +54,21 @@ static enum AngleKind rotate_90deg(enum AngleKind ak)
 	return AK_ZPOS;   // never runs, but makes compiler happy
 }
 
+static void clamp_selwall_to_place(struct PlaceEditor *pe)
+{
+	int xmax = pe->place->xsize, zmax = pe->place->zsize;
+
+	switch(pe->selwall.dir) {
+		case WALL_DIR_XY: xmax--; break;
+		case WALL_DIR_ZY: zmax--; break;
+	}
+
+	pe->selwall.startx = max(pe->selwall.startx, 0);
+	pe->selwall.startz = max(pe->selwall.startz, 0);
+	pe->selwall.startx = min(pe->selwall.startx, xmax);
+	pe->selwall.startz = min(pe->selwall.startz, zmax);
+}
+
 // Returns whether redrawing needed
 bool handle_event(struct PlaceEditor *pe, SDL_Event e)
 {
@@ -77,11 +92,12 @@ bool handle_event(struct PlaceEditor *pe, SDL_Event e)
 				// fall through
 			case SDL_SCANCODE_UP:
 				switch(ak) {
-					case AK_XPOS: pe->selx++; break;
-					case AK_XNEG: pe->selx--; break;
-					case AK_ZPOS: pe->selz++; break;
-					case AK_ZNEG: pe->selz--; break;
+					case AK_XPOS: pe->selwall.startx++; break;
+					case AK_XNEG: pe->selwall.startx--; break;
+					case AK_ZPOS: pe->selwall.startz++; break;
+					case AK_ZNEG: pe->selwall.startz--; break;
 				}
+				clamp_selwall_to_place(pe);
 				return true;
 			default:
 				break;
@@ -121,7 +137,7 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *pl)
 	SDL_FillRect(wndsurf, NULL, 0);
 
 	struct PlaceEditor pe = {
-		.pl = pl,
+		.place = pl,
 		.cam = {
 			.screencentery = 0,
 			.surface = misc_create_cropped_surface(wndsurf, (SDL_Rect){
@@ -135,8 +151,7 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *pl)
 	rotate_camera(&pe, 0);
 
 	struct LoopTimer lt = {0};
-	bool redraw = true;
-	while(true) {
+	for (bool redraw = true; ; redraw = false) { // First iteration always redraws
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
 			if (e.type == SDL_QUIT)
@@ -150,17 +165,26 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *pl)
 
 		if (redraw) {
 			rotate_camera(&pe, pe.rotatedir * 3.0f);
-			SDL_FillRect(pe.cam.surface, NULL, 0);
-			show_all(pe.pl->walls, pe.pl->nwalls, NULL, 0, &pe.cam, NULL);
+			switch (angle_kind(pe.cam.angle)) {
+				case AK_XPOS:
+				case AK_XNEG:
+					pe.selwall.dir = WALL_DIR_ZY;
+					break;
+				case AK_ZPOS:
+				case AK_ZNEG:
+					pe.selwall.dir = WALL_DIR_XY;
+					break;
+			}
+			clamp_selwall_to_place(&pe);
 
-			struct Wall hlwall = { pe.selx, pe.selz, WALL_DIR_XY }; // FIXME dir
-			wall_init(&hlwall);
-			wall_drawborder(&hlwall, &pe.cam);
+			SDL_FillRect(pe.cam.surface, NULL, 0);
+			show_all(pe.place->walls, pe.place->nwalls, NULL, 0, &pe.cam, NULL);
+
+			wall_init(&pe.selwall);
+			wall_drawborder(&pe.selwall, &pe.cam);
 
 			SDL_UpdateWindowSurface(wnd);
 		}
 		looptimer_wait(&lt);
-
-		redraw = false;   // Not-first iterations don't always redraw
 	}
 }

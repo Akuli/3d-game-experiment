@@ -58,6 +58,7 @@ struct Wall {
 };
 
 // Call this after setting startx, startz and dir of a new wall
+// Can be called multiple times
 void wall_init(struct Wall *w);
 
 // moves el so that it doesn't bump
