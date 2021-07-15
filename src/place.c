@@ -156,7 +156,7 @@ static void parse_vertical_wall_string(const char *part, bool *leftwall, bool *r
 	parse_square_content(part[2], st);
 }
 
-static void log_stats(const struct Place *pl)
+static void print_place_info(const struct Place *pl)
 {
 	log_printf("    path = %s", pl->path);
 	log_printf("    custom = %s", pl->custom ? "true" : "false");
@@ -232,6 +232,8 @@ static void read_place_from_file(struct Place *pl, const char *path, bool custom
 			if (right)  add_wall(pl, x+1, z,   WALL_DIR_ZY);
 		}
 	}
+
+	print_place_info(pl);
 	free(fdata);
 }
 
@@ -303,7 +305,7 @@ void place_save(const struct Place *pl)
 	fclose(f);
 
 	log_printf("wrote \"%s\"", pl->path);
-	log_stats(pl);
+	print_place_info(pl);
 	free(data);
 }
 
@@ -329,6 +331,7 @@ int place_copy(struct Place **places, int *nplaces, int srcidx)
 	// Custom places are at end of places array and sorted by customnum
 	memcpy(&arr[n], &arr[srcidx], sizeof arr[0]);
 	sprintf(arr[n].path, "custom_places/custom-%05d.txt", newnum);
+	arr[n].custom = true;
 	place_save(&arr[n]);
 	return n;
 }
