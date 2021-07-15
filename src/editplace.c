@@ -147,6 +147,11 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *pl)
 			.angle = 0,
 		},
 		.rotatedir = 0,
+		.selwall = {
+			.startx = 0,
+			.startz = 0,
+			.highlight = WALL_HL_BORDER_ONLY,
+		},
 	};
 	rotate_camera(&pe, 0);
 
@@ -178,7 +183,10 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *pl)
 			clamp_selwall_to_place(&pe);
 
 			SDL_FillRect(pe.cam.surface, NULL, 0);
-			show_all(pe.place->walls, pe.place->nwalls, NULL, 0, &pe.cam, NULL);
+
+			SDL_assert(pe.place->nwalls <= MAX_WALLS - 1);
+			pe.place->walls[pe.place->nwalls] = pe.selwall;
+			show_all(pe.place->walls, pe.place->nwalls + 1, NULL, 0, &pe.cam);
 
 			wall_init(&pe.selwall);
 			wall_drawborder(&pe.selwall, &pe.cam);

@@ -31,7 +31,7 @@ struct Info {
 	int xmin, xmax;
 
 	bool insortedarray;  // for sorting infos to display them in correct order
-	bool highlight;
+	enum WallHighlight highlight;
 
 	union {
 		struct WallCache wallc;
@@ -55,27 +55,30 @@ static void add_ellipsoid_if_visible(struct ShowingState *st, int idx)
 	if (ellipsoid_visible_xminmax(&st->els[idx], st->cam, &xmin, &xmax)) {
 		ID id = ID_NEW(ID_TYPE_ELLIPSOID, idx);
 		st->visible[st->nvisible++] = id;
-		st->infos[id].ndeps = 0;
-		st->infos[id].xmin = xmin;
-		st->infos[id].xmax = xmax;
-		st->infos[id].insortedarray = false;
-		st->infos[id].highlight = false;
+		st->infos[id] = (struct Info) {
+			.ndeps = 0,
+			.xmin = xmin,
+			.xmax = xmax,
+			.insortedarray = false,
+		};
 	}
 }
 
-static void add_wall_if_visible(struct ShowingState *st, int idx, bool highlight)
+static void add_wall_if_visible(struct ShowingState *st, int idx)
 {
 	int xmin, xmax;
 	struct WallCache wc;
 	if (wall_visible_xminmax_fillcache(&st->walls[idx], st->cam, &xmin, &xmax, &wc)) {
 		ID id = ID_NEW(ID_TYPE_WALL, idx);
 		st->visible[st->nvisible++] = id;
-		st->infos[id].ndeps = 0;
-		st->infos[id].xmin = xmin;
-		st->infos[id].xmax = xmax;
-		st->infos[id].insortedarray = false;
-		st->infos[id].highlight = highlight;
-		st->infos[id].cache.wallc = wc;
+		st->infos[id] = (struct Info) {
+			.ndeps = 0,
+			.xmin = xmin,
+			.xmax = xmax,
+			.insortedarray = false,
+			.highlight = st->walls[idx].highlight,
+			.cache = {.wallc = wc},
+		};
 	}
 }
 
@@ -261,8 +264,7 @@ static void draw_column(const struct ShowingState *st, int x, ID id, int ymin, i
 void show_all(
 	const struct Wall *walls, int nwalls,
 	const struct Ellipsoid *els, int nels,
-	const struct Camera *cam,
-	const struct Wall *hlwall)
+	const struct Camera *cam)
 {
 	SDL_assert(nwalls <= MAX_WALLS);
 	SDL_assert(nels <= MAX_ELLIPSOIDS);
@@ -274,17 +276,10 @@ void show_all(
 	st.els = els;
 	st.nvisible = 0;
 
-	for (int i = 0; i < nwalls; i++) {
-		bool highlight =
-			hlwall
-			&& walls[i].startx == hlwall->startx
-			&& walls[i].startz == hlwall->startz
-			&& walls[i].dir == hlwall->dir;
-		add_wall_if_visible(&st, i, highlight);
-	}
-	for (int i = 0; i < nels; i++) {
+	for (int i = 0; i < nwalls; i++)
+		add_wall_if_visible(&st, i);
+	for (int i = 0; i < nels; i++)
 		add_ellipsoid_if_visible(&st, i);
-	}
 
 	setup_dependencies(&st);
 

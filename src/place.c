@@ -102,6 +102,7 @@ static void add_wall(struct Place *pl, int x, int z, enum WallDirection dir)
 	w->startx = x;
 	w->startz = z;
 	w->dir = dir;
+	w->highlight = WALL_HL_NOTHING;
 	wall_init(w);
 }
 
