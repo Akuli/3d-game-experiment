@@ -81,7 +81,9 @@ inline bool wall_linedup(const struct Wall *w1, const struct Wall *w2)
 	return false;
 }
 
-// for drawing functions
+void wall_drawborder(const struct Wall *w, const struct Camera *cam);
+
+// for non-border drawing functions
 struct WallCache {
 	const struct Wall *wall;
 	const struct Camera *cam;
@@ -105,8 +107,6 @@ void wall_yminmax(const struct WallCache *wc, int x, int *ymin, int *ymax);
 
 // Draw all pixels of wall corresponding to range of y coordinates
 void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax, bool highlight);
-
-void wall_drawborder(const struct WallCache *wc);
 
 
 #endif    // WALL_H

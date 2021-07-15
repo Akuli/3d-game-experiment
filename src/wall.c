@@ -5,6 +5,7 @@
 #include "camera.h"
 #include "mathstuff.h"
 #include "player.h"
+#include "log.h"
 
 #define Y_MIN PLAYER_HEIGHT_FLAT   // allow players to go under the wall
 #define Y_MAX 1.0f
@@ -160,6 +161,95 @@ bool wall_side(const struct Wall *w, Vec3 pt)
 
 inline bool wall_linedup(const struct Wall *w1, const struct Wall *w2);
 
+static void draw_rect(SDL_Surface *surf, SDL_Rect r)
+{
+	if (r.w < 0) {
+		r.w = abs(r.w);
+		r.x -= r.w;
+	}
+	if (r.h < 0) {
+		r.h = abs(r.h);
+		r.y -= r.h;
+	}
+
+	SDL_Rect clip;
+	if (SDL_IntersectRect(&r, &(SDL_Rect){0,0,surf->w,surf->h}, &clip)) {
+		uint32_t color = SDL_MapRGB(surf->format, 0xff, 0x00, 0x00);
+		SDL_FillRect(surf, &clip, color);
+	}
+}
+
+static void swap(int *a, int *b)
+{
+	int tmp = *a;
+	*a = *b;
+	*b = tmp;
+}
+
+static int clamp(int val, int bound1, int bound2)
+{
+	if (val < min(bound1, bound2))
+		return min(bound1, bound2);
+	if (val > max(bound1, bound2))
+		return max(bound1, bound2);
+	return val;
+}
+
+static void draw_line(SDL_Surface *surf, Vec2 start, Vec2 end)
+{
+	int x1 = (int)start.x;
+	int y1 = (int)start.y;
+	int x2 = (int)end.x;
+	int y2 = (int)end.y;
+	log_printf("draw_line %d %d %d %d", x1, y1, x2, y2);
+
+	if (x1 == x2) {
+		// Vertical line
+		draw_rect(surf, (SDL_Rect){ x1-1, y1, 3, y2-y1 });
+	} else if (y1 == y2) {
+		// Horizontal line
+		draw_rect(surf, (SDL_Rect){ x1, y1-1, x2-x1, 3 });
+	}
+	else if (abs(y2-y1) > abs(x2-x1)) {
+		// Many vertical lines
+		if (x1 > x2) { swap(&x1, &x2); swap(&y1, &y2); }
+		for (int x = x1; x <= x2; x++) {
+			int y     =       y1 + (y2 - y1)*(x   - x1)/(x2 - x1);
+			int ynext = clamp(y1 + (y2 - y1)*(x+1 - x1)/(x2 - x1), y1, y2);
+			draw_rect(surf, (SDL_Rect){ x-1, y, 3, ynext-y });
+		}
+	} else {
+		// Many horizontal lines
+		if (y1 > y2) { swap(&x1, &x2); swap(&y1, &y2); }
+		for (int y = y1; y <= y2; y++) {
+			int x     =       x1 + (x2 - x1)*(y   - y1)/(y2 - y1);
+			int xnext = clamp(x1 + (x2 - x1)*(y+1 - y1)/(y2 - y1), x1, x2);
+			draw_rect(surf, (SDL_Rect){ x, y-1, xnext-x, 3 });
+		}
+	}
+}
+
+void wall_drawborder(const struct Wall *w, const struct Camera *cam)
+{
+	/*
+	Can't use wall_visible_xminmax_fillcache(), it gives weird corner case where border
+	disappears when looking along wall
+	*/
+
+	if (!wall_is_visible(w, cam))
+		return;
+
+	Vec2 top1 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->top1));
+	Vec2 top2 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->top2));
+	Vec2 bot1 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->bot1));
+	Vec2 bot2 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->bot2));
+
+	draw_line(cam->surface, bot1, bot2);
+	draw_line(cam->surface, bot2, top2);
+	draw_line(cam->surface, top2, top1);
+	draw_line(cam->surface, top1, bot1);
+}
+
 bool wall_visible_xminmax_fillcache(const struct Wall *w, const struct Camera *cam, int *xmin, int *xmax, struct WallCache *wc)
 {
 	if (!wall_is_visible(w, cam)) {
@@ -228,79 +318,4 @@ void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax, bool
 		for (uint32_t *ptr = start; ptr < end; ptr += mypitch)
 			*ptr = rgb_average(*ptr, 0x00ffff);
 	}
-}
-
-static void draw_rect(SDL_Surface *surf, SDL_Rect r)
-{
-	if (r.w < 0) {
-		r.w = abs(r.w);
-		r.x -= r.w;
-	}
-	if (r.h < 0) {
-		r.h = abs(r.h);
-		r.y -= r.h;
-	}
-
-	SDL_Rect clip;
-	if (SDL_IntersectRect(&r, &(SDL_Rect){0,0,surf->w,surf->h}, &clip)) {
-		uint32_t color = SDL_MapRGB(surf->format, 0xff, 0x00, 0x00);
-		SDL_FillRect(surf, &clip, color);
-	}
-}
-
-static void swap(int *a, int *b)
-{
-	int tmp = *a;
-	*a = *b;
-	*b = tmp;
-}
-
-static int clamp(int val, int bound1, int bound2)
-{
-	if (val < min(bound1, bound2))
-		return min(bound1, bound2);
-	if (val > max(bound1, bound2))
-		return max(bound1, bound2);
-	return val;
-}
-
-static void draw_line(SDL_Surface *surf, Vec2 start, Vec2 end)
-{
-	int x1 = (int)start.x;
-	int y1 = (int)start.y;
-	int x2 = (int)end.x;
-	int y2 = (int)end.y;
-
-	if (x1 == x2) {
-		// Vertical line
-		draw_rect(surf, (SDL_Rect){ x1-1, y1, 3, y2-y1 });
-	} else if (y1 == y2) {
-		// Horizontal line
-		draw_rect(surf, (SDL_Rect){ x1, y1-1, x2-x1, 3 });
-	}
-	else if (abs(y2-y1) > abs(x2-x1)) {
-		// Many vertical lines
-		if (x1 > x2) { swap(&x1, &x2); swap(&y1, &y2); }
-		for (int x = x1; x <= x2; x++) {
-			int y     =       y1 + (y2 - y1)*(x   - x1)/(x2 - x1);
-			int ynext = clamp(y1 + (y2 - y1)*(x+1 - x1)/(x2 - x1), y1, y2);
-			draw_rect(surf, (SDL_Rect){ x-1, y, 3, ynext-y });
-		}
-	} else {
-		// Many horizontal lines
-		if (y1 > y2) { swap(&x1, &x2); swap(&y1, &y2); }
-		for (int y = y1; y <= y2; y++) {
-			int x     =       x1 + (x2 - x1)*(y   - y1)/(y2 - y1);
-			int xnext = clamp(x1 + (x2 - x1)*(y+1 - y1)/(y2 - y1), x1, x2);
-			draw_rect(surf, (SDL_Rect){ x, y-1, xnext-x, 3 });
-		}
-	}
-}
-
-void wall_drawborder(const struct WallCache *wc)
-{
-	draw_line(wc->cam->surface, wc->bot1, wc->bot2);
-	draw_line(wc->cam->surface, wc->bot2, wc->top2);
-	draw_line(wc->cam->surface, wc->top2, wc->top1);
-	draw_line(wc->cam->surface, wc->top1, wc->bot1);
 }

@@ -24,18 +24,7 @@ static void rotate_camera(struct PlaceEditor *pe, float speed)
 
 	Vec3 placecenter = { pe->pl->xsize/2, 0, pe->pl->zsize/2 };
 	pe->cam.location = vec3_add(placecenter, tocamera);
-
 	camera_update_caches(&pe->cam);
-	SDL_FillRect(pe->cam.surface, NULL, 0);
-	show_all(pe->pl->walls, pe->pl->nwalls, NULL, 0, &pe->cam, NULL);
-
-	struct Wall hlwall = { pe->selx, pe->selz, WALL_DIR_XY }; // FIXME dir
-	wall_init(&hlwall);
-
-	struct WallCache wc;
-	int dummy1, dummy2;
-	if (wall_visible_xminmax_fillcache(&hlwall, &pe->cam, &dummy1, &dummy2, &wc))
-		wall_drawborder(&wc);
 }
 
 // Example: AK_XPOS = towards positive x-axis within +-45deg
@@ -48,33 +37,21 @@ static enum AngleKind angle_kind(float angle)
 	if (angle < 0)
 		angle += 2*pi;
 
-	log_printf("angle = %f", angle);
-
 	if (0.25f*pi <= angle && angle <= 0.75f*pi) return AK_XPOS;
 	if (0.75f*pi <= angle && angle  <= 1.25f*pi) return AK_ZPOS;
 	if (1.25f*pi <= angle && angle  <= 1.75f*pi) return AK_XNEG;
 	return AK_ZNEG;
 }
 
-static enum AngleKind rotate_90deg_plus(enum AngleKind ak)
+static enum AngleKind rotate_90deg(enum AngleKind ak)
 {
-	if (ak == AK_XPOS)
-		return AK_ZPOS;
-	if (ak == AK_ZPOS)
-		return AK_XNEG;
-	if (ak == AK_XNEG)
-		return AK_ZNEG;
-	if (ak == AK_ZNEG)
-		return AK_XPOS;
-	// TODO: switch case
-}
-
-static enum AngleKind rotate_90deg_minus(enum AngleKind ak)
-{
-	ak = rotate_90deg_plus(ak);
-	ak = rotate_90deg_plus(ak);
-	ak = rotate_90deg_plus(ak);
-	return ak;
+	switch(ak) {
+		case AK_XPOS: return AK_ZPOS;
+		case AK_ZPOS: return AK_XNEG;
+		case AK_XNEG: return AK_ZNEG;
+		case AK_ZNEG: return AK_XPOS;
+	}
+	return AK_ZPOS;   // never runs, but makes compiler happy
 }
 
 // Returns whether redrawing needed
@@ -90,13 +67,13 @@ bool handle_event(struct PlaceEditor *pe, SDL_Event e)
 
 		switch(misc_handle_scancode(e.key.keysym.scancode)) {
 			case SDL_SCANCODE_LEFT:
-				ak = rotate_90deg_plus(ak);
+				ak = rotate_90deg(ak);
 				// fall through
 			case SDL_SCANCODE_DOWN:
-				ak = rotate_90deg_plus(ak);
+				ak = rotate_90deg(ak);
 				// fall through
 			case SDL_SCANCODE_RIGHT:
-				ak = rotate_90deg_plus(ak);
+				ak = rotate_90deg(ak);
 				// fall through
 			case SDL_SCANCODE_UP:
 				switch(ak) {
@@ -118,14 +95,12 @@ bool handle_event(struct PlaceEditor *pe, SDL_Event e)
 					pe->rotatedir = 1;
 				if (!down && pe->rotatedir == 1)
 					pe->rotatedir = 0;
-				log_printf("AK = %d", angle_kind(pe->cam.angle));
 				return false;
 			case SDL_SCANCODE_D:
 				if (down)
 					pe->rotatedir = -1;
 				if (!down && pe->rotatedir == -1)
 					pe->rotatedir = 0;
-				log_printf("AK = %d", angle_kind(pe->cam.angle));
 				return false;
 		}
 		log_printf("unknown key press/release scancode %d", e.key.keysym.scancode);
@@ -175,6 +150,13 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *pl)
 
 		if (redraw) {
 			rotate_camera(&pe, pe.rotatedir * 3.0f);
+			SDL_FillRect(pe.cam.surface, NULL, 0);
+			show_all(pe.pl->walls, pe.pl->nwalls, NULL, 0, &pe.cam, NULL);
+
+			struct Wall hlwall = { pe.selx, pe.selz, WALL_DIR_XY }; // FIXME dir
+			wall_init(&hlwall);
+			wall_drawborder(&hlwall, &pe.cam);
+
 			SDL_UpdateWindowSurface(wnd);
 		}
 		looptimer_wait(&lt);
