@@ -189,32 +189,32 @@ static void show_player_chooser_each_frame(const struct Chooser *ch, struct Choo
 
 static void show_place_chooser_each_frame(struct ChooserPlaceStuff *plcch)
 {
-	Vec3 placecenter = { plcch->pl->xsize/2, 0, plcch->pl->zsize/2 };
+	const struct Place *pl = &plcch->places[plcch->placeidx];
+	Vec3 placecenter = { pl->xsize/2, 0, pl->zsize/2 };
 
-	float d = hypotf(plcch->pl->xsize, plcch->pl->zsize);
+	float d = hypotf(pl->xsize, pl->zsize);
 	Vec3 tocamera = vec3_mul_float((Vec3){0,0.8f,1}, 1.1f*d);
 	vec3_apply_matrix(&tocamera, mat3_rotation_xz(plcch->cam.angle));
 
+	// TODO: adjust angle earlier
 	plcch->cam.location = vec3_add(placecenter, tocamera);
 	plcch->cam.angle -= 0.5f/CAMERA_FPS;   // subtracting makes it spin same direction as ellipsoids
 	camera_update_caches(&plcch->cam);
 
 	SDL_FillRect(plcch->cam.surface, NULL, 0);
-	show_all(plcch->pl->walls, plcch->pl->nwalls, NULL, NULL, 0, &plcch->cam);
+	show_all(pl->walls, pl->nwalls, NULL, NULL, 0, &plcch->cam);
 }
 
 static void update_place_chooser_buttons(struct ChooserPlaceStuff *ch)
 {
-	int nplaces;
-	const struct Place *places = place_list(&nplaces);
-	SDL_assert(&places[0] <= ch->pl && ch->pl < &places[nplaces]);
+	SDL_assert(0 <= ch->placeidx && ch->placeidx < ch->nplaces);
 
-	if (ch->pl == &places[0])
+	if (ch->placeidx == 0)
 		ch->prevbtn.flags |= BUTTON_DISABLED;
 	else
 		ch->prevbtn.flags &= ~BUTTON_DISABLED;
 
-	if (ch->pl == &places[nplaces - 1])
+	if (ch->placeidx == ch->nplaces-1)
 		ch->nextbtn.flags |= BUTTON_DISABLED;
 	else
 		ch->nextbtn.flags &= ~BUTTON_DISABLED;
@@ -222,7 +222,7 @@ static void update_place_chooser_buttons(struct ChooserPlaceStuff *ch)
 
 static void select_prev_next_place(struct ChooserPlaceStuff *ch, int diff)
 {
-	ch->pl += diff;
+	ch->placeidx += diff;
 	update_place_chooser_buttons(ch);
 	button_show(&ch->prevbtn);
 	button_show(&ch->nextbtn);
@@ -260,7 +260,8 @@ static enum MiscState handle_event(const SDL_Event *evt, struct Chooser *ch)
 	button_handle_event(evt, &ch->placech.cpbtn);
 	button_handle_event(evt, &ch->bigplaybtn);
 
-	if (ch->placech.pl->custom != !(ch->placech.editbtn.flags & BUTTON_DISABLED)) {
+	bool custom = (ch->placech.places[ch->placech.placeidx].customnum != -1);
+	if (custom != !(ch->placech.editbtn.flags & BUTTON_DISABLED)) {
 		ch->placech.editbtn.flags ^= BUTTON_DISABLED;
 		button_show(&ch->placech.editbtn);
 	}
@@ -302,7 +303,9 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 			// onclickdata is set in chooser_run()
 		},
 		.placech = {
-			.pl = &place_list(NULL)[0],
+			.places = NULL,
+			.nplaces = 0,
+			.placeidx = 0,
 			.cam = {
 				.screencentery = -0.55f*PLACE_CHOOSER_HEIGHT,
 				.surface = misc_create_cropped_surface(winsurf, (SDL_Rect){
@@ -372,7 +375,6 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 
 	ch->placech.prevbtn.onclickdata = &ch->placech;
 	ch->placech.nextbtn.onclickdata = &ch->placech;
-	update_place_chooser_buttons(&ch->placech);
 
 	create_player_ellipsoids(ch);
 	setup_player_chooser(ch, 0, SDL_SCANCODE_A, SDL_SCANCODE_D);
@@ -385,6 +387,7 @@ void chooser_destroy(const struct Chooser *ch)
 	SDL_FreeSurface(ch->playerch[1].cam.surface);
 	SDL_FreeSurface(ch->placech.cam.surface);
 	SDL_FreeSurface(ch->withoutenemiestxt);
+	free(ch->placech.places);
 }
 
 static void show_title_text(SDL_Surface *winsurf)
@@ -394,12 +397,26 @@ static void show_title_text(SDL_Surface *winsurf)
 	SDL_FreeSurface(s);
 }
 
+static void copy_current_place(struct ChooserPlaceStuff *plcch)
+{
+	plcch->placeidx = place_copy(&plcch->places, &plcch->nplaces, plcch->placeidx);
+}
+
 enum MiscState chooser_run(struct Chooser *ch)
 {
+	free(ch->placech.places);
+	ch->placech.places = place_list(&ch->placech.nplaces);
+	if (ch->placech.placeidx >= ch->placech.nplaces)
+		ch->placech.placeidx = ch->placech.nplaces-1;
+	update_place_chooser_buttons(&ch->placech);
+
 	bool playclicked = false;
 	bool editclicked = false;
+	bool cpclicked = false;
+
 	ch->bigplaybtn.onclickdata = &playclicked;
 	ch->placech.editbtn.onclickdata = &editclicked;
+	ch->placech.cpbtn.onclickdata = &cpclicked;
 
 	SDL_FillRect(ch->winsurf, NULL, 0);
 	button_show(&ch->placech.prevbtn);
@@ -425,6 +442,10 @@ enum MiscState chooser_run(struct Chooser *ch)
 			return MISC_STATE_PLAY;
 		if (editclicked)
 			return MISC_STATE_EDITPLACE;
+		if (cpclicked) {
+			copy_current_place(&ch->placech);
+			return MISC_STATE_EDITPLACE;
+		}
 
 		rotate_player_ellipsoids(ch->ellipsoids);
 		show_player_chooser_each_frame(ch, &ch->playerch[0]);

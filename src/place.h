@@ -6,8 +6,7 @@
 #include "mathstuff.h"
 
 struct Place {
-	char name[128];
-	bool custom;
+	char customnum;  // -1 for places that come with the game
 	struct Wall walls[MAX_WALLS];
 	int nwalls;
 	int xsize, zsize;    // players and enemies must have 0 <= x <= xsize, 0 <= z <= zsize
@@ -21,11 +20,14 @@ struct Place {
 	int nneverdielocs;
 };
 
-// Result is same array every time, cleaned when program exits
+// Result array changes only when places are added or removed
 struct Place *place_list(int *nplaces);
 
-struct Wall *place_load(const char *const *spec, int *nwalls);
+// for custom places only
 void place_save(const struct Place *pl);
+
+// Returns index into *places
+int place_copy(struct Place **places, int *nplaces, int srcidx);
 
 
 #endif   // PLACE_H

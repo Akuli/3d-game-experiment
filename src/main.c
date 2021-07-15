@@ -149,12 +149,12 @@ int main(int argc, char **argv)
 
 		case MISC_STATE_PLAY:
 			log_printf(
-				"playing the game begins (place '%s', enemies %s)",
-				ch.placech.pl->name,
+				"playing the game begins (place number %d, enemies %s)",
+				ch.placech.placeidx,
 				ch.withoutenemies ? "disabled" : "enabled");
 			s = play_the_game(
 				wnd, ch.playerch[0].epic, ch.playerch[1].epic, &winner,
-				ch.placech.pl, !ch.withoutenemies);
+				&ch.placech.places[ch.placech.placeidx], !ch.withoutenemies);
 			break;
 
 		case MISC_STATE_GAMEOVER:
@@ -164,7 +164,7 @@ int main(int argc, char **argv)
 
 		case MISC_STATE_EDITPLACE:
 			log_printf("starting place editor");
-			s = editplace_run(wnd, ch.placech.pl);
+			s = editplace_run(wnd, &ch.placech.places[ch.placech.placeidx]);
 			break;
 
 		case MISC_STATE_QUIT:
