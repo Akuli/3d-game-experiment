@@ -269,6 +269,7 @@ void show_all(
 {
 	SDL_assert(nwalls <= MAX_WALLS);
 	SDL_assert(nels <= MAX_ELLIPSOIDS);
+	SDL_assert(hlwall == NULL || (walls <= hlwall && hlwall < &walls[nwalls]));
 
 	// static to keep stack usage down
 	static struct ShowingState st;

@@ -70,6 +70,31 @@ static void keep_selected_wall_within_place(struct PlaceEditor *pe)
 	pe->selwall.startz = min(pe->selwall.startz, zmax);
 }
 
+static bool walls_match(const struct Wall *w1, const struct Wall *w2)
+{
+	return w1->dir == w2->dir && w1->startx == w2->startx && w1->startz == w2->startz;
+}
+
+static bool is_at_edge(const struct Wall *w, const struct Place *pl)
+{
+	switch(w->dir) {
+		case WALL_DIR_XY: return w->startz == 0 || w->startz == pl->zsize;
+		case WALL_DIR_ZY: return w->startx == 0 || w->startx == pl->xsize;
+	}
+	return false;  // never runs, but compiler happy
+}
+
+static void delete_wall(struct PlaceEditor *pe)
+{
+	for (struct Wall *w = pe->place->walls; w < &pe->place->walls[pe->place->nwalls]; w++)
+	{
+		if (walls_match(w, &pe->selwall) && !is_at_edge(w, pe->place)) {
+			*w = pe->place->walls[--pe->place->nwalls];
+			break;
+		}
+	}
+}
+
 // Returns whether redrawing needed
 bool handle_event(struct PlaceEditor *pe, SDL_Event e)
 {
@@ -102,6 +127,9 @@ bool handle_event(struct PlaceEditor *pe, SDL_Event e)
 		case SDL_SCANCODE_D:
 			pe->rotatedir = -1;
 			return false;  // go to keyup case
+		case SDL_SCANCODE_DELETE:
+			delete_wall(pe);
+			return true;
 		default:
 			log_printf("unknown key press scancode %d", e.key.keysym.scancode);
 			return false;
@@ -134,39 +162,25 @@ bool handle_event(struct PlaceEditor *pe, SDL_Event e)
 
 static void draw_walls(struct PlaceEditor *pe)
 {
-	int idx = -1;
-	for (int i = 0; i < pe->place->nwalls; i++) {
-		if (idx == -1 &&
-			pe->place->walls[i].dir == pe->selwall.dir &&
-			pe->place->walls[i].startx == pe->selwall.startx &&
-			pe->place->walls[i].startz == pe->selwall.startz)
-		{
-			idx = i;
-			break;
-		}
-	}
-
 	// static to keep down stack usage
 	static struct Wall behind[MAX_WALLS], front[MAX_WALLS];
 	int nbehind = 0, nfront = 0;
 
-	int hlidx = -1;
+	const struct Wall *hlwall = NULL;
 	Vec3 hlcenter = wall_center(&pe->selwall);
 	for (const struct Wall *w = pe->place->walls; w < pe->place->walls + pe->place->nwalls; w++) {
-		if (wall_linedup(w, &pe->selwall) || wall_side(w, hlcenter) == wall_side(w, pe->cam.location)) {
+		if (walls_match(w, &pe->selwall)) {
 			behind[nbehind++] = *w;
-			if (w->dir == pe->selwall.dir &&
-				w->startx == pe->selwall.startx &&
-				w->startz == pe->selwall.startz)
-			{
-				hlidx = nbehind-1;
-			}
+			SDL_assert(hlwall == NULL);
+			hlwall = &behind[nbehind-1];
+		} else if (wall_linedup(w, &pe->selwall) || wall_side(w, hlcenter) == wall_side(w, pe->cam.location)) {
+			behind[nbehind++] = *w;
 		} else {
 			front[nfront++] = *w;
 		}
 	}
 
-	show_all(behind, nbehind, behind + hlidx, NULL, 0, &pe->cam);
+	show_all(behind, nbehind, hlwall, NULL, 0, &pe->cam);
 	wall_init(&pe->selwall);
 	wall_drawborder(&pe->selwall, &pe->cam);
 	show_all(front, nfront, NULL, NULL, 0, &pe->cam);
