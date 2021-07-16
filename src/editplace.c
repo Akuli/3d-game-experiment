@@ -19,7 +19,6 @@ struct PlaceEditor {
 	struct Button deletebtn, donebtn;
 
 	struct Wall *dndwall;  // NULL for not currently dragging
-	SDL_Point dndstart;
 	bool dragged;
 };
 
@@ -173,7 +172,6 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 
 	switch(e->type) {
 	case SDL_MOUSEBUTTONDOWN:
-		pe->dndstart = (SDL_Point){ e->button.x, e->button.y };
 		pe->dndwall = find_wall_from_place(pe, &pe->selwall);  // can be NULL
 		if (pe->dndwall && is_at_edge(pe->dndwall, pe->place))
 			pe->dndwall = NULL;
@@ -183,11 +181,13 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 	case SDL_MOUSEMOTION:
 		select_wall_by_mouse(pe, e->button.x, e->button.y);
 		keep_selected_wall_within_place(pe);
-		if (pe->dndwall)
-			pe->dndwall->offset = (SDL_Point){
-				e->button.x - pe->dndstart.x,
-				e->button.y - pe->dndstart.y,
-			};
+		if (pe->dndwall && !find_wall_from_place(pe, &pe->selwall)) {
+			// Not going on top of another wall, can move
+			pe->dndwall->startx = pe->selwall.startx;
+			pe->dndwall->startz = pe->selwall.startz;
+			wall_init(pe->dndwall);
+			place_save(pe->place);
+		}
 		pe->dragged = true;
 		return true;
 
@@ -195,19 +195,8 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 		if (!pe->dragged) {
 			if (!add_wall(pe))
 				delete_wall(pe);
-		} else if (pe->dndwall && !find_wall_from_place(pe, &pe->selwall)) {
-			// Not going on top of another wall, can move
-			pe->dndwall->startx = pe->selwall.startx;
-			pe->dndwall->startz = pe->selwall.startz;
-			place_save(pe->place);
 		}
-
-		// Restore back to non-dnd state
-		if (pe->dndwall) {
-			pe->dndwall->offset = (SDL_Point){0,0};
-			wall_init(pe->dndwall);
-			pe->dndwall = NULL;
-		}
+		pe->dndwall = NULL;
 		return true;
 
 	case SDL_KEYDOWN:

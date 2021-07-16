@@ -105,7 +105,6 @@ void place_addwall(struct Place *pl, int x, int z, enum WallDirection dir)
 	w->startx = x;
 	w->startz = z;
 	w->dir = dir;
-	w->offset = (SDL_Point){ 0, 0 };
 	wall_init(w);
 }
 
