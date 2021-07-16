@@ -20,6 +20,7 @@ struct PlaceEditor {
 
 	struct Wall *dndwall;  // NULL for not currently dragging
 	SDL_Point dndstart;
+	bool dragged;
 };
 
 static void rotate_camera(struct PlaceEditor *pe, float speed)
@@ -92,7 +93,7 @@ static bool is_at_edge(const struct Wall *w, const struct Place *pl)
 static void delete_wall(struct PlaceEditor *pe)
 {
 	struct Wall *w = find_wall_from_place(pe, &pe->selwall);
-	if (w) {
+	if (w && !is_at_edge(w, pe->place)) {
 		*w = pe->place->walls[--pe->place->nwalls];
 		log_printf("Deleted wall, now there are %d walls", pe->place->nwalls);
 		place_save(pe->place);
@@ -183,6 +184,7 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 		pe->dndwall = find_wall_from_place(pe, &pe->selwall);  // can be NULL
 		if (pe->dndwall && is_at_edge(pe->dndwall, pe->place))
 			pe->dndwall = NULL;
+		pe->dragged = false;
 		return true;
 
 	case SDL_MOUSEMOTION:
@@ -193,17 +195,18 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 				e->button.x - pe->dndstart.x,
 				e->button.y - pe->dndstart.y,
 			};
+		pe->dragged = true;
 		return true;
 
 	case SDL_MOUSEBUTTONUP:
-		if (!pe->dndwall || walls_match(pe->dndwall, &pe->selwall)) {
-			// Click without drag
+		if (!pe->dragged) {
 			if (!add_wall(pe))
 				delete_wall(pe);
-		} else if (!find_wall_from_place(pe, &pe->selwall)) {
+		} else if (pe->dndwall && !find_wall_from_place(pe, &pe->selwall)) {
 			// Not going on top of another wall, can move
 			pe->dndwall->startx = pe->selwall.startx;
 			pe->dndwall->startz = pe->selwall.startz;
+			place_save(pe->place);
 		}
 
 		// Restore back to non-dnd state
