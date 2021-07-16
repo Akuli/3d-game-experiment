@@ -34,13 +34,13 @@ struct Wall {
 
 	now some 3D ascii art (imagine top1 and bot1 being closer to you)
 
-	       top2
+	       /top2
 	      / |
 	     /  |
 	    /   |
 	   /    |
 	 top1   |
-	  |    bot2
+	  |     bot2
 	  |    /
 	  |   /
 	  |  /
@@ -53,11 +53,14 @@ struct Wall {
 	*/
 	Vec3 top1, top2, bot1, bot2;
 
+	// for e.g. dragging wall with mouse
+	SDL_Point offset;
+
 	// don't use outside wall.c
 	Vec3 collpoints[WALL_CP_COUNT][WALL_CP_COUNT];
 };
 
-// Call this after setting startx,startz,dir of a new wall
+// Call this after setting startx,startz,dir,offset of a new wall
 // Can be called multiple times
 void wall_init(struct Wall *w);
 
@@ -98,9 +101,9 @@ Many things in one function, hard to separate. Cache is needed for visibility ch
 but can't be created if not visible. Visibility checking also produces xmin and xmax.
 */
 bool wall_visible_xminmax_fillcache(
-	const struct Wall *wall, const struct Camera *cam,
-	int *xmin, int *xmax,   // If returns true, set to where on screen will wall go
-	struct WallCache *wc    // Filled if returns true
+	const struct Wall *w, const struct Camera *cam,
+	int *xmin, int *xmax,
+	struct WallCache *wc  // Filled if returns true
 );
 
 // Which range of screen y coordinates is showing the wall?

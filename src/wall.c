@@ -249,7 +249,10 @@ void wall_drawborder(const struct Wall *w, const struct Camera *cam)
 	draw_line(cam->surface, top1, bot1);
 }
 
-bool wall_visible_xminmax_fillcache(const struct Wall *w, const struct Camera *cam, int *xmin, int *xmax, struct WallCache *wc)
+bool wall_visible_xminmax_fillcache(
+	const struct Wall *w, const struct Camera *cam,
+	int *xmin, int *xmax,
+	struct WallCache *wc)
 {
 	if (!wall_is_visible(w, cam)) {
 		// Can't fill cache in this case
@@ -269,13 +272,15 @@ bool wall_visible_xminmax_fillcache(const struct Wall *w, const struct Camera *c
 	SDL_assert(fabsf(wc->top2.x - wc->bot2.x) < 1e-5f);
 
 	// need only top corners because others have same screen x
-	*xmin = (int)ceilf(min(wc->top1.x, wc->top2.x));
-	*xmax = (int)      max(wc->top1.x, wc->top2.x);
+	*xmin = w->offset.x + (int)ceilf(min(wc->top1.x, wc->top2.x));
+	*xmax = w->offset.x + (int)      max(wc->top1.x, wc->top2.x);
 	return (*xmin <= *xmax);
 }
 
 void wall_yminmax(const struct WallCache *wc, int x, int *ymin, int *ymax)
 {
+	x -= wc->wall->offset.x;
+
 	if (fabsf(wc->top1.x - wc->top2.x) < 1e-5f) {
 		// would get issues in linear_map()
 		*ymin = 0;
@@ -284,6 +289,9 @@ void wall_yminmax(const struct WallCache *wc, int x, int *ymin, int *ymax)
 		*ymin = (int) linear_map(wc->top1.x, wc->top2.x, wc->top1.y, wc->top2.y, x);
 		*ymax = (int) linear_map(wc->bot1.x, wc->bot2.x, wc->bot1.y, wc->bot2.y, x);
 	}
+
+	*ymin += wc->wall->offset.y;
+	*ymax += wc->wall->offset.y;
 
 	if (*ymin < 0)
 		*ymin = 0;

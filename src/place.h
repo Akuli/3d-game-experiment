@@ -24,6 +24,9 @@ struct Place {
 // Result array changes only when places are added or removed
 struct Place *place_list(int *nplaces);
 
+// asserts that we are not hitting max number of walls
+void place_addwall(struct Place *pl, int x, int z, enum WallDirection dir);
+
 // for custom places only
 void place_save(const struct Place *pl);
 

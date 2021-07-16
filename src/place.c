@@ -97,7 +97,7 @@ static char *read_file_with_trailing_spaces_added(const char *path, int *linelen
 	return res;
 }
 
-static void add_wall(struct Place *pl, int x, int z, enum WallDirection dir)
+void place_addwall(struct Place *pl, int x, int z, enum WallDirection dir)
 {
 	SDL_assert(pl->nwalls < MAX_WALLS);
 
@@ -105,6 +105,7 @@ static void add_wall(struct Place *pl, int x, int z, enum WallDirection dir)
 	w->startx = x;
 	w->startz = z;
 	w->dir = dir;
+	w->offset = (SDL_Point){ 0, 0 };
 	wall_init(w);
 }
 
@@ -226,10 +227,10 @@ static void read_place_from_file(struct Place *pl, const char *path, bool custom
 			else
 				bottom = false;
 
-			if (top)    add_wall(pl, x,   z,   WALL_DIR_XY);
-			if (bottom) add_wall(pl, x,   z+1, WALL_DIR_XY);
-			if (left)   add_wall(pl, x,   z,   WALL_DIR_ZY);
-			if (right)  add_wall(pl, x+1, z,   WALL_DIR_ZY);
+			if (top)    place_addwall(pl, x,   z,   WALL_DIR_XY);
+			if (bottom) place_addwall(pl, x,   z+1, WALL_DIR_XY);
+			if (left)   place_addwall(pl, x,   z,   WALL_DIR_ZY);
+			if (right)  place_addwall(pl, x+1, z,   WALL_DIR_ZY);
 		}
 	}
 

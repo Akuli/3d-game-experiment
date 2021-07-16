@@ -1,5 +1,3 @@
-// FIXME: make copy when editing non-custom place
-
 #include "editplace.h"
 #include "button.h"
 #include "log.h"
@@ -69,10 +67,8 @@ static bool add_wall(struct PlaceEditor *pe)
 			return false;
 	}
 
-	struct Wall *ptr = &pe->place->walls[pe->place->nwalls++];
+	place_addwall(pe->place, pe->selwall.startx, pe->selwall.startz, pe->selwall.dir);
 	log_printf("Added wall, now there are %d walls", pe->place->nwalls);
-	*ptr = pe->selwall;
-	wall_init(ptr);
 	place_save(pe->place);
 	return true;
 }
