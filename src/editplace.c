@@ -50,32 +50,6 @@ static enum AngleKind angle_kind(float angle)
 	return AK_ZNEG;
 }
 
-static enum AngleKind rotate_90deg(enum AngleKind ak)
-{
-	switch(ak) {
-		case AK_XPOS: return AK_ZPOS;
-		case AK_ZPOS: return AK_XNEG;
-		case AK_XNEG: return AK_ZNEG;
-		case AK_ZNEG: return AK_XPOS;
-	}
-	return AK_ZPOS;   // never runs, but makes compiler happy
-}
-
-static void keep_selected_wall_within_place(struct PlaceEditor *pe)
-{
-	int xmax = pe->place->xsize, zmax = pe->place->zsize;
-
-	switch(pe->selwall.dir) {
-		case WALL_DIR_XY: xmax--; break;
-		case WALL_DIR_ZY: zmax--; break;
-	}
-
-	pe->selwall.startx = max(pe->selwall.startx, 0);
-	pe->selwall.startz = max(pe->selwall.startz, 0);
-	pe->selwall.startx = min(pe->selwall.startx, xmax);
-	pe->selwall.startz = min(pe->selwall.startz, zmax);
-}
-
 static bool walls_match(const struct Wall *w1, const struct Wall *w2)
 {
 	return w1->dir == w2->dir && w1->startx == w2->startx && w1->startz == w2->startz;
@@ -124,6 +98,76 @@ static void delete_wall(struct PlaceEditor *pe)
 	}
 }
 
+static void on_click(struct PlaceEditor *pe, int mousex, int mousey)
+{
+	// Top of place is at plane y=1. Figure out where on it we clicked
+	Vec3 dir = {
+		// Vector from camera towards clicked direction
+		camera_screenx_to_xzr(&pe->cam, mousex),
+		camera_screeny_to_yzr(&pe->cam, mousey),
+		1
+	};
+	vec3_apply_matrix(&dir, pe->cam.cam2world);
+
+	// cam->location + dircoeff*dir has y coordinate 1
+	float dircoeff = -(pe->cam.location.y - 1)/dir.y;
+	Vec3 onplane = vec3_add(pe->cam.location, vec3_mul_float(dir, dircoeff));
+	SDL_assert(fabsf(onplane.y - 1) < 1e-5f);
+
+	// If not somewhat near place, user didn't mean to click a wall
+	if (onplane.x < -1 || onplane.x > pe->place->xsize+1 ||
+		onplane.z < -1 || onplane.z > pe->place->zsize+1)
+	{
+		return;
+	}
+
+	switch(angle_kind(pe->cam.angle)) {
+		// Floors and ceils were done with trial and error
+		case AK_XPOS:
+			pe->selwall.startx = (int)ceilf(onplane.x);
+			pe->selwall.startz = (int)floorf(onplane.z);
+			break;
+		case AK_ZPOS:
+			pe->selwall.startx = (int)floorf(onplane.x);
+			pe->selwall.startz = (int)ceilf(onplane.z);
+			break;
+		case AK_XNEG:
+			pe->selwall.startx = (int)floorf(onplane.x);
+			pe->selwall.startz = (int)floorf(onplane.z);
+			break;
+		case AK_ZNEG:
+			pe->selwall.startx = (int)floorf(onplane.x);
+			pe->selwall.startz = (int)floorf(onplane.z);
+			break;
+	}
+}
+
+static enum AngleKind rotate_90deg(enum AngleKind ak)
+{
+	switch(ak) {
+		case AK_XPOS: return AK_ZPOS;
+		case AK_ZPOS: return AK_XNEG;
+		case AK_XNEG: return AK_ZNEG;
+		case AK_ZNEG: return AK_XPOS;
+	}
+	return AK_ZPOS;   // never runs, but makes compiler happy
+}
+
+static void keep_selected_wall_within_place(struct PlaceEditor *pe)
+{
+	int xmax = pe->place->xsize, zmax = pe->place->zsize;
+
+	switch(pe->selwall.dir) {
+		case WALL_DIR_XY: xmax--; break;
+		case WALL_DIR_ZY: zmax--; break;
+	}
+
+	pe->selwall.startx = max(pe->selwall.startx, 0);
+	pe->selwall.startz = max(pe->selwall.startz, 0);
+	pe->selwall.startx = min(pe->selwall.startx, xmax);
+	pe->selwall.startz = min(pe->selwall.startz, zmax);
+}
+
 // Returns whether redrawing needed
 bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 {
@@ -132,6 +176,11 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 
 	enum AngleKind ak = angle_kind(pe->cam.angle);
 	switch(e->type) {
+	case SDL_MOUSEBUTTONDOWN:
+		on_click(pe, e->button.x, e->button.y);
+		keep_selected_wall_within_place(pe);
+		return true;
+
 	case SDL_KEYDOWN:
 		switch(misc_handle_scancode(e->key.keysym.scancode)) {
 		case SDL_SCANCODE_LEFT:
