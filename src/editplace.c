@@ -268,15 +268,9 @@ static void draw_walls(struct PlaceEditor *pe)
 	}
 
 	show_all(behind, nbehind, false, NULL, 0, &pe->cam);
-	if (nselected == 0) {
-		// There is no wall at where the selection is
-		wall_init(&pe->selwall);
-		wall_drawborder(&pe->selwall, &pe->cam);
-	} else {
-		show_all(selected, nselected, true, NULL, 0, &pe->cam);
-		for (int i = 0; i < nselected; i++)
-			wall_drawborder(&selected[i], &pe->cam);
-	}
+	show_all(selected, nselected, true, NULL, 0, &pe->cam);
+	wall_init(&pe->selwall);
+	wall_drawborder(&pe->selwall, &pe->cam);
 	show_all(front, nfront, false, NULL, 0, &pe->cam);
 }
 
