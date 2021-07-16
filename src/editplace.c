@@ -251,7 +251,7 @@ static void confirm_delete(struct DeleteData *dd, SDL_Window *wnd, SDL_Surface *
 		.text = "Yes, please\ndelete it",
 		.destsurf = wndsurf,
 		.scancodes = { SDL_SCANCODE_Y },
-		.center = { wndsurf->w/2, wndsurf->h/2 },
+		.center = { wndsurf->w/2 - button_width(0)/2, wndsurf->h/2 },
 		.onclick = delete_this_place,
 		.onclickdata = dd,
 	};
@@ -259,10 +259,7 @@ static void confirm_delete(struct DeleteData *dd, SDL_Window *wnd, SDL_Surface *
 		.text = "No, don't\ntouch it",
 		.scancodes = { SDL_SCANCODE_N, SDL_SCANCODE_ESCAPE },
 		.destsurf = wndsurf,
-		.center = {
-			yesbtn.center.x,
-			yesbtn.center.y + button_height(0),
-		},
+		.center = { wndsurf->w/2 + button_width(0)/2, wndsurf->h/2 },
 		.onclick = set_to_true,
 		.onclickdata = &noclicked,
 	};
@@ -284,8 +281,6 @@ static void confirm_delete(struct DeleteData *dd, SDL_Window *wnd, SDL_Surface *
 		SDL_UpdateWindowSurface(wnd);
 		looptimer_wait(&lt);
 	}
-
-	log_printf("Exiting confirm loop");
 	SDL_FreeSurface(textsurf);
 }
 
