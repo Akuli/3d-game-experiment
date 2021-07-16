@@ -36,22 +36,6 @@ static void rotate_camera(struct PlaceEditor *pe, float speed)
 	camera_update_caches(&pe->cam);
 }
 
-// Example: AK_XPOS = towards positive x-axis within +-45deg
-enum AngleKind { AK_XPOS, AK_XNEG, AK_ZPOS, AK_ZNEG };
-
-static enum AngleKind angle_kind(float angle)
-{
-	float pi = acosf(-1);
-	angle = fmodf(angle, 2*pi);
-	if (angle < 0)
-		angle += 2*pi;
-
-	if (0.25f*pi <= angle && angle <= 0.75f*pi) return AK_XPOS;
-	if (0.75f*pi <= angle && angle  <= 1.25f*pi) return AK_ZPOS;
-	if (1.25f*pi <= angle && angle  <= 1.75f*pi) return AK_XNEG;
-	return AK_ZNEG;
-}
-
 static bool walls_match(const struct Wall *w1, const struct Wall *w2)
 {
 	return w1->dir == w2->dir && w1->startx == w2->startx && w1->startz == w2->startz;
@@ -140,17 +124,6 @@ static void select_wall_by_mouse(struct PlaceEditor *pe, int mousex, int mousey)
 	}
 }
 
-static enum AngleKind rotate_90deg(enum AngleKind ak)
-{
-	switch(ak) {
-		case AK_XPOS: return AK_ZPOS;
-		case AK_ZPOS: return AK_XNEG;
-		case AK_XNEG: return AK_ZNEG;
-		case AK_ZNEG: return AK_XPOS;
-	}
-	return AK_ZPOS;   // never runs, but makes compiler happy
-}
-
 static void keep_selected_wall_within_place(struct PlaceEditor *pe)
 {
 	// If you move selection beyond edge, it changes direction so it's parallel to the edge
@@ -171,13 +144,33 @@ static void keep_selected_wall_within_place(struct PlaceEditor *pe)
 	pe->selwall.startz = min(pe->selwall.startz, zmax);
 }
 
+static void move_towards_angle(struct PlaceEditor *pe, float angle)
+{
+	float pi = acosf(-1);
+	angle = fmodf(angle, 2*pi);
+	if (angle < 0)
+		angle += 2*pi;
+
+	// Trial and error has been used to figure out what to do in each case
+	if (0.25f*pi <= angle && angle <= 0.75f*pi)
+		pe->selwall.startx--;
+	else if (0.75f*pi <= angle && angle <= 1.25f*pi)
+		pe->selwall.startz--;
+	else if (1.25f*pi <= angle && angle <= 1.75f*pi)
+		pe->selwall.startx++;
+	else
+		pe->selwall.startz++;
+
+	keep_selected_wall_within_place(pe);
+}
+
 // Returns whether redrawing needed
 bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 {
 	button_handle_event(e, &pe->deletebtn);
 	button_handle_event(e, &pe->donebtn);
+	float pi = acosf(-1);
 
-	enum AngleKind ak = angle_kind(pe->cam.angle);
 	switch(e->type) {
 	case SDL_MOUSEBUTTONDOWN:
 		pe->dndstart = (SDL_Point){ e->button.x, e->button.y };
@@ -219,23 +212,17 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 
 	case SDL_KEYDOWN:
 		switch(misc_handle_scancode(e->key.keysym.scancode)) {
-		case SDL_SCANCODE_LEFT:
-			ak = rotate_90deg(ak);
-			// fall through
 		case SDL_SCANCODE_DOWN:
-			ak = rotate_90deg(ak);
-			// fall through
-		case SDL_SCANCODE_RIGHT:
-			ak = rotate_90deg(ak);
-			// fall through
+			move_towards_angle(pe, pe->cam.angle);
+			return true;
+		case SDL_SCANCODE_LEFT:
+			move_towards_angle(pe, pe->cam.angle + pi/2);
+			return true;
 		case SDL_SCANCODE_UP:
-			switch(ak) {
-				case AK_XPOS: pe->selwall.startx++; break;
-				case AK_XNEG: pe->selwall.startx--; break;
-				case AK_ZPOS: pe->selwall.startz++; break;
-				case AK_ZNEG: pe->selwall.startz--; break;
-			}
-			keep_selected_wall_within_place(pe);
+			move_towards_angle(pe, pe->cam.angle + pi);
+			return true;
+		case SDL_SCANCODE_RIGHT:
+			move_towards_angle(pe, pe->cam.angle + 3*pi/2);
 			return true;
 		case SDL_SCANCODE_A:
 			pe->rotatedir = 1;
