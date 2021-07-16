@@ -17,7 +17,7 @@ struct PlaceEditor {
 	struct Place *place;
 	struct Camera cam;
 	int rotatedir;
-	struct Wall selwall;   // selected wall
+	struct Wall selwall;   // if at edge of place, then entire edge selected
 	struct Button deletebtn, donebtn;
 };
 
@@ -246,30 +246,43 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 	}
 }
 
+static bool is_selected(const struct PlaceEditor *pe, const struct Wall *w)
+{
+	bool edge =
+		(pe->selwall.dir == WALL_DIR_XY && (pe->selwall.startz == 0 || pe->selwall.startz == pe->place->zsize)) ||
+		(pe->selwall.dir == WALL_DIR_ZY && (pe->selwall.startx == 0 || pe->selwall.startx == pe->place->xsize));
+	if (edge)
+		return wall_linedup(&pe->selwall, w);
+	return walls_match(&pe->selwall, w);
+}
+
 static void draw_walls(struct PlaceEditor *pe)
 {
 	// static to keep down stack usage
-	static struct Wall behind[MAX_WALLS], front[MAX_WALLS];
-	int nbehind = 0, nfront = 0;
+	static struct Wall behind[MAX_WALLS], selected[MAX_WALLS], front[MAX_WALLS];
+	int nbehind=0, nselected=0, nfront=0;
 
-	const struct Wall *hlwall = NULL;
-	Vec3 hlcenter = wall_center(&pe->selwall);
+	Vec3 selcenter = wall_center(&pe->selwall);
 	for (const struct Wall *w = pe->place->walls; w < pe->place->walls + pe->place->nwalls; w++) {
-		if (walls_match(w, &pe->selwall)) {
+		if (is_selected(pe, w))
+			selected[nselected++] = *w;
+		else if (wall_linedup(w, &pe->selwall) || wall_side(w, selcenter) == wall_side(w, pe->cam.location))
 			behind[nbehind++] = *w;
-			SDL_assert(hlwall == NULL);
-			hlwall = &behind[nbehind-1];
-		} else if (wall_linedup(w, &pe->selwall) || wall_side(w, hlcenter) == wall_side(w, pe->cam.location)) {
-			behind[nbehind++] = *w;
-		} else {
+		else
 			front[nfront++] = *w;
-		}
 	}
 
-	show_all(behind, nbehind, hlwall, NULL, 0, &pe->cam);
-	wall_init(&pe->selwall);
-	wall_drawborder(&pe->selwall, &pe->cam);
-	show_all(front, nfront, NULL, NULL, 0, &pe->cam);
+	show_all(behind, nbehind, false, NULL, 0, &pe->cam);
+	if (nselected == 0) {
+		// There is no wall at where the selection is
+		wall_init(&pe->selwall);
+		wall_drawborder(&pe->selwall, &pe->cam);
+	} else {
+		show_all(selected, nselected, true, NULL, 0, &pe->cam);
+		for (int i = 0; i < nselected; i++)
+			wall_drawborder(&selected[i], &pe->cam);
+	}
+	show_all(front, nfront, false, NULL, 0, &pe->cam);
 }
 
 static void on_done_clicked(void *data)

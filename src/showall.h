@@ -9,7 +9,7 @@
 
 void show_all(
 	const struct Wall *walls, int nwalls,
-	const struct Wall *hlwall,  // Pointer into walls or NULL, will highlight
+	bool highlightwalls,
 	const struct Ellipsoid *els, int nels,
 	const struct Camera *cam
 );
