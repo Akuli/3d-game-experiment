@@ -309,6 +309,12 @@ void place_save(const struct Place *pl)
 	free(data);
 }
 
+static void remove_prefix(const char **s, const char *pre)
+{
+	SDL_assert(strstr(*s, pre) == *s);
+	*s += strlen(pre);
+}
+
 int place_copy(struct Place **places, int *nplaces, int srcidx)
 {
 	log_printf("Copying place %d", srcidx);
@@ -316,23 +322,27 @@ int place_copy(struct Place **places, int *nplaces, int srcidx)
 	struct Place *arr = realloc(*places, sizeof(arr[0]) * (*nplaces));
 	if (!arr)
 		log_printf_abort("out of mem");
-	*places = arr;
 
 	int newnum = 0;
 	for (int i = 0; i < n; i++) {
 		if (arr[i].custom) {
-			// Can have backslash on windows
-			SDL_assert(strlen(arr[i].path) == strlen("custom_places/custom-12345.txt"));
-			int oldnum = atoi(arr[i].path + strlen("custom_places/custom-"));
-			newnum = max(newnum, oldnum+1);
+			// Parse custom_places/custom-12345.txt
+			const char *ptr = arr[i].path;
+			remove_prefix(&ptr, "custom_places");
+			SDL_assert(*ptr == '/' || *ptr == '\\');
+			ptr++;
+			remove_prefix(&ptr, "custom-");
+			int n = atoi(ptr);
+			newnum = max(newnum, n+1);
 		}
 	}
 
-	// Custom places are at end of places array and sorted by customnum
 	memcpy(&arr[n], &arr[srcidx], sizeof arr[0]);
 	sprintf(arr[n].path, "custom_places/custom-%05d.txt", newnum);
 	arr[n].custom = true;
 	place_save(&arr[n]);
+
+	*places = arr;
 	return n;
 }
 
