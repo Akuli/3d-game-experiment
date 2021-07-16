@@ -120,29 +120,20 @@ static void select_wall_by_mouse(struct PlaceEditor *pe, int mousex, int mousey)
 	}
 	SDL_assert(fabsf(onplane.y - 1) < 1e-5f);
 
-	// If not somewhat near place, user didn't mean to click a wall
 	if (onplane.x < -1 || onplane.x > pe->place->xsize+1 ||
 		onplane.z < -1 || onplane.z > pe->place->zsize+1)
 	{
 		return;
 	}
 
-	switch(angle_kind(pe->cam.angle)) {
-		// Floors and ceils were done with trial and error
-		case AK_XPOS:
-			pe->selwall.startx = (int)ceilf(onplane.x);
-			pe->selwall.startz = (int)floorf(onplane.z);
-			break;
-		case AK_ZPOS:
+	switch(pe->selwall.dir) {
+		// needs keep_selected_wall_within_place()
+		case WALL_DIR_XY:
+			pe->selwall.startz = (int)(dir.z>0 ? floorf(onplane.z) : ceilf(onplane.z)); // towards camera
 			pe->selwall.startx = (int)floorf(onplane.x);
-			pe->selwall.startz = (int)ceilf(onplane.z);
 			break;
-		case AK_XNEG:
-			pe->selwall.startx = (int)floorf(onplane.x);
-			pe->selwall.startz = (int)floorf(onplane.z);
-			break;
-		case AK_ZNEG:
-			pe->selwall.startx = (int)floorf(onplane.x);
+		case WALL_DIR_ZY:
+			pe->selwall.startx = (int)(dir.x>0 ? floorf(onplane.x) : ceilf(onplane.x)); // towards camera
 			pe->selwall.startz = (int)floorf(onplane.z);
 			break;
 	}
@@ -161,8 +152,13 @@ static enum AngleKind rotate_90deg(enum AngleKind ak)
 
 static void keep_selected_wall_within_place(struct PlaceEditor *pe)
 {
-	int xmax = pe->place->xsize, zmax = pe->place->zsize;
+	// If you move selection beyond edge, it changes direction so it's parallel to the edge
+	if (pe->selwall.dir == WALL_DIR_XY && (pe->selwall.startx < 0 || pe->selwall.startx >= pe->place->xsize))
+		pe->selwall.dir = WALL_DIR_ZY;
+	if (pe->selwall.dir == WALL_DIR_ZY && (pe->selwall.startz < 0 || pe->selwall.startz >= pe->place->zsize))
+		pe->selwall.dir = WALL_DIR_XY;
 
+	int xmax = pe->place->xsize, zmax = pe->place->zsize;
 	switch(pe->selwall.dir) {
 		case WALL_DIR_XY: xmax--; break;
 		case WALL_DIR_ZY: zmax--; break;
@@ -448,18 +444,6 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces
 
 		if (redraw) {
 			rotate_camera(&pe, pe.rotatedir * 3.0f);
-
-			switch (angle_kind(pe.cam.angle)) {
-				case AK_XPOS:
-				case AK_XNEG:
-					pe.selwall.dir = WALL_DIR_ZY;
-					break;
-				case AK_ZPOS:
-				case AK_ZNEG:
-					pe.selwall.dir = WALL_DIR_XY;
-					break;
-			}
-			keep_selected_wall_within_place(&pe);
 
 			SDL_FillRect(wndsurf, NULL, 0);
 			draw_walls(&pe);
