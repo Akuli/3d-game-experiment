@@ -332,12 +332,11 @@ int place_copy(struct Place **places, int *nplaces, int srcidx)
 			SDL_assert(*ptr == '/' || *ptr == '\\');
 			ptr++;
 			remove_prefix(&ptr, "custom-");
-			int n = atoi(ptr);
-			newnum = max(newnum, n+1);
+			newnum = max(newnum, atoi(ptr)+1);
 		}
 	}
 
-	memcpy(&arr[n], &arr[srcidx], sizeof arr[0]);
+	arr[n] = arr[srcidx];
 	sprintf(arr[n].path, "custom_places/custom-%05d.txt", newnum);
 	arr[n].custom = true;
 	place_save(&arr[n]);

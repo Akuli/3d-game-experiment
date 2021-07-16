@@ -205,27 +205,29 @@ static void show_place_chooser_each_frame(struct ChooserPlaceStuff *plcch)
 	show_all(pl->walls, pl->nwalls, NULL, NULL, 0, &plcch->cam);
 }
 
+static void set_disabled(struct Button *btn, bool dis)
+{
+	if (dis)
+		btn->flags |= BUTTON_DISABLED;
+	else
+		btn->flags &= ~BUTTON_DISABLED;
+}
+
 static void update_place_chooser_buttons(struct ChooserPlaceStuff *ch)
 {
 	SDL_assert(0 <= ch->placeidx && ch->placeidx < ch->nplaces);
-
-	if (ch->placeidx == 0)
-		ch->prevbtn.flags |= BUTTON_DISABLED;
-	else
-		ch->prevbtn.flags &= ~BUTTON_DISABLED;
-
-	if (ch->placeidx == ch->nplaces-1)
-		ch->nextbtn.flags |= BUTTON_DISABLED;
-	else
-		ch->nextbtn.flags &= ~BUTTON_DISABLED;
+	set_disabled(&ch->prevbtn, ch->placeidx == 0);
+	set_disabled(&ch->nextbtn, ch->placeidx == ch->nplaces-1);
+	set_disabled(&ch->editbtn, !ch->places[ch->placeidx].custom);
+	button_show(&ch->prevbtn);
+	button_show(&ch->nextbtn);
+	button_show(&ch->editbtn);
 }
 
 static void select_prev_next_place(struct ChooserPlaceStuff *ch, int diff)
 {
 	ch->placeidx += diff;
 	update_place_chooser_buttons(ch);
-	button_show(&ch->prevbtn);
-	button_show(&ch->nextbtn);
 }
 static void select_prev_place(void *ch) { select_prev_next_place(ch, -1); }
 static void select_next_place(void *ch) { select_prev_next_place(ch, +1); }
@@ -260,11 +262,6 @@ static enum MiscState handle_event(const SDL_Event *evt, struct Chooser *ch)
 	button_handle_event(evt, &ch->placech.cpbtn);
 	button_handle_event(evt, &ch->bigplaybtn);
 
-	if (ch->placech.places[ch->placech.placeidx].custom != !(ch->placech.editbtn.flags & BUTTON_DISABLED)) {
-		ch->placech.editbtn.flags ^= BUTTON_DISABLED;
-		button_show(&ch->placech.editbtn);
-	}
-
 	if (evt->type == SDL_MOUSEMOTION)
 		show_or_hide_without_enemies_text(ch, evt->motion.x, evt->motion.y);
 	if (evt->type == SDL_MOUSEBUTTONUP && ch->withoutenemies)
@@ -273,7 +270,7 @@ static enum MiscState handle_event(const SDL_Event *evt, struct Chooser *ch)
 	return MISC_STATE_CHOOSER;
 }
 
-static void on_play_or_edit_button_clicked(void *ptr)
+static void set_to_true(void *ptr)
 {
 	*(bool *)ptr = true;
 }
@@ -298,7 +295,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				(PLACE_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
 				CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT/2 - button_height(BUTTON_BIG)/2,
 			},
-			.onclick = on_play_or_edit_button_clicked,
+			.onclick = set_to_true,
 			// onclickdata is set in chooser_run()
 		},
 		.placech = {
@@ -344,7 +341,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 					(PLACE_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
 					CAMERA_SCREEN_HEIGHT - button_height(0)*3/2
 				},
-				.onclick = on_play_or_edit_button_clicked,
+				.onclick = set_to_true,
 				// onclickdata is set in chooser_run()
 			},
 			.cpbtn = {
@@ -356,7 +353,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 					(PLACE_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
 					CAMERA_SCREEN_HEIGHT - button_height(0)/2,
 				},
-				.onclick = on_play_or_edit_button_clicked,
+				.onclick = set_to_true,
 				// onclickdata is set in chooser_run()
 			},
 		},
