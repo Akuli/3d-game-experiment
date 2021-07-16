@@ -274,6 +274,16 @@ static void place_fix(struct Place *pl)
 		if (!foundzmax[x])
 			place_addwall(pl, x, pl->zsize, WALL_DIR_XY);
 	}
+
+	// Move players and enemies inside place
+	if (pl->enemyloc.x > pl->xsize) pl->enemyloc.x = pl->xsize - 0.5f;
+	if (pl->enemyloc.z > pl->zsize) pl->enemyloc.z = pl->zsize - 0.5f;
+	for (int i=0; i<2; i++) {
+		if (pl->playerlocs[i].x > pl->xsize) pl->playerlocs[i].x = pl->xsize - 0.5f;
+		if (pl->playerlocs[i].z > pl->zsize) pl->playerlocs[i].z = pl->zsize - 0.5f;
+	}
+
+	// TODO: ensure players not overlap with each other and enemy source
 }
 
 static void finish_resize(struct PlaceEditor *pe)
