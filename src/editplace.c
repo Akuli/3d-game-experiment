@@ -17,6 +17,9 @@ struct PlaceEditor {
 	int rotatedir;
 	struct Wall selwall;   // if at edge of place, then entire edge selected
 	struct Button deletebtn, donebtn;
+
+	struct Wall *dndwall;  // NULL for not currently dragging
+	SDL_Point dndstart;
 };
 
 static void rotate_camera(struct PlaceEditor *pe, float speed)
@@ -53,6 +56,15 @@ static bool walls_match(const struct Wall *w1, const struct Wall *w2)
 	return w1->dir == w2->dir && w1->startx == w2->startx && w1->startz == w2->startz;
 }
 
+static struct Wall *find_wall_from_place(struct PlaceEditor *pe, const struct Wall *w)
+{
+	for (int i = 0; i < pe->place->nwalls; i++) {
+		if (walls_match(&pe->place->walls[i], w))
+			return &pe->place->walls[i];
+	}
+	return NULL;
+}
+
 static bool add_wall(struct PlaceEditor *pe)
 {
 	SDL_assert(pe->place->nwalls <= MAX_WALLS);
@@ -61,11 +73,8 @@ static bool add_wall(struct PlaceEditor *pe)
 		return false;
 	}
 
-	for (struct Wall *w = pe->place->walls; w < &pe->place->walls[pe->place->nwalls]; w++)
-	{
-		if (walls_match(w, &pe->selwall))
-			return false;
-	}
+	if (find_wall_from_place(pe, &pe->selwall))
+		return false;
 
 	place_addwall(pe->place, pe->selwall.startx, pe->selwall.startz, pe->selwall.dir);
 	log_printf("Added wall, now there are %d walls", pe->place->nwalls);
@@ -82,18 +91,15 @@ static bool is_at_edge(const struct Wall *w, const struct Place *pl)
 
 static void delete_wall(struct PlaceEditor *pe)
 {
-	for (struct Wall *w = pe->place->walls; w < &pe->place->walls[pe->place->nwalls]; w++)
-	{
-		if (walls_match(w, &pe->selwall) && !is_at_edge(w, pe->place)) {
-			*w = pe->place->walls[--pe->place->nwalls];
-			log_printf("Deleted wall, now there are %d walls", pe->place->nwalls);
-			place_save(pe->place);
-			return;
-		}
+	struct Wall *w = find_wall_from_place(pe, &pe->selwall);
+	if (w) {
+		*w = pe->place->walls[--pe->place->nwalls];
+		log_printf("Deleted wall, now there are %d walls", pe->place->nwalls);
+		place_save(pe->place);
 	}
 }
 
-static void select_clicked_wall(struct PlaceEditor *pe, int mousex, int mousey)
+static void select_wall_by_mouse(struct PlaceEditor *pe, int mousex, int mousey)
 {
 	// Top of place is at plane y=1. Figure out where on it we clicked
 	Vec3 dir = {
@@ -107,6 +113,11 @@ static void select_clicked_wall(struct PlaceEditor *pe, int mousex, int mousey)
 	// cam->location + dircoeff*dir has y coordinate 1
 	float dircoeff = -(pe->cam.location.y - 1)/dir.y;
 	Vec3 onplane = vec3_add(pe->cam.location, vec3_mul_float(dir, dircoeff));
+	if (!isfinite(onplane.y)) {
+		// Happens when mouse is moved above window
+		log_printf("weird y coordinate for plane: %.10f", onplane.y);
+		return;
+	}
 	SDL_assert(fabsf(onplane.y - 1) < 1e-5f);
 
 	// If not somewhat near place, user didn't mean to click a wall
@@ -172,12 +183,38 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 	enum AngleKind ak = angle_kind(pe->cam.angle);
 	switch(e->type) {
 	case SDL_MOUSEBUTTONDOWN:
-		select_clicked_wall(pe, e->button.x, e->button.y);
+		pe->dndstart = (SDL_Point){ e->button.x, e->button.y };
+		pe->dndwall = find_wall_from_place(pe, &pe->selwall);  // can be NULL
+		if (pe->dndwall && is_at_edge(pe->dndwall, pe->place))
+			pe->dndwall = NULL;
+		return true;
+
+	case SDL_MOUSEMOTION:
+		select_wall_by_mouse(pe, e->button.x, e->button.y);
 		keep_selected_wall_within_place(pe);
-		if (e->button.button == 3) {
-			// right click
+		if (pe->dndwall)
+			pe->dndwall->offset = (SDL_Point){
+				e->button.x - pe->dndstart.x,
+				e->button.y - pe->dndstart.y,
+			};
+		return true;
+
+	case SDL_MOUSEBUTTONUP:
+		if (!pe->dndwall || walls_match(pe->dndwall, &pe->selwall)) {
+			// Click without drag
 			if (!add_wall(pe))
 				delete_wall(pe);
+		} else if (!find_wall_from_place(pe, &pe->selwall)) {
+			// Not going on top of another wall, can move
+			pe->dndwall->startx = pe->selwall.startx;
+			pe->dndwall->startz = pe->selwall.startz;
+		}
+
+		// Restore back to non-dnd state
+		if (pe->dndwall) {
+			pe->dndwall->offset = (SDL_Point){0,0};
+			wall_init(pe->dndwall);
+			pe->dndwall = NULL;
 		}
 		return true;
 
@@ -207,12 +244,6 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 		case SDL_SCANCODE_D:
 			pe->rotatedir = -1;
 			return false;
-		case SDL_SCANCODE_DELETE:
-			delete_wall(pe);
-			return true;
-		case SDL_SCANCODE_INSERT:
-			add_wall(pe);
-			return true;
 		case SDL_SCANCODE_RETURN:
 			if (!add_wall(pe))
 				delete_wall(pe);
@@ -416,7 +447,6 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces
 			redraw = true;
 
 		if (redraw) {
-			log_printf("redraw");
 			rotate_camera(&pe, pe.rotatedir * 3.0f);
 
 			switch (angle_kind(pe.cam.angle)) {
