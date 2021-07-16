@@ -79,11 +79,9 @@ static bool add_wall(struct PlaceEditor *pe)
 
 static bool is_at_edge(const struct Wall *w, const struct Place *pl)
 {
-	switch(w->dir) {
-		case WALL_DIR_XY: return w->startz == 0 || w->startz == pl->zsize;
-		case WALL_DIR_ZY: return w->startx == 0 || w->startx == pl->xsize;
-	}
-	return false;  // never runs, but compiler happy
+	return
+		(w->dir == WALL_DIR_XY && (w->startz == 0 || w->startz == pl->zsize)) ||
+		(w->dir == WALL_DIR_ZY && (w->startx == 0 || w->startx == pl->xsize));
 }
 
 static void delete_wall(struct PlaceEditor *pe)
@@ -248,10 +246,7 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 
 static bool is_selected(const struct PlaceEditor *pe, const struct Wall *w)
 {
-	bool edge =
-		(pe->selwall.dir == WALL_DIR_XY && (pe->selwall.startz == 0 || pe->selwall.startz == pe->place->zsize)) ||
-		(pe->selwall.dir == WALL_DIR_ZY && (pe->selwall.startx == 0 || pe->selwall.startx == pe->place->xsize));
-	if (edge)
+	if (is_at_edge(w, pe->place))
 		return wall_linedup(&pe->selwall, w);
 	return walls_match(&pe->selwall, w);
 }
