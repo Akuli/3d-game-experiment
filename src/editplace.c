@@ -55,18 +55,18 @@ static bool walls_match(const struct Wall *w1, const struct Wall *w2)
 	return w1->dir == w2->dir && w1->startx == w2->startx && w1->startz == w2->startz;
 }
 
-static void add_wall(struct PlaceEditor *pe)
+static bool add_wall(struct PlaceEditor *pe)
 {
 	SDL_assert(pe->place->nwalls <= MAX_WALLS);
 	if (pe->place->nwalls == MAX_WALLS) {
 		log_printf("hitting max number of walls, can't add more");
-		return;
+		return false;
 	}
 
 	for (struct Wall *w = pe->place->walls; w < &pe->place->walls[pe->place->nwalls]; w++)
 	{
 		if (walls_match(w, &pe->selwall))
-			return;
+			return false;
 	}
 
 	struct Wall *ptr = &pe->place->walls[pe->place->nwalls++];
@@ -74,6 +74,7 @@ static void add_wall(struct PlaceEditor *pe)
 	*ptr = pe->selwall;
 	wall_init(ptr);
 	place_save(pe->place);
+	return true;
 }
 
 static bool is_at_edge(const struct Wall *w, const struct Place *pl)
@@ -98,7 +99,7 @@ static void delete_wall(struct PlaceEditor *pe)
 	}
 }
 
-static void on_click(struct PlaceEditor *pe, int mousex, int mousey)
+static void select_clicked_wall(struct PlaceEditor *pe, int mousex, int mousey)
 {
 	// Top of place is at plane y=1. Figure out where on it we clicked
 	Vec3 dir = {
@@ -177,8 +178,13 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 	enum AngleKind ak = angle_kind(pe->cam.angle);
 	switch(e->type) {
 	case SDL_MOUSEBUTTONDOWN:
-		on_click(pe, e->button.x, e->button.y);
+		select_clicked_wall(pe, e->button.x, e->button.y);
 		keep_selected_wall_within_place(pe);
+		if (e->button.button == 3) {
+			// right click
+			if (!add_wall(pe))
+				delete_wall(pe);
+		}
 		return true;
 
 	case SDL_KEYDOWN:
@@ -206,12 +212,16 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 			return false;
 		case SDL_SCANCODE_D:
 			pe->rotatedir = -1;
-			return false;  // go to keyup case
+			return false;
 		case SDL_SCANCODE_DELETE:
 			delete_wall(pe);
 			return true;
 		case SDL_SCANCODE_INSERT:
 			add_wall(pe);
+			return true;
+		case SDL_SCANCODE_RETURN:
+			if (!add_wall(pe))
+				delete_wall(pe);
 			return true;
 		default:
 			return false;
