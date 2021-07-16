@@ -306,68 +306,57 @@ static void set_to_true(void *ptr)
 	*(bool *)ptr = true;
 }
 
-// -1 return value means quit
-static int yes_no_dialog(SDL_Window *wnd, SDL_Surface *wndsurf, const char *title, const char *yes, const char *no)
+static void confirm_delete(void *ptr)
 {
-	SDL_FillRect(wndsurf, NULL, 0);
-	SDL_Surface *textsurf = misc_create_text_surface(title, (SDL_Color){0xff,0xff,0xff}, 25);
+	log_printf("Delete button clicked, entering confirm loop");
+
+	struct DeleteData *dd = ptr;
+	SDL_FillRect(dd->wndsurf, NULL, 0);
+	SDL_Surface *textsurf = misc_create_text_surface(
+		"Are you sure you want to permanently delete this place?",
+		(SDL_Color){0xff,0xff,0xff}, 25);
 
 	bool yesclicked = false;
 	bool noclicked = false;
 	struct Button yesbtn = {
-		.text = yes,
-		.destsurf = wndsurf,
+		.text = "Yes, please\ndelete it",
+		.destsurf = dd->wndsurf,
 		.scancodes = { SDL_SCANCODE_Y },
-		.center = { wndsurf->w/2 - button_width(0)/2, wndsurf->h/2 },
+		.center = { dd->wndsurf->w/2 - button_width(0)/2, dd->wndsurf->h/2 },
 		.onclick = set_to_true,
 		.onclickdata = &yesclicked,
 	};
 	struct Button nobtn = {
 		.text = "No, don't\ntouch it",
 		.scancodes = { SDL_SCANCODE_N, SDL_SCANCODE_ESCAPE },
-		.destsurf = wndsurf,
-		.center = { wndsurf->w/2 + button_width(0)/2, wndsurf->h/2 },
+		.destsurf = dd->wndsurf,
+		.center = { dd->wndsurf->w/2 + button_width(0)/2, dd->wndsurf->h/2 },
 		.onclick = set_to_true,
 		.onclickdata = &noclicked,
 	};
 
 	button_show(&yesbtn);
 	button_show(&nobtn);
-	misc_blit_with_center(textsurf, wndsurf, &(SDL_Point){ wndsurf->w/2, wndsurf->h/4 });
+	misc_blit_with_center(textsurf, dd->wndsurf, &(SDL_Point){ dd->wndsurf->w/2, dd->wndsurf->h/4 });
 
 	struct LoopTimer lt = {0};
 	while(!yesclicked && !noclicked) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
-			if (e.type == SDL_QUIT)
+			if (e.type == SDL_QUIT) {
+				dd->editor->state = MISC_STATE_QUIT;
 				break;
+			}
 			button_handle_event(&e, &yesbtn);
 			button_handle_event(&e, &nobtn);
 		}
 
-		SDL_UpdateWindowSurface(wnd);
+		SDL_UpdateWindowSurface(dd->wnd);
 		looptimer_wait(&lt);
 	}
 	SDL_FreeSurface(textsurf);
 
-	if (yesclicked)
-		return 1;
-	if (noclicked)
-		return 0;
-	return -1;
-}
-
-static void confirm_delete(void *ptr)
-{
-	struct DeleteData *dd = ptr;
-	log_printf("Delete button clicked, entering confirm loop");
-	int r = yes_no_dialog(
-		dd->wnd, dd->wndsurf, "Are you sure you want to permanently delete this place?",
-		"Yes, please\ndelete it", "No, don't\ntouch it");
-
-	if (r == -1)
-		dd->editor->state = MISC_STATE_QUIT;
-	else if (r) {
+	if (yesclicked) {
 		place_delete(dd->places, dd->nplaces, dd->editor->place - dd->places);
 		dd->editor->state = MISC_STATE_CHOOSER;
 	}
