@@ -294,40 +294,33 @@ static void on_done_clicked(void *data)
 }
 
 struct DeleteData {
+	SDL_Window *wnd;
+	SDL_Surface *wndsurf;
 	struct PlaceEditor *editor;
 	struct Place *places;
 	int *nplaces;
 };
 
-static void delete_this_place(void *data)
-{
-	const struct DeleteData *dd = data;
-	place_delete(dd->places, dd->nplaces, dd->editor->place - dd->places);
-	dd->editor->state = MISC_STATE_CHOOSER;
-}
-
 static void set_to_true(void *ptr)
 {
-	bool *b = ptr;
-	*b = true;
+	*(bool *)ptr = true;
 }
 
-static void confirm_delete(struct DeleteData *dd, SDL_Window *wnd, SDL_Surface *wndsurf)
+// -1 return value means quit
+static int yes_no_dialog(SDL_Window *wnd, SDL_Surface *wndsurf, const char *title, const char *yes, const char *no)
 {
-	log_printf("Delete button clicked, entering confirm loop");
 	SDL_FillRect(wndsurf, NULL, 0);
-	SDL_Surface *textsurf = misc_create_text_surface(
-		"Are you sure you want to permanently delete this place?",
-		(SDL_Color){0xff,0xff,0xff}, 25);
+	SDL_Surface *textsurf = misc_create_text_surface(title, (SDL_Color){0xff,0xff,0xff}, 25);
 
+	bool yesclicked = false;
 	bool noclicked = false;
 	struct Button yesbtn = {
-		.text = "Yes, please\ndelete it",
+		.text = yes,
 		.destsurf = wndsurf,
 		.scancodes = { SDL_SCANCODE_Y },
 		.center = { wndsurf->w/2 - button_width(0)/2, wndsurf->h/2 },
-		.onclick = delete_this_place,
-		.onclickdata = dd,
+		.onclick = set_to_true,
+		.onclickdata = &yesclicked,
 	};
 	struct Button nobtn = {
 		.text = "No, don't\ntouch it",
@@ -343,11 +336,11 @@ static void confirm_delete(struct DeleteData *dd, SDL_Window *wnd, SDL_Surface *
 	misc_blit_with_center(textsurf, wndsurf, &(SDL_Point){ wndsurf->w/2, wndsurf->h/4 });
 
 	struct LoopTimer lt = {0};
-	while(dd->editor->state == MISC_STATE_EDITPLACE && !noclicked) {
+	while(!yesclicked && !noclicked) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
 			if (e.type == SDL_QUIT)
-				dd->editor->state = MISC_STATE_QUIT;
+				break;
 			button_handle_event(&e, &yesbtn);
 			button_handle_event(&e, &nobtn);
 		}
@@ -356,6 +349,28 @@ static void confirm_delete(struct DeleteData *dd, SDL_Window *wnd, SDL_Surface *
 		looptimer_wait(&lt);
 	}
 	SDL_FreeSurface(textsurf);
+
+	if (yesclicked)
+		return 1;
+	if (noclicked)
+		return 0;
+	return -1;
+}
+
+static void confirm_delete(void *ptr)
+{
+	struct DeleteData *dd = ptr;
+	log_printf("Delete button clicked, entering confirm loop");
+	int r = yes_no_dialog(
+		dd->wnd, dd->wndsurf, "Are you sure you want to permanently delete this place?",
+		"Yes, please\ndelete it", "No, don't\ntouch it");
+
+	if (r == -1)
+		dd->editor->state = MISC_STATE_QUIT;
+	else if (r) {
+		place_delete(dd->places, dd->nplaces, dd->editor->place - dd->places);
+		dd->editor->state = MISC_STATE_CHOOSER;
+	}
 }
 
 enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces, int placeidx)
@@ -367,7 +382,12 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 	SDL_FillRect(wndsurf, NULL, 0);
 
-	bool delclicked = false;
+	struct DeleteData deldata = {
+		.wnd = wnd,
+		.wndsurf = wndsurf,
+		.places = places,
+		.nplaces = nplaces,
+	};
 	struct PlaceEditor pe = {
 		.state = MISC_STATE_EDITPLACE,
 		.place = pl,
@@ -398,15 +418,11 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces
 				button_width(0)/2,
 				button_height(0)*3/2
 			},
-			.onclick = set_to_true,
-			.onclickdata = &delclicked,
+			.onclick = confirm_delete,
+			.onclickdata = &deldata,
 		},
 	};
-	struct DeleteData dd = {
-		.editor = &pe,
-		.places = places,
-		.nplaces = nplaces,
-	};
+	deldata.editor = &pe;
 	rotate_camera(&pe, 0);
 
 	struct LoopTimer lt = {0};
@@ -419,12 +435,6 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces
 
 			if (handle_event(&pe, &e))
 				redraw = true;
-			// TODO: handle_event() should include delclicked stuff
-			if (delclicked) {
-				confirm_delete(&dd, wnd, wndsurf);
-				delclicked = false;
-				redraw = true;
-			}
 			if (pe.state != MISC_STATE_EDITPLACE)
 				return pe.state;
 		}
