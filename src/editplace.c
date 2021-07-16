@@ -345,21 +345,22 @@ static void confirm_delete(void *ptr)
 		while (SDL_PollEvent(&e)) {
 			if (e.type == SDL_QUIT) {
 				dd->editor->state = MISC_STATE_QUIT;
-				break;
+				goto out;
 			}
 			button_handle_event(&e, &yesbtn);
 			button_handle_event(&e, &nobtn);
 		}
-
 		SDL_UpdateWindowSurface(dd->wnd);
 		looptimer_wait(&lt);
 	}
-	SDL_FreeSurface(textsurf);
 
 	if (yesclicked) {
 		place_delete(dd->places, dd->nplaces, dd->editor->place - dd->places);
 		dd->editor->state = MISC_STATE_CHOOSER;
 	}
+
+out:
+	SDL_FreeSurface(textsurf);
 }
 
 enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces, int placeidx)
