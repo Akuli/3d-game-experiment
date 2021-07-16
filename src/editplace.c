@@ -10,6 +10,15 @@
 #include "camera.h"
 #include "gameover.h"
 
+struct ResizeData {
+	struct Wall *walls[MAX_PLACE_SIZE];
+	int nwalls;
+	enum WallDirection dir;
+	bool negative;   // true if shrinks/expands in negative x or z direction
+};
+
+enum DndMode { DND_NONE, DND_MOVING, DND_RESIZE };
+
 struct PlaceEditor {
 	enum MiscState state;
 	struct Place *place;
@@ -18,8 +27,12 @@ struct PlaceEditor {
 	struct Wall selwall;   // if at edge of place, then entire edge selected
 	struct Button deletebtn, donebtn;
 
-	struct Wall *dndwall;  // NULL for not currently dragging
-	bool dragged;
+	enum DndMode dndmode;
+	union {
+		struct Wall *mvwall;
+		struct ResizeData resize;
+	} dnddata;
+	bool mousemoved;
 };
 
 static void rotate_camera(struct PlaceEditor *pe, float speed)
@@ -83,7 +96,7 @@ static void delete_wall(struct PlaceEditor *pe)
 	}
 }
 
-static void select_wall_by_mouse(struct PlaceEditor *pe, int mousex, int mousey)
+static void select_wall_by_mouse(struct PlaceEditor *pe, int mousex, int mousey, bool boundscheck)
 {
 	// Top of place is at plane y=1. Figure out where on it we clicked
 	Vec3 dir = {
@@ -104,8 +117,11 @@ static void select_wall_by_mouse(struct PlaceEditor *pe, int mousex, int mousey)
 	}
 	SDL_assert(fabsf(onplane.y - 1) < 1e-5f);
 
-	if (onplane.x < -1 || onplane.x > pe->place->xsize+1 ||
-		onplane.z < -1 || onplane.z > pe->place->zsize+1)
+	if (boundscheck && (
+			// Allow off by a little bit so you can select edge walls
+			onplane.x < -1 || onplane.x > pe->place->xsize + 1 ||
+			onplane.z < -1 || onplane.z > pe->place->zsize + 1
+		))
 	{
 		return;
 	}
@@ -163,6 +179,117 @@ static void move_towards_angle(struct PlaceEditor *pe, float angle)
 	keep_selected_wall_within_place(pe);
 }
 
+static void begin_resize(struct ResizeData *rd, const struct Wall *edgewall, struct Place *pl)
+{
+	rd->dir = edgewall->dir;
+	rd->nwalls = 0;
+	switch(edgewall->dir) {
+		case WALL_DIR_XY: rd->negative = (edgewall->startz == 0); break;
+		case WALL_DIR_ZY: rd->negative = (edgewall->startx == 0); break;
+	}
+
+	for (struct Wall *w = pl->walls; w < &pl->walls[pl->nwalls]; w++) {
+		if (wall_linedup(w, edgewall))
+			rd->walls[rd->nwalls++] = w;
+	}
+	SDL_assert(rd->nwalls == pl->xsize || rd->nwalls == pl->zsize);
+}
+
+// TODO: bounds check lol
+static void resize_badly_by_moving_wall(struct ResizeData *rd, struct Wall *movethemhere)
+{
+	SDL_assert(!rd->negative);  // TODO
+	switch(rd->dir) {
+	case WALL_DIR_XY:
+		for (int i = 0; i < rd->nwalls; i++) {
+			rd->walls[i]->startz = movethemhere->startz;
+			wall_init(rd->walls[i]);
+		}
+		break;
+	case WALL_DIR_ZY:
+		for (int i = 0; i < rd->nwalls; i++) {
+			rd->walls[i]->startx = movethemhere->startx;
+			wall_init(rd->walls[i]);
+		}
+		break;
+	}
+}
+
+// TODO: move to place.c
+static void place_fix(struct Place *pl)
+{
+	// Delete walls outside the place
+	for (int i = pl->nwalls - 1; i >= 0; i--) {
+		if (
+			pl->walls[i].startx < 0 ||
+			pl->walls[i].startz < 0 ||
+			pl->walls[i].startx > pl->xsize ||
+			pl->walls[i].startz > pl->zsize ||
+			(pl->walls[i].dir == WALL_DIR_XY && pl->walls[i].startx == pl->xsize) ||
+			(pl->walls[i].dir == WALL_DIR_ZY && pl->walls[i].startz == pl->zsize)
+		)
+		{
+			pl->walls[i] = pl->walls[--pl->nwalls];
+		}
+	}
+
+	// Delete duplicate walls
+	for (int i = 0; i < pl->nwalls; i++) {
+		for (int k = pl->nwalls-1; k > i; k--) {
+			if (walls_match(&pl->walls[i], &pl->walls[k]))
+				pl->walls[k] = pl->walls[--pl->nwalls];
+		}
+	}
+
+	// Add missing walls around edges
+	bool foundx0[MAX_PLACE_SIZE] = {0};
+	bool foundz0[MAX_PLACE_SIZE] = {0};
+	bool foundxmax[MAX_PLACE_SIZE] = {0};
+	bool foundzmax[MAX_PLACE_SIZE] = {0};
+	for (const struct Wall *w = pl->walls; w < &pl->walls[pl->nwalls]; w++) {
+		switch(w->dir) {
+			case WALL_DIR_XY:
+				if (w->startz == 0)
+					foundz0[w->startx] = true;
+				if (w->startz == pl->zsize)
+					foundzmax[w->startx] = true;
+				break;
+			case WALL_DIR_ZY:
+				if (w->startx == 0)
+					foundx0[w->startz] = true;
+				if (w->startx == pl->xsize)
+					foundxmax[w->startz] = true;
+				break;
+		}
+	}
+	for (int z = 0; z < pl->zsize; z++) {
+		if (!foundx0[z])
+			place_addwall(pl, 0, z, WALL_DIR_ZY);
+		if (!foundxmax[z])
+			place_addwall(pl, pl->xsize, z, WALL_DIR_ZY);
+	}
+	for (int x = 0; x < pl->xsize; x++) {
+		if (!foundz0[x])
+			place_addwall(pl, x, 0, WALL_DIR_XY);
+		if (!foundzmax[x])
+			place_addwall(pl, x, pl->zsize, WALL_DIR_XY);
+	}
+}
+
+static void finish_resize(struct PlaceEditor *pe)
+{
+	if (pe->dnddata.resize.negative)
+		log_printf_abort("TODO");
+
+	switch(pe->dnddata.resize.dir) {
+		case WALL_DIR_XY: pe->place->zsize = pe->dnddata.resize.walls[0]->startz; break;
+		case WALL_DIR_ZY: pe->place->xsize = pe->dnddata.resize.walls[0]->startx; break;
+	}
+
+	place_fix(pe->place);
+	place_save(pe->place);
+}
+
 // Returns whether redrawing needed
 bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 {
@@ -171,32 +298,63 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 	float pi = acosf(-1);
 
 	switch(e->type) {
+
 	case SDL_MOUSEBUTTONDOWN:
-		pe->dndwall = find_wall_from_place(pe, &pe->selwall);  // can be NULL
-		if (pe->dndwall && is_at_edge(pe->dndwall, pe->place))
-			pe->dndwall = NULL;
-		pe->dragged = false;
+		pe->mousemoved = false;
+		struct Wall *hoveringwall = find_wall_from_place(pe, &pe->selwall);
+		if (hoveringwall && is_at_edge(hoveringwall, pe->place)) {
+			pe->dndmode = DND_RESIZE;
+			begin_resize(&pe->dnddata.resize, hoveringwall, pe->place);
+		} else if (hoveringwall) {
+			pe->dndmode = DND_MOVING;
+			pe->dnddata.mvwall = hoveringwall;
+		} else {
+			pe->dndmode = DND_NONE;
+		}
 		return true;
 
 	case SDL_MOUSEMOTION:
-		select_wall_by_mouse(pe, e->button.x, e->button.y);
-		keep_selected_wall_within_place(pe);
-		if (pe->dndwall && !find_wall_from_place(pe, &pe->selwall)) {
-			// Not going on top of another wall, can move
-			pe->dndwall->startx = pe->selwall.startx;
-			pe->dndwall->startz = pe->selwall.startz;
-			wall_init(pe->dndwall);
-			place_save(pe->place);
+		pe->mousemoved = true;
+
+		switch(pe->dndmode) {
+		case DND_NONE:
+			select_wall_by_mouse(pe, e->button.x, e->button.y, true);
+			keep_selected_wall_within_place(pe);
+			break;
+		case DND_MOVING:
+			select_wall_by_mouse(pe, e->button.x, e->button.y, true);
+			keep_selected_wall_within_place(pe);
+			if (!find_wall_from_place(pe, &pe->selwall)) {
+				// Not going on top of another wall, can move
+				pe->dnddata.mvwall->startx = pe->selwall.startx;
+				pe->dnddata.mvwall->startz = pe->selwall.startz;
+				wall_init(pe->dnddata.mvwall);
+				place_save(pe->place);
+			}
+			break;
+		case DND_RESIZE:
+			select_wall_by_mouse(pe, e->button.x, e->button.y, false);
+			resize_badly_by_moving_wall(&pe->dnddata.resize, &pe->selwall);
+			break;
 		}
-		pe->dragged = true;
 		return true;
 
 	case SDL_MOUSEBUTTONUP:
-		if (!pe->dragged) {
-			if (!add_wall(pe))
-				delete_wall(pe);
+		switch(pe->dndmode) {
+			case DND_MOVING:
+				if (!pe->mousemoved) {
+					// clicking wall without actually moving anything
+					if (!add_wall(pe))
+						delete_wall(pe);
+				}
+				break;
+			case DND_RESIZE:
+				finish_resize(pe);
+				break;
+			case DND_NONE:
+				break;
 		}
-		pe->dndwall = NULL;
+		pe->dndmode = DND_NONE;
 		return true;
 
 	case SDL_KEYDOWN:
@@ -368,6 +526,7 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces
 		.nplaces = nplaces,
 	};
 	struct PlaceEditor pe = {
+		.dndmode = DND_NONE,
 		.state = MISC_STATE_EDITPLACE,
 		.place = pl,
 		.cam = {

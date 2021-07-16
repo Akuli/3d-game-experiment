@@ -30,7 +30,7 @@ void place_addwall(struct Place *pl, int x, int z, enum WallDirection dir);
 // for custom places only
 void place_save(const struct Place *pl);
 
-// May reallocate *places, returns index into it
+// May reallocate *places, returns index into it, saves copied place
 int place_copy(struct Place **places, int *nplaces, int srcidx);
 
 // Doesn't reallocate places

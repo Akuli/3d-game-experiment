@@ -100,7 +100,6 @@ static char *read_file_with_trailing_spaces_added(const char *path, int *linelen
 void place_addwall(struct Place *pl, int x, int z, enum WallDirection dir)
 {
 	SDL_assert(pl->nwalls < MAX_WALLS);
-
 	struct Wall *w = &pl->walls[pl->nwalls++];
 	w->startx = x;
 	w->startz = z;
@@ -260,9 +259,10 @@ struct Place *place_list(int *nplaces)
 	return places;
 }
 
-static void set_char(char *data, int linesz, int x, int z, char c, int offset)
+static void set_char(char *data, int linesz, int nlines, int x, int z, char c, int offset)
 {
 	int idx = (2*z + (c != '-'))*linesz + strlen("|--")*x + offset;
+	SDL_assert(idx < linesz*nlines);
 	data[idx] = c;
 }
 
@@ -270,37 +270,37 @@ void place_save(const struct Place *pl)
 {
 	SDL_assert(pl->custom);
 	int linesz = strlen("|--")*pl->xsize + strlen("|\n");
-	int linecount = 2*pl->zsize + 1;
+	int nlines = 2*pl->zsize + 1;
 
-	char *data = malloc(linesz*linecount);
+	char *data = malloc(linesz*nlines);
 	if (!data)
 		log_printf_abort("not enough memory");
 
-	memset(data, ' ', linesz*linecount);
-	for (int lineno = 0; lineno < linecount; lineno++)
+	memset(data, ' ', linesz*nlines);
+	for (int lineno = 0; lineno < nlines; lineno++)
 		data[lineno*linesz + (linesz-1)] = '\n';
 
 	for (const struct Wall *w = pl->walls; w < &pl->walls[pl->nwalls]; w++) {
 		switch(w->dir) {
 		case WALL_DIR_XY:
-			set_char(data, linesz, w->startx, w->startz, '-', 1);
-			set_char(data, linesz, w->startx, w->startz, '-', 2);
+			set_char(data, linesz, nlines, w->startx, w->startz, '-', 1);
+			set_char(data, linesz, nlines, w->startx, w->startz, '-', 2);
 			break;
 		case WALL_DIR_ZY:
-			set_char(data, linesz, w->startx, w->startz, '|', 0);
+			set_char(data, linesz, nlines, w->startx, w->startz, '|', 0);
 			break;
 		}
 	}
 
-	set_char(data, linesz, (int)pl->enemyloc.x, (int)pl->enemyloc.z, 'e', 1);
+	set_char(data, linesz, nlines, (int)pl->enemyloc.x, (int)pl->enemyloc.z, 'e', 1);
 	for (int i = 0; i < 2; i++)
-		set_char(data, linesz, (int)pl->playerlocs[i].x, (int)pl->playerlocs[i].z, 'p', 1);
+		set_char(data, linesz, nlines, (int)pl->playerlocs[i].x, (int)pl->playerlocs[i].z, 'p', 1);
 
 	misc_mkdir("custom_places");  // pl->path is like "custom_places/custom-00006.txt"
 	FILE *f = fopen(pl->path, "w");
 	if (!f)
 		log_printf_abort("opening \"%s\" failed: %s", pl->path, strerror(errno));
-	if (fwrite(data, 1, linesz*linecount, f) != linesz*linecount)
+	if (fwrite(data, 1, linesz*nlines, f) != linesz*nlines)
 		log_printf_abort("writing to \"%s\" failed: %s", pl->path, strerror(errno));
 	fclose(f);
 
