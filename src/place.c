@@ -167,7 +167,8 @@ static void print_place_info(const struct Place *pl)
 static void read_place_from_file(struct Place *pl, const char *path)
 {
 	log_printf("Reading place from '%s'...", path);
-	snprintf(pl->path, sizeof pl->path, "%s", path);
+	SDL_assert(strlen(path) < sizeof pl->path);
+	strcpy(pl->path, path);
 
 	int linelen, nlines;
 	char *fdata = read_file_with_trailing_spaces_added(path, &linelen, &nlines);
