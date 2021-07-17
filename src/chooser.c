@@ -1,6 +1,7 @@
 #include "chooser.h"
 #include <math.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <SDL2/SDL.h>
 #include "button.h"
 #include "camera.h"
