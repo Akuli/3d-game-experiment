@@ -52,7 +52,7 @@ static const char *read_file_with_trailing_spaces_added(const char *path, int *n
 		SDL_assert(line[strlen(line)-1] == '\n');
 		line[strlen(line)-1] = '\0';
 		log_printf("%s", line);
-		sprintf(res + strlen(res), "%-*s\n", (int)MAX_LINE_LEN-1, line);
+		sprintf(res + strlen(res), "%-*s\n", (int)(MAX_LINE_LEN - strlen("\n")), line);
 
 		SDL_assert(n < MAX_LINE_COUNT);
 		n++;
