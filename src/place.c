@@ -129,9 +129,9 @@ static void print_place_info(const struct Place *pl)
 	log_printf("    size %dx%d", pl->xsize, pl->zsize);
 	log_printf("    %d walls", pl->nwalls);
 	log_printf("    %d enemies that never die", pl->nneverdielocs);
-	log_printf("    enemies go to (%d, %d)", pl->enemyloc.x, pl->enemyloc.z);
+	log_printf("    enemies go to x=%d z=%d", pl->enemyloc.x, pl->enemyloc.z);
 	for (int i = 0; i < 2; i++)
-		log_printf("    player %d goes to (%d, %d)", i, pl->playerlocs[i].x, pl->playerlocs[i].z);
+		log_printf("    player %d goes to x=%d z=%d", i, pl->playerlocs[i].x, pl->playerlocs[i].z);
 }
 
 static const char *next_line(const char *s)
