@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <SDL2/SDL.h>
 #include "max.h"
-#include "misc.h"
 #include "log.h"
 
 #define COMPILE_TIME_STRLEN(s) (sizeof(s)-1)
