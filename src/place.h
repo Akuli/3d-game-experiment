@@ -20,7 +20,7 @@ struct Place {
 	int nneverdielocs;
 };
 
-// Result array changes only when places are added or removed
+// Result array must be free()d
 struct Place *place_list(int *nplaces);
 
 
