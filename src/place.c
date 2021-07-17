@@ -166,7 +166,7 @@ static void read_place_from_file(struct Place *pl, const char *path)
 		linelen--;
 		SDL_assert(linelen > 0);
 	}
-	SDL_assert(linelen % 3 && linelen >= 4);  // e.g. "|  |", one more column means off by 3
+	SDL_assert(linelen % 3 == 1 && linelen >= 4);  // e.g. "|  |", one more column means off by 3
 	pl->xsize = linelen / 3;
 
 	pl->nwalls = 0;
