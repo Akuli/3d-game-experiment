@@ -105,15 +105,24 @@ static void keep_selected_wall_within_place(struct PlaceEditor *pe)
 	int xmin = 0, xmax = pe->place->xsize;
 	int zmin = 0, zmax = pe->place->zsize;
 	if (pe->dndmode == DND_RESIZE) {
-		SDL_assert(!pe->dnddata.resize.negative);
 		switch(pe->selwall.dir) {
 			case WALL_DIR_XY:
-				zmin = 2;
-				zmax = MAX_PLACE_SIZE;
+				if (pe->dnddata.resize.negative) {
+					zmin = pe->place->zsize - MAX_PLACE_SIZE;
+					zmax = pe->place->zsize - 2;
+				} else {
+					zmin = 2;
+					zmax = MAX_PLACE_SIZE;
+				}
 				break;
 			case WALL_DIR_ZY:
-				xmin = 2;
-				xmax = MAX_PLACE_SIZE;
+				if (pe->dnddata.resize.negative) {
+					xmin = pe->place->xsize - MAX_PLACE_SIZE;
+					xmax = pe->place->xsize - 2;
+				} else {
+					xmin = 2;
+					xmax = MAX_PLACE_SIZE;
+				}
 				break;
 		}
 	}
@@ -208,33 +217,39 @@ static void begin_resize(struct ResizeData *rd, const struct Wall *edgewall, str
 }
 
 // Assumes keep_selected_wall_within_place() has been used
-static void resize_badly_by_moving_wall(struct ResizeData *rd, struct Wall *selwall)
+static void resize_badly_by_moving_wall(struct ResizeData *rd, const struct Wall *selwall)
 {
-	SDL_assert(!rd->negative);  // TODO
-	switch(selwall->dir) {
-	case WALL_DIR_XY:
-		for (int i = 0; i < rd->nwalls; i++) {
-			rd->walls[i]->startz = selwall->startz;
-			wall_init(rd->walls[i]);
+	for (int i = 0; i < rd->nwalls; i++) {
+		switch(selwall->dir) {
+			case WALL_DIR_XY: rd->walls[i]->startz = selwall->startz; break;
+			case WALL_DIR_ZY: rd->walls[i]->startx = selwall->startx; break;
 		}
-		break;
-	case WALL_DIR_ZY:
-		for (int i = 0; i < rd->nwalls; i++) {
-			rd->walls[i]->startx = selwall->startx;
-			wall_init(rd->walls[i]);
-		}
-		break;
+		wall_init(rd->walls[i]);
 	}
 }
 
 static void finish_resize(struct PlaceEditor *pe)
 {
-	if (pe->dnddata.resize.negative)
-		log_printf_abort("TODO");
-
-	switch(pe->selwall.dir) {
-		case WALL_DIR_XY: pe->place->zsize = pe->selwall.startz; break;
-		case WALL_DIR_ZY: pe->place->xsize = pe->selwall.startx; break;
+	if (pe->dnddata.resize.negative) {
+		switch(pe->selwall.dir) {
+			case WALL_DIR_XY:
+				place_movecontent(pe->place, 0, -pe->selwall.startz);
+				pe->place->zsize -= pe->selwall.startz;
+				break;
+			case WALL_DIR_ZY:
+				place_movecontent(pe->place, -pe->selwall.startx, 0);
+				pe->place->xsize -= pe->selwall.startx;
+				break;
+		}
+	} else {
+		switch(pe->selwall.dir) {
+			case WALL_DIR_XY:
+				pe->place->zsize = pe->selwall.startz;
+				break;
+			case WALL_DIR_ZY:
+				pe->place->xsize = pe->selwall.startx;
+				break;
+		}
 	}
 
 	place_fix(pe->place);

@@ -244,6 +244,25 @@ struct Place *place_list(int *nplaces)
 	return places;
 }
 
+void place_movecontent(struct Place *pl, int dx, int dz)
+{
+	for (int i = 0; i < pl->nwalls; i++) {
+		pl->walls[i].startx += dx;
+		pl->walls[i].startz += dz;
+		wall_init(&pl->walls[i]);
+	}
+	pl->enemyloc.x += dx;
+	pl->enemyloc.z += dz;
+	for (int i = 0; i < 2; i++) {
+		pl->playerlocs[i].x += dx;
+		pl->playerlocs[i].z += dz;
+	}
+	for (int i = 0; i < pl->nneverdielocs; i++) {
+		pl->neverdielocs[i].x += dx;
+		pl->neverdielocs[i].z += dz;
+	}
+}
+
 static void delete_walls_outside_the_place(struct Place *pl)
 {
 	for (int i = pl->nwalls - 1; i >= 0; i--) {
@@ -308,19 +327,24 @@ static void add_missing_walls_around_edges(struct Place *pl)
 	}
 }
 
+static void clamp(int *val, int lo, int hi)
+{
+	*val = max(*val, lo);
+	*val = min(*val, hi);
+}
+
 // Assumes the enemies are not off in the negative direction
 static void move_players_and_enemies_inside_the_place(struct Place *pl)
 {
-	if (pl->enemyloc.x >= pl->xsize)
-		pl->enemyloc.x = pl->xsize - 1;
-	if (pl->enemyloc.z >= pl->zsize)
-		pl->enemyloc.z = pl->zsize - 1;
-
+	clamp(&pl->enemyloc.x, 0, pl->xsize-1);
+	clamp(&pl->enemyloc.z, 0, pl->zsize-1);
 	for (int p=0; p<2; p++) {
-		if (pl->playerlocs[p].x >= pl->xsize)
-			pl->playerlocs[p].x = pl->xsize - 1;
-		if (pl->playerlocs[p].z >= pl->zsize)
-			pl->playerlocs[p].z = pl->zsize - 1;
+		clamp(&pl->playerlocs[p].x, 0, pl->xsize-1);
+		clamp(&pl->playerlocs[p].z, 0, pl->zsize-1);
+	}
+	for (int i = 0; i < pl->nneverdielocs; i++) {
+		clamp(&pl->neverdielocs[i].x, 0, pl->xsize-1);
+		clamp(&pl->neverdielocs[i].z, 0, pl->zsize-1);
 	}
 }
 
