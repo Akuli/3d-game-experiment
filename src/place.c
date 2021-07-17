@@ -59,6 +59,7 @@ static const char *read_file_with_trailing_spaces_added(const char *path, int *n
 	}
 	if (ferror(f))
 		log_printf_abort("can't read from \"%s\": %s", path, strerror(errno));
+	fclose(f);
 
 	*nlines = n;
 	return res;
