@@ -1,4 +1,3 @@
-#include <errno.h>
 #include <string.h>
 #include <time.h>
 #include <stdbool.h>
@@ -18,6 +17,11 @@
 #include "log.h"
 #include "place.h"
 #include "editplace.h"
+
+#ifdef _WIN32
+	#include <direct.h>
+	#include <windows.h>
+#endif
 
 #ifdef _WIN32
 	#include <direct.h>
