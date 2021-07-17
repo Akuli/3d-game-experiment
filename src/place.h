@@ -20,11 +20,8 @@ struct Place {
 	int nneverdielocs;
 };
 
-// Result array changes only when places are added or removed
+// Result array must be free()d
 struct Place *place_list(int *nplaces);
-
-// Returns index into *places
-int place_copy(struct Place **places, int *nplaces, int srcidx);
 
 
 #endif   // PLACE_H

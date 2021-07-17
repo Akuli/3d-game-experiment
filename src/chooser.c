@@ -197,7 +197,7 @@ static void show_place_chooser_each_frame(struct ChooserPlaceStuff *plcch)
 	Vec3 tocamera = vec3_mul_float((Vec3){0,0.8f,1}, 1.1f*d);
 	vec3_apply_matrix(&tocamera, mat3_rotation_xz(plcch->cam.angle));
 
-	// TODO: adjust angle earlier
+	// TODO: see if adjusting angle earlier makes it look somehow better
 	plcch->cam.location = vec3_add(placecenter, tocamera);
 	plcch->cam.angle -= 0.5f/CAMERA_FPS;   // subtracting makes it spin same direction as ellipsoids
 	camera_update_caches(&plcch->cam);
@@ -369,8 +369,6 @@ static void show_title_text(SDL_Surface *winsurf)
 
 enum MiscState chooser_run(struct Chooser *ch)
 {
-	if (ch->placech.placeidx >= ch->placech.nplaces)
-		ch->placech.placeidx = ch->placech.nplaces-1;
 	update_place_chooser_button_disableds(&ch->placech);
 
 	bool playbtnclicked = false;

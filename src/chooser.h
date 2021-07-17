@@ -22,7 +22,7 @@ struct ChooserPlayerStuff {
 };
 
 struct ChooserPlaceStuff {
-	struct Place *places;   // pointer into places
+	struct Place *places;
 	int nplaces;
 	int placeidx;
 
