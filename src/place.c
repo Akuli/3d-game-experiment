@@ -398,7 +398,10 @@ void place_fix(struct Place *pl)
 
 static void set_char(char *data, int linesz, int nlines, int x, int z, char c, int offset)
 {
-	int idx = (2*z + (c != '-'))*linesz + strlen("|--")*x + offset;
+	// The asserts in this function help with finding weird bugs, don't delete
+	int lineno = 2*z + (c != '-');
+	SDL_assert(0 <= lineno && lineno < nlines);
+	int idx = lineno*linesz + strlen("|--")*x + offset;
 	SDL_assert(idx < linesz*nlines);
 	data[idx] = c;
 }
@@ -434,8 +437,12 @@ void place_save(const struct Place *pl)
 	for (int i = 0; i < 2; i++)
 		set_char(data, linesz, nlines, (int)pl->playerlocs[i].x, (int)pl->playerlocs[i].z, 'p', 1);
 
+	// Can get truncated if all data in one log message, maybe limitation in sdl2 logging
+	log_printf("Writing to \"%s\"", pl->path);
+	for (int i = 0; i < nlines; i++)
+		log_printf("%.*s", linesz, data+(i*linesz));
+
 	misc_mkdir("custom_places");  // pl->path is like "custom_places/custom-00006.txt"
-	log_printf("Writing to \"%s\"\n%s", pl->path, data);
 	FILE *f = fopen(pl->path, "w");
 	if (!f)
 		log_printf_abort("opening \"%s\" failed: %s", pl->path, strerror(errno));
