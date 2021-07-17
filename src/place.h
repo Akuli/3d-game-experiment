@@ -23,8 +23,5 @@ struct Place {
 // Result array changes only when places are added or removed
 struct Place *place_list(int *nplaces);
 
-// Returns index into *places
-int place_copy(struct Place **places, int *nplaces, int srcidx);
-
 
 #endif   // PLACE_H
