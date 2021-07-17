@@ -1,14 +1,15 @@
-#include "glob.h"
 #include "place.h"
+#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <SDL2/SDL.h>
-#include "max.h"
+#include "glob.h"
 #include "log.h"
-#include <assert.h>
+#include "max.h"
+#include "misc.h"
 
 #define COMPILE_TIME_STRLEN(s) (sizeof(s)-1)
 
