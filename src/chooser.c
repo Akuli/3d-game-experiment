@@ -26,20 +26,6 @@
 
 static const SDL_Color white_color = { 0xff, 0xff, 0xff, 0xff };
 
-static void calculate_player_chooser_geometry_stuff(
-	int leftx, SDL_Rect *preview, SDL_Point *prevbcenter, SDL_Point *nextbcenter, enum ButtonFlags flags)
-{
-	preview->w = CAMERA_SCREEN_WIDTH/2 - 2*button_width(flags);
-	preview->h = PLAYER_CHOOSER_HEIGHT - 2*FONT_SIZE;
-	preview->x = leftx + CAMERA_SCREEN_WIDTH/4 - preview->w/2;
-	preview->y = FONT_SIZE;
-
-	prevbcenter->x = leftx + button_width(flags)/2;
-	nextbcenter->x = leftx + CAMERA_SCREEN_WIDTH/2 - button_width(flags)/2;
-	prevbcenter->y = PLAYER_CHOOSER_HEIGHT/2;
-	nextbcenter->y = PLAYER_CHOOSER_HEIGHT/2;
-}
-
 static void update_player_name_display(struct ChooserPlayerStuff *plrch)
 {
 	SDL_assert(plrch->prevbtn.destsurf == plrch->nextbtn.destsurf);
@@ -86,9 +72,12 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 	int leftx = idx * (ch->winsurf->w/2);
 
 	enum ButtonFlags flags = BUTTON_VERTICAL | BUTTON_SMALL;
-	SDL_Rect preview;
-	SDL_Point prevc, nextc;
-	calculate_player_chooser_geometry_stuff(leftx, &preview, &prevc, &nextc, flags);
+	SDL_Rect preview = {
+		.w = CAMERA_SCREEN_WIDTH/2 - 2*button_width(flags),
+		.h = PLAYER_CHOOSER_HEIGHT - 2*FONT_SIZE,
+		.x = leftx + button_width(flags),
+		.y = FONT_SIZE,
+	};
 
 	float pi = acosf(-1);
 	struct ChooserPlayerStuff *plrch = &ch->playerch[idx];
@@ -100,7 +89,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 			.imgpath = "assets/arrows/left.png",
 			.scancodes = {scprev},
 			.destsurf = ch->winsurf,
-			.center = prevc,
+			.center = { leftx + button_width(flags)/2, PLAYER_CHOOSER_HEIGHT/2 },
 			.onclick = rotate_left,
 			.onclickdata = plrch,
 		},
@@ -109,7 +98,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 			.imgpath = "assets/arrows/right.png",
 			.scancodes = {scnext},
 			.destsurf = ch->winsurf,
-			.center = nextc,
+			.center = { leftx + CAMERA_SCREEN_WIDTH/2 - button_width(flags)/2, PLAYER_CHOOSER_HEIGHT/2 },
 			.onclick = rotate_right,
 			.onclickdata = plrch,
 		},
