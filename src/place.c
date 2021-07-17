@@ -272,10 +272,11 @@ void place_save(const struct Place *pl)
 	int linesz = strlen("|--")*pl->xsize + strlen("|\n");
 	int nlines = 2*pl->zsize + 1;
 
-	char *data = malloc(linesz*nlines);
+	char *data = malloc(linesz*nlines + 1);
 	if (!data)
 		log_printf_abort("not enough memory");
 
+	data[linesz*nlines] = '\0';
 	memset(data, ' ', linesz*nlines);
 	for (int lineno = 0; lineno < nlines; lineno++)
 		data[lineno*linesz + (linesz-1)] = '\n';
@@ -297,6 +298,7 @@ void place_save(const struct Place *pl)
 		set_char(data, linesz, nlines, (int)pl->playerlocs[i].x, (int)pl->playerlocs[i].z, 'p', 1);
 
 	misc_mkdir("custom_places");  // pl->path is like "custom_places/custom-00006.txt"
+	log_printf("Writing to \"%s\"\n%s", pl->path, data);
 	FILE *f = fopen(pl->path, "w");
 	if (!f)
 		log_printf_abort("opening \"%s\" failed: %s", pl->path, strerror(errno));
@@ -304,7 +306,6 @@ void place_save(const struct Place *pl)
 		log_printf_abort("writing to \"%s\" failed: %s", pl->path, strerror(errno));
 	fclose(f);
 
-	log_printf("wrote \"%s\"", pl->path);
 	print_place_info(pl);
 	free(data);
 }
