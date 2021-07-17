@@ -7,8 +7,9 @@
 #include <stdlib.h>
 #include <SDL2/SDL.h>
 #include "max.h"
-#include "misc.h"
 #include "log.h"
+
+#define COMPILE_TIME_STRLEN(s) (sizeof(s)-1)
 
 /*
 Small language for specifying places in assets/places/placename.txt files:
@@ -59,7 +60,7 @@ static char *read_file_with_trailing_spaces_added(const char *path, int *linelen
 	if (!f)
 		log_printf_abort("opening '%s' failed: %s", path, strerror(errno));
 
-	char buf[1024];
+	char buf[COMPILE_TIME_STRLEN("|--")*MAX_PLACE_SIZE + COMPILE_TIME_STRLEN("|") + 2 /* '\n' '\0' */];
 	*nlines = 0;
 	*linelen = 0;
 	while (fgets(buf, sizeof buf, f)) {
@@ -96,7 +97,6 @@ static char *read_file_with_trailing_spaces_added(const char *path, int *linelen
 static void add_wall(struct Place *pl, int x, int z, enum WallDirection dir)
 {
 	SDL_assert(pl->nwalls < MAX_WALLS);
-
 	struct Wall *w = &pl->walls[pl->nwalls++];
 	w->startx = x;
 	w->startz = z;
@@ -119,7 +119,6 @@ struct SquareParsingState {
 	struct Place *place;
 	Vec3 loc;
 	Vec3 *playerlocptr;   // pointer into place->playerlocs
-	Vec3 *neverdieptr;   // pointer into place->playerlocs
 };
 
 static void parse_square_content(char c, struct SquareParsingState *st)
@@ -153,9 +152,23 @@ static void parse_vertical_wall_string(const char *part, bool *leftwall, bool *r
 	parse_square_content(part[2], st);
 }
 
-static void init_place(struct Place *pl, const char *path)
+static void print_place_info(const struct Place *pl)
 {
-	misc_basename_without_extension(path, pl->name, sizeof(pl->name));
+	log_printf("    path = %s", pl->path);
+	log_printf("    size %dx%d", pl->xsize, pl->zsize);
+	log_printf("    %d walls", pl->nwalls);
+	log_printf("    %d enemies that never die", pl->nneverdielocs);
+	log_printf("    enemies go to (%.2f, %.2f, %.2f)", pl->enemyloc.x, pl->enemyloc.y, pl->enemyloc.z);
+	for (int i = 0; i < 2; i++)
+		log_printf("    player %d goes to (%.2f, %.2f, %.2f)", i, pl->playerlocs[i].x, pl->playerlocs[i].y, pl->playerlocs[i].z);
+}
+
+static void read_place_from_file(struct Place *pl, const char *path)
+{
+	log_printf("Reading place from '%s'...", path);
+	SDL_assert(strlen(path) < sizeof pl->path);
+	strcpy(pl->path, path);
+
 	int linelen, nlines;
 	char *fdata = read_file_with_trailing_spaces_added(path, &linelen, &nlines);
 
@@ -214,37 +227,25 @@ static void init_place(struct Place *pl, const char *path)
 			if (right)  add_wall(pl, x+1, z,   WALL_DIR_ZY);
 		}
 	}
-	free(fdata);
 
-	log_printf("place '%s':", path);
-	log_printf("    size %dx%d", pl->xsize, pl->zsize);
-	log_printf("    %d walls", pl->nwalls);
-	log_printf("    %d enemies that never die", pl->nneverdielocs);
-	log_printf("    enemies go to (%.2f, %.2f, %.2f)", pl->enemyloc.x, pl->enemyloc.y, pl->enemyloc.z);
-	for (int i = 0; i < 2; i++)
-		log_printf("    player %d goes to (%.2f, %.2f, %.2f)", i, pl->playerlocs[i].x, pl->playerlocs[i].y, pl->playerlocs[i].z);
+	print_place_info(pl);
+	free(fdata);
 }
 
-const struct Place *place_list(int *nplaces)
+struct Place *place_list(int *nplaces)
 {
-	static int n = -1;
-	static struct Place places[50];
+	glob_t gl;
+	if (glob("places/*.txt", 0, NULL, &gl) != 0)
+		log_printf_abort("default places not found");
 
-	if (n == -1) {
-		// not ready yet, called for first time
-		glob_t gl;
-		if (glob("places/*.txt", 0, NULL, &gl) != 0)
-			log_printf_abort("can't find place files");
+	struct Place *places = malloc(gl.gl_pathc * sizeof places[0]);
+	if (!places)
+		log_printf_abort("not enough memory for %d places", *nplaces);
 
-		n = gl.gl_pathc;
-		SDL_assert(n <= sizeof(places)/sizeof(places[0]));
-		for (int i = 0; i < n; i++)
-			init_place(&places[i], gl.gl_pathv[i]);
+	for (int i = 0; i < gl.gl_pathc; i++)
+		read_place_from_file(&places[i], gl.gl_pathv[i]);
+	globfree(&gl);
 
-		globfree(&gl);
-	}
-
-	if(nplaces)
-		*nplaces = n;
+	*nplaces = gl.gl_pathc;
 	return places;
 }

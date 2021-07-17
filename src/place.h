@@ -6,7 +6,7 @@
 #include "mathstuff.h"
 
 struct Place {
-	char name[128];
+	char path[1024];
 	struct Wall walls[MAX_WALLS];
 	int nwalls;
 	int xsize, zsize;    // players and enemies must have 0 <= x <= xsize, 0 <= z <= zsize
@@ -20,10 +20,8 @@ struct Place {
 	int nneverdielocs;
 };
 
-// Result is same array every time, cleaned when program exits
-const struct Place *place_list(int *nplaces);
-
-struct Wall *place_load(const char *const *spec, int *nwalls);
+// Result array must be free()d
+struct Place *place_list(int *nplaces);
 
 
 #endif   // PLACE_H
