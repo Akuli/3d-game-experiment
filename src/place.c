@@ -7,9 +7,10 @@
 #include <stdlib.h>
 #include <SDL2/SDL.h>
 #include "max.h"
-#include "misc.h"
 #include "log.h"
 #include <assert.h>
+
+#define COMPILE_TIME_STRLEN(s) (sizeof(s)-1)
 
 #define COMPILE_TIME_STRLEN(s) (sizeof(s)-1)
 
@@ -63,7 +64,7 @@ static char *read_file_with_trailing_spaces_added(const char *path, int *linelen
 	if (!f)
 		log_printf_abort("opening '%s' failed: %s", path, strerror(errno));
 
-	char buf[COMPILE_TIME_STRLEN("|--")*MAX_PLACE_SIZE + COMPILE_TIME_STRLEN("|\n") + sizeof("")];
+	char buf[COMPILE_TIME_STRLEN("|--")*MAX_PLACE_SIZE + COMPILE_TIME_STRLEN("|") + 2 /* '\n' '\0' */];
 	*nlines = 0;
 	*linelen = 0;
 	while (fgets(buf, sizeof buf, f)) {
@@ -170,7 +171,8 @@ static void print_place_info(const struct Place *pl)
 static void read_place_from_file(struct Place *pl, const char *path, bool custom)
 {
 	log_printf("Reading place from '%s'...", path);
-	snprintf(pl->path, sizeof pl->path, "%s", path);
+	SDL_assert(strlen(path) < sizeof pl->path);
+	strcpy(pl->path, path);
 	pl->custom = custom;
 
 	int linelen, nlines;

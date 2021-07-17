@@ -1,6 +1,7 @@
 #include "chooser.h"
 #include <math.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <SDL2/SDL.h>
 #include "button.h"
 #include "camera.h"
@@ -196,7 +197,7 @@ static void show_place_chooser_each_frame(struct ChooserPlaceStuff *plcch)
 	Vec3 tocamera = vec3_mul_float((Vec3){0,0.8f,1}, 1.1f*d);
 	vec3_apply_matrix(&tocamera, mat3_rotation_xz(plcch->cam.angle));
 
-	// TODO: adjust angle earlier
+	// TODO: see if adjusting angle earlier makes it look somehow better
 	plcch->cam.location = vec3_add(placecenter, tocamera);
 	plcch->cam.angle -= 0.5f/CAMERA_FPS;   // subtracting makes it spin same direction as ellipsoids
 	camera_update_caches(&plcch->cam);
@@ -299,6 +300,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 			// onclickdata is set in chooser_run()
 		},
 		.placech = {
+			// places and nplaces loaded below
 			.placeidx = 0,
 			.cam = {
 				.screencentery = -0.55f*PLACE_CHOOSER_HEIGHT,
