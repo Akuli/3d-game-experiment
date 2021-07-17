@@ -368,8 +368,6 @@ static void show_title_text(SDL_Surface *winsurf)
 
 enum MiscState chooser_run(struct Chooser *ch)
 {
-	if (ch->placech.placeidx >= ch->placech.nplaces)
-		ch->placech.placeidx = ch->placech.nplaces-1;
 	update_place_chooser_button_disableds(&ch->placech);
 
 	bool playbtnclicked = false;
