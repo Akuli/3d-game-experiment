@@ -296,8 +296,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 			// onclickdata is set in chooser_run()
 		},
 		.placech = {
-			.places = NULL,
-			.nplaces = 0,
+			// places and nplaces loaded below
 			.placeidx = 0,
 			.cam = {
 				.screencentery = -0.55f*PLACE_CHOOSER_HEIGHT,
