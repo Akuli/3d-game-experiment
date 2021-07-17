@@ -9,7 +9,6 @@
 #include "max.h"
 #include "misc.h"
 #include "log.h"
-#include <assert.h>
 
 #define COMPILE_TIME_STRLEN(s) (sizeof(s)-1)
 
