@@ -311,22 +311,23 @@ static void add_missing_walls_around_edges(struct Place *pl)
 // Assumes the enemies are not off in the negative direction
 static void move_players_and_enemies_inside_the_place(struct Place *pl)
 {
-	if (pl->enemyloc.x > pl->xsize)
-		pl->enemyloc.x = pl->xsize - 0.5f;
-	if (pl->enemyloc.z > pl->zsize)
-		pl->enemyloc.z = pl->zsize - 0.5f;
+	if (pl->enemyloc.x >= pl->xsize)
+		pl->enemyloc.x = pl->xsize - 1;
+	if (pl->enemyloc.z >= pl->zsize)
+		pl->enemyloc.z = pl->zsize - 1;
 
 	for (int p=0; p<2; p++) {
-		if (pl->playerlocs[p].x > pl->xsize)
-			pl->playerlocs[p].x = pl->xsize - 0.5f;
-		if (pl->playerlocs[p].z > pl->zsize)
-			pl->playerlocs[p].z = pl->zsize - 0.5f;
+		if (pl->playerlocs[p].x >= pl->xsize)
+			pl->playerlocs[p].x = pl->xsize - 1;
+		if (pl->playerlocs[p].z >= pl->zsize)
+			pl->playerlocs[p].z = pl->zsize - 1;
 	}
 }
 
-static void ensure_player_doesnt_overlap_other_player_or_enemy(const struct Place *pl, Vec3 *player, Vec3 otherplayer)
+static void ensure_player_doesnt_overlap_other_player_or_enemy(
+	const struct Place *pl, struct PlaceCoords *player, struct PlaceCoords otherplayer)
 {
-	int choices[][2] = {
+	struct PlaceCoords choices[] = {
 		// Worst-case sceario is when player is at corner and place is only 2x2.
 		// Even then, one of these places will be available.
 		{ (int)player->x    , (int)player->z     },
@@ -335,21 +336,21 @@ static void ensure_player_doesnt_overlap_other_player_or_enemy(const struct Plac
 		{ (int)player->x    , (int)player->z - 1 },
 		{ (int)player->x    , (int)player->z + 1 },
 	};
-	int used[][2] = {
+	struct PlaceCoords used[] = {
 		{ (int)pl->enemyloc.x, (int)pl->enemyloc.z },
 		{ (int)otherplayer.x,  (int)otherplayer.z  },
 	};
 
 	for (int c = 0; c < sizeof(choices)/sizeof(choices[0]); c++) {
-		if (choices[c][0] < 0 || choices[c][0] >= pl->xsize ||
-			choices[c][1] < 0 || choices[c][1] >= pl->zsize)
+		if (choices[c].x < 0 || choices[c].x >= pl->xsize ||
+			choices[c].z < 0 || choices[c].z >= pl->zsize)
 		{
 			continue;
 		}
 
 		bool inuse = false;
 		for (int u = 0; u < sizeof(used)/sizeof(used[0]); u++) {
-			if (choices[c][0] == used[u][0] && choices[c][1] == used[u][1]) {
+			if (choices[c].x == used[u].x && choices[c].z == used[u].z) {
 				inuse = true;
 				break;
 			}
@@ -357,8 +358,7 @@ static void ensure_player_doesnt_overlap_other_player_or_enemy(const struct Plac
 		if (inuse)
 			continue;
 
-		player->x = choices[c][0] + 0.5f;
-		player->z = choices[c][1] + 0.5f;
+		*player = choices[c];
 		return;
 	}
 	log_printf_abort("the impossible happened: no place found for player");
