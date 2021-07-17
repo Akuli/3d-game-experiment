@@ -72,6 +72,7 @@ void button_show(const struct Button *butt)
 	if (butt->imgpath) {
 		SDL_Surface *s = load_image(butt->imgpath);
 		misc_blit_with_center(s, butt->destsurf, &butt->center);
+		stbi_image_free(s->pixels);
 		SDL_FreeSurface(s);
 	}
 
