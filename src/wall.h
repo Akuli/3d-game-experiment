@@ -61,6 +61,9 @@ struct Wall {
 // Can be called multiple times
 void wall_init(struct Wall *w);
 
+// does not require using wall_init()
+bool wall_match(const struct Wall *w1, const struct Wall *w2);
+
 // moves el so that it doesn't bump
 void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el);
 
@@ -73,13 +76,9 @@ bool wall_side(const struct Wall *w, Vec3 pt);
 // two walls are lined up if they are parallel and on the same plane
 inline bool wall_linedup(const struct Wall *w1, const struct Wall *w2)
 {
-	if (w1->dir == w2->dir) {
-		switch(w1->dir) {
-			case WALL_DIR_XY: return (w1->startz == w2->startz);
-			case WALL_DIR_ZY: return (w1->startx == w2->startx);
-		}
-	}
-	return false;
+	return
+		(w1->dir == WALL_DIR_XY && w2->dir == WALL_DIR_XY && w1->startz == w2->startz) ||
+		(w1->dir == WALL_DIR_ZY && w2->dir == WALL_DIR_ZY && w1->startx == w2->startx);
 }
 
 void wall_drawborder(const struct Wall *w, const struct Camera *cam);

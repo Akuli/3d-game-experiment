@@ -48,15 +48,10 @@ static void rotate_camera(struct PlaceEditor *pe, float speed)
 	camera_update_caches(&pe->cam);
 }
 
-static bool walls_match(const struct Wall *w1, const struct Wall *w2)
-{
-	return w1->dir == w2->dir && w1->startx == w2->startx && w1->startz == w2->startz;
-}
-
 static struct Wall *find_wall_from_place(struct PlaceEditor *pe, const struct Wall *w)
 {
 	for (int i = 0; i < pe->place->nwalls; i++) {
-		if (walls_match(&pe->place->walls[i], w))
+		if (wall_match(&pe->place->walls[i], w))
 			return &pe->place->walls[i];
 	}
 	return NULL;
@@ -216,109 +211,6 @@ static void resize_badly_by_moving_wall(struct ResizeData *rd, struct Wall *move
 	}
 }
 
-// TODO: move to place.c
-static void place_fix(struct Place *pl)
-{
-	// Delete walls outside the place
-	for (int i = pl->nwalls - 1; i >= 0; i--) {
-		if (
-			pl->walls[i].startx < 0 ||
-			pl->walls[i].startz < 0 ||
-			pl->walls[i].startx > pl->xsize ||
-			pl->walls[i].startz > pl->zsize ||
-			(pl->walls[i].dir == WALL_DIR_XY && pl->walls[i].startx == pl->xsize) ||
-			(pl->walls[i].dir == WALL_DIR_ZY && pl->walls[i].startz == pl->zsize)
-		)
-		{
-			pl->walls[i] = pl->walls[--pl->nwalls];
-		}
-	}
-
-	// Delete duplicate walls
-	for (int i = 0; i < pl->nwalls; i++) {
-		for (int k = pl->nwalls-1; k > i; k--) {
-			if (walls_match(&pl->walls[i], &pl->walls[k]))
-				pl->walls[k] = pl->walls[--pl->nwalls];
-		}
-	}
-
-	// Add missing walls around edges
-	bool foundx0[MAX_PLACE_SIZE] = {0};
-	bool foundz0[MAX_PLACE_SIZE] = {0};
-	bool foundxmax[MAX_PLACE_SIZE] = {0};
-	bool foundzmax[MAX_PLACE_SIZE] = {0};
-	for (const struct Wall *w = pl->walls; w < &pl->walls[pl->nwalls]; w++) {
-		switch(w->dir) {
-			case WALL_DIR_XY:
-				if (w->startz == 0)
-					foundz0[w->startx] = true;
-				if (w->startz == pl->zsize)
-					foundzmax[w->startx] = true;
-				break;
-			case WALL_DIR_ZY:
-				if (w->startx == 0)
-					foundx0[w->startz] = true;
-				if (w->startx == pl->xsize)
-					foundxmax[w->startz] = true;
-				break;
-		}
-	}
-	for (int z = 0; z < pl->zsize; z++) {
-		if (!foundx0[z])
-			place_addwall(pl, 0, z, WALL_DIR_ZY);
-		if (!foundxmax[z])
-			place_addwall(pl, pl->xsize, z, WALL_DIR_ZY);
-	}
-	for (int x = 0; x < pl->xsize; x++) {
-		if (!foundz0[x])
-			place_addwall(pl, x, 0, WALL_DIR_XY);
-		if (!foundzmax[x])
-			place_addwall(pl, x, pl->zsize, WALL_DIR_XY);
-	}
-
-	// Move players and enemies inside place
-	if (pl->enemyloc.x > pl->xsize) pl->enemyloc.x = pl->xsize - 0.5f;
-	if (pl->enemyloc.z > pl->zsize) pl->enemyloc.z = pl->zsize - 0.5f;
-	for (int p=0; p<2; p++) {
-		if (pl->playerlocs[p].x > pl->xsize) pl->playerlocs[p].x = pl->xsize - 0.5f;
-		if (pl->playerlocs[p].z > pl->zsize) pl->playerlocs[p].z = pl->zsize - 0.5f;
-	}
-
-	// Make sure that players don't overlap with each other or the enemy source
-	for (int p=0; p<2; p++) {
-		int choices[][2] = {
-			// Worst-case sceario is when player is at corner and place is only 2x2.
-			// Even then, one of these places will be available.
-			{ (int)pl->playerlocs[p].x    , (int)pl->playerlocs[p].z     },
-			{ (int)pl->playerlocs[p].x - 1, (int)pl->playerlocs[p].z     },
-			{ (int)pl->playerlocs[p].x + 1, (int)pl->playerlocs[p].z     },
-			{ (int)pl->playerlocs[p].x    , (int)pl->playerlocs[p].z - 1 },
-			{ (int)pl->playerlocs[p].x    , (int)pl->playerlocs[p].z + 1 },
-		};
-		int used[][2] = {
-			{ (int)pl->enemyloc.x, (int)pl->enemyloc.z },
-			{ (int)pl->playerlocs[1-p].x, (int)pl->playerlocs[1-p].z },  // other player
-		};
-		bool foundplace = false;
-		for (int c = 0; c < sizeof(choices)/sizeof(choices[0]); c++) {
-			bool inuse = false;
-			for (int u = 0; u < sizeof(used)/sizeof(used[0]); u++) {
-				if (choices[c][0] == used[u][0] && choices[c][1] == used[u][1]) {
-					inuse = true;
-					break;
-				}
-			}
-			if (inuse)
-				continue;
-			pl->playerlocs[p].x = choices[c][0] + 0.5f;
-			pl->playerlocs[p].z = choices[c][1] + 0.5f;
-			foundplace = true;
-			break;
-		}
-		SDL_assert(foundplace);
-	}
-}
-
 static void finish_resize(struct PlaceEditor *pe)
 {
 	if (pe->dnddata.resize.negative)
@@ -456,7 +348,7 @@ static bool is_selected(const struct PlaceEditor *pe, const struct Wall *w)
 {
 	if (is_at_edge(w, pe->place))
 		return wall_linedup(&pe->selwall, w);
-	return walls_match(&pe->selwall, w);
+	return wall_match(&pe->selwall, w);
 }
 
 static void draw_walls(struct PlaceEditor *pe)

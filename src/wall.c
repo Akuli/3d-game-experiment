@@ -52,6 +52,12 @@ void wall_init(struct Wall *w)
 	}
 }
 
+bool wall_match(const struct Wall *w1, const struct Wall *w2)
+{
+	return w1->dir == w2->dir && w1->startx == w2->startx && w1->startz == w2->startz;
+}
+
+
 void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el)
 {
 	/*
