@@ -88,8 +88,8 @@ static bool parse_horizontal_wall_string(const char *part)
 
 struct SquareParsingState {
 	struct Place *place;
-	Vec3 loc;
-	Vec3 *playerlocptr;   // pointer into place->playerlocs
+	struct PlaceCoords loc;
+	struct PlaceCoords *playerlocptr;   // pointer into place->playerlocs
 };
 
 static void parse_square_content(char c, struct SquareParsingState *st)
@@ -129,9 +129,9 @@ static void print_place_info(const struct Place *pl)
 	log_printf("    size %dx%d", pl->xsize, pl->zsize);
 	log_printf("    %d walls", pl->nwalls);
 	log_printf("    %d enemies that never die", pl->nneverdielocs);
-	log_printf("    enemies go to (%.2f, %.2f, %.2f)", pl->enemyloc.x, pl->enemyloc.y, pl->enemyloc.z);
+	log_printf("    enemies go to x=%d z=%d", pl->enemyloc.x, pl->enemyloc.z);
 	for (int i = 0; i < 2; i++)
-		log_printf("    player %d goes to (%.2f, %.2f, %.2f)", i, pl->playerlocs[i].x, pl->playerlocs[i].y, pl->playerlocs[i].z);
+		log_printf("    player %d goes to x=%d z=%d", i, pl->playerlocs[i].x, pl->playerlocs[i].z);
 }
 
 static const char *next_line(const char *s)
@@ -178,7 +178,7 @@ static void read_place_from_file(struct Place *pl, const char *path)
 		fdata = line3;
 
 		for (int x = 0; x < pl->xsize; (x++, line1 += 3, line2 += 3, line3 += 3)) {
-			st.loc = (Vec3){ x+0.5f, 0, z+0.5f };    // +0.5f gives center coords
+			st.loc = (struct PlaceCoords){x,z};
 
 			bool top, bottom, left, right;
 			top = parse_horizontal_wall_string(line1);

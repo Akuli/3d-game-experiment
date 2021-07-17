@@ -259,14 +259,30 @@ enum MiscState play_the_game(
 		.pixfmt = winsurf->format,
 		.players = {
 			{
-				.ellipsoid = { .angle = 0, .epic = plr1pic, .center = pl->playerlocs[0] },
-				.cam = { .screencentery = winsurf->h/4, .surface = misc_create_cropped_surface(
-					winsurf, (SDL_Rect){ 0, 0, winsurf->w/2, winsurf->h }) },
+				.ellipsoid = {
+					.angle = 0,
+					.epic = plr1pic,
+					.center = { pl->playerlocs[0].x + 0.5f, 0, pl->playerlocs[0].z + 0.5f },
+				},
+				.cam = {
+					.screencentery = winsurf->h/4,
+					.surface = misc_create_cropped_surface(
+						winsurf, (SDL_Rect){ 0, 0, winsurf->w/2, winsurf->h }
+					),
+				},
 			},
 			{
-				.ellipsoid = { .angle = 0, .epic = plr2pic, .center = pl->playerlocs[1] },
-				.cam = { .screencentery = winsurf->h/4, .surface = misc_create_cropped_surface(
-					winsurf, (SDL_Rect){ winsurf->w/2, 0, winsurf->w/2, winsurf->h }) },
+				.ellipsoid = {
+					.angle = 0,
+					.epic = plr2pic,
+					.center = { pl->playerlocs[1].x + 0.5f, 0, pl->playerlocs[1].z + 0.5f }
+				},
+				.cam = {
+					.screencentery = winsurf->h/4,
+					.surface = misc_create_cropped_surface(
+						winsurf, (SDL_Rect){ winsurf->w/2, 0, winsurf->w/2, winsurf->h }
+					),
+				},
 			},
 		},
 	};
@@ -275,8 +291,9 @@ enum MiscState play_the_game(
 		struct Enemy *en = add_enemy(&gs, ENEMY_NEVERDIE);
 		if (!en)
 			continue;
-		SDL_assert(en->ellipsoid.center.y == pl->neverdielocs[i].y);
-		en->ellipsoid.center = pl->neverdielocs[i];
+
+		en->ellipsoid.center.x = pl->neverdielocs[i].x + 0.5f;
+		en->ellipsoid.center.z = pl->neverdielocs[i].z + 0.5f;
 		en->flags |= ENEMY_NEVERDIE;
 	}
 
