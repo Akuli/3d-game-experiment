@@ -235,7 +235,7 @@ static void read_place_from_file(struct Place *pl, const char *path)
 struct Place *place_list(int *nplaces)
 {
 	glob_t gl;
-	if (glob("places/*.txt", 0, NULL, &gl) != 0)
+	if (glob("assets/places/*.txt", 0, NULL, &gl) != 0)
 		log_printf_abort("default places not found");
 
 	struct Place *places = malloc(gl.gl_pathc * sizeof places[0]);

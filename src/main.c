@@ -1,14 +1,3 @@
-#ifdef _WIN32
-	#include <direct.h>
-	#include <windows.h>
-	#define my_chdir _chdir
-#else
-	#define _POSIX_C_SOURCE 200809L    // for chdir()
-	#include <unistd.h>
-	#define my_chdir chdir
-#endif
-
-#include <errno.h>
 #include <string.h>
 #include <time.h>
 #include <stdbool.h>
@@ -27,6 +16,11 @@
 #include "sound.h"
 #include "log.h"
 #include "place.h"
+
+#ifdef _WIN32
+	#include <direct.h>
+	#include <windows.h>
+#endif
 
 
 /*
@@ -64,13 +58,6 @@ static void cd_where_everything_is(void)
 		log_printf_abort("_wchdir to '%s' failed: %s", misc_windows_to_utf8(fulldir), strerror(errno));
 	log_printf("Changed directory: %s", misc_windows_to_utf8(fulldir));
 #endif
-}
-
-static void cd_assets(void)
-{
-	if (my_chdir("assets") != 0)
-		log_printf_abort("chdir to assets failed: %s", strerror(errno));
-	log_printf("Changed directory: assets");
 }
 
 static void show_loading(const char *msg, SDL_Window *wnd, SDL_Surface *wndsurf, int yidx)
@@ -121,7 +108,6 @@ int main(int argc, char **argv)
 
 	cd_where_everything_is();
 	log_init();
-	cd_assets();
 
 	SDL_Window *wnd = SDL_CreateWindow(
 		"3D game experiment", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, CAMERA_SCREEN_WIDTH, CAMERA_SCREEN_HEIGHT, 0);
