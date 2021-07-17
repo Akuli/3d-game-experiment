@@ -342,8 +342,15 @@ void place_fix(struct Place *pl)
 			{ (int)pl->enemyloc.x, (int)pl->enemyloc.z },
 			{ (int)pl->playerlocs[1-p].x, (int)pl->playerlocs[1-p].z },  // other player
 		};
+
 		bool foundplace = false;
 		for (int c = 0; c < sizeof(choices)/sizeof(choices[0]); c++) {
+			if (choices[c][0] < 0 || choices[c][0] >= pl->xsize ||
+				choices[c][1] < 0 || choices[c][1] >= pl->zsize)
+			{
+				continue;
+			}
+
 			bool inuse = false;
 			for (int u = 0; u < sizeof(used)/sizeof(used[0]); u++) {
 				if (choices[c][0] == used[u][0] && choices[c][1] == used[u][1]) {
@@ -353,6 +360,7 @@ void place_fix(struct Place *pl)
 			}
 			if (inuse)
 				continue;
+
 			pl->playerlocs[p].x = choices[c][0] + 0.5f;
 			pl->playerlocs[p].z = choices[c][1] + 0.5f;
 			foundplace = true;
