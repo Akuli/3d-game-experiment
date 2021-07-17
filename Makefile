@@ -58,6 +58,10 @@ $(EXEDIR)/testrunner$(EXESUFFIX): tests/main.c $(TESTS_LINK_OBJ) generated/run_t
 test: $(EXEDIR)/testrunner$(EXESUFFIX)
 	$(RUN) ./$<
 
+.PHONY: iwyu
+iwyu:
+	$(MAKE) -f Makefile.iwyu
+
 .PHONY: check_assets_sources
 checkassets:
 	scripts/check_assets_sources
