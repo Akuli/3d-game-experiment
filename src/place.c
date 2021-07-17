@@ -43,7 +43,6 @@ Small language for specifying places in assets/(default|custom)_places/placename
 
 static const char *read_file_with_trailing_spaces_added(const char *path, int *nlines)
 {
-	// TODO: windows can have issue with unicode in file names
 	FILE *f = fopen(path, "r");
 	if (!f)
 		log_printf_abort("opening \"%s\" failed: %s", path, strerror(errno));
