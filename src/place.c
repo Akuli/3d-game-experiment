@@ -24,73 +24,43 @@ Small language for specifying places in assets/places/placename.txt files:
 	- 'e': initial place for enemies (need one of these in the place)
 	- 'E': add an enemy that never dies. Use this for places otherwise unreacahble
 	  by enemies
-- any of the '--' or '|' walls may be replaced with spaces
+- any of the '--' or '|' walls may be replaced with spaces, that means no wall
 - each line is padded with spaces to have same length
 - must have these walls:
-	- topmost wall (first line)
-	- bottommost wall (last line)
-	- left wall (first character of lines 1,3,5,... in 0-based indexing)
-	- right wall (last character of those lines)
+	- wall at z=0 (first line)
+	- wall at z=zsize (last line)
+	- wall at x=0 (first character of lines 1,3,5,... in 0-based indexing)
+	- wall at x=xsize (last character of those lines)
 - NULL after last row
 */
 
-static void reading_error(const char *path)
-{
-	log_printf_abort("error while reading '%s': %s", path, strerror(errno));
-}
+#define MAX_LINE_LEN (COMPILE_TIME_STRLEN("|--")*MAX_PLACE_SIZE + COMPILE_TIME_STRLEN("|\n"))
+#define MAX_LINE_COUNT (2*MAX_PLACE_SIZE + 1)
 
-static void remove_trailing_newline(char *s)
-{
-	size_t len = strlen(s);
-	if (len > 0 && s[len-1] == '\n')
-		s[len-1] = '\0';
-}
-
-// make sure that s is big enough for len+1 bytes
-static void add_trailing_spaces(char *s, size_t len)
-{
-	s[len] = '\0';
-	memset(s + strlen(s), ' ', len - strlen(s));
-	SDL_assert(strlen(s) == len);
-}
-
-static char *read_file_with_trailing_spaces_added(const char *path, int *linelen, int *nlines)
+static const char *read_file_with_trailing_spaces_added(const char *path, int *nlines)
 {
 	FILE *f = fopen(path, "r");
 	if (!f)
-		log_printf_abort("opening '%s' failed: %s", path, strerror(errno));
+		log_printf_abort("opening \"%s\" failed: %s", path, strerror(errno));
 
-	char buf[COMPILE_TIME_STRLEN("|--")*MAX_PLACE_SIZE + COMPILE_TIME_STRLEN("|") + 2 /* '\n' '\0' */];
-	*nlines = 0;
-	*linelen = 0;
-	while (fgets(buf, sizeof buf, f)) {
-		++*nlines;
-		remove_trailing_newline(buf);
-		*linelen = max(*linelen, strlen(buf));
+	static char res[MAX_LINE_LEN*MAX_LINE_COUNT + 1];
+	res[0] = '\0';
+
+	char line[MAX_LINE_LEN + 1];
+	int n = 0;
+	while (fgets(line, sizeof line, f)) {
+		SDL_assert(line[strlen(line)-1] == '\n');
+		line[strlen(line)-1] = '\0';
+		log_printf("%s", line);
+		sprintf(res + strlen(res), "%-*s\n", (int)MAX_LINE_LEN-1, line);
+
+		SDL_assert(n < MAX_LINE_COUNT);
+		n++;
 	}
-
 	if (ferror(f))
-		reading_error(path);
-	if (*linelen == 0)
-		log_printf_abort("file '%s' is empty or contains only newline characters", path);
+		log_printf_abort("can't read from \"%s\": %s", path, strerror(errno));
 
-	if (fseek(f, 0, SEEK_SET) < 0)
-		log_printf_abort("seeking to beginning of file '%s' failed: %s", path, strerror(errno));
-
-	char *res = calloc(*nlines, *linelen + 1);
-	if (!res)
-		log_printf_abort("not enough memory");
-
-	for (char *ptr = res; ptr < res + (*linelen + 1)*(*nlines); ptr += *linelen + 1) {
-		if (!fgets(buf, sizeof buf, f))
-			reading_error(path);
-		remove_trailing_newline(buf);
-		SDL_assert(sizeof(buf) >= *linelen + 1);
-		add_trailing_spaces(buf, *linelen);
-		strcpy(ptr, buf);
-	}
-
-	fclose(f);
+	*nlines = n;
 	return res;
 }
 
@@ -163,43 +133,56 @@ static void print_place_info(const struct Place *pl)
 		log_printf("    player %d goes to (%.2f, %.2f, %.2f)", i, pl->playerlocs[i].x, pl->playerlocs[i].y, pl->playerlocs[i].z);
 }
 
+static const char *next_line(const char *s)
+{
+	char *nl = strchr(s, '\n');
+	SDL_assert(nl);
+	return nl+1;
+}
+
 static void read_place_from_file(struct Place *pl, const char *path)
 {
 	log_printf("Reading place from '%s'...", path);
 	SDL_assert(strlen(path) < sizeof pl->path);
 	strcpy(pl->path, path);
 
-	int linelen, nlines;
-	char *fdata = read_file_with_trailing_spaces_added(path, &linelen, &nlines);
+	int nlines;
+	const char *fdata = read_file_with_trailing_spaces_added(path, &nlines);
 
 	/*
-	 ---------> x
-	|
+	 -----> x
 	|
 	|
 	V
 	z
 	*/
-
-	SDL_assert(linelen % 3 == 1);  // e.g. " -- " or "|  |", one more column means off by 3
-	pl->xsize = linelen / 3;
-	SDL_assert(nlines % 2 == 1);   // e.g. { " -- ", "|  |", " -- " }, one more row means off by 2
+	SDL_assert(nlines % 2 == 1 && nlines >= 3);   // e.g. { " -- ", "|  |", " -- " }, one more row means off by 2
 	pl->zsize = nlines/2;
+
+	const char *secondline = next_line(fdata);
+	int linelen = next_line(secondline) - secondline;
+	while (secondline[linelen-1] != '|') {
+		linelen--;
+		SDL_assert(linelen > 0);
+	}
+	SDL_assert(linelen % 3 && linelen >= 4);  // e.g. "|  |", one more column means off by 3
+	pl->xsize = linelen / 3;
 
 	pl->nwalls = 0;
 	struct SquareParsingState st = { .place = pl, .playerlocptr = pl->playerlocs };
 	for (int z = 0; z < pl->zsize; z++) {
-		for (int x = 0; x < pl->xsize; x++) {
+		const char *line1 = fdata;
+		const char *line2 = next_line(line1);
+		const char *line3 = next_line(line2);
+		fdata = line3;
+
+		for (int x = 0; x < pl->xsize; (x++, line1 += 3, line2 += 3, line3 += 3)) {
 			st.loc = (Vec3){ x+0.5f, 0, z+0.5f };    // +0.5f gives center coords
 
-			const char *toprow = fdata + (2*z    )*(linelen + 1) + 3*x;
-			const char *midrow = fdata + (2*z + 1)*(linelen + 1) + 3*x;
-			const char *botrow = fdata + (2*z + 2)*(linelen + 1) + 3*x;
-
 			bool top, bottom, left, right;
-			top = parse_horizontal_wall_string(toprow);
-			parse_vertical_wall_string(midrow, &left, &right, &st);
-			bottom = parse_horizontal_wall_string(botrow);
+			top = parse_horizontal_wall_string(line1);
+			parse_vertical_wall_string(line2, &left, &right, &st);
+			bottom = parse_horizontal_wall_string(line3);
 
 			// place must have surrounding left and top walls
 			if (x == 0)
@@ -229,7 +212,6 @@ static void read_place_from_file(struct Place *pl, const char *path)
 	}
 
 	print_place_info(pl);
-	free(fdata);
 }
 
 struct Place *place_list(int *nplaces)
