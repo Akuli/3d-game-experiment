@@ -138,7 +138,7 @@ static void parse_square_content(char c, struct SquareParsingState *st)
 		*st->playerlocptr++ = st->loc;
 		break;
 	default:
-		log_printf_abort("expected ' ', 'e' or 'p', got '%c'", c);
+		log_printf_abort("expected ' ', 'e', 'E' or 'p', got '%c'", c);
 	}
 }
 
