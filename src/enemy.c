@@ -63,7 +63,7 @@ struct Enemy enemy_new(const struct Place *pl, enum EnemyFlags fl)
 {
 	struct Enemy res = {
 		.ellipsoid = {
-			.center = pl->enemyloc,
+			.center = { pl->enemyloc.x + 0.5f, 0, pl->enemyloc.z + 0.5f },
 			.epic = &ellipsoid_pics[!!(fl & ENEMY_NEVERDIE)][rand() % n_ellipsoid_pics],
 			.angle = 0,
 			.xzradius = ENEMY_XZRADIUS,

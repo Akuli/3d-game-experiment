@@ -8,4 +8,3 @@ build/
 generated/
 logs/
 custom_places/
-iwyu.out
