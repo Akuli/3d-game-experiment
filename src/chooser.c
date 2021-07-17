@@ -202,7 +202,7 @@ static void show_place_chooser_each_frame(struct ChooserPlaceStuff *plcch)
 	camera_update_caches(&plcch->cam);
 
 	SDL_FillRect(plcch->cam.surface, NULL, 0);
-	show_all(pl->walls, pl->nwalls, NULL, NULL, 0, &plcch->cam);
+	show_all(pl->walls, pl->nwalls, NULL, 0, &plcch->cam);
 }
 
 static void update_place_chooser_button_disableds(struct ChooserPlaceStuff *ch)
@@ -333,6 +333,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 		},
 		.withoutenemiestxt = misc_create_text_surface("Practice without enemies", white_color, 10),
 	};
+	ch->placech.places = place_list(&ch->placech.nplaces);
 
 	ch->withoutenemiesrect = (SDL_Rect){
 		ch->bigplaybtn.center.x - ch->withoutenemiestxt->w/2,
@@ -365,15 +366,8 @@ static void show_title_text(SDL_Surface *winsurf)
 	SDL_FreeSurface(s);
 }
 
-static void copy_current_place(struct ChooserPlaceStuff *plcch)
-{
-	plcch->placeidx = place_copy(&plcch->places, &plcch->nplaces, plcch->placeidx);
-}
-
 enum MiscState chooser_run(struct Chooser *ch)
 {
-	free(ch->placech.places);
-	ch->placech.places = place_list(&ch->placech.nplaces);
 	if (ch->placech.placeidx >= ch->placech.nplaces)
 		ch->placech.placeidx = ch->placech.nplaces-1;
 	update_place_chooser_button_disableds(&ch->placech);
