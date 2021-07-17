@@ -259,9 +259,8 @@ struct Place *place_list(int *nplaces)
 	return places;
 }
 
-void place_fix(struct Place *pl)
+static void delete_walls_outside_the_place(struct Place *pl)
 {
-	// Delete walls outside the place
 	for (int i = pl->nwalls - 1; i >= 0; i--) {
 		if (
 			pl->walls[i].startx < 0 ||
@@ -275,17 +274,21 @@ void place_fix(struct Place *pl)
 			pl->walls[i] = pl->walls[--pl->nwalls];
 		}
 	}
+}
 
-	// Delete duplicate walls
+static void delete_duplicate_walls(struct Place *pl)
+{
 	for (int i = 0; i < pl->nwalls; i++) {
 		for (int k = pl->nwalls-1; k > i; k--) {
 			if (wall_match(&pl->walls[i], &pl->walls[k]))
 				pl->walls[k] = pl->walls[--pl->nwalls];
 		}
 	}
+}
 
-	// Add missing walls around edges
-	// FIXME: can MAX_WALLS limitation matter?
+// FIXME: MAX_WALLS limitation
+static void add_missing_walls_around_edges(struct Place *pl)
+{
 	bool foundx0[MAX_PLACE_SIZE] = {0};
 	bool foundz0[MAX_PLACE_SIZE] = {0};
 	bool foundxmax[MAX_PLACE_SIZE] = {0};
@@ -318,58 +321,76 @@ void place_fix(struct Place *pl)
 		if (!foundzmax[x])
 			place_addwall(pl, x, pl->zsize, WALL_DIR_XY);
 	}
+}
 
-	// Move players and enemies inside place
-	if (pl->enemyloc.x > pl->xsize) pl->enemyloc.x = pl->xsize - 0.5f;
-	if (pl->enemyloc.z > pl->zsize) pl->enemyloc.z = pl->zsize - 0.5f;
+// Assumes the enemies are not off in the negative direction
+static void move_players_and_enemies_inside_the_place(struct Place *pl)
+{
+	if (pl->enemyloc.x > pl->xsize)
+		pl->enemyloc.x = pl->xsize - 0.5f;
+	if (pl->enemyloc.z > pl->zsize)
+		pl->enemyloc.z = pl->zsize - 0.5f;
+
 	for (int p=0; p<2; p++) {
-		if (pl->playerlocs[p].x > pl->xsize) pl->playerlocs[p].x = pl->xsize - 0.5f;
-		if (pl->playerlocs[p].z > pl->zsize) pl->playerlocs[p].z = pl->zsize - 0.5f;
+		if (pl->playerlocs[p].x > pl->xsize)
+			pl->playerlocs[p].x = pl->xsize - 0.5f;
+		if (pl->playerlocs[p].z > pl->zsize)
+			pl->playerlocs[p].z = pl->zsize - 0.5f;
 	}
+}
 
-	// Make sure that players don't overlap with each other or the enemy source
-	for (int p=0; p<2; p++) {
-		int choices[][2] = {
-			// Worst-case sceario is when player is at corner and place is only 2x2.
-			// Even then, one of these places will be available.
-			{ (int)pl->playerlocs[p].x    , (int)pl->playerlocs[p].z     },
-			{ (int)pl->playerlocs[p].x - 1, (int)pl->playerlocs[p].z     },
-			{ (int)pl->playerlocs[p].x + 1, (int)pl->playerlocs[p].z     },
-			{ (int)pl->playerlocs[p].x    , (int)pl->playerlocs[p].z - 1 },
-			{ (int)pl->playerlocs[p].x    , (int)pl->playerlocs[p].z + 1 },
-		};
-		int used[][2] = {
-			{ (int)pl->enemyloc.x, (int)pl->enemyloc.z },
-			{ (int)pl->playerlocs[1-p].x, (int)pl->playerlocs[1-p].z },  // other player
-		};
+static void ensure_player_doesnt_overlap_other_player_or_enemy(const struct Place *pl, Vec3 *player, Vec3 otherplayer)
+{
+	int choices[][2] = {
+		// Worst-case sceario is when player is at corner and place is only 2x2.
+		// Even then, one of these places will be available.
+		{ (int)player->x    , (int)player->z     },
+		{ (int)player->x - 1, (int)player->z     },
+		{ (int)player->x + 1, (int)player->z     },
+		{ (int)player->x    , (int)player->z - 1 },
+		{ (int)player->x    , (int)player->z + 1 },
+	};
+	int used[][2] = {
+		{ (int)pl->enemyloc.x, (int)pl->enemyloc.z },
+		{ (int)otherplayer.x,  (int)otherplayer.z  },
+	};
 
-		bool foundplace = false;
-		for (int c = 0; c < sizeof(choices)/sizeof(choices[0]); c++) {
-			if (choices[c][0] < 0 || choices[c][0] >= pl->xsize ||
-				choices[c][1] < 0 || choices[c][1] >= pl->zsize)
-			{
-				continue;
-			}
-
-			bool inuse = false;
-			for (int u = 0; u < sizeof(used)/sizeof(used[0]); u++) {
-				if (choices[c][0] == used[u][0] && choices[c][1] == used[u][1]) {
-					inuse = true;
-					break;
-				}
-			}
-			if (inuse)
-				continue;
-
-			pl->playerlocs[p].x = choices[c][0] + 0.5f;
-			pl->playerlocs[p].z = choices[c][1] + 0.5f;
-			foundplace = true;
-			break;
+	for (int c = 0; c < sizeof(choices)/sizeof(choices[0]); c++) {
+		if (choices[c][0] < 0 || choices[c][0] >= pl->xsize ||
+			choices[c][1] < 0 || choices[c][1] >= pl->zsize)
+		{
+			continue;
 		}
-		SDL_assert(foundplace);
-	}
 
-	// FIXME: neverdielocs
+		bool inuse = false;
+		for (int u = 0; u < sizeof(used)/sizeof(used[0]); u++) {
+			if (choices[c][0] == used[u][0] && choices[c][1] == used[u][1]) {
+				inuse = true;
+				break;
+			}
+		}
+		if (inuse)
+			continue;
+
+		player->x = choices[c][0] + 0.5f;
+		player->z = choices[c][1] + 0.5f;
+		return;
+	}
+	log_printf_abort("the impossible happened: no place found for player");
+}
+
+// FIXME: neverdielocs
+void place_fix(struct Place *pl)
+{
+	SDL_assert(2 <= pl->xsize && pl->xsize <= MAX_PLACE_SIZE);
+	SDL_assert(2 <= pl->zsize && pl->zsize <= MAX_PLACE_SIZE);
+
+	delete_walls_outside_the_place(pl);
+	delete_duplicate_walls(pl);
+	add_missing_walls_around_edges(pl);
+	move_players_and_enemies_inside_the_place(pl);
+	ensure_player_doesnt_overlap_other_player_or_enemy(pl, &pl->playerlocs[0], pl->playerlocs[1]);
+	ensure_player_doesnt_overlap_other_player_or_enemy(pl, &pl->playerlocs[1], pl->playerlocs[0]);
 }
 
 static void set_char(char *data, int linesz, int nlines, int x, int z, char c, int offset)
