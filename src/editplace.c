@@ -36,7 +36,7 @@ struct PlaceEditor {
 	int rotatedir;
 	struct Button deletebtn, donebtn;
 	struct Selection sel;
-	bool mousemoved;
+	bool up, down, left, right;   // are arrow keys pressed
 };
 
 static void rotate_camera(struct PlaceEditor *pe, float speed)
@@ -101,13 +101,11 @@ static void delete_wall(struct PlaceEditor *pe)
 	}
 }
 
-static void keep_wall_within_place(const struct PlaceEditor *pe, struct Wall *w)
+static void keep_wall_within_place(const struct PlaceEditor *pe, struct Wall *w, bool resize)
 {
 	int xmin = 0, xmax = pe->place->xsize;
 	int zmin = 0, zmax = pe->place->zsize;
-
-	switch(pe->sel.mode) {
-	case SEL_RESIZE:
+	if (resize) {
 		switch(w->dir) {
 			case WALL_DIR_XY:
 				if (pe->sel.data.resize.negative) {
@@ -128,22 +126,6 @@ static void keep_wall_within_place(const struct PlaceEditor *pe, struct Wall *w)
 				}
 				break;
 		}
-		break;
-
-	case SEL_WALL:
-		/*
-		// If you move selection beyond edge, it changes direction so it's parallel to the edge
-		// No "else if" so that if this is called many times, it doesn't constantly change
-		// TODO: allow flipping a wall around by smashing it to edge
-		if (w->dir == WALL_DIR_XY && (w->startx < 0 || w->startx >= pe->place->xsize))
-			w->dir = WALL_DIR_ZY;
-		if (w->dir == WALL_DIR_ZY && (w->startz < 0 || w->startz >= pe->place->zsize))
-			w->dir = WALL_DIR_XY;
-		*/
-		break;
-
-	default:
-		break;
 	}
 
 	switch(w->dir) {
@@ -259,7 +241,7 @@ static void on_mouse_move(struct PlaceEditor *pe, int mousex, int mousey)
 
 	switch(pe->sel.mode) {
 		case SEL_MOVINGWALL:
-			keep_wall_within_place(pe, &w);
+			keep_wall_within_place(pe, &w, false);
 			if (!find_wall_from_place(pe, &w)) {
 				// Not going on top of another wall, can move
 				*pe->sel.data.mvwall = w;
@@ -269,7 +251,7 @@ static void on_mouse_move(struct PlaceEditor *pe, int mousex, int mousey)
 			break;
 
 		case SEL_RESIZE:
-			keep_wall_within_place(pe, &w);
+			keep_wall_within_place(pe, &w, true);
 			wall_init(&w);
 			pe->sel.data.resize.mainwall = w;
 			for (int i = 0; i < pe->sel.data.resize.nwalls; i++) {
@@ -288,13 +270,13 @@ static void on_mouse_move(struct PlaceEditor *pe, int mousex, int mousey)
 		case SEL_NONE:
 		case SEL_PLAYER:
 		case SEL_WALL:
-			keep_wall_within_place(pe, &w);
+			keep_wall_within_place(pe, &w, false);
 			pe->sel = (struct Selection){ .mode = SEL_WALL, .data = { .wall = w }};
 			break;
 	}
 }
 
-static void move_towards_angle(struct PlaceEditor *pe, float angle)
+static void on_arrow_key(struct PlaceEditor *pe, float angle, bool oppositespressed)
 {
 	float pi = acosf(-1);
 	angle = fmodf(angle, 2*pi);
@@ -314,6 +296,11 @@ static void move_towards_angle(struct PlaceEditor *pe, float angle)
 
 	switch(pe->sel.mode) {
 	case SEL_WALL:
+		if (oppositespressed) {
+			pe->sel.data.wall.dir = dz ? WALL_DIR_ZY : WALL_DIR_XY;
+			keep_wall_within_place(pe, &pe->sel.data.wall, false);
+		}
+
 		// Check if we are going towards a player
 		if ((pe->sel.data.wall.dir == WALL_DIR_ZY && dx) ||
 			(pe->sel.data.wall.dir == WALL_DIR_XY && dz))
@@ -331,7 +318,7 @@ static void move_towards_angle(struct PlaceEditor *pe, float angle)
 
 		pe->sel.data.wall.startx += dx;
 		pe->sel.data.wall.startz += dz;
-		keep_wall_within_place(pe, &pe->sel.data.wall);
+		keep_wall_within_place(pe, &pe->sel.data.wall, false);
 		break;
 
 	case SEL_PLAYER:
@@ -433,7 +420,6 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 		return true;
 
 	case SDL_MOUSEMOTION:
-		pe->mousemoved = true;
 		on_mouse_move(pe, e->button.x, e->button.y);
 		return true;
 
@@ -469,16 +455,20 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 
 		switch(misc_handle_scancode(e->key.keysym.scancode)) {
 		case SDL_SCANCODE_DOWN:
-			move_towards_angle(pe, pe->cam.angle);
+			pe->down = true;
+			on_arrow_key(pe, pe->cam.angle, pe->up && pe->down);
 			return true;
 		case SDL_SCANCODE_LEFT:
-			move_towards_angle(pe, pe->cam.angle + pi/2);
+			pe->left = true;
+			on_arrow_key(pe, pe->cam.angle + pi/2, pe->left && pe->right);
 			return true;
 		case SDL_SCANCODE_UP:
-			move_towards_angle(pe, pe->cam.angle + pi);
+			pe->up = true;
+			on_arrow_key(pe, pe->cam.angle + pi, pe->up && pe->down);
 			return true;
 		case SDL_SCANCODE_RIGHT:
-			move_towards_angle(pe, pe->cam.angle + 3*pi/2);
+			pe->right = true;
+			on_arrow_key(pe, pe->cam.angle + 3*pi/2, pe->left && pe->right);
 			return true;
 		case SDL_SCANCODE_A:
 			pe->rotatedir = 1;
@@ -499,16 +489,21 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 			return false;  // TODO: more keyboard functionality
 
 		switch(misc_handle_scancode(e->key.keysym.scancode)) {
-		case SDL_SCANCODE_A:
-			if (pe->rotatedir == 1)
-				pe->rotatedir = 0;
-			return false;
-		case SDL_SCANCODE_D:
-			if (pe->rotatedir == -1)
-				pe->rotatedir = 0;
-			return false;
-		default:
-			return false;
+			case SDL_SCANCODE_UP: pe->up = false; return false;
+			case SDL_SCANCODE_DOWN: pe->down = false; return false;
+			case SDL_SCANCODE_LEFT: pe->left = false; return false;
+			case SDL_SCANCODE_RIGHT: pe->right = false; return false;
+
+			case SDL_SCANCODE_A:
+				if (pe->rotatedir == 1)
+					pe->rotatedir = 0;
+				return false;
+			case SDL_SCANCODE_D:
+				if (pe->rotatedir == -1)
+					pe->rotatedir = 0;
+				return false;
+			default:
+				return false;
 		}
 
 	default:
