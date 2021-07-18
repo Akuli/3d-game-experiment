@@ -407,14 +407,13 @@ static void show_editor(struct PlaceEditor *pe)
 	select.nwalls = select.nels = 0;
 	front.nwalls = front.nels = 0;
 
-	Vec3 selcenter = wall_center(&pe->selwall);
 	for (const struct Wall *w = pe->place->walls; w < pe->place->walls + pe->place->nwalls; w++) {
 		if (is_selected(pe, w))
 			select.walls[select.nwalls++] = *w;
-		else if (wall_linedup(w, &pe->selwall) || wall_side(w, selcenter) == wall_side(w, pe->cam.location))
-			behind.walls[behind.nwalls++] = *w;
-		else
+		else if (wall_side(&pe->selwall, wall_center(w)) == wall_side(&pe->selwall, pe->cam.location) && !wall_linedup(&pe->selwall, w))
 			front.walls[front.nwalls++] = *w;
+		else
+			behind.walls[behind.nwalls++] = *w;
 	}
 
 	for (int p=0; p<2; p++) {
