@@ -1,4 +1,0 @@
-- it was left spinning forever somehow, possible to valgrind/asan?
-- neverdie enemies and unreachable places
-- improve place chooser so that it shows all places at once
-- update README
