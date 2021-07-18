@@ -210,6 +210,31 @@ static bool project_mouse_to_top_of_place(
 	return true;
 }
 
+static bool find_wall_by_mouse_location(const struct PlaceEditor *pe, struct Wall *dst, int mousex, int mousey)
+{
+	float fx, fz;
+	if (!project_mouse_to_top_of_place(pe, mousex, mousey, &fx, &fz))
+		return false;
+
+	int x = (int)floorf(fx);
+	int z = (int)floorf(fz);
+	struct Wall couldbe[] = {
+		{ .startx = x,   .startz = z,   .dir = WALL_DIR_XY },
+		{ .startx = x,   .startz = z,   .dir = WALL_DIR_ZY },
+		{ .startx = x,   .startz = z+1, .dir = WALL_DIR_XY },
+		{ .startx = x+1, .startz = z,   .dir = WALL_DIR_ZY },
+	};
+
+	for (int i = 0; i < 4; i++) {
+		wall_init(&couldbe[i]);
+		if (mouse_is_on_wall(&pe->cam, &couldbe[i], mousex, mousey)) {
+			*dst = couldbe[i];
+			return true;
+		}
+	}
+	return false;
+}
+
 static void do_resize(struct PlaceEditor *pe, int mousex, int mousey)
 {
 	SDL_assert(pe->sel.mode == SEL_RESIZE);
@@ -236,17 +261,27 @@ static void do_resize(struct PlaceEditor *pe, int mousex, int mousey)
 	}
 }
 
-static void on_mouse_move(struct PlaceEditor *pe, int mousex, int mousey)
+static void move_wall(struct PlaceEditor *pe, int mousex, int mousey)
 {
-	if (pe->sel.mode == SEL_RESIZE) {
-		do_resize(pe, mousex, mousey);
-		return;
-	}
+	SDL_assert(pe->sel.mode == SEL_MOVINGWALL);
 
-	// TODO: split the rest into two functions, one for SEL_MOVINGWALL and one for other
-	if (pe->sel.mode != SEL_MOVINGWALL) {
-		bool on0 = mouse_is_on_ellipsoid_with_no_walls_between(pe, &pe->playerels[0], mousex, mousey);
-		bool on1 = mouse_is_on_ellipsoid_with_no_walls_between(pe, &pe->playerels[1], mousex, mousey);
+	struct Wall w;
+	if (find_wall_by_mouse_location(pe, &w, mousex, mousey)) {
+		keep_wall_within_place(pe, &w, false);
+		if (!find_wall_from_place(&w, pe->place)) {
+			// Not going on top of another wall, can move
+			*pe->sel.data.mvwall = w;
+			wall_init(pe->sel.data.mvwall);
+			place_save(pe->place);
+		}
+	}
+}
+
+static void select_by_mouse_coords(struct PlaceEditor *pe, int mousex, int mousey)
+{
+	bool on0 = mouse_is_on_ellipsoid_with_no_walls_between(pe, &pe->playerels[0], mousex, mousey);
+	bool on1 = mouse_is_on_ellipsoid_with_no_walls_between(pe, &pe->playerels[1], mousex, mousey);
+	if (on0 || on1) {
 		if (on0 && on1) {
 			// Select closer to camera
 			float d0 = vec3_lengthSQUARED(vec3_sub(pe->playerels[0].center, pe->cam.location));
@@ -254,52 +289,11 @@ static void on_mouse_move(struct PlaceEditor *pe, int mousex, int mousey)
 			on0 = (d0 < d1);
 			on1 = (d0 > d1);
 		}
-		if (on0 || on1) {
-			pe->sel = (struct Selection){ .mode = SEL_PLAYER, .data = { .playeridx = on0 ? 0 : 1 } };
-			return;
-		}
-	}
-
-	float fx, fz;
-	if (!project_mouse_to_top_of_place(pe, mousex, mousey, &fx, &fz))
-		return;
-
-	int x = (int)floorf(fx);
-	int z = (int)floorf(fz);
-
-	struct Wall couldbeclicked[] = {
-		{ .startx = x,   .startz = z,   .dir = WALL_DIR_XY },
-		{ .startx = x,   .startz = z,   .dir = WALL_DIR_ZY },
-		{ .startx = x,   .startz = z+1, .dir = WALL_DIR_XY },
-		{ .startx = x+1, .startz = z,   .dir = WALL_DIR_ZY },
-	};
-	struct Wall *w = NULL;
-	for (int i = 0; i < 4; i++) {
-		wall_init(&couldbeclicked[i]);
-		if (mouse_is_on_wall(&pe->cam, &couldbeclicked[i], mousex, mousey)) {
-			w = &couldbeclicked[i];
-			break;
-		}
-	}
-
-	if (pe->sel.mode != SEL_MOVINGWALL && (!w || !wall_is_within_place(w, pe->place))) {
-		pe->sel = (struct Selection){ .mode = SEL_NONE };
-		return;
-	}
-
-	if(w)
-		keep_wall_within_place(pe, w, false);
-
-	if (pe->sel.mode == SEL_MOVINGWALL) {
-		if (w && !find_wall_from_place(w, pe->place)) {
-			// Not going on top of another wall, can move
-			*pe->sel.data.mvwall = *w;
-			wall_init(pe->sel.data.mvwall);
-			place_save(pe->place);
-		}
+		pe->sel = (struct Selection){ .mode = SEL_PLAYER, .data = { .playeridx = on0 ? 0 : 1 } };
 	} else {
-		if (w)
-			pe->sel = (struct Selection){ .mode = SEL_WALL, .data = { .wall = *w }};
+		struct Wall w;
+		if (find_wall_by_mouse_location(pe, &w, mousex, mousey) && wall_is_within_place(&w, pe->place))
+			pe->sel = (struct Selection){ .mode = SEL_WALL, .data = { .wall = w }};
 		else
 			pe->sel = (struct Selection){ .mode = SEL_NONE };
 	}
@@ -476,7 +470,17 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 		// fall through
 
 	case SDL_MOUSEMOTION:
-		on_mouse_move(pe, e->button.x, e->button.y);
+		switch(pe->sel.mode) {
+		case SEL_MOVINGWALL:
+			move_wall(pe, e->button.x, e->button.y);
+			break;
+		case SEL_RESIZE:
+			do_resize(pe, e->button.x, e->button.y);
+			break;
+		default:
+			select_by_mouse_coords(pe, e->button.x, e->button.y);
+			break;
+		}
 		pe->mousemoved = true;
 		return true;
 
