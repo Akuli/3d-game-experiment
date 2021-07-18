@@ -480,14 +480,8 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 		return true;
 
 	case SDL_KEYDOWN:
-		switch(pe->sel.mode) {
-			case SEL_NONE:
-			case SEL_WALL:
-			case SEL_PLAYER:
-				break;
-			default:
-				return false;  // TODO: more keyboard functionality
-		}
+		if (pe->sel.mode != SEL_NONE && pe->sel.mode != SEL_WALL && pe->sel.mode != SEL_PLAYER)
+			return false;  // TODO: more keyboard functionality
 
 		switch(misc_handle_scancode(e->key.keysym.scancode)) {
 		case SDL_SCANCODE_DOWN:
@@ -523,7 +517,7 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 		}
 
 	case SDL_KEYUP:
-		if (pe->sel.mode != SEL_NONE && pe->sel.mode != SEL_WALL)
+		if (pe->sel.mode != SEL_NONE && pe->sel.mode != SEL_WALL && pe->sel.mode != SEL_PLAYER)
 			return false;  // TODO: more keyboard functionality
 
 		switch(misc_handle_scancode(e->key.keysym.scancode)) {
