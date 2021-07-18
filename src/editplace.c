@@ -36,6 +36,7 @@ struct PlaceEditor {
 	int rotatedir;
 	struct Button deletebtn, donebtn;
 	struct Selection sel;
+	bool mousemoved;
 	bool up, down, left, right;   // are arrow keys pressed
 };
 
@@ -52,11 +53,11 @@ static void rotate_camera(struct PlaceEditor *pe, float speed)
 	camera_update_caches(&pe->cam);
 }
 
-static struct Wall *find_wall_from_place(struct PlaceEditor *pe, const struct Wall *w)
+static struct Wall *find_wall_from_place(const struct Wall *w, struct Place *pl)
 {
-	for (int i = 0; i < pe->place->nwalls; i++) {
-		if (wall_match(&pe->place->walls[i], w))
-			return &pe->place->walls[i];
+	for (int i = 0; i < pl->nwalls; i++) {
+		if (wall_match(&pl->walls[i], w))
+			return &pl->walls[i];
 	}
 	return NULL;
 }
@@ -70,7 +71,7 @@ static bool add_wall(struct PlaceEditor *pe)
 		return false;
 	}
 
-	if (find_wall_from_place(pe, &pe->sel.data.wall))
+	if (find_wall_from_place(&pe->sel.data.wall, pe->place))
 		return false;
 
 	place_addwall(pe->place, pe->sel.data.wall.startx, pe->sel.data.wall.startz, pe->sel.data.wall.dir);
@@ -88,7 +89,7 @@ static bool is_at_edge(const struct Wall *w, const struct Place *pl)
 
 static void delete_wall(struct PlaceEditor *pe, struct Wall *w)
 {
-	w = find_wall_from_place(pe, w);
+	w = find_wall_from_place(w, pe->place);
 	if (w && !is_at_edge(w, pe->place)) {
 		*w = pe->place->walls[--pe->place->nwalls];
 		log_printf("Deleted wall, now there are %d walls", pe->place->nwalls);
@@ -305,7 +306,7 @@ static void on_mouse_move(struct PlaceEditor *pe, int mousex, int mousey)
 		keep_wall_within_place(pe, w, false);
 
 	if (pe->sel.mode == SEL_MOVINGWALL) {
-		if (w && !find_wall_from_place(pe, w)) {
+		if (w && !find_wall_from_place(w, pe->place)) {
 			// Not going on top of another wall, can move
 			*pe->sel.data.mvwall = *w;
 			wall_init(pe->sel.data.mvwall);
@@ -409,7 +410,6 @@ static struct ResizeData begin_resize(const struct Wall *edgewall, struct Place 
 
 static void finish_resize(struct PlaceEditor *pe)
 {
-	log_printf("Resize ends");
 	SDL_assert(pe->sel.mode == SEL_RESIZE);
 	if (pe->sel.data.resize.negative) {
 		switch(pe->sel.data.resize.mainwall.dir) {
@@ -460,28 +460,31 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 					.data = { .resize = begin_resize(&w, pe->place) },
 				};
 			} else {
-				// TODO move
+				struct Wall *w = find_wall_from_place(&pe->sel.data.wall, pe->place);
+				if(w)
+					pe->sel = (struct Selection) { .mode = SEL_MOVINGWALL, .data = { .mvwall = w }};
 			}
 		}
+		pe->mousemoved = false;
 		return true;
 
 	case SDL_MOUSEBUTTONUP:
 		switch(pe->sel.mode) {
 		case SEL_RESIZE:
+			log_printf("Resize ends");
 			finish_resize(pe);
 			break;
-	/*
-		case DND_MOVING:
+		case SEL_MOVINGWALL:
 			log_printf("Moving a wall ends, mousemoved = %d", pe->mousemoved);
 			if (!pe->mousemoved)
-				delete_wall(pe);
+				delete_wall(pe, pe->sel.data.mvwall);
 			break;
-		case DND_NONE:
-			break;
-	*/
 		case SEL_WALL:
 			log_printf("Click ends");
 			add_wall(pe);
+			break;
+		case SEL_NONE:
+		case SEL_PLAYER:
 			break;
 		}
 		pe->sel.mode = SEL_NONE;
@@ -489,6 +492,7 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 
 	case SDL_MOUSEMOTION:
 		on_mouse_move(pe, e->button.x, e->button.y);
+		pe->mousemoved = true;
 		return true;
 
 	case SDL_KEYDOWN:

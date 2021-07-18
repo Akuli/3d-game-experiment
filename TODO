@@ -1,4 +1,5 @@
-- fix wall drag and drop (drop includes clicking wall to delete)
+- resizing can be a bit off, figure out why
+- it was left spinning forever somehow, possible to valgrind/asan?
 - adjusting camera up down
 - choosing where players go
 - choosing where enemy source goes
