@@ -1,5 +1,8 @@
-#include <assert.h>
 #include "editplace.h"
+#include <math.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include "mathstuff.h"
 #include "enemy.h"
 #include "button.h"
 #include "log.h"
@@ -11,7 +14,6 @@
 #include "looptimer.h"
 #include "showall.h"
 #include "camera.h"
-#include "gameover.h"
 
 struct EllipsoidEdit {
 	struct Ellipsoid el;

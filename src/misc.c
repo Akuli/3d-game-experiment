@@ -4,7 +4,7 @@
 #else
 	// includes from mkdir(2)
 	#include <sys/stat.h>
-	#include <sys/types.h>
+	#include <sys/types.h>  // IWYU pragma: keep
 #endif
 
 #include "misc.h"

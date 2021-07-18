@@ -2,6 +2,7 @@
 #define MISC_H
 
 #include <SDL2/SDL.h>
+#include <stdint.h>
 
 enum MiscState {
 	MISC_STATE_CHOOSER,

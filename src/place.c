@@ -1,5 +1,4 @@
 #include "place.h"
-#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -9,6 +8,7 @@
 #include "glob.h"
 #include "log.h"
 #include "max.h"
+#include "mathstuff.h"
 #include "misc.h"
 
 #define COMPILE_TIME_STRLEN(s) (sizeof(s)-1)

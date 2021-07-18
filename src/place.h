@@ -1,6 +1,7 @@
 #ifndef PLACE_H
 #define PLACE_H
 
+#include <stdbool.h>
 #include "max.h"
 #include "wall.h"
 

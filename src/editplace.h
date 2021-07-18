@@ -2,6 +2,7 @@
 #define EDITPLACE_H
 
 #include <SDL2/SDL.h>
+#include "ellipsoid.h"
 #include "place.h"
 #include "misc.h"
 
