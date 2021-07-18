@@ -96,6 +96,17 @@ static void delete_wall(struct PlaceEditor *pe, struct Wall *w)
 	}
 }
 
+static bool wall_is_within_place(const struct Wall *w, const struct Place *pl)
+{
+	int xmax = pl->xsize;
+	int zmax = pl->zsize;
+	switch(w->dir) {
+		case WALL_DIR_XY: xmax--; break;
+		case WALL_DIR_ZY: zmax--; break;
+	}
+	return 0 <= w->startx && w->startx <= xmax && 0 <= w->startz && w->startz <= zmax;
+}
+
 static void keep_wall_within_place(const struct PlaceEditor *pe, struct Wall *w, bool resize)
 {
 	int xmin = 0, xmax = pe->place->xsize;
@@ -248,6 +259,7 @@ static void on_mouse_move(struct PlaceEditor *pe, int mousex, int mousey)
 		return;
 	}
 
+	// TODO: split the rest into two functions, one for SEL_MOVINGWALL and one for other
 	if (pe->sel.mode != SEL_MOVINGWALL) {
 		bool on0 = mouse_is_on_ellipsoid_with_no_walls_between(pe, &pe->playerels[0], mousex, mousey);
 		bool on1 = mouse_is_on_ellipsoid_with_no_walls_between(pe, &pe->playerels[1], mousex, mousey);
@@ -282,6 +294,11 @@ static void on_mouse_move(struct PlaceEditor *pe, int mousex, int mousey)
 			w = &couldbeclicked[i];
 			break;
 		}
+	}
+
+	if (pe->sel.mode != SEL_MOVINGWALL && (!w || !wall_is_within_place(w, pe->place))) {
+		pe->sel = (struct Selection){ .mode = SEL_NONE };
+		return;
 	}
 
 	if(w)
