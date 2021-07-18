@@ -1,3 +1,4 @@
+#include <assert.h>
 #include "editplace.h"
 #include "button.h"
 #include "log.h"
@@ -582,20 +583,30 @@ static void show_editor(struct PlaceEditor *pe)
 		hlwall = NULL;
 	}
 
-	for (const struct Wall *w = pe->place->walls; w < pe->place->walls + pe->place->nwalls; w++) {
-		if (wall_should_be_highlighted(pe, w))
-			select.walls[select.nwalls++] = *w;
-		else if (hlwall && wall_side(hlwall, wall_center(w)) == wall_side(hlwall, pe->cam.location) && !wall_linedup(hlwall, w))
-			front.walls[front.nwalls++] = *w;
-		else
-			behind.walls[behind.nwalls++] = *w;
-	}
+	if (hlwall) {
+		for (const struct Wall *w = pe->place->walls; w < pe->place->walls + pe->place->nwalls; w++) {
+			if (wall_should_be_highlighted(pe, w))
+				select.walls[select.nwalls++] = *w;
+			else if (hlwall && wall_side(hlwall, wall_center(w)) == wall_side(hlwall, pe->cam.location) && !wall_linedup(hlwall, w))
+				front.walls[front.nwalls++] = *w;
+			else
+				behind.walls[behind.nwalls++] = *w;
+		}
 
-	for (int p=0; p<2; p++) {
-		if (hlwall && wall_side(hlwall, pe->playerels[p].center) == wall_side(hlwall, pe->cam.location))
-			front.els[front.nels++] = pe->playerels[p];
-		else
-			behind.els[behind.nels++] = pe->playerels[p];
+		for (int p=0; p<2; p++) {
+			if (wall_side(hlwall, pe->playerels[p].center) == wall_side(hlwall, pe->cam.location))
+				front.els[front.nels++] = pe->playerels[p];
+			else
+				behind.els[behind.nels++] = pe->playerels[p];
+		}
+	} else {
+		// Everything is "behind", could also use front
+		behind.nwalls = pe->place->nwalls;
+		behind.nels = 2;
+		for (int i=0; i < behind.nwalls; i++)
+			behind.walls[i] = pe->place->walls[i];
+		for (int i=0; i < behind.nels; i++)
+			behind.els[i] = pe->playerels[i];
 	}
 
 	show_all(behind.walls, behind.nwalls, false, behind.els, behind.nels, &pe->cam);
