@@ -2,7 +2,7 @@
 #
 # Usage:
 #
-#   python3 scripts/generate_random_place.py | tee assets/places/mynewplace.txt
+#   python3 scripts/generate_random_place.py | tee assets/default_places/mynewplace.txt
 #
 # Repeat that until the printed place is good enough, and then modify the
 # output file by hand however you want

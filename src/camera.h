@@ -24,7 +24,7 @@ struct Camera {
 
 	// call camera_update_caches() after changing these
 	Vec3 location;
-	float angle;
+	float angle;  // 0 means camera looks towards negative z axis
 
 	Mat3 world2cam, cam2world;
 

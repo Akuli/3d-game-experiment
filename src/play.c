@@ -112,15 +112,11 @@ static void add_guards_and_enemies_as_needed(struct GameState *gs)
 	}
 }
 
-// returns whether to continue playing
-static bool handle_event(SDL_Event event, struct GameState *gs)
+static void handle_event(SDL_Event event, struct GameState *gs)
 {
 	bool down = (event.type == SDL_KEYDOWN);
 
 	switch(event.type) {
-	case SDL_QUIT:
-		return false;
-
 	case SDL_KEYDOWN:
 	case SDL_KEYUP:
 		switch(misc_handle_scancode(event.key.keysym.scancode)) {
@@ -143,14 +139,13 @@ static bool handle_event(SDL_Event event, struct GameState *gs)
 			case SDL_SCANCODE_DOWN: player_set_flat(&gs->players[1], down); break;
 
 			default:
-				log_printf("unknown key press scancode %d", event.key.keysym.scancode);
+				log_printf("unknown key press/release scancode %d", event.key.keysym.scancode);
 		}
 		break;
 
-	default: break;
+	default:
+		break;
 	}
-
-	return true;
 }
 
 static void handle_players_bumping_each_other(struct Player *plr0, struct Player *plr1)
@@ -301,12 +296,13 @@ enum MiscState play_the_game(
 	enum MiscState ret;
 
 	while(gs.players[0].nguards >= 0 && gs.players[1].nguards >= 0) {
-		SDL_Event event;
-		while(SDL_PollEvent(&event)) {
-			if (!handle_event(event, &gs)) {
+		SDL_Event e;
+		while(SDL_PollEvent(&e)) {
+			if (e.type == SDL_QUIT) {
 				ret = MISC_STATE_QUIT;
 				goto out;
 			}
+			handle_event(e, &gs);
 		}
 
 		add_guards_and_enemies_as_needed(&gs);
@@ -328,7 +324,7 @@ enum MiscState play_the_game(
 		int nels = get_all_ellipsoids(&gs, &els);
 
 		for (int i = 0; i < 2; i++)
-			show_all(pl->walls, pl->nwalls, els, nels, &gs.players[i].cam);
+			show_all(pl->walls, pl->nwalls, false, els, nels, &gs.players[i].cam);
 
 		// horizontal line
 		SDL_FillRect(winsurf, &(SDL_Rect){ winsurf->w/2, 0, 1, winsurf->h }, SDL_MapRGB(winsurf->format, 0xff, 0xff, 0xff));

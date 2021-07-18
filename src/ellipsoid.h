@@ -25,9 +25,10 @@ struct EllipsoidPic {
 
 	/*
 	Which color to show for a given vector? Avoid slow atan2 calls when looking it
-	up by providing an array that essentially lets you do cubepixels[x][y][z].
+	up by providing an array that essentially lets you do cubepixels[highlighted][x][y][z].
+	Here highlighted is usually 0, but can be 1 for different color.
 	*/
-	uint32_t cubepixels[ELLIPSOIDPIC_SIDE][ELLIPSOIDPIC_SIDE][ELLIPSOIDPIC_SIDE];
+	uint32_t cubepixels[2][ELLIPSOIDPIC_SIDE][ELLIPSOIDPIC_SIDE][ELLIPSOIDPIC_SIDE];
 
 	// if true, then only the upper half of the ellipsoid is visible
 	bool hidelowerhalf;
@@ -49,6 +50,7 @@ it to change the center.
 struct Ellipsoid {
 	Vec3 center;
 	const struct EllipsoidPic *epic;
+	bool highlighted;
 
 	// call ellipsoid_update_transforms() after changing these
 	float angle;       // radians

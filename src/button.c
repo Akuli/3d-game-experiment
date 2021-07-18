@@ -42,6 +42,7 @@ static void free_image_surfaces(void)
 
 static SDL_Surface *get_image(enum ButtonFlags f)
 {
+	SDL_assert(!( (f & BUTTON_BIG) && (f & BUTTON_SMALL) ));
 	static bool atexitdone = false;
 	if (!atexitdone) {
 		atexit(free_image_surfaces);
@@ -51,7 +52,7 @@ static SDL_Surface *get_image(enum ButtonFlags f)
 	if (!image_surfaces[f]) {
 		char path[100];
 		snprintf(path, sizeof path, "assets/buttons/%s/%s/%s",
-			(f & BUTTON_BIG) ? "big" : "small",
+			(f & BUTTON_BIG) ? "big" : (f & BUTTON_SMALL) ? "small" : "medium",
 			(f & BUTTON_VERTICAL) ? "vertical" : "horizontal",
 			(f & BUTTON_DISABLED) ? "disabled.png" : (
 				(f & BUTTON_PRESSED) ? "pressed.png" : "normal.png"
@@ -62,9 +63,10 @@ static SDL_Surface *get_image(enum ButtonFlags f)
 	return image_surfaces[f];
 }
 
-#define PADDING 15
-int button_width(enum ButtonFlags f)  { return get_image(f)->w + PADDING; }
-int button_height(enum ButtonFlags f) { return get_image(f)->h + PADDING; }
+#define MARGIN 15
+int button_width(enum ButtonFlags f)  { return get_image(f)->w + MARGIN; }
+int button_height(enum ButtonFlags f) { return get_image(f)->h + MARGIN; }
+#undef MARGIN
 
 void button_show(const struct Button *butt)
 {
@@ -100,7 +102,7 @@ void button_show(const struct Button *butt)
 			SDL_FreeSurface(s1);
 			SDL_FreeSurface(s2);
 		} else {
-			SDL_Surface *s = misc_create_text_surface(butt->text, black, 50);
+			SDL_Surface *s = misc_create_text_surface(butt->text, black, fontsz);
 			misc_blit_with_center(s, butt->destsurf, &butt->center);
 			SDL_FreeSurface(s);
 		}

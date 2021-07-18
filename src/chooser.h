@@ -27,7 +27,7 @@ struct ChooserPlaceStuff {
 	int placeidx;
 
 	// rest of this struct isn't meant to be used outside chooser.c
-	struct Button prevbtn, nextbtn;
+	struct Button prevbtn, nextbtn, editbtn, cpbtn;
 	struct Camera cam;
 };
 

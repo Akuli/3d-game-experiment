@@ -1,15 +1,36 @@
 #ifdef _WIN32
-#include <windows.h>
-#include <wchar.h>
+	#include <direct.h>
+	#include <windows.h>
+	#include <wchar.h>
+#else
+	// includes from mkdir(2)
+	#include <sys/stat.h>
+	#include <sys/types.h>  // IWYU pragma: keep
 #endif
 
 #include "misc.h"
+#include <errno.h>
 #include <string.h>
 #include <stdio.h>
 #include "log.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
+
+void misc_mkdir(const char *path)
+{
+#ifdef _WIN32
+	int ret = _mkdir(path);
+#else
+	// python uses 777 as default perms, see help(os.mkdir)
+	// It's ANDed with current umask
+	int ret = mkdir(path, 0777);
+#endif
+
+	// TODO: better windows error handling than errno
+	if (ret != 0)
+		log_printf("mkdir(\"%s\") failed: %s", path, strerror(errno));
+}
 
 int misc_handle_scancode(int sc)
 {
@@ -58,7 +79,7 @@ SDL_Surface *misc_create_text_surface(const char *text, SDL_Color col, int fonts
 	SDL_Surface *s = TTF_RenderUTF8_Blended(font, text, col);
 	TTF_CloseFont(font);
 	if (!s)
-		log_printf_abort("TTF_RenderUTF8_Solid failed: %s", TTF_GetError());
+		log_printf_abort("TTF_RenderUTF8_Blended failed: %s", TTF_GetError());
 	return s;
 }
 
@@ -75,6 +96,8 @@ SDL_Surface *misc_create_cropped_surface(SDL_Surface *surf, SDL_Rect r)
 		log_printf_abort("SDL_CreateRGBSurfaceFrom failed: %s", SDL_GetError());
 	return res;
 }
+
+extern inline uint32_t misc_rgb_average(uint32_t a, uint32_t b);
 
 void misc_basename_without_extension(const char *path, char *name, int sizeofname)
 {
