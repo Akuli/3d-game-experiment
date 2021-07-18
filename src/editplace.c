@@ -63,9 +63,7 @@ static struct Wall *find_wall_from_place(struct PlaceEditor *pe, const struct Wa
 
 static bool add_wall(struct PlaceEditor *pe)
 {
-	if (pe->sel.mode != SEL_WALL)
-		return false;
-
+	SDL_assert(pe->sel.mode == SEL_WALL);
 	SDL_assert(pe->place->nwalls <= MAX_WALLS);
 	if (pe->place->nwalls == MAX_WALLS) {
 		log_printf("hitting max number of walls, can't add more");
@@ -88,12 +86,9 @@ static bool is_at_edge(const struct Wall *w, const struct Place *pl)
 		(w->dir == WALL_DIR_ZY && (w->startx == 0 || w->startx == pl->xsize));
 }
 
-static void delete_wall(struct PlaceEditor *pe)
+static void delete_wall(struct PlaceEditor *pe, struct Wall *w)
 {
-	if (pe->sel.mode != SEL_WALL)
-		return;
-
-	struct Wall *w = find_wall_from_place(pe, &pe->sel.data.wall);
+	w = find_wall_from_place(pe, w);
 	if (w && !is_at_edge(w, pe->place)) {
 		*w = pe->place->walls[--pe->place->nwalls];
 		log_printf("Deleted wall, now there are %d walls", pe->place->nwalls);
@@ -453,10 +448,6 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 		}
 		return true;
 
-	case SDL_MOUSEMOTION:
-		on_mouse_move(pe, e->button.x, e->button.y);
-		return true;
-
 	case SDL_MOUSEBUTTONUP:
 		switch(pe->sel.mode) {
 		case SEL_RESIZE:
@@ -469,12 +460,18 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 				delete_wall(pe);
 			break;
 		case DND_NONE:
+			break;
+	*/
+		case SEL_WALL:
 			log_printf("Click ends");
 			add_wall(pe);
 			break;
-	*/
 		}
 		pe->sel.mode = SEL_NONE;
+		// fall through
+
+	case SDL_MOUSEMOTION:
+		on_mouse_move(pe, e->button.x, e->button.y);
 		return true;
 
 	case SDL_KEYDOWN:
@@ -511,8 +508,10 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 			pe->rotatedir = -1;
 			return false;
 		case SDL_SCANCODE_RETURN:
-			if (!add_wall(pe))
-				delete_wall(pe);
+			if (pe->sel.mode == SEL_WALL) {
+				if (!add_wall(pe))
+					delete_wall(pe, &pe->sel.data.wall);
+			}
 			return true;
 		default:
 			return false;

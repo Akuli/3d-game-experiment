@@ -1,4 +1,4 @@
-- fix wall drag and drop
+- fix wall drag and drop (drop includes clicking wall to delete)
 - adjusting camera up down
 - choosing where players go
 - choosing where enemy source goes
