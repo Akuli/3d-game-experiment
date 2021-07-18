@@ -148,12 +148,12 @@ static void handle_event(SDL_Event event, struct GameState *gs)
 	}
 }
 
-static void handle_players_bumping_each_other(struct Player *plr1, struct Player *plr2)
+static void handle_players_bumping_each_other(struct Player *plr0, struct Player *plr1)
 {
-	float bump = ellipsoid_bump_amount(&plr1->ellipsoid, &plr2->ellipsoid);
+	float bump = ellipsoid_bump_amount(&plr0->ellipsoid, &plr1->ellipsoid);
 	if (bump != 0) {
 		log_printf("players bump into each other");
-		ellipsoid_move_apart(&plr1->ellipsoid, &plr2->ellipsoid, bump);
+		ellipsoid_move_apart(&plr0->ellipsoid, &plr1->ellipsoid, bump);
 	}
 }
 
@@ -239,7 +239,7 @@ static int get_all_ellipsoids(
 
 enum MiscState play_the_game(
 	SDL_Window *wnd,
-	const struct EllipsoidPic *plr1pic, const struct EllipsoidPic *plr2pic,
+	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic,
 	const struct EllipsoidPic **winnerpic,
 	const struct Place *pl, bool enemies)
 {
@@ -256,7 +256,7 @@ enum MiscState play_the_game(
 			{
 				.ellipsoid = {
 					.angle = 0,
-					.epic = plr1pic,
+					.epic = plr0pic,
 					.center = { pl->playerlocs[0].x + 0.5f, 0, pl->playerlocs[0].z + 0.5f },
 				},
 				.cam = {
@@ -269,7 +269,7 @@ enum MiscState play_the_game(
 			{
 				.ellipsoid = {
 					.angle = 0,
-					.epic = plr2pic,
+					.epic = plr1pic,
 					.center = { pl->playerlocs[1].x + 0.5f, 0, pl->playerlocs[1].z + 0.5f }
 				},
 				.cam = {
@@ -335,9 +335,9 @@ enum MiscState play_the_game(
 	ret = MISC_STATE_GAMEOVER;
 
 	if (gs.players[0].nguards >= 0)
-		*winnerpic = plr1pic;
+		*winnerpic = plr0pic;
 	else
-		*winnerpic = plr2pic;
+		*winnerpic = plr1pic;
 
 out:
 	SDL_FreeSurface(gs.players[0].cam.surface);

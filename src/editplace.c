@@ -775,7 +775,7 @@ out:
 enum MiscState editplace_run(
 	SDL_Window *wnd,
 	struct Place *places, int *nplaces, int placeidx,
-	const struct EllipsoidPic *plr1pic, const struct EllipsoidPic *plr2pic)
+	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic)
 {
 	struct Place *pl = &places[placeidx];
 
@@ -799,17 +799,17 @@ enum MiscState editplace_run(
 				.el = {
 					.xzradius = PLAYER_XZRADIUS,
 					.yradius = PLAYER_YRADIUS_NOFLAT,
-					.epic = plr1pic,
+					.epic = plr0pic,
 					.center = { .y = PLAYER_YRADIUS_NOFLAT },
 				},
 				.loc = &pl->playerlocs[0],
 			},
 			{
-				// TODO: rename variables to plr0pic and plr1pic
+				// TODO: rename variables to plr0pic and plr0pic
 				.el = {
 					.xzradius = PLAYER_XZRADIUS,
 					.yradius = PLAYER_YRADIUS_NOFLAT,
-					.epic = plr2pic,
+					.epic = plr1pic,
 					.center = { .y = PLAYER_YRADIUS_NOFLAT },
 				},
 				.loc = &pl->playerlocs[1],

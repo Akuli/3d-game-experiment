@@ -9,6 +9,6 @@
 enum MiscState editplace_run(
 	SDL_Window *wnd,
 	struct Place *places, int *nplaces, int placeidx,
-	const struct EllipsoidPic *plr1pic, const struct EllipsoidPic *plr2pic);
+	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic);
 
 #endif   // EDITPLACE_H
