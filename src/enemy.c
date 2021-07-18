@@ -48,8 +48,15 @@ void enemy_init_epics(const SDL_PixelFormat *fmt)
 	}
 }
 
+const struct EllipsoidPic *enemy_getfirstepic(void)
+{
+	SDL_assert(n_ellipsoid_pics != -1);
+	return &ellipsoid_pics[0];
+}
+
 struct Enemy enemy_new(const struct Place *pl, enum EnemyFlags fl)
 {
+	SDL_assert(n_ellipsoid_pics != -1);
 	struct Enemy res = {
 		.ellipsoid = {
 			.center = { pl->enemyloc.x + 0.5f, 0, pl->enemyloc.z + 0.5f },

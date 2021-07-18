@@ -1,5 +1,6 @@
 #include <assert.h>
 #include "editplace.h"
+#include "enemy.h"
 #include "button.h"
 #include "log.h"
 #include "max.h"
@@ -12,7 +13,13 @@
 #include "camera.h"
 #include "gameover.h"
 
-enum SelectMode { SEL_NONE, SEL_PLAYER, SEL_RESIZE, SEL_WALL, SEL_MOVEWALL, SEL_MOVEPLAYER };
+enum SelectMode {
+	SEL_NONE,
+	SEL_PLAYER, SEL_MOVEPLAYER,
+	SEL_RESIZE,
+	SEL_WALL, SEL_MOVEWALL,
+	SEL_ENEMY, SEL_MOVEENEMY
+};
 struct ResizeData {
 	struct Wall *walls[MAX_PLACE_SIZE];
 	int nwalls;
@@ -22,7 +29,7 @@ struct ResizeData {
 struct Selection {
 	enum SelectMode mode;
 	union {
-		int playeridx;             // SEL_PLAYER
+		int playeridx;             // SEL_PLAYER and SEL_MOVEPLAYER
 		struct Wall wall;          // SEL_WALL
 		struct Wall *mvwall;       // SEL_MOVEWALL
 		struct ResizeData resize;  // SEL_RESIZE
@@ -33,6 +40,7 @@ struct PlaceEditor {
 	enum MiscState state;
 	struct Place *place;
 	struct Ellipsoid playerels[2];
+	struct Ellipsoid enemyel;
 	struct Camera cam;
 	int rotatedir;
 	struct Button deletebtn, donebtn;
@@ -291,10 +299,8 @@ static bool place_contains_something_at(const struct Place *pl, int x, int z)
 	return false;
 }
 
-static void move_player(struct PlaceEditor *pe, int mousex, int mousey)
+static void move_player_or_enemy(const struct PlaceEditor *pe, int mousex, int mousey, struct PlaceCoords *loc)
 {
-	SDL_assert(pe->sel.mode == SEL_MOVEPLAYER);
-
 	float xf, zf;
 	project_mouse_to_top_of_place(pe, mousex, mousey, &xf, &zf);
 	int x = (int)floorf(xf);
@@ -306,35 +312,68 @@ static void move_player(struct PlaceEditor *pe, int mousex, int mousey)
 	if (z >= pe->place->zsize) z = pe->place->zsize-1;
 
 	if (!place_contains_something_at(pe->place, x, z)) {
-		pe->place->playerlocs[pe->sel.data.playeridx] = (struct PlaceCoords){x, z};
+		loc->x = x;
+		loc->z = z;
 		place_save(pe->place);
 	}
 }
 
 static void select_by_mouse_coords(struct PlaceEditor *pe, int mousex, int mousey)
 {
-	bool on0 = mouse_is_on_ellipsoid_with_no_walls_between(pe, &pe->playerels[0], mousex, mousey);
-	bool on1 = mouse_is_on_ellipsoid_with_no_walls_between(pe, &pe->playerels[1], mousex, mousey);
-	if (on0 || on1) {
-		if (on0 && on1) {
-			// Select closer to camera
-			float d0 = vec3_lengthSQUARED(vec3_sub(pe->playerels[0].center, pe->cam.location));
-			float d1 = vec3_lengthSQUARED(vec3_sub(pe->playerels[1].center, pe->cam.location));
-			on0 = (d0 < d1);
-			on1 = (d0 > d1);
+	struct {
+		const struct Ellipsoid *el;
+		enum SelectMode mode;
+		int playeridx;
+	} choices[] = {
+		{ &pe->playerels[0], SEL_PLAYER, 0 },
+		{ &pe->playerels[1], SEL_PLAYER, 1 },
+		{ &pe->enemyel, SEL_ENEMY },
+	};
+
+	// Find ellipsoid visible with no walls between having smallest distance to camera
+	int idx = -1;
+	float smallestd = HUGE_VALF;
+	for (int i = 0; i < sizeof(choices)/sizeof(choices[0]); i++) {
+		if (mouse_is_on_ellipsoid_with_no_walls_between(pe, choices[i].el, mousex, mousey)) {
+			float d = vec3_lengthSQUARED(vec3_sub(choices[i].el->center, pe->cam.location));
+			if (d < smallestd) {
+				idx = i;
+				smallestd = d;
+			}
 		}
-		pe->sel = (struct Selection){ .mode = SEL_PLAYER, .data = { .playeridx = on0 ? 0 : 1 } };
-	} else {
+	}
+
+	if (idx == -1) {
+		// No ellipsoids under mouse
 		struct Wall w;
 		if (find_wall_by_mouse_location(pe, &w, mousex, mousey) && wall_is_within_place(&w, pe->place))
 			pe->sel = (struct Selection){ .mode = SEL_WALL, .data = { .wall = w }};
 		else
 			pe->sel = (struct Selection){ .mode = SEL_NONE };
+	} else {
+		pe->sel = (struct Selection){
+			.mode = choices[idx].mode,
+			.data = { .playeridx = choices[idx].playeridx },
+		};
 	}
 }
 
 static void on_arrow_key(struct PlaceEditor *pe, float angle, bool oppositespressed)
 {
+	switch(pe->sel.mode) {
+		case SEL_NONE:
+		case SEL_WALL:
+		case SEL_PLAYER:
+		case SEL_ENEMY:
+			break;
+
+		case SEL_MOVEENEMY:
+		case SEL_MOVEPLAYER:
+		case SEL_MOVEWALL:
+		case SEL_RESIZE:
+			return;  // TODO: more keyboard functionality
+	}
+
 	float pi = acosf(-1);
 	angle = fmodf(angle, 2*pi);
 	if (angle < 0)
@@ -397,6 +436,19 @@ static void on_arrow_key(struct PlaceEditor *pe, float angle, bool oppositespres
 			};
 		}
 		break;
+
+	// FIXME: copy/pasta
+	case SEL_ENEMY:
+		pe->sel = (struct Selection) {
+			.mode = SEL_WALL,
+			.data = {
+				.wall = {
+					.dir = (dx ? WALL_DIR_ZY : WALL_DIR_XY),
+					.startx = pe->place->enemyloc.x + max(0, dx),
+					.startz = pe->place->enemyloc.z + max(0, dz),
+				}
+			}
+		};
 
 	default:
 		// TODO: more key bindings
@@ -482,7 +534,10 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 
 		case SEL_PLAYER:
 			pe->sel.mode = SEL_MOVEPLAYER;
-			log_printf("changed mode");
+			break;
+
+		case SEL_ENEMY:
+			pe->sel.mode = SEL_MOVEENEMY;
 			break;
 
 		default:
@@ -506,9 +561,7 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 			log_printf("Click ends");
 			add_wall(pe);
 			break;
-		case SEL_NONE:
-		case SEL_PLAYER:
-		case SEL_MOVEPLAYER:
+		default:
 			break;
 		}
 		pe->sel.mode = SEL_NONE;
@@ -517,7 +570,10 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 	case SDL_MOUSEMOTION:
 		switch(pe->sel.mode) {
 		case SEL_MOVEPLAYER:
-			move_player(pe, e->button.x, e->button.y);
+			move_player_or_enemy(pe, e->button.x, e->button.y, &pe->place->playerlocs[pe->sel.data.playeridx]);
+			break;
+		case SEL_MOVEENEMY:
+			move_player_or_enemy(pe, e->button.x, e->button.y, &pe->place->enemyloc);
 			break;
 		case SEL_MOVEWALL:
 			move_wall(pe, e->button.x, e->button.y);
@@ -533,9 +589,6 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 		return true;
 
 	case SDL_KEYDOWN:
-		if (pe->sel.mode != SEL_NONE && pe->sel.mode != SEL_WALL && pe->sel.mode != SEL_PLAYER)
-			return false;  // TODO: more keyboard functionality
-
 		switch(misc_handle_scancode(e->key.keysym.scancode)) {
 		case SDL_SCANCODE_DOWN:
 			pe->down = true;
@@ -570,9 +623,6 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 		}
 
 	case SDL_KEYUP:
-		if (pe->sel.mode != SEL_NONE && pe->sel.mode != SEL_WALL && pe->sel.mode != SEL_PLAYER)
-			return false;  // TODO: more keyboard functionality
-
 		switch(misc_handle_scancode(e->key.keysym.scancode)) {
 			case SDL_SCANCODE_UP: pe->up = false; return false;
 			case SDL_SCANCODE_DOWN: pe->down = false; return false;
@@ -608,7 +658,7 @@ static bool wall_should_be_highlighted(const struct PlaceEditor *pe, const struc
 struct ToShow {
 	struct Wall walls[MAX_WALLS];
 	int nwalls;
-	struct Ellipsoid els[2];
+	struct Ellipsoid els[3];
 	int nels;
 };
 
@@ -620,8 +670,14 @@ static void show_editor(struct PlaceEditor *pe)
 	select.nwalls = select.nels = 0;
 	front.nwalls = front.nels = 0;
 
-	for (int p=0; p<2; p++)
-		pe->playerels[p].highlighted = (pe->sel.mode == SEL_PLAYER && pe->sel.data.playeridx == p);
+	if (pe->sel.mode == SEL_PLAYER || pe->sel.mode == SEL_MOVEPLAYER) {
+		pe->playerels[0].highlighted = (pe->sel.data.playeridx == 0);
+		pe->playerels[1].highlighted = (pe->sel.data.playeridx == 1);
+	} else {
+		pe->playerels[0].highlighted = false;
+		pe->playerels[1].highlighted = false;
+	}
+	pe->enemyel.highlighted = (pe->sel.mode == SEL_ENEMY || pe->sel.mode == SEL_MOVEENEMY);
 
 	struct Wall *hlwall;
 	switch(pe->sel.mode) {
@@ -654,6 +710,11 @@ static void show_editor(struct PlaceEditor *pe)
 			else
 				behind.els[behind.nels++] = pe->playerels[p];
 		}
+		// TODO: copy/pasta
+		if (wall_side(hlwall, pe->enemyel.center) == wall_side(hlwall, pe->cam.location))
+			front.els[front.nels++] = pe->enemyel;
+		else
+			behind.els[behind.nels++] = pe->enemyel;
 	} else {
 		// Everything is "behind", could also use front
 		behind.nwalls = pe->place->nwalls;
@@ -662,6 +723,7 @@ static void show_editor(struct PlaceEditor *pe)
 			behind.walls[i] = pe->place->walls[i];
 		for (int i=0; i < behind.nels; i++)
 			behind.els[i] = pe->playerels[i];
+		behind.els[behind.nels++] = pe->enemyel;
 	}
 
 	show_all(behind.walls, behind.nwalls, false, behind.els, behind.nels, &pe->cam);
@@ -772,9 +834,10 @@ enum MiscState editplace_run(
 		.state = MISC_STATE_EDITPLACE,
 		.place = pl,
 		.playerels = {
-			{ .angle = 0, .epic = plr1pic },
-			{ .angle = 0, .epic = plr2pic },
+			{ .angle = 0, .xzradius = PLAYER_XZRADIUS, .yradius = PLAYER_YRADIUS_NOFLAT, .epic = plr1pic },
+			{ .angle = 0, .xzradius = PLAYER_XZRADIUS, .yradius = PLAYER_YRADIUS_NOFLAT, .epic = plr2pic },
 		},
+		.enemyel = { .angle = 0, .xzradius = ENEMY_XZRADIUS, .yradius = ENEMY_YRADIUS, .epic = enemy_getfirstepic() },
 		.cam = {
 			.screencentery = 0,
 			.surface = misc_create_cropped_surface(wndsurf, (SDL_Rect){
@@ -807,13 +870,12 @@ enum MiscState editplace_run(
 		},
 	};
 
-	for (int p=0; p<2; p++) {
-		pe.playerels[p].xzradius = PLAYER_XZRADIUS;
-		pe.playerels[p].yradius = PLAYER_YRADIUS_NOFLAT;
+	ellipsoid_update_transforms(&pe.enemyel);
+	for (int p=0; p<2; p++)
 		ellipsoid_update_transforms(&pe.playerels[p]);
-	}
+
 	deldata.editor = &pe;
-	rotate_camera(&pe, 0);
+	rotate_camera(&pe, 0);  // TODO: delete?
 
 	struct LoopTimer lt = {0};
 
@@ -840,6 +902,9 @@ enum MiscState editplace_run(
 					pe.place->playerlocs[p].z + 0.5f,
 				};
 			}
+			pe.enemyel.center = (Vec3){
+				pe.place->enemyloc.x + 0.5f, 0, pe.place->enemyloc.z + 0.5f
+			};
 			rotate_camera(&pe, pe.rotatedir * 3.0f);
 
 			SDL_FillRect(wndsurf, NULL, 0);
