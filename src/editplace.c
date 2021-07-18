@@ -186,8 +186,6 @@ static bool mouse_is_on_ellipsoid_with_no_walls_between(struct PlaceEditor *pe, 
 	return true;
 }
 
-// x,z are floored
-// if dirptr not null, sets it to point from camera to click direction
 static bool project_mouse_to_top_of_place(
 	const struct PlaceEditor *pe, int mousex, int mousey, float *x, float *z)
 {
@@ -200,9 +198,9 @@ static bool project_mouse_to_top_of_place(
 	};
 	vec3_apply_matrix(&cam2clickdir, pe->cam.cam2world);
 
-	// cam->location + dircoeff*cam2clickdir has y coordinate 1
+	// p.y should be 1, i.e. top of place
 	float dircoeff = -(pe->cam.location.y - 1)/cam2clickdir.y;
-	Vec3 p = vec3_add(pe->cam.location, vec3_mul_float(cam2clickdir, dircoeff));  // on the plane
+	Vec3 p = vec3_add(pe->cam.location, vec3_mul_float(cam2clickdir, dircoeff));
 	if (!isfinite(p.x) || !isfinite(p.z))  // e.g. mouse moved to top of screen
 		return false;
 
@@ -554,12 +552,9 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 static bool wall_should_be_highlighted(const struct PlaceEditor *pe, const struct Wall *w)
 {
 	switch(pe->sel.mode) {
-	case SEL_MOVINGWALL:
-		return wall_match(pe->sel.data.mvwall, w);
-	case SEL_RESIZE:
-		return wall_linedup(&pe->sel.data.resize.mainwall, w);
-	default:
-		return false;
+		case SEL_MOVINGWALL: return wall_match(pe->sel.data.mvwall, w);
+		case SEL_RESIZE: return wall_linedup(&pe->sel.data.resize.mainwall, w);
+		default: return false;
 	}
 }
 
