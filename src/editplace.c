@@ -12,7 +12,7 @@
 #include "camera.h"
 #include "gameover.h"
 
-enum SelectMode { SEL_NONE, SEL_PLAYER, SEL_WALL, SEL_MOVINGWALL, SEL_RESIZE };
+enum SelectMode { SEL_NONE, SEL_PLAYER, SEL_RESIZE, SEL_WALL, SEL_MOVEWALL, SEL_MOVEPLAYER };
 struct ResizeData {
 	struct Wall *walls[MAX_PLACE_SIZE];
 	int nwalls;
@@ -24,7 +24,7 @@ struct Selection {
 	union {
 		int playeridx;             // SEL_PLAYER
 		struct Wall wall;          // SEL_WALL
-		struct Wall *mvwall;       // SEL_MOVINGWALL
+		struct Wall *mvwall;       // SEL_MOVEWALL
 		struct ResizeData resize;  // SEL_RESIZE
 	} data;
 };
@@ -263,7 +263,7 @@ static void do_resize(struct PlaceEditor *pe, int mousex, int mousey)
 
 static void move_wall(struct PlaceEditor *pe, int mousex, int mousey)
 {
-	SDL_assert(pe->sel.mode == SEL_MOVINGWALL);
+	SDL_assert(pe->sel.mode == SEL_MOVEWALL);
 
 	struct Wall w;
 	if (find_wall_by_mouse_location(pe, &w, mousex, mousey)) {
@@ -274,6 +274,40 @@ static void move_wall(struct PlaceEditor *pe, int mousex, int mousey)
 			wall_init(pe->sel.data.mvwall);
 			place_save(pe->place);
 		}
+	}
+}
+
+static bool place_contains_something_at(const struct Place *pl, int x, int z)
+{
+	if (pl->enemyloc.x == x && pl->enemyloc.z == z) return true;
+	for (int p=0; p<2; p++) {
+		if (pl->playerlocs[p].x == x && pl->playerlocs[p].z == z)
+			return true;
+	}
+	for (int i=0; i < pl->nneverdielocs; i++) {
+		if (pl->neverdielocs[i].x == x && pl->neverdielocs[i].z == z)
+			return true;
+	}
+	return false;
+}
+
+static void move_player(struct PlaceEditor *pe, int mousex, int mousey)
+{
+	SDL_assert(pe->sel.mode == SEL_MOVEPLAYER);
+
+	float xf, zf;
+	project_mouse_to_top_of_place(pe, mousex, mousey, &xf, &zf);
+	int x = (int)floorf(xf);
+	int z = (int)floorf(zf);
+
+	if (x < 0) x = 0;
+	if (x >= pe->place->xsize) x = pe->place->xsize-1;
+	if (z < 0) z = 0;
+	if (z >= pe->place->zsize) z = pe->place->zsize-1;
+
+	if (!place_contains_something_at(pe->place, x, z)) {
+		pe->place->playerlocs[pe->sel.data.playeridx] = (struct PlaceCoords){x, z};
+		place_save(pe->place);
 	}
 }
 
@@ -431,7 +465,8 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 
 	switch(e->type) {
 	case SDL_MOUSEBUTTONDOWN:
-		if (pe->sel.mode == SEL_WALL) {
+		switch (pe->sel.mode) {
+		case SEL_WALL:
 			if (is_at_edge(&pe->sel.data.wall, pe->place)) {
 				struct Wall w = pe->sel.data.wall;
 				pe->sel = (struct Selection) {
@@ -441,8 +476,17 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 			} else {
 				struct Wall *w = find_wall_from_place(&pe->sel.data.wall, pe->place);
 				if(w)
-					pe->sel = (struct Selection) { .mode = SEL_MOVINGWALL, .data = { .mvwall = w }};
+					pe->sel = (struct Selection) { .mode = SEL_MOVEWALL, .data = { .mvwall = w }};
 			}
+			break;
+
+		case SEL_PLAYER:
+			pe->sel.mode = SEL_MOVEPLAYER;
+			log_printf("changed mode");
+			break;
+
+		default:
+			break;
 		}
 		pe->mousemoved = false;
 		return true;
@@ -453,7 +497,7 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 			log_printf("Resize ends");
 			finish_resize(pe);
 			break;
-		case SEL_MOVINGWALL:
+		case SEL_MOVEWALL:
 			log_printf("Moving a wall ends, mousemoved = %d", pe->mousemoved);
 			if (!pe->mousemoved)
 				delete_wall(pe, pe->sel.data.mvwall);
@@ -464,6 +508,7 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 			break;
 		case SEL_NONE:
 		case SEL_PLAYER:
+		case SEL_MOVEPLAYER:
 			break;
 		}
 		pe->sel.mode = SEL_NONE;
@@ -471,7 +516,10 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 
 	case SDL_MOUSEMOTION:
 		switch(pe->sel.mode) {
-		case SEL_MOVINGWALL:
+		case SEL_MOVEPLAYER:
+			move_player(pe, e->button.x, e->button.y);
+			break;
+		case SEL_MOVEWALL:
 			move_wall(pe, e->button.x, e->button.y);
 			break;
 		case SEL_RESIZE:
@@ -551,7 +599,7 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 static bool wall_should_be_highlighted(const struct PlaceEditor *pe, const struct Wall *w)
 {
 	switch(pe->sel.mode) {
-		case SEL_MOVINGWALL: return wall_match(pe->sel.data.mvwall, w);
+		case SEL_MOVEWALL: return wall_match(pe->sel.data.mvwall, w);
 		case SEL_RESIZE: return wall_linedup(&pe->sel.data.resize.mainwall, w);
 		default: return false;
 	}
@@ -577,7 +625,7 @@ static void show_editor(struct PlaceEditor *pe)
 
 	struct Wall *hlwall;
 	switch(pe->sel.mode) {
-	case SEL_MOVINGWALL:
+	case SEL_MOVEWALL:
 		hlwall = pe->sel.data.mvwall;
 		break;
 	case SEL_RESIZE:
