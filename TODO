@@ -1,4 +1,4 @@
-- resizing can be a bit off, figure out why
+- highlight players when they selected
 - it was left spinning forever somehow, possible to valgrind/asan?
 - adjusting camera up down
 - choosing where players go

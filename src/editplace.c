@@ -189,7 +189,7 @@ static bool mouse_is_on_ellipsoid_with_no_walls_between(struct PlaceEditor *pe, 
 // x,z are floored
 // if dirptr not null, sets it to point from camera to click direction
 static bool project_mouse_to_top_of_place(
-	const struct PlaceEditor *pe, int mousex, int mousey, int *x, int *z, Vec3 *dirptr)
+	const struct PlaceEditor *pe, int mousex, int mousey, float *x, float *z)
 {
 	// Top of place is at plane y=1. Figure out where on it we clicked
 	Vec3 cam2clickdir = {
@@ -199,8 +199,6 @@ static bool project_mouse_to_top_of_place(
 		1
 	};
 	vec3_apply_matrix(&cam2clickdir, pe->cam.cam2world);
-	if (dirptr)
-		*dirptr = cam2clickdir;
 
 	// cam->location + dircoeff*cam2clickdir has y coordinate 1
 	float dircoeff = -(pe->cam.location.y - 1)/cam2clickdir.y;
@@ -208,8 +206,8 @@ static bool project_mouse_to_top_of_place(
 	if (!isfinite(p.x) || !isfinite(p.z))  // e.g. mouse moved to top of screen
 		return false;
 
-	*x = (int)floorf(p.x);
-	*z = (int)floorf(p.z);
+	*x = p.x;
+	*z = p.z;
 	return true;
 }
 
@@ -217,26 +215,12 @@ static void do_resize(struct PlaceEditor *pe, int mousex, int mousey)
 {
 	SDL_assert(pe->sel.mode == SEL_RESIZE);
 
-	Vec3 dir;
-	if (!project_mouse_to_top_of_place(
-		pe, mousex, mousey,
-		&pe->sel.data.resize.mainwall.startx, &pe->sel.data.resize.mainwall.startz, &dir))
-	{
+	float x, z;
+	if (!project_mouse_to_top_of_place(pe, mousex, mousey, &x, &z))
 		return;
-	}
 
-	switch(pe->sel.data.resize.mainwall.dir) {
-	case WALL_DIR_XY:
-		// If camera looks in positive z direction, then the flooring in
-		// project_mouse_to_top_of_place() isn't good and needs fixing
-		if (dir.z > 0)
-			pe->sel.data.resize.mainwall.startz++;
-		break;
-	case WALL_DIR_ZY:
-		if (dir.x > 0)
-			pe->sel.data.resize.mainwall.startx++;
-		break;
-	}
+	pe->sel.data.resize.mainwall.startx = (int)roundf(x);
+	pe->sel.data.resize.mainwall.startz = (int)roundf(z);
 
 	keep_wall_within_place(pe, &pe->sel.data.resize.mainwall, true);
 	wall_init(&pe->sel.data.resize.mainwall);
@@ -277,10 +261,12 @@ static void on_mouse_move(struct PlaceEditor *pe, int mousex, int mousey)
 		}
 	}
 
-	int x, z;
-	Vec3 dir;
-	if (!project_mouse_to_top_of_place(pe, mousex, mousey, &x, &z, &dir))
+	float fx, fz;
+	if (!project_mouse_to_top_of_place(pe, mousex, mousey, &fx, &fz))
 		return;
+
+	int x = (int)floorf(fx);
+	int z = (int)floorf(fz);
 
 	struct Wall couldbeclicked[] = {
 		{ .startx = x,   .startz = z,   .dir = WALL_DIR_XY },
