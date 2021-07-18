@@ -27,7 +27,7 @@ jobs:
     #   /usr/include/x86_64-linux-gnu/sys/types.h:144:10: fatal error: 'stddef.h' file not found
     #
     - run: sudo apt install $APT_PACKAGES iwyu clang-9
-    - run: make -j2 iwyu
+    - run: make -j2 -k iwyu
 
   windows-build:
     runs-on: ubuntu-latest
