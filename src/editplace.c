@@ -295,6 +295,9 @@ static void on_arrow_key(struct PlaceEditor *pe, float angle, bool oppositespres
 		dz = 1;
 
 	switch(pe->sel.mode) {
+	case SEL_NONE:
+		pe->sel = (struct Selection){ .mode = SEL_WALL, .data = { .wall = {0}}};
+		// fall through
 	case SEL_WALL:
 		if (oppositespressed) {
 			pe->sel.data.wall.dir = dz ? WALL_DIR_ZY : WALL_DIR_XY;
@@ -523,7 +526,6 @@ static bool wall_should_be_highlighted(const struct PlaceEditor *pe, const struc
 	}
 }
 
-// TODO: should this go to showall.h?
 struct ToShow {
 	struct Wall walls[MAX_WALLS];
 	int nwalls;
