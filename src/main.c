@@ -106,7 +106,6 @@ static void load_the_stuff(SDL_Window *wnd, SDL_Surface *wndsurf, bool sound)
 
 int main(int argc, char **argv)
 {
-	printf("Main function starts\n");
 	bool sound = !(argc == 2 && strcmp(argv[1], "--no-sound") == 0);
 	if (argc > 1 && sound) {
 		fprintf(stderr, "Usage: %s [--no-sound]\n", argv[0]);
