@@ -179,9 +179,81 @@ static bool mouse_is_on_ellipsoid_with_no_walls_between(struct PlaceEditor *pe, 
 	return true;
 }
 
+// x,z are floored
+// if dirptr not null, sets it to point from camera to click direction
+static bool project_mouse_to_top_of_place(
+	const struct PlaceEditor *pe, int mousex, int mousey, int *x, int *z, Vec3 *dirptr)
+{
+	// Top of place is at plane y=1. Figure out where on it we clicked
+	Vec3 cam2clickdir = {
+		// Vector from camera towards clicked direction
+		camera_screenx_to_xzr(&pe->cam, mousex),
+		camera_screeny_to_yzr(&pe->cam, mousey),
+		1
+	};
+	vec3_apply_matrix(&cam2clickdir, pe->cam.cam2world);
+	if (dirptr)
+		*dirptr = cam2clickdir;
+
+	// cam->location + dircoeff*cam2clickdir has y coordinate 1
+	float dircoeff = -(pe->cam.location.y - 1)/cam2clickdir.y;
+	Vec3 p = vec3_add(pe->cam.location, vec3_mul_float(cam2clickdir, dircoeff));  // on the plane
+	if (!isfinite(p.x) || !isfinite(p.z))  // e.g. mouse moved to top of screen
+		return false;
+
+	*x = (int)floorf(p.x);
+	*z = (int)floorf(p.z);
+	return true;
+}
+
+static void do_resize(struct PlaceEditor *pe, int mousex, int mousey)
+{
+	SDL_assert(pe->sel.mode == SEL_RESIZE);
+
+	Vec3 dir;
+	if (!project_mouse_to_top_of_place(
+		pe, mousex, mousey,
+		&pe->sel.data.resize.mainwall.startx, &pe->sel.data.resize.mainwall.startz, &dir))
+	{
+		return;
+	}
+
+	switch(pe->sel.data.resize.mainwall.dir) {
+	case WALL_DIR_XY:
+		// If camera looks in positive z direction, then the flooring in
+		// project_mouse_to_top_of_place() isn't good and needs fixing
+		if (dir.z > 0)
+			pe->sel.data.resize.mainwall.startz++;
+		break;
+	case WALL_DIR_ZY:
+		if (dir.x > 0)
+			pe->sel.data.resize.mainwall.startx++;
+		break;
+	}
+
+	keep_wall_within_place(pe, &pe->sel.data.resize.mainwall, true);
+	wall_init(&pe->sel.data.resize.mainwall);
+	for (int i = 0; i < pe->sel.data.resize.nwalls; i++) {
+		switch(pe->sel.data.resize.mainwall.dir) {
+		case WALL_DIR_XY:
+			pe->sel.data.resize.walls[i]->startz = pe->sel.data.resize.mainwall.startz;
+			break;
+		case WALL_DIR_ZY:
+			pe->sel.data.resize.walls[i]->startx = pe->sel.data.resize.mainwall.startx;
+			break;
+		}
+		wall_init(pe->sel.data.resize.walls[i]);
+	}
+}
+
 static void on_mouse_move(struct PlaceEditor *pe, int mousex, int mousey)
 {
-	if (pe->sel.mode != SEL_MOVINGWALL && pe->sel.mode != SEL_RESIZE) {
+	if (pe->sel.mode == SEL_RESIZE) {
+		do_resize(pe, mousex, mousey);
+		return;
+	}
+
+	if (pe->sel.mode != SEL_MOVINGWALL) {
 		bool on0 = mouse_is_on_ellipsoid_with_no_walls_between(pe, &pe->playerels[0], mousex, mousey);
 		bool on1 = mouse_is_on_ellipsoid_with_no_walls_between(pe, &pe->playerels[1], mousex, mousey);
 		if (on0 && on1) {
@@ -197,82 +269,41 @@ static void on_mouse_move(struct PlaceEditor *pe, int mousex, int mousey)
 		}
 	}
 
-	// Top of place is at plane y=1. Figure out where on it we clicked
-	Vec3 cam2clickdir = {
-		// Vector from camera towards clicked direction
-		camera_screenx_to_xzr(&pe->cam, mousex),
-		camera_screeny_to_yzr(&pe->cam, mousey),
-		1
-	};
-	vec3_apply_matrix(&cam2clickdir, pe->cam.cam2world);
-
-	// cam->location + dircoeff*cam2clickdir has y coordinate 1
-	float dircoeff = -(pe->cam.location.y - 1)/cam2clickdir.y;
-	Vec3 p = vec3_add(pe->cam.location, vec3_mul_float(cam2clickdir, dircoeff));  // on the plane
-
-	if (!isfinite(p.x) || !isfinite(p.z))
+	int x, z;
+	Vec3 dir;
+	if (!project_mouse_to_top_of_place(pe, mousex, mousey, &x, &z, &dir))
 		return;
 
-	if (pe->sel.mode != SEL_MOVINGWALL && pe->sel.mode != SEL_RESIZE) {
-		// Allow off by a little bit so you can select edge walls
-		float tol = 1;
-		if (p.x < -tol || p.x > pe->place->xsize + tol || p.z < -tol || p.z > pe->place->zsize + tol)
-			return;
+	struct Wall couldbeclicked[] = {
+		{ .startx = x,   .startz = z,   .dir = WALL_DIR_XY },
+		{ .startx = x,   .startz = z,   .dir = WALL_DIR_ZY },
+		{ .startx = x,   .startz = z+1, .dir = WALL_DIR_XY },
+		{ .startx = x+1, .startz = z,   .dir = WALL_DIR_ZY },
+	};
+	struct Wall *w = NULL;
+	for (int i = 0; i < 4; i++) {
+		wall_init(&couldbeclicked[i]);
+		if (mouse_is_on_wall(&pe->cam, &couldbeclicked[i], mousex, mousey)) {
+			w = &couldbeclicked[i];
+			break;
+		}
 	}
 
-	struct Wall w;
-	switch(pe->sel.mode) {
-		case SEL_MOVINGWALL: w.dir = pe->sel.data.mvwall->dir; break;
-		case SEL_RESIZE: w.dir = pe->sel.data.resize.mainwall.dir; break;
-		case SEL_WALL: w.dir = pe->sel.data.wall.dir; break;
-		default: w.dir = WALL_DIR_XY; break;  // TODO: remember dir better
-	}
+	if(w)
+		keep_wall_within_place(pe, w, false);
 
-	switch(w.dir) {
-	case WALL_DIR_XY:
-		w.startz = (int)(cam2clickdir.z>0 ? floorf(p.z) : ceilf(p.z)); // towards camera
-		w.startx = (int)floorf(p.x);
-		break;
-	case WALL_DIR_ZY:
-		w.startx = (int)(cam2clickdir.x>0 ? floorf(p.x) : ceilf(p.x)); // towards camera
-		w.startz = (int)floorf(p.z);
-		break;
-	}
-
-	switch(pe->sel.mode) {
-		case SEL_MOVINGWALL:
-			keep_wall_within_place(pe, &w, false);
-			if (!find_wall_from_place(pe, &w)) {
-				// Not going on top of another wall, can move
-				*pe->sel.data.mvwall = w;
-				wall_init(pe->sel.data.mvwall);
-				place_save(pe->place);
-			}
-			break;
-
-		case SEL_RESIZE:
-			keep_wall_within_place(pe, &w, true);
-			wall_init(&w);
-			pe->sel.data.resize.mainwall = w;
-			for (int i = 0; i < pe->sel.data.resize.nwalls; i++) {
-				switch(pe->sel.data.resize.mainwall.dir) {
-				case WALL_DIR_XY:
-					pe->sel.data.resize.walls[i]->startz = pe->sel.data.resize.mainwall.startz;
-					break;
-				case WALL_DIR_ZY:
-					pe->sel.data.resize.walls[i]->startx = pe->sel.data.resize.mainwall.startx;
-					break;
-				}
-				wall_init(pe->sel.data.resize.walls[i]);
-			}
-			break;
-
-		case SEL_NONE:
-		case SEL_PLAYER:
-		case SEL_WALL:
-			keep_wall_within_place(pe, &w, false);
-			pe->sel = (struct Selection){ .mode = SEL_WALL, .data = { .wall = w }};
-			break;
+	if (pe->sel.mode == SEL_MOVINGWALL) {
+		if (w && !find_wall_from_place(pe, w)) {
+			// Not going on top of another wall, can move
+			*pe->sel.data.mvwall = *w;
+			wall_init(pe->sel.data.mvwall);
+			place_save(pe->place);
+		}
+	} else {
+		if (w)
+			pe->sel = (struct Selection){ .mode = SEL_WALL, .data = { .wall = *w }};
+		else
+			pe->sel = (struct Selection){ .mode = SEL_NONE };
 	}
 }
 
