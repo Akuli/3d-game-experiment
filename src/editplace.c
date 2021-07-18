@@ -11,14 +11,22 @@
 #include "camera.h"
 #include "gameover.h"
 
+enum SelectMode { SEL_NONE, SEL_PLAYER, SEL_WALL, SEL_MOVINGWALL, SEL_RESIZE };
 struct ResizeData {
-	// To figure out resize direction, use selwall.dir and dnddata.resize.negative
 	struct Wall *walls[MAX_PLACE_SIZE];
 	int nwalls;
+	struct Wall mainwall;  // This is the wall whose border is highlighted during resize
 	bool negative;   // true if shrinks/expands in negative x or z direction
 };
-
-enum DndMode { DND_NONE, DND_MOVING, DND_RESIZE };
+struct Selection {
+	enum SelectMode mode;
+	union {
+		int playeridx;             // SEL_PLAYER
+		struct Wall wall;          // SEL_WALL
+		struct Wall *mvwall;       // SEL_MOVINGWALL
+		struct ResizeData resize;  // SEL_RESIZE
+	} data;
+};
 
 struct PlaceEditor {
 	enum MiscState state;
@@ -26,14 +34,8 @@ struct PlaceEditor {
 	struct Ellipsoid playerels[2];
 	struct Camera cam;
 	int rotatedir;
-	struct Wall selwall;   // if at edge of place, then entire edge selected
 	struct Button deletebtn, donebtn;
-
-	enum DndMode dndmode;
-	union {
-		struct Wall *mvwall;
-		struct ResizeData resize;
-	} dnddata;
+	struct Selection sel;
 	bool mousemoved;
 };
 
@@ -61,16 +63,19 @@ static struct Wall *find_wall_from_place(struct PlaceEditor *pe, const struct Wa
 
 static bool add_wall(struct PlaceEditor *pe)
 {
+	if (pe->sel.mode != SEL_WALL)
+		return false;
+
 	SDL_assert(pe->place->nwalls <= MAX_WALLS);
 	if (pe->place->nwalls == MAX_WALLS) {
 		log_printf("hitting max number of walls, can't add more");
 		return false;
 	}
 
-	if (find_wall_from_place(pe, &pe->selwall))
+	if (find_wall_from_place(pe, &pe->sel.data.wall))
 		return false;
 
-	place_addwall(pe->place, pe->selwall.startx, pe->selwall.startz, pe->selwall.dir);
+	place_addwall(pe->place, pe->sel.data.wall.startx, pe->sel.data.wall.startz, pe->sel.data.wall.dir);
 	log_printf("Added wall, now there are %d walls", pe->place->nwalls);
 	place_save(pe->place);
 	return true;
@@ -85,7 +90,10 @@ static bool is_at_edge(const struct Wall *w, const struct Place *pl)
 
 static void delete_wall(struct PlaceEditor *pe)
 {
-	struct Wall *w = find_wall_from_place(pe, &pe->selwall);
+	if (pe->sel.mode != SEL_WALL)
+		return;
+
+	struct Wall *w = find_wall_from_place(pe, &pe->sel.data.wall);
 	if (w && !is_at_edge(w, pe->place)) {
 		*w = pe->place->walls[--pe->place->nwalls];
 		log_printf("Deleted wall, now there are %d walls", pe->place->nwalls);
@@ -93,23 +101,16 @@ static void delete_wall(struct PlaceEditor *pe)
 	}
 }
 
-static void keep_selected_wall_within_place(struct PlaceEditor *pe)
+static void keep_wall_within_place(const struct PlaceEditor *pe, struct Wall *w)
 {
-	if (pe->dndmode != DND_RESIZE) {
-		// If you move selection beyond edge, it changes direction so it's parallel to the edge
-		// No "else if" so that if this is called many times, it doesn't constantly change
-		if (pe->selwall.dir == WALL_DIR_XY && (pe->selwall.startx < 0 || pe->selwall.startx >= pe->place->xsize))
-			pe->selwall.dir = WALL_DIR_ZY;
-		if (pe->selwall.dir == WALL_DIR_ZY && (pe->selwall.startz < 0 || pe->selwall.startz >= pe->place->zsize))
-			pe->selwall.dir = WALL_DIR_XY;
-	}
-
 	int xmin = 0, xmax = pe->place->xsize;
 	int zmin = 0, zmax = pe->place->zsize;
-	if (pe->dndmode == DND_RESIZE) {
-		switch(pe->selwall.dir) {
+
+	switch(pe->sel.mode) {
+	case SEL_RESIZE:
+		switch(w->dir) {
 			case WALL_DIR_XY:
-				if (pe->dnddata.resize.negative) {
+				if (pe->sel.data.resize.negative) {
 					zmin = pe->place->zsize - MAX_PLACE_SIZE;
 					zmax = pe->place->zsize - 2;
 				} else {
@@ -118,7 +119,7 @@ static void keep_selected_wall_within_place(struct PlaceEditor *pe)
 				}
 				break;
 			case WALL_DIR_ZY:
-				if (pe->dnddata.resize.negative) {
+				if (pe->sel.data.resize.negative) {
 					xmin = pe->place->xsize - MAX_PLACE_SIZE;
 					xmax = pe->place->xsize - 2;
 				} else {
@@ -127,62 +128,119 @@ static void keep_selected_wall_within_place(struct PlaceEditor *pe)
 				}
 				break;
 		}
+		break;
+
+	case SEL_WALL:
+		/*
+		// If you move selection beyond edge, it changes direction so it's parallel to the edge
+		// No "else if" so that if this is called many times, it doesn't constantly change
+		// TODO: allow flipping a wall around by smashing it to edge
+		if (w->dir == WALL_DIR_XY && (w->startx < 0 || w->startx >= pe->place->xsize))
+			w->dir = WALL_DIR_ZY;
+		if (w->dir == WALL_DIR_ZY && (w->startz < 0 || w->startz >= pe->place->zsize))
+			w->dir = WALL_DIR_XY;
+		*/
+		break;
+
+	default:
+		break;
 	}
 
-	switch(pe->selwall.dir) {
+	switch(w->dir) {
 		case WALL_DIR_XY: xmax--; break;
 		case WALL_DIR_ZY: zmax--; break;
 	}
 
-	pe->selwall.startx = max(pe->selwall.startx, xmin);
-	pe->selwall.startx = min(pe->selwall.startx, xmax);
-	pe->selwall.startz = max(pe->selwall.startz, zmin);
-	pe->selwall.startz = min(pe->selwall.startz, zmax);
+	w->startx = max(w->startx, xmin);
+	w->startx = min(w->startx, xmax);
+	w->startz = max(w->startz, zmin);
+	w->startz = min(w->startz, zmax);
+	wall_init(w);
 }
 
-static bool select_wall_by_mouse(struct PlaceEditor *pe, int mousex, int mousey)
+static void on_mouse_move(struct PlaceEditor *pe, int mousex, int mousey)
 {
+	SDL_assert(pe->sel.mode != SEL_PLAYER);
 	// Top of place is at plane y=1. Figure out where on it we clicked
-	Vec3 dir = {
+	Vec3 cam2clickdir = {
 		// Vector from camera towards clicked direction
 		camera_screenx_to_xzr(&pe->cam, mousex),
 		camera_screeny_to_yzr(&pe->cam, mousey),
 		1
 	};
-	vec3_apply_matrix(&dir, pe->cam.cam2world);
+	vec3_apply_matrix(&cam2clickdir, pe->cam.cam2world);
 
-	// cam->location + dircoeff*dir has y coordinate 1
-	float dircoeff = -(pe->cam.location.y - 1)/dir.y;
-	Vec3 onplane = vec3_add(pe->cam.location, vec3_mul_float(dir, dircoeff));
-	if (!isfinite(onplane.y)) {
-		// Happens when mouse is moved above window
-		log_printf("weird y coordinate for plane: %.10f", onplane.y);
-		return false;
-	}
-	SDL_assert(fabsf(onplane.y - 1) < 1e-5f);
+	// cam->location + dircoeff*cam2clickdir has y coordinate 1
+	float dircoeff = -(pe->cam.location.y - 1)/cam2clickdir.y;
+	Vec3 p = vec3_add(pe->cam.location, vec3_mul_float(cam2clickdir, dircoeff));  // on the plane
 
-	// Allow off by a little bit so you can select edge walls
-	bool xoff = onplane.x < -1 || onplane.x > pe->place->xsize + 1;
-	bool zoff = onplane.z < -1 || onplane.z > pe->place->zsize + 1;
-	if (pe->dndmode != DND_RESIZE && (xoff || zoff))
-		return false;
+	if (!isfinite(p.x) || !isfinite(p.z))
+		return;
 
-	switch(pe->selwall.dir) {
-		// needs keep_selected_wall_within_place()
-		case WALL_DIR_XY:
-			pe->selwall.startz = (int)(dir.z>0 ? floorf(onplane.z) : ceilf(onplane.z)); // towards camera
-			pe->selwall.startx = (int)floorf(onplane.x);
-			break;
-		case WALL_DIR_ZY:
-			pe->selwall.startx = (int)(dir.x>0 ? floorf(onplane.x) : ceilf(onplane.x)); // towards camera
-			pe->selwall.startz = (int)floorf(onplane.z);
-			break;
+	if (pe->sel.mode != SEL_MOVINGWALL && pe->sel.mode != SEL_RESIZE) {
+		// Allow off by a little bit so you can select edge walls
+		float tol = 1;
+		if (p.x < -tol || p.x > pe->place->xsize + tol || p.z < -tol || p.z > pe->place->zsize + tol)
+			return;
 	}
 
-	keep_selected_wall_within_place(pe);
-	return true;
+	struct Wall w;
+	switch(pe->sel.mode) {
+		case SEL_MOVINGWALL: w.dir = pe->sel.data.mvwall->dir; break;
+		case SEL_RESIZE: w.dir = pe->sel.data.resize.mainwall.dir; break;
+		case SEL_WALL: w.dir = pe->sel.data.wall.dir; break;
+		default: w.dir = WALL_DIR_XY; break;  // TODO: remember dir better
+	}
+
+	switch(w.dir) {
+	case WALL_DIR_XY:
+		w.startz = (int)(cam2clickdir.z>0 ? floorf(p.z) : ceilf(p.z)); // towards camera
+		w.startx = (int)floorf(p.x);
+		break;
+	case WALL_DIR_ZY:
+		w.startx = (int)(cam2clickdir.x>0 ? floorf(p.x) : ceilf(p.x)); // towards camera
+		w.startz = (int)floorf(p.z);
+		break;
+	}
+
+	switch(pe->sel.mode) {
+		case SEL_MOVINGWALL:
+			keep_wall_within_place(pe, &w);
+			if (!find_wall_from_place(pe, &w)) {
+				// Not going on top of another wall, can move
+				*pe->sel.data.mvwall = w;
+				wall_init(pe->sel.data.mvwall);
+				place_save(pe->place);
+			}
+			break;
+
+		case SEL_RESIZE:
+			keep_wall_within_place(pe, &w);
+			wall_init(&w);
+			pe->sel.data.resize.mainwall = w;
+			for (int i = 0; i < pe->sel.data.resize.nwalls; i++) {
+				switch(pe->sel.data.resize.mainwall.dir) {
+				case WALL_DIR_XY:
+					pe->sel.data.resize.walls[i]->startz = pe->sel.data.resize.mainwall.startz;
+					break;
+				case WALL_DIR_ZY:
+					pe->sel.data.resize.walls[i]->startx = pe->sel.data.resize.mainwall.startx;
+					break;
+				}
+				wall_init(pe->sel.data.resize.walls[i]);
+			}
+			break;
+
+		case SEL_NONE:
+		case SEL_PLAYER:
+		case SEL_WALL:
+			keep_wall_within_place(pe, &w);
+			pe->sel = (struct Selection){ .mode = SEL_WALL, .data = { .wall = w }};
+			break;
+	}
 }
 
+/*
 static void move_towards_angle(struct PlaceEditor *pe, float angle)
 {
 	float pi = acosf(-1);
@@ -191,20 +249,75 @@ static void move_towards_angle(struct PlaceEditor *pe, float angle)
 		angle += 2*pi;
 
 	// Trial and error has been used to figure out what to do in each case
+	int dx = 0, dz = 0;
 	if (0.25f*pi <= angle && angle <= 0.75f*pi)
-		pe->selwall.startx--;
+		dx = -1;
 	else if (0.75f*pi <= angle && angle <= 1.25f*pi)
-		pe->selwall.startz--;
+		dz = -1;
 	else if (1.25f*pi <= angle && angle <= 1.75f*pi)
-		pe->selwall.startx++;
+		dx = 1;
 	else
-		pe->selwall.startz++;
+		dz = 1;
 
+	if (pe->selmode == SEL_WALL && (
+		(pe->seldata.wall.dir == WALL_DIR_ZY && dx) || 
+		(pe->seldata.wall.dir == WALL_DIR_XY && dz)))
+	{
+		// Check if we are going towards a player
+		int px = pe->seldata.wall.startx + min(0, dx);
+		int pz = pe->seldata.wall.startz + min(0, dz);
+		for (int p=0; p<2; p++) {
+			if (pe->place->playerlocs[p].x == px && pe->place->playerlocs[p].z == pz) {
+				pe->selmode = SEL_PLAYER;
+				pe->seldata.playeridx = p;
+				goto end;
+			}
+		}
+	}
+
+	struct Wall *w = get_selected_wall(pe);
+
+	switch(pe->selmode) {
+	case SEL_WALL:
+	case SEL_MOVINGWALL:
+	case SEL_RESIZE:
+		SDL_assert(w);
+		w->startx += dx;
+		w->startz += dz;
+		break;
+
+	case SEL_PLAYER:
+		{
+			// Select wall near player
+			int p = pe->seldata.playeridx;
+			pe->selmode = SEL_WALL;
+			if (dx && !dz) {
+				pe->seldata.wall = (struct Wall) {
+					.dir = WALL_DIR_ZY,
+					.startx = pe->place->playerlocs[p].x + max(0, dx),
+					.startz = pe->place->playerlocs[p].z,
+				};
+			} else if (dz && !dx) {
+				pe->seldata.wall = (struct Wall) {
+					.dir = WALL_DIR_XY,
+					.startx = pe->place->playerlocs[p].x,
+					.startz = pe->place->playerlocs[p].z + max(0, dz),
+				};
+			} else {
+				log_printf("the impossible happened");
+			}
+		}
+	}
+
+end:
 	keep_selected_wall_within_place(pe);
 }
+*/
 
 static void begin_resize(struct ResizeData *rd, const struct Wall *edgewall, struct Place *pl)
 {
+	log_printf("Resize begins");
+	rd->mainwall = *edgewall;
 	rd->nwalls = 0;
 	switch(edgewall->dir) {
 		case WALL_DIR_XY: rd->negative = (edgewall->startz == 0); break;
@@ -218,38 +331,28 @@ static void begin_resize(struct ResizeData *rd, const struct Wall *edgewall, str
 	SDL_assert(rd->nwalls == pl->xsize || rd->nwalls == pl->zsize);
 }
 
-// Assumes keep_selected_wall_within_place() has been used
-static void resize_badly_by_moving_wall(struct ResizeData *rd, const struct Wall *selwall)
-{
-	for (int i = 0; i < rd->nwalls; i++) {
-		switch(selwall->dir) {
-			case WALL_DIR_XY: rd->walls[i]->startz = selwall->startz; break;
-			case WALL_DIR_ZY: rd->walls[i]->startx = selwall->startx; break;
-		}
-		wall_init(rd->walls[i]);
-	}
-}
-
 static void finish_resize(struct PlaceEditor *pe)
 {
-	if (pe->dnddata.resize.negative) {
-		switch(pe->selwall.dir) {
+	log_printf("Resize ends");
+	SDL_assert(pe->sel.mode == SEL_RESIZE);
+	if (pe->sel.data.resize.negative) {
+		switch(pe->sel.data.resize.mainwall.dir) {
 			case WALL_DIR_XY:
-				place_movecontent(pe->place, 0, -pe->selwall.startz);
-				pe->place->zsize -= pe->selwall.startz;
+				place_movecontent(pe->place, 0, -pe->sel.data.resize.mainwall.startz);
+				pe->place->zsize -= pe->sel.data.resize.mainwall.startz;
 				break;
 			case WALL_DIR_ZY:
-				place_movecontent(pe->place, -pe->selwall.startx, 0);
-				pe->place->xsize -= pe->selwall.startx;
+				place_movecontent(pe->place, -pe->sel.data.resize.mainwall.startx, 0);
+				pe->place->xsize -= pe->sel.data.resize.mainwall.startx;
 				break;
 		}
 	} else {
-		switch(pe->selwall.dir) {
+		switch(pe->sel.data.resize.mainwall.dir) {
 			case WALL_DIR_XY:
-				pe->place->zsize = pe->selwall.startz;
+				pe->place->zsize = pe->sel.data.resize.mainwall.startz;
 				break;
 			case WALL_DIR_ZY:
-				pe->place->xsize = pe->selwall.startx;
+				pe->place->xsize = pe->sel.data.resize.mainwall.startx;
 				break;
 		}
 	}
@@ -273,51 +376,33 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 
 	switch(e->type) {
 	case SDL_MOUSEBUTTONDOWN:
-		pe->dndmode = DND_NONE;
-		pe->mousemoved = false;
-		if (select_wall_by_mouse(pe, e->button.x, e->button.y)) {
-			struct Wall *hoveringwall = find_wall_from_place(pe, &pe->selwall);
-			if (hoveringwall && is_at_edge(hoveringwall, pe->place)) {
-				log_printf("Resize begins");
-				pe->dndmode = DND_RESIZE;
-				begin_resize(&pe->dnddata.resize, hoveringwall, pe->place);
-			} else if (hoveringwall) {
-				log_printf("Moving a wall begins");
-				pe->dndmode = DND_MOVING;
-				pe->dnddata.mvwall = hoveringwall;
+		if (pe->sel.mode == SEL_WALL) {
+			if (is_at_edge(&pe->sel.data.wall, pe->place)) {
+				struct Wall w = pe->sel.data.wall;
+				pe->sel = (struct Selection) {
+					.mode = SEL_RESIZE,
+					.data = {
+						
+					}
+				};
+				begin_resize(&pe->sel.data.resize, &w, pe->place);
+			} else {
+				// TODO move
 			}
 		}
 		return true;
 
 	case SDL_MOUSEMOTION:
 		pe->mousemoved = true;
-
-		switch(pe->dndmode) {
-		case DND_NONE:
-			select_wall_by_mouse(pe, e->button.x, e->button.y);
-			break;
-		case DND_MOVING:
-			if (select_wall_by_mouse(pe, e->button.x, e->button.y) && !find_wall_from_place(pe, &pe->selwall)) {
-				// Not going on top of another wall, can move
-				pe->dnddata.mvwall->startx = pe->selwall.startx;
-				pe->dnddata.mvwall->startz = pe->selwall.startz;
-				wall_init(pe->dnddata.mvwall);
-				place_save(pe->place);
-			}
-			break;
-		case DND_RESIZE:
-			if (select_wall_by_mouse(pe, e->button.x, e->button.y))
-				resize_badly_by_moving_wall(&pe->dnddata.resize, &pe->selwall);
-			break;
-		}
+		on_mouse_move(pe, e->button.x, e->button.y);
 		return true;
 
 	case SDL_MOUSEBUTTONUP:
-		switch(pe->dndmode) {
-		case DND_RESIZE:
-			log_printf("Resize ends");
+		switch(pe->sel.mode) {
+		case SEL_RESIZE:
 			finish_resize(pe);
 			break;
+	/*
 		case DND_MOVING:
 			log_printf("Moving a wall ends, mousemoved = %d", pe->mousemoved);
 			if (!pe->mousemoved)
@@ -327,15 +412,17 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 			log_printf("Click ends");
 			add_wall(pe);
 			break;
+	*/
 		}
-		pe->dndmode = DND_NONE;
+		pe->sel.mode = SEL_NONE;
 		return true;
 
 	case SDL_KEYDOWN:
-		if (pe->dndmode != DND_NONE)
-			return false;
+		if (pe->sel.mode != SEL_NONE && pe->sel.mode != SEL_WALL)
+			return false;  // TODO: more keyboard functionality
 
 		switch(misc_handle_scancode(e->key.keysym.scancode)) {
+			/*
 		case SDL_SCANCODE_DOWN:
 			move_towards_angle(pe, pe->cam.angle);
 			return true;
@@ -348,6 +435,7 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 		case SDL_SCANCODE_RIGHT:
 			move_towards_angle(pe, pe->cam.angle + 3*pi/2);
 			return true;
+		*/
 		case SDL_SCANCODE_A:
 			pe->rotatedir = 1;
 			return false;
@@ -363,8 +451,8 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 		}
 
 	case SDL_KEYUP:
-		if (pe->dndmode != DND_NONE)
-			return false;
+		if (pe->sel.mode != SEL_NONE && pe->sel.mode != SEL_WALL)
+			return false;  // TODO: more keyboard functionality
 
 		switch(misc_handle_scancode(e->key.keysym.scancode)) {
 		case SDL_SCANCODE_A:
@@ -384,11 +472,16 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 	}
 }
 
-static bool is_selected(const struct PlaceEditor *pe, const struct Wall *w)
+static bool wall_should_be_highlighted(const struct PlaceEditor *pe, const struct Wall *w)
 {
-	if (is_at_edge(w, pe->place))
-		return wall_linedup(&pe->selwall, w);
-	return wall_match(&pe->selwall, w);
+	switch(pe->sel.mode) {
+	case SEL_MOVINGWALL:
+		return wall_match(pe->sel.data.mvwall, w);
+	case SEL_RESIZE:
+		return wall_linedup(&pe->sel.data.resize.mainwall, w);
+	default:
+		return false;
+	}
 }
 
 // TODO: should this go to showall.h?
@@ -407,17 +500,32 @@ static void show_editor(struct PlaceEditor *pe)
 	select.nwalls = select.nels = 0;
 	front.nwalls = front.nels = 0;
 
+	struct Wall *hlwall;
+	switch(pe->sel.mode) {
+	case SEL_MOVINGWALL:
+		hlwall = pe->sel.data.mvwall;
+		break;
+	case SEL_RESIZE:
+		hlwall = &pe->sel.data.resize.mainwall;
+		break;
+	case SEL_WALL:
+		hlwall = &pe->sel.data.wall;
+		break;
+	default:
+		hlwall = NULL;
+	}
+
 	for (const struct Wall *w = pe->place->walls; w < pe->place->walls + pe->place->nwalls; w++) {
-		if (is_selected(pe, w))
+		if (wall_should_be_highlighted(pe, w))
 			select.walls[select.nwalls++] = *w;
-		else if (wall_side(&pe->selwall, wall_center(w)) == wall_side(&pe->selwall, pe->cam.location) && !wall_linedup(&pe->selwall, w))
+		else if (hlwall && wall_side(hlwall, wall_center(w)) == wall_side(hlwall, pe->cam.location) && !wall_linedup(hlwall, w))
 			front.walls[front.nwalls++] = *w;
 		else
 			behind.walls[behind.nwalls++] = *w;
 	}
 
 	for (int p=0; p<2; p++) {
-		if (wall_side(&pe->selwall, pe->playerels[p].center) == wall_side(&pe->selwall, pe->cam.location))
+		if (hlwall && wall_side(hlwall, pe->playerels[p].center) == wall_side(hlwall, pe->cam.location))
 			front.els[front.nels++] = pe->playerels[p];
 		else
 			behind.els[behind.nels++] = pe->playerels[p];
@@ -425,8 +533,10 @@ static void show_editor(struct PlaceEditor *pe)
 
 	show_all(behind.walls, behind.nwalls, false, behind.els, behind.nels, &pe->cam);
 	show_all(select.walls, select.nwalls, true,  select.els, select.nels, &pe->cam);
-	wall_init(&pe->selwall);
-	wall_drawborder(&pe->selwall, &pe->cam);
+	if (hlwall) {
+		wall_init(hlwall);
+		wall_drawborder(hlwall, &pe->cam);
+	}
 	show_all(front.walls,  front.nwalls,  false, front.els,  front.nels,  &pe->cam);
 }
 
@@ -525,7 +635,7 @@ enum MiscState editplace_run(
 		.nplaces = nplaces,
 	};
 	struct PlaceEditor pe = {
-		.dndmode = DND_NONE,
+		.sel = { .mode = SEL_NONE },
 		.state = MISC_STATE_EDITPLACE,
 		.place = pl,
 		.playerels = {
