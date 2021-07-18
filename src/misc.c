@@ -96,6 +96,8 @@ SDL_Surface *misc_create_cropped_surface(SDL_Surface *surf, SDL_Rect r)
 	return res;
 }
 
+extern inline uint32_t misc_rgb_average(uint32_t a, uint32_t b);
+
 void misc_basename_without_extension(const char *path, char *name, int sizeofname)
 {
 	if (strrchr(path, '/'))

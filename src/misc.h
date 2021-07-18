@@ -37,6 +37,12 @@ to be much faster than blitting. Never returns NULL.
 */
 SDL_Surface *misc_create_cropped_surface(SDL_Surface *surf, SDL_Rect r);
 
+// 24 rightmost bits used, 8 bits for each of R,G,B
+// very perf critical in wall drawing code, especially in places with lots of walls
+inline uint32_t misc_rgb_average(uint32_t a, uint32_t b) {
+	return ((a & 0xfefefe) >> 1) + ((b & 0xfefefe) >> 1);
+}
+
 // "bla/bla/file.txt" --> "file"
 void misc_basename_without_extension(const char *path, char *name, int sizeofname);
 

@@ -6,6 +6,7 @@
 #include "mathstuff.h"
 #include "player.h"
 #include "log.h"
+#include "misc.h"
 
 #define Y_MIN PLAYER_HEIGHT_FLAT   // allow players to go under the wall
 #define Y_MAX 1.0f
@@ -300,12 +301,6 @@ void wall_yminmax(const struct WallCache *wc, int x, int *ymin, int *ymax)
 		*ymax = wc->cam->surface->h - 1;
 }
 
-// 24 rightmost bits used, 8 bits for each of R,G,B
-// this is perf critical
-static inline uint32_t rgb_average(uint32_t a, uint32_t b) {
-	return ((a & 0xfefefe) >> 1) + ((b & 0xfefefe) >> 1);
-}
-
 void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax, bool highlight)
 {
 	SDL_Surface *surf = wc->cam->surface;
@@ -316,15 +311,16 @@ void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax, bool
 	uint32_t *start = (uint32_t *)surf->pixels + ymin*mypitch + x;
 	uint32_t *end   = (uint32_t *)surf->pixels + ymax*mypitch + x;
 
-	// making wallcolor a compile-time constant speeds up slightly
+	// rgb_average seems to perform better when one argument is compile-time known
+
 	const SDL_PixelFormat *f = surf->format;
 	SDL_assert(f->Rmask == 0xff0000 && f->Gmask == 0x00ff00 && f->Bmask == 0x0000ff);
 
 	if (highlight) {
 		for (uint32_t *ptr = start; ptr < end; ptr += mypitch)
-			*ptr = rgb_average(*ptr, 0xff0000);
+			*ptr = misc_rgb_average(*ptr, 0xff0000);
 	} else {
 		for (uint32_t *ptr = start; ptr < end; ptr += mypitch)
-			*ptr = rgb_average(*ptr, 0x00ffff);
+			*ptr = misc_rgb_average(*ptr, 0x00ffff);
 	}
 }

@@ -572,6 +572,9 @@ static void show_editor(struct PlaceEditor *pe)
 	select.nwalls = select.nels = 0;
 	front.nwalls = front.nels = 0;
 
+	for (int p=0; p<2; p++)
+		pe->playerels[p].highlighted = (pe->sel.mode == SEL_PLAYER && pe->sel.data.playeridx == p);
+
 	struct Wall *hlwall;
 	switch(pe->sel.mode) {
 	case SEL_MOVINGWALL:

@@ -1,4 +1,3 @@
-- highlight players when they selected
 - it was left spinning forever somehow, possible to valgrind/asan?
 - adjusting camera up down
 - choosing where players go
