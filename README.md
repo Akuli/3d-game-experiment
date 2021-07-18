@@ -35,6 +35,10 @@ In the game over screen, you can again click buttons or press these keys:
 - Play again button: F5. This is for compatibility with games where you can play again by refreshing the browser window.
 - Player and place chooser button: enter or space.
 
+In the map editor, the keyboard is quite limited (use mouse instead):
+- Selection: arrow keys
+- Add/remove wall: enter
+
 
 ## Broken Things
 
