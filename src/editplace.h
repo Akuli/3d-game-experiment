@@ -6,6 +6,9 @@
 #include "misc.h"
 
 // Needs array of all places because it's possible to delete a place
-enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces, int placeidx);
+enum MiscState editplace_run(
+	SDL_Window *wnd,
+	struct Place *places, int *nplaces, int placeidx,
+	const struct EllipsoidPic *plr1pic, const struct EllipsoidPic *plr2pic);
 
 #endif   // EDITPLACE_H

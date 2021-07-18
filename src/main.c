@@ -168,7 +168,9 @@ int main(int argc, char **argv)
 
 		case MISC_STATE_EDITPLACE:
 			log_printf("starting place editor");
-			s = editplace_run(wnd, ch.placech.places, &ch.placech.nplaces, ch.placech.placeidx);
+			s = editplace_run(
+				wnd, ch.placech.places, &ch.placech.nplaces, ch.placech.placeidx,
+				ch.playerch[0].epic, ch.playerch[1].epic);
 			break;
 
 		case MISC_STATE_QUIT:

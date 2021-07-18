@@ -4,6 +4,7 @@
 #include "max.h"
 #include "misc.h"
 #include "place.h"
+#include "player.h"
 #include "wall.h"
 #include "looptimer.h"
 #include "showall.h"
@@ -22,6 +23,7 @@ enum DndMode { DND_NONE, DND_MOVING, DND_RESIZE };
 struct PlaceEditor {
 	enum MiscState state;
 	struct Place *place;
+	struct Ellipsoid playerels[2];
 	struct Camera cam;
 	int rotatedir;
 	struct Wall selwall;   // if at edge of place, then entire edge selected
@@ -389,27 +391,44 @@ static bool is_selected(const struct PlaceEditor *pe, const struct Wall *w)
 	return wall_match(&pe->selwall, w);
 }
 
-static void draw_walls(struct PlaceEditor *pe)
+// TODO: should this go to showall.h?
+struct ToShow {
+	struct Wall walls[MAX_WALLS];
+	int nwalls;
+	struct Ellipsoid els[2];
+	int nels;
+};
+
+static void show_editor(struct PlaceEditor *pe)
 {
 	// static to keep down stack usage
-	static struct Wall behind[MAX_WALLS], selected[MAX_WALLS], front[MAX_WALLS];
-	int nbehind=0, nselected=0, nfront=0;
+	static struct ToShow behind, select, front;
+	behind.nwalls = behind.nels = 0;
+	select.nwalls = select.nels = 0;
+	front.nwalls = front.nels = 0;
 
 	Vec3 selcenter = wall_center(&pe->selwall);
 	for (const struct Wall *w = pe->place->walls; w < pe->place->walls + pe->place->nwalls; w++) {
 		if (is_selected(pe, w))
-			selected[nselected++] = *w;
+			select.walls[select.nwalls++] = *w;
 		else if (wall_linedup(w, &pe->selwall) || wall_side(w, selcenter) == wall_side(w, pe->cam.location))
-			behind[nbehind++] = *w;
+			behind.walls[behind.nwalls++] = *w;
 		else
-			front[nfront++] = *w;
+			front.walls[front.nwalls++] = *w;
 	}
 
-	show_all(behind, nbehind, false, NULL, 0, &pe->cam);
-	show_all(selected, nselected, true, NULL, 0, &pe->cam);
+	for (int p=0; p<2; p++) {
+		if (wall_side(&pe->selwall, pe->playerels[p].center) == wall_side(&pe->selwall, pe->cam.location))
+			front.els[front.nels++] = pe->playerels[p];
+		else
+			behind.els[behind.nels++] = pe->playerels[p];
+	}
+
+	show_all(behind.walls, behind.nwalls, false, behind.els, behind.nels, &pe->cam);
+	show_all(select.walls, select.nwalls, true,  select.els, select.nels, &pe->cam);
 	wall_init(&pe->selwall);
 	wall_drawborder(&pe->selwall, &pe->cam);
-	show_all(front, nfront, false, NULL, 0, &pe->cam);
+	show_all(front.walls,  front.nwalls,  false, front.els,  front.nels,  &pe->cam);
 }
 
 static void on_done_clicked(void *data)
@@ -488,7 +507,10 @@ out:
 	SDL_FreeSurface(textsurf);
 }
 
-enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces, int placeidx)
+enum MiscState editplace_run(
+	SDL_Window *wnd,
+	struct Place *places, int *nplaces, int placeidx,
+	const struct EllipsoidPic *plr1pic, const struct EllipsoidPic *plr2pic)
 {
 	struct Place *pl = &places[placeidx];
 
@@ -507,6 +529,10 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces
 		.dndmode = DND_NONE,
 		.state = MISC_STATE_EDITPLACE,
 		.place = pl,
+		.playerels = {
+			{ .angle = 0, .epic = plr1pic },
+			{ .angle = 0, .epic = plr2pic },
+		},
 		.cam = {
 			.screencentery = 0,
 			.surface = misc_create_cropped_surface(wndsurf, (SDL_Rect){
@@ -538,6 +564,12 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces
 			.onclickdata = &deldata,
 		},
 	};
+
+	for (int p=0; p<2; p++) {
+		pe.playerels[p].xzradius = PLAYER_XZRADIUS;
+		pe.playerels[p].yradius = PLAYER_YRADIUS_NOFLAT;
+		ellipsoid_update_transforms(&pe.playerels[p]);
+	}
 	deldata.editor = &pe;
 	rotate_camera(&pe, 0);
 
@@ -559,10 +591,17 @@ enum MiscState editplace_run(SDL_Window *wnd, struct Place *places, int *nplaces
 			redraw = true;
 
 		if (redraw) {
+			for (int p = 0; p < 2; p++) {
+				pe.playerels[p].center = (Vec3){
+					pe.place->playerlocs[p].x + 0.5f,
+					PLAYER_YRADIUS_NOFLAT,
+					pe.place->playerlocs[p].z + 0.5f,
+				};
+			}
 			rotate_camera(&pe, pe.rotatedir * 3.0f);
 
 			SDL_FillRect(wndsurf, NULL, 0);
-			draw_walls(&pe);
+			show_editor(&pe);
 			button_show(&pe.donebtn);
 			button_show(&pe.deletebtn);
 		}
