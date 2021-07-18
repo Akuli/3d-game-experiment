@@ -158,9 +158,63 @@ static void keep_wall_within_place(const struct PlaceEditor *pe, struct Wall *w)
 	wall_init(w);
 }
 
+static bool mouse_is_on_ellipsoid(const struct Camera *cam, const struct Ellipsoid *el, int x, int y)
+{
+	int xmin, xmax;
+	if (!ellipsoid_visible_xminmax(el, cam, &xmin, &xmax) || !(xmin <= x && x <= xmax))
+		return false;
+
+	int ymin, ymax;
+	struct EllipsoidXCache exc;
+	ellipsoid_yminmax(el, cam, x, &exc, &ymin, &ymax);
+	return ymin <= y && y <= ymax;
+}
+
+static bool mouse_is_on_wall(const struct Camera *cam, const struct Wall *w, int x, int y)
+{
+	struct WallCache wc;
+	int xmin, xmax;
+	if (!wall_visible_xminmax_fillcache(w, cam, &xmin, &xmax, &wc) || !(xmin <= x && x <= xmax))
+		return false;
+
+	int ymin, ymax;
+	wall_yminmax(&wc, x, &ymin, &ymax);
+	return ymin <= y && y <= ymax;
+}
+
+static bool mouse_is_on_ellipsoid_with_no_walls_between(struct PlaceEditor *pe, const struct Ellipsoid *el, int x, int y)
+{
+	if (!mouse_is_on_ellipsoid(&pe->cam, el, x, y))
+		return false;
+
+	for (const struct Wall *w = pe->place->walls; w < &pe->place->walls[pe->place->nwalls]; w++) {
+		if (wall_side(w, pe->cam.location) != wall_side(w, el->center)
+			&& mouse_is_on_wall(&pe->cam, w, x, y))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 static void on_mouse_move(struct PlaceEditor *pe, int mousex, int mousey)
 {
-	SDL_assert(pe->sel.mode != SEL_PLAYER);
+	if (pe->sel.mode != SEL_MOVINGWALL && pe->sel.mode != SEL_RESIZE) {
+		bool on0 = mouse_is_on_ellipsoid_with_no_walls_between(pe, &pe->playerels[0], mousex, mousey);
+		bool on1 = mouse_is_on_ellipsoid_with_no_walls_between(pe, &pe->playerels[1], mousex, mousey);
+		if (on0 && on1) {
+			// Select closer to camera
+			float d0 = vec3_lengthSQUARED(vec3_sub(pe->playerels[0].center, pe->cam.location));
+			float d1 = vec3_lengthSQUARED(vec3_sub(pe->playerels[1].center, pe->cam.location));
+			on0 = (d0 < d1);
+			on1 = (d0 > d1);
+		}
+		if (on0 || on1) {
+			pe->sel = (struct Selection){ .mode = SEL_PLAYER, .data = { .playeridx = on0 ? 0 : 1 } };
+			return;
+		}
+	}
+
 	// Top of place is at plane y=1. Figure out where on it we clicked
 	Vec3 cam2clickdir = {
 		// Vector from camera towards clicked direction
@@ -240,7 +294,6 @@ static void on_mouse_move(struct PlaceEditor *pe, int mousex, int mousey)
 	}
 }
 
-/*
 static void move_towards_angle(struct PlaceEditor *pe, float angle)
 {
 	float pi = acosf(-1);
@@ -259,76 +312,66 @@ static void move_towards_angle(struct PlaceEditor *pe, float angle)
 	else
 		dz = 1;
 
-	if (pe->selmode == SEL_WALL && (
-		(pe->seldata.wall.dir == WALL_DIR_ZY && dx) || 
-		(pe->seldata.wall.dir == WALL_DIR_XY && dz)))
-	{
+	switch(pe->sel.mode) {
+	case SEL_WALL:
 		// Check if we are going towards a player
-		int px = pe->seldata.wall.startx + min(0, dx);
-		int pz = pe->seldata.wall.startz + min(0, dz);
-		for (int p=0; p<2; p++) {
-			if (pe->place->playerlocs[p].x == px && pe->place->playerlocs[p].z == pz) {
-				pe->selmode = SEL_PLAYER;
-				pe->seldata.playeridx = p;
-				goto end;
+		if ((pe->sel.data.wall.dir == WALL_DIR_ZY && dx) ||
+			(pe->sel.data.wall.dir == WALL_DIR_XY && dz))
+		{
+			int px = pe->sel.data.wall.startx + min(0, dx);
+			int pz = pe->sel.data.wall.startz + min(0, dz);
+			for (int p=0; p<2; p++) {
+				if (pe->place->playerlocs[p].x == px && pe->place->playerlocs[p].z == pz) {
+					pe->sel.mode = SEL_PLAYER;
+					pe->sel.data.playeridx = p;
+					return;
+				}
 			}
 		}
-	}
 
-	struct Wall *w = get_selected_wall(pe);
-
-	switch(pe->selmode) {
-	case SEL_WALL:
-	case SEL_MOVINGWALL:
-	case SEL_RESIZE:
-		SDL_assert(w);
-		w->startx += dx;
-		w->startz += dz;
+		pe->sel.data.wall.startx += dx;
+		pe->sel.data.wall.startz += dz;
+		keep_wall_within_place(pe, &pe->sel.data.wall);
 		break;
 
 	case SEL_PLAYER:
 		{
 			// Select wall near player
-			int p = pe->seldata.playeridx;
-			pe->selmode = SEL_WALL;
-			if (dx && !dz) {
-				pe->seldata.wall = (struct Wall) {
-					.dir = WALL_DIR_ZY,
-					.startx = pe->place->playerlocs[p].x + max(0, dx),
-					.startz = pe->place->playerlocs[p].z,
-				};
-			} else if (dz && !dx) {
-				pe->seldata.wall = (struct Wall) {
-					.dir = WALL_DIR_XY,
-					.startx = pe->place->playerlocs[p].x,
-					.startz = pe->place->playerlocs[p].z + max(0, dz),
-				};
-			} else {
-				log_printf("the impossible happened");
-			}
+			int p = pe->sel.data.playeridx;
+			pe->sel = (struct Selection) {
+				.mode = SEL_WALL,
+				.data = {
+					.wall = {
+						.dir = (dx ? WALL_DIR_ZY : WALL_DIR_XY),
+						.startx = pe->place->playerlocs[p].x + max(0, dx),
+						.startz = pe->place->playerlocs[p].z + max(0, dz),
+					}
+				}
+			};
 		}
+		break;
+
+	default:
+		// TODO: more key bindings
+		break;
 	}
-
-end:
-	keep_selected_wall_within_place(pe);
 }
-*/
 
-static void begin_resize(struct ResizeData *rd, const struct Wall *edgewall, struct Place *pl)
+static struct ResizeData begin_resize(const struct Wall *edgewall, struct Place *pl)
 {
 	log_printf("Resize begins");
-	rd->mainwall = *edgewall;
-	rd->nwalls = 0;
+	struct ResizeData rd = { .mainwall = *edgewall, .nwalls = 0 };
 	switch(edgewall->dir) {
-		case WALL_DIR_XY: rd->negative = (edgewall->startz == 0); break;
-		case WALL_DIR_ZY: rd->negative = (edgewall->startx == 0); break;
+		case WALL_DIR_XY: rd.negative = (edgewall->startz == 0); break;
+		case WALL_DIR_ZY: rd.negative = (edgewall->startx == 0); break;
 	}
 
 	for (struct Wall *w = pl->walls; w < &pl->walls[pl->nwalls]; w++) {
 		if (wall_linedup(w, edgewall))
-			rd->walls[rd->nwalls++] = w;
+			rd.walls[rd.nwalls++] = w;
 	}
-	SDL_assert(rd->nwalls == pl->xsize || rd->nwalls == pl->zsize);
+	SDL_assert(rd.nwalls == pl->xsize || rd.nwalls == pl->zsize);
+	return rd;
 }
 
 static void finish_resize(struct PlaceEditor *pe)
@@ -381,11 +424,8 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 				struct Wall w = pe->sel.data.wall;
 				pe->sel = (struct Selection) {
 					.mode = SEL_RESIZE,
-					.data = {
-						
-					}
+					.data = { .resize = begin_resize(&w, pe->place) },
 				};
-				begin_resize(&pe->sel.data.resize, &w, pe->place);
 			} else {
 				// TODO move
 			}
@@ -418,11 +458,16 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 		return true;
 
 	case SDL_KEYDOWN:
-		if (pe->sel.mode != SEL_NONE && pe->sel.mode != SEL_WALL)
-			return false;  // TODO: more keyboard functionality
+		switch(pe->sel.mode) {
+			case SEL_NONE:
+			case SEL_WALL:
+			case SEL_PLAYER:
+				break;
+			default:
+				return false;  // TODO: more keyboard functionality
+		}
 
 		switch(misc_handle_scancode(e->key.keysym.scancode)) {
-			/*
 		case SDL_SCANCODE_DOWN:
 			move_towards_angle(pe, pe->cam.angle);
 			return true;
@@ -435,7 +480,6 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 		case SDL_SCANCODE_RIGHT:
 			move_towards_angle(pe, pe->cam.angle + 3*pi/2);
 			return true;
-		*/
 		case SDL_SCANCODE_A:
 			pe->rotatedir = 1;
 			return false;
