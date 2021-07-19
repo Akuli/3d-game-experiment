@@ -28,9 +28,8 @@ static inline uint32_t make_color_more_red(uint32_t color, const SDL_PixelFormat
 		(less((color >> fmt->Bshift) & 0xff) << fmt->Bshift);
 }
 
-// usage: ellipsoid_pics[neverdie as bool][random number between 0 and n_ellipsoid_pics]
 static int n_ellipsoid_pics = -1;
-static struct EllipsoidPic ellipsoid_pics[2][20];
+static struct EllipsoidPic ellipsoid_pics[20];
 
 void enemy_init_epics(const SDL_PixelFormat *fmt)
 {
@@ -41,30 +40,28 @@ void enemy_init_epics(const SDL_PixelFormat *fmt)
 		log_printf_abort("enemy pictures not found");
 
 	n_ellipsoid_pics = gl.gl_pathc;
-	SDL_assert(n_ellipsoid_pics <= sizeof(ellipsoid_pics[0])/sizeof(ellipsoid_pics[0][0]));
+	SDL_assert(n_ellipsoid_pics <= sizeof(ellipsoid_pics)/sizeof(ellipsoid_pics[0]));
 
 	for (int i = 0; i < n_ellipsoid_pics; i++) {
-		ellipsoidpic_load(&ellipsoid_pics[false][i], gl.gl_pathv[i], fmt);
-		ellipsoid_pics[false][i].hidelowerhalf = true;
-
-		ellipsoid_pics[true][i] = ellipsoid_pics[false][i];
-		// triple for loop without too much nesting, lol
-		for (int x = 0; x < ELLIPSOIDPIC_SIDE; x++)
-		for (int y = 0; y < ELLIPSOIDPIC_SIDE; y++)
-		for (int z = 0; z < ELLIPSOIDPIC_SIDE; z++)
-		{
-			uint32_t *ptr = &ellipsoid_pics[true][i].cubepixels[x][y][z];
-			*ptr = make_color_more_red(*ptr, fmt);
-		}
+		ellipsoidpic_load(&ellipsoid_pics[i], gl.gl_pathv[i], fmt);
+		ellipsoid_pics[i].hidelowerhalf = true;
 	}
+}
+
+const struct EllipsoidPic *enemy_getfirstepic(void)
+{
+	SDL_assert(n_ellipsoid_pics != -1);
+	return &ellipsoid_pics[0];
 }
 
 struct Enemy enemy_new(const struct Place *pl, enum EnemyFlags fl)
 {
+	SDL_assert(n_ellipsoid_pics != -1);
 	struct Enemy res = {
 		.ellipsoid = {
 			.center = { pl->enemyloc.x + 0.5f, 0, pl->enemyloc.z + 0.5f },
-			.epic = &ellipsoid_pics[!!(fl & ENEMY_NEVERDIE)][rand() % n_ellipsoid_pics],
+			.epic = &ellipsoid_pics[rand() % n_ellipsoid_pics],
+			.highlighted = !!(fl & ENEMY_NEVERDIE),
 			.angle = 0,
 			.xzradius = ENEMY_XZRADIUS,
 			.yradius = ENEMY_YRADIUS,

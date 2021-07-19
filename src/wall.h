@@ -34,13 +34,13 @@ struct Wall {
 
 	now some 3D ascii art (imagine top1 and bot1 being closer to you)
 
-	       top2
+	       /top2
 	      / |
 	     /  |
 	    /   |
 	   /    |
 	 top1   |
-	  |    bot2
+	  |     bot2
 	  |    /
 	  |   /
 	  |  /
@@ -57,8 +57,12 @@ struct Wall {
 	Vec3 collpoints[WALL_CP_COUNT][WALL_CP_COUNT];
 };
 
-// Call this after setting startx, startz and dir of a new wall
+// Call this after setting startx,startz,dir of a new wall
+// Can be called multiple times
 void wall_init(struct Wall *w);
+
+// does not require using wall_init()
+bool wall_match(const struct Wall *w1, const struct Wall *w2);
 
 // moves el so that it doesn't bump
 void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el);
@@ -72,16 +76,14 @@ bool wall_side(const struct Wall *w, Vec3 pt);
 // two walls are lined up if they are parallel and on the same plane
 inline bool wall_linedup(const struct Wall *w1, const struct Wall *w2)
 {
-	if (w1->dir == w2->dir) {
-		switch(w1->dir) {
-			case WALL_DIR_XY: return (w1->startz == w2->startz);
-			case WALL_DIR_ZY: return (w1->startx == w2->startx);
-		}
-	}
-	return false;
+	return
+		(w1->dir == WALL_DIR_XY && w2->dir == WALL_DIR_XY && w1->startz == w2->startz) ||
+		(w1->dir == WALL_DIR_ZY && w2->dir == WALL_DIR_ZY && w1->startx == w2->startx);
 }
 
-// for drawing functions
+void wall_drawborder(const struct Wall *w, const struct Camera *cam);
+
+// for non-border drawing functions
 struct WallCache {
 	const struct Wall *wall;
 	const struct Camera *cam;
@@ -95,7 +97,7 @@ Many things in one function, hard to separate. Cache is needed for visibility ch
 but can't be created if not visible. Visibility checking also produces xmin and xmax.
 */
 bool wall_visible_xminmax_fillcache(
-	const struct Wall *wall, const struct Camera *cam,
+	const struct Wall *w, const struct Camera *cam,
 	int *xmin, int *xmax,   // If returns true, set to where on screen will wall go
 	struct WallCache *wc    // Filled if returns true
 );
@@ -104,7 +106,7 @@ bool wall_visible_xminmax_fillcache(
 void wall_yminmax(const struct WallCache *wc, int x, int *ymin, int *ymax);
 
 // Draw all pixels of wall corresponding to range of y coordinates
-void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax);
+void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax, bool highlight);
 
 
 #endif    // WALL_H

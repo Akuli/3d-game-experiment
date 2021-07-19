@@ -320,7 +320,8 @@ void ellipsoid_drawcolumn(
 	LOOP ez[i] = max(0, min(ELLIPSOIDPIC_SIDE-1, ez[i]));
 
 	uint32_t px[CAMERA_SCREEN_HEIGHT];
-	LOOP px[i] = el->epic->cubepixels[ex[i]][ey[i]][ez[i]];
+	bool hl = el->highlighted;
+	LOOP px[i] = el->epic->cubepixels[hl][ex[i]][ey[i]][ez[i]];
 	LOOP set_pixel(xcache->cam->surface, xcache->screenx, ymin + i, px[i]);
 #undef LOOP
 }

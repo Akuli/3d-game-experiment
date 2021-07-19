@@ -16,6 +16,7 @@
 #include "sound.h"
 #include "log.h"
 #include "place.h"
+#include "editplace.h"
 
 #ifdef _WIN32
 	#include <direct.h>
@@ -157,6 +158,13 @@ int main(int argc, char **argv)
 		case MISC_STATE_GAMEOVER:
 			log_printf("showing game over screen");
 			s = game_over(wnd, winner);
+			break;
+
+		case MISC_STATE_EDITPLACE:
+			log_printf("starting place editor");
+			s = editplace_run(
+				wnd, ch.placech.places, &ch.placech.nplaces, ch.placech.placeidx,
+				ch.playerch[0].epic, ch.playerch[1].epic);
 			break;
 
 		case MISC_STATE_QUIT:

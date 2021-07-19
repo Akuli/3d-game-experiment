@@ -71,7 +71,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 {
 	int leftx = idx * (ch->winsurf->w/2);
 
-	enum ButtonFlags flags = BUTTON_VERTICAL;
+	enum ButtonFlags flags = BUTTON_VERTICAL | BUTTON_SMALL;
 	SDL_Rect preview = {
 		.w = CAMERA_SCREEN_WIDTH/2 - 2*button_width(flags),
 		.h = PLAYER_CHOOSER_HEIGHT - 2*FONT_SIZE,
@@ -174,7 +174,7 @@ static void show_player_chooser_each_frame(const struct Chooser *ch, struct Choo
 {
 	turn_camera(plrch);
 	SDL_FillRect(plrch->cam.surface, NULL, 0);
-	show_all(NULL, 0, ch->ellipsoids, player_nepics, &plrch->cam);
+	show_all(NULL, 0, false, ch->ellipsoids, player_nepics, &plrch->cam);
 }
 
 static void show_place_chooser_each_frame(struct ChooserPlaceStuff *plcch)
@@ -192,31 +192,32 @@ static void show_place_chooser_each_frame(struct ChooserPlaceStuff *plcch)
 	camera_update_caches(&plcch->cam);
 
 	SDL_FillRect(plcch->cam.surface, NULL, 0);
-	show_all(pl->walls, pl->nwalls, NULL, 0, &plcch->cam);
+	show_all(pl->walls, pl->nwalls, false, NULL, 0, &plcch->cam);
 }
 
-static void update_place_chooser_button_disableds(struct ChooserPlaceStuff *ch)
+static void set_disabled(struct Button *btn, bool dis)
+{
+	if (dis)
+		btn->flags |= BUTTON_DISABLED;
+	else
+		btn->flags &= ~BUTTON_DISABLED;
+}
+
+static void update_place_chooser_buttons(struct ChooserPlaceStuff *ch)
 {
 	SDL_assert(0 <= ch->placeidx && ch->placeidx < ch->nplaces);
-
-	if (ch->placeidx == 0)
-		ch->prevbtn.flags |= BUTTON_DISABLED;
-	else
-		ch->prevbtn.flags &= ~BUTTON_DISABLED;
-
-	if (ch->placeidx == ch->nplaces-1)
-		ch->nextbtn.flags |= BUTTON_DISABLED;
-	else
-		ch->nextbtn.flags &= ~BUTTON_DISABLED;
-
+	set_disabled(&ch->prevbtn, ch->placeidx == 0);
+	set_disabled(&ch->nextbtn, ch->placeidx == ch->nplaces-1);
+	set_disabled(&ch->editbtn, !ch->places[ch->placeidx].custom);
 	button_show(&ch->prevbtn);
 	button_show(&ch->nextbtn);
+	button_show(&ch->editbtn);
 }
 
 static void select_prev_next_place(struct ChooserPlaceStuff *ch, int diff)
 {
 	ch->placeidx += diff;
-	update_place_chooser_button_disableds(ch);
+	update_place_chooser_buttons(ch);
 }
 static void select_prev_place(void *ch) { select_prev_next_place(ch, -1); }
 static void select_next_place(void *ch) { select_prev_next_place(ch, +1); }
@@ -247,6 +248,8 @@ static enum MiscState handle_event(const SDL_Event *evt, struct Chooser *ch)
 	}
 	button_handle_event(evt, &ch->placech.prevbtn);
 	button_handle_event(evt, &ch->placech.nextbtn);
+	button_handle_event(evt, &ch->placech.editbtn);
+	button_handle_event(evt, &ch->placech.cpbtn);
 	button_handle_event(evt, &ch->bigplaybtn);
 
 	if (evt->type == SDL_MOUSEMOTION)
@@ -257,7 +260,7 @@ static enum MiscState handle_event(const SDL_Event *evt, struct Chooser *ch)
 	return MISC_STATE_CHOOSER;
 }
 
-static void on_play_button_clicked(void *ptr)
+static void set_to_true(void *ptr)
 {
 	*(bool *)ptr = true;
 }
@@ -269,6 +272,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 
 	enum ButtonFlags placechflags = 0;
+
 	*ch = (struct Chooser){
 		.win = win,
 		.winsurf = winsurf,
@@ -279,9 +283,9 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 			.scancodes = { SDL_SCANCODE_RETURN, SDL_SCANCODE_SPACE },
 			.center = {
 				(PLACE_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
-				CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT/2,
+				CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT/2 - button_height(BUTTON_BIG)/2,
 			},
-			.onclick = on_play_button_clicked,
+			.onclick = set_to_true,
 			// onclickdata is set in chooser_run()
 		},
 		.placech = {
@@ -319,14 +323,38 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				},
 				.onclick = select_next_place,
 			},
+			.editbtn = {
+				.text = "Edit",
+				.flags = 0,
+				.destsurf = winsurf,
+				.scancodes = { SDL_SCANCODE_E },
+				.center = {
+					(PLACE_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
+					CAMERA_SCREEN_HEIGHT - button_height(0)*3/2
+				},
+				.onclick = set_to_true,
+				// onclickdata is set in chooser_run()
+			},
+			.cpbtn = {
+				.text = "Copy and\nedit",
+				.flags = 0,
+				.destsurf = winsurf,
+				.scancodes = { SDL_SCANCODE_C },
+				.center = {
+					(PLACE_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
+					CAMERA_SCREEN_HEIGHT - button_height(0)/2,
+				},
+				.onclick = set_to_true,
+				// onclickdata is set in chooser_run()
+			},
 		},
 		.withoutenemiestxt = misc_create_text_surface("Practice without enemies", white_color, 10),
 	};
 	ch->placech.places = place_list(&ch->placech.nplaces);
 
 	ch->withoutenemiesrect = (SDL_Rect){
-		ch->bigplaybtn.center.x - ch->withoutenemiestxt->w/2,
-		(ch->bigplaybtn.center.y + CAMERA_SCREEN_HEIGHT)/2,
+		20,
+		CAMERA_SCREEN_HEIGHT - ch->withoutenemiestxt->h - 20,
 		ch->withoutenemiestxt->w,
 		ch->withoutenemiestxt->h,
 	};
@@ -357,22 +385,31 @@ static void show_title_text(SDL_Surface *winsurf)
 
 enum MiscState chooser_run(struct Chooser *ch)
 {
-	update_place_chooser_button_disableds(&ch->placech);
+	if (ch->placech.placeidx >= ch->placech.nplaces)
+		ch->placech.placeidx = ch->placech.nplaces-1;
+	update_place_chooser_buttons(&ch->placech);
 
-	bool playbtnclicked = false;
-	ch->bigplaybtn.onclickdata = &playbtnclicked;
+	bool playclicked = false;
+	bool editclicked = false;
+	bool cpclicked = false;
+
+	ch->bigplaybtn.onclickdata = &playclicked;
+	ch->placech.editbtn.onclickdata = &editclicked;
+	ch->placech.cpbtn.onclickdata = &cpclicked;
 
 	SDL_FillRect(ch->winsurf, NULL, 0);
-	button_show(&ch->bigplaybtn);
 	button_show(&ch->placech.prevbtn);
 	button_show(&ch->placech.nextbtn);
+	button_show(&ch->placech.editbtn);
+	button_show(&ch->placech.cpbtn);
+	button_show(&ch->bigplaybtn);
 	show_player_chooser_in_beginning(&ch->playerch[0]);
 	show_player_chooser_in_beginning(&ch->playerch[1]);
 	show_title_text(ch->winsurf);
 
 	struct LoopTimer lt = {0};
 
-	while(!playbtnclicked) {
+	while(1) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
 			enum MiscState s = handle_event(&e, ch);
@@ -380,14 +417,21 @@ enum MiscState chooser_run(struct Chooser *ch)
 				return s;
 		}
 
+		if (playclicked)
+			return MISC_STATE_PLAY;
+		if (editclicked)
+			return MISC_STATE_EDITPLACE;
+		if (cpclicked) {
+			ch->placech.placeidx = place_copy(&ch->placech.places, &ch->placech.nplaces, ch->placech.placeidx);
+			return MISC_STATE_EDITPLACE;
+		}
+
 		rotate_player_ellipsoids(ch->ellipsoids);
 		show_player_chooser_each_frame(ch, &ch->playerch[0]);
 		show_player_chooser_each_frame(ch, &ch->playerch[1]);
-
 		show_place_chooser_each_frame(&ch->placech);
 
 		SDL_UpdateWindowSurface(ch->win);
 		looptimer_wait(&lt);
 	}
-	return MISC_STATE_PLAY;
 }

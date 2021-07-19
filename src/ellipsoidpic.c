@@ -9,10 +9,10 @@
 #include "../stb/stb_image.h"
 #include "log.h"
 #include "mathstuff.h"
+#include "misc.h"
 
 #ifdef _WIN32
 #include <windows.h>
-#include "misc.h"
 #endif
 
 #define CLAMP_TO_U8(val) ( (unsigned char) min(max(val, 0), 0xff) )
@@ -112,6 +112,7 @@ static void read_image(struct EllipsoidPic *epic)
 	replace_alpha_with_average(filedata, (size_t)filew*(size_t)fileh);
 
 	float pi = acosf(-1);
+	uint32_t red = epic->pixfmt->Rmask;
 
 	// triple for loop without much indentation (lol)
 	for (int x = 0; x < ELLIPSOIDPIC_SIDE; x++)
@@ -126,8 +127,9 @@ static void read_image(struct EllipsoidPic *epic)
 		SDL_assert(0 <= picx && picx < filew);
 
 		size_t i = (size_t)( (picy*filew + picx)*4 );
-		epic->cubepixels[x][y][z] = SDL_MapRGB(
+		epic->cubepixels[false][x][y][z] = SDL_MapRGB(
 			epic->pixfmt, filedata[i], filedata[i+1], filedata[i+2]);
+		epic->cubepixels[true][x][y][z] = misc_rgb_average(epic->cubepixels[false][x][y][z], red);
 	}
 
 	stbi_image_free(filedata);
