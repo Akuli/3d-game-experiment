@@ -1,5 +1,4 @@
 #ifdef _WIN32
-	#include <direct.h>
 	#include <windows.h>
 #else
 	// includes are from gethostname(2)
