@@ -55,12 +55,10 @@ static void add_ellipsoid_if_visible(struct ShowingState *st, int idx)
 	if (ellipsoid_visible_xminmax(&st->els[idx], st->cam, &xmin, &xmax)) {
 		ID id = ID_NEW(ID_TYPE_ELLIPSOID, idx);
 		st->visible[st->nvisible++] = id;
-		st->infos[id] = (struct Info) {
-			.ndeps = 0,
-			.xmin = xmin,
-			.xmax = xmax,
-			.insortedarray = false,
-		};
+		st->infos[id].ndeps = 0;
+		st->infos[id].xmin = xmin;
+		st->infos[id].xmax = xmax;
+		st->infos[id].insortedarray = false;
 	}
 }
 
@@ -71,13 +69,11 @@ static void add_wall_if_visible(struct ShowingState *st, int idx)
 	if (wall_visible_xminmax_fillcache(&st->walls[idx], st->cam, &xmin, &xmax, &wc)) {
 		ID id = ID_NEW(ID_TYPE_WALL, idx);
 		st->visible[st->nvisible++] = id;
-		st->infos[id] = (struct Info) {
-			.ndeps = 0,
-			.xmin = xmin,
-			.xmax = xmax,
-			.insortedarray = false,
-			.cache = {.wallc = wc},
-		};
+		st->infos[id].ndeps = 0;
+		st->infos[id].xmin = xmin;
+		st->infos[id].xmax = xmax;
+		st->infos[id].insortedarray = false;
+		st->infos[id].cache.wallc = wc;
 	}
 }
 
