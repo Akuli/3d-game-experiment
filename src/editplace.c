@@ -40,7 +40,7 @@ struct Selection {
 struct PlaceEditor {
 	enum MiscState state;
 	struct Place *place;
-	struct EllipsoidEdit eledits[3];
+	struct EllipsoidEdit eledits[3];  // FIXME: neverdie enemies
 	int neledits;
 	struct Camera cam;
 	int rotatedir;
@@ -287,15 +287,10 @@ static void move_wall(struct PlaceEditor *pe, int mousex, int mousey)
 	}
 }
 
-static bool place_contains_something_at(const struct Place *pl, int x, int z)
+static bool find_ellipsoid_by_coords(const struct PlaceEditor *pe, int x, int z)
 {
-	if (pl->enemyloc.x == x && pl->enemyloc.z == z) return true;
-	for (int p=0; p<2; p++) {
-		if (pl->playerlocs[p].x == x && pl->playerlocs[p].z == z)
-			return true;
-	}
-	for (int i=0; i < pl->nneverdielocs; i++) {
-		if (pl->neverdielocs[i].x == x && pl->neverdielocs[i].z == z)
+	for (int i=0; i < pe->neledits; i++) {
+		if (pe->eledits[i].loc->x == x && pe->eledits[i].loc->z == z)
 			return true;
 	}
 	return false;
@@ -313,7 +308,7 @@ static void move_ellipsoid(const struct PlaceEditor *pe, int mousex, int mousey,
 	if (z < 0) z = 0;
 	if (z >= pe->place->zsize) z = pe->place->zsize-1;
 
-	if (!place_contains_something_at(pe->place, x, z)) {
+	if (!find_ellipsoid_by_coords(pe, x, z)) {
 		loc->x = x;
 		loc->z = z;
 		place_save(pe->place);
