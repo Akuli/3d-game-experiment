@@ -524,7 +524,7 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 			finish_resize(pe);
 			break;
 		case SEL_MVWALL:
-			log_printf("Moving a wall ends, mousemoved = %d", pe->mousemoved);
+			log_printf("Moving/clicking a wall ends, mousemoved = %d", pe->mousemoved);
 			if (!pe->mousemoved)
 				delete_wall(pe, pe->sel.data.mvwall);
 			break;
