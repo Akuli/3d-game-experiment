@@ -38,6 +38,11 @@ In the game over screen, you can again click buttons or press these keys:
 In the map editor, the keyboard is quite limited (use mouse instead):
 - Selection: arrow keys
 - Add/remove wall: enter
+- Done editing: Escape
+
+Map editor's delete confirming dialog:
+- Yes: Y
+- No: N or Escape
 
 
 ## Broken Things
