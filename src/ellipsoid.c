@@ -227,8 +227,8 @@ void ellipsoid_yminmax(
 	if (el->epic->hidelowerhalf)
 		*ymax = calculate_center_y(el, xcache);
 
-	*ymin = max(0, min(*ymin, xcache->cam->surface->h - 1));
-	*ymax = max(0, min(*ymax, xcache->cam->surface->h - 1));
+	clamp(ymin, 0, xcache->cam->surface->h - 1);
+	clamp(ymax, 0, xcache->cam->surface->h - 1);
 }
 
 // about 2x faster than SDL_FillRect(surf, &(SDL_Rect){x,y,1,1}, px)
@@ -315,9 +315,10 @@ void ellipsoid_drawcolumn(
 	LOOP ey[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE, vecy[i]);
 	LOOP ez[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE, vecz[i]);
 
-	LOOP ex[i] = max(0, min(ELLIPSOIDPIC_SIDE-1, ex[i]));
-	LOOP ey[i] = max(0, min(ELLIPSOIDPIC_SIDE-1, ey[i]));
-	LOOP ez[i] = max(0, min(ELLIPSOIDPIC_SIDE-1, ez[i]));
+	// just in case floats do something weird, e.g. division by zero
+	LOOP clamp(&ex[i], 0, ELLIPSOIDPIC_SIDE-1);
+	LOOP clamp(&ey[i], 0, ELLIPSOIDPIC_SIDE-1);
+	LOOP clamp(&ez[i], 0, ELLIPSOIDPIC_SIDE-1);
 
 	uint32_t px[CAMERA_SCREEN_HEIGHT];
 	bool hl = el->highlighted;

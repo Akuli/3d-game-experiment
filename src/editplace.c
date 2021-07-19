@@ -150,10 +150,8 @@ static void keep_wall_within_place(const struct PlaceEditor *pe, struct Wall *w,
 		case WALL_DIR_ZY: zmax--; break;
 	}
 
-	w->startx = max(w->startx, xmin);
-	w->startx = min(w->startx, xmax);
-	w->startz = max(w->startz, zmin);
-	w->startz = min(w->startz, zmax);
+	clamp(&w->startx, xmin, xmax);
+	clamp(&w->startz, zmin, zmax);
 	wall_init(w);
 }
 
@@ -300,10 +298,8 @@ static void move_ellipsoid(const struct PlaceEditor *pe, int mousex, int mousey,
 	int x = (int)floorf(xf);
 	int z = (int)floorf(zf);
 
-	if (x < 0) x = 0;
-	if (x >= pe->place->xsize) x = pe->place->xsize-1;
-	if (z < 0) z = 0;
-	if (z >= pe->place->zsize) z = pe->place->zsize-1;
+	clamp(&x, 0, pe->place->xsize-1);
+	clamp(&z, 0, pe->place->zsize-1);
 
 	if (!find_ellipsoid_by_coords(pe, x, z)) {
 		loc->x = x;

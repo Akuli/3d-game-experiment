@@ -193,15 +193,6 @@ static void swap(int *a, int *b)
 	*b = tmp;
 }
 
-static int clamp(int val, int bound1, int bound2)
-{
-	if (val < min(bound1, bound2))
-		return min(bound1, bound2);
-	if (val > max(bound1, bound2))
-		return max(bound1, bound2);
-	return val;
-}
-
 static void draw_line(SDL_Surface *surf, Vec2 start, Vec2 end)
 {
 	int x1 = (int)start.x;
@@ -219,16 +210,18 @@ static void draw_line(SDL_Surface *surf, Vec2 start, Vec2 end)
 		// Many vertical lines
 		if (x1 > x2) { swap(&x1, &x2); swap(&y1, &y2); }
 		for (int x = x1; x <= x2; x++) {
-			int y     =       y1 + (y2 - y1)*(x   - x1)/(x2 - x1);
-			int ynext = clamp(y1 + (y2 - y1)*(x+1 - x1)/(x2 - x1), y1, y2);
+			int y     = y1 + (y2 - y1)*(x   - x1)/(x2 - x1);
+			int ynext = y1 + (y2 - y1)*(x+1 - x1)/(x2 - x1);
+			clamp(&ynext, min(y1,y2), max(y1,y2));
 			draw_rect(surf, (SDL_Rect){ x-1, y, 3, ynext-y });
 		}
 	} else {
 		// Many horizontal lines
 		if (y1 > y2) { swap(&x1, &x2); swap(&y1, &y2); }
 		for (int y = y1; y <= y2; y++) {
-			int x     =       x1 + (x2 - x1)*(y   - y1)/(y2 - y1);
-			int xnext = clamp(x1 + (x2 - x1)*(y+1 - y1)/(y2 - y1), x1, x2);
+			int x     = x1 + (x2 - x1)*(y   - y1)/(y2 - y1);
+			int xnext = x1 + (x2 - x1)*(y+1 - y1)/(y2 - y1);
+			clamp(&xnext, min(x1,x2), max(x1,x2));
 			draw_rect(surf, (SDL_Rect){ x, y-1, xnext-x, 3 });
 		}
 	}
@@ -292,10 +285,8 @@ void wall_yminmax(const struct WallCache *wc, int x, int *ymin, int *ymax)
 	*ymin = (int) linear_map(wc->top1.x, wc->top2.x, wc->top1.y, wc->top2.y, x);
 	*ymax = (int) linear_map(wc->bot1.x, wc->bot2.x, wc->bot1.y, wc->bot2.y, x);
 
-	if (*ymin < 0)
-		*ymin = 0;
-	if (*ymax >= wc->cam->surface->h)
-		*ymax = wc->cam->surface->h - 1;
+	clamp(ymin, 0, wc->cam->surface->h - 1);
+	clamp(ymax, 0, wc->cam->surface->h - 1);
 }
 
 void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax, bool highlight)
