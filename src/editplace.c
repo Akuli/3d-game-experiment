@@ -432,7 +432,6 @@ static void on_arrow_key(struct PlaceEditor *pe, float angle, bool oppositespres
 
 static struct ResizeData begin_resize(const struct Wall *edgewall, struct Place *pl)
 {
-	log_printf("Resize begins");
 	struct ResizeData rd = { .mainwall = *edgewall, .nwalls = 0 };
 	switch(edgewall->dir) {
 		case WALL_DIR_XY: rd.negative = (edgewall->startz == 0); break;
@@ -494,6 +493,7 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 		switch (pe->sel.mode) {
 		case SEL_WALL:
 			if (is_at_edge(&pe->sel.data.wall, pe->place)) {
+				log_printf("Resize begins");
 				struct Wall w = pe->sel.data.wall;
 				pe->sel = (struct Selection) {
 					.mode = SEL_RESIZE,
@@ -501,8 +501,10 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 				};
 			} else {
 				struct Wall *w = find_wall_from_place(&pe->sel.data.wall, pe->place);
-				if(w)
+				if(w) {
+					log_printf("Moving wall begins");
 					pe->sel = (struct Selection) { .mode = SEL_MVWALL, .data = { .mvwall = w }};
+				}
 			}
 			break;
 
@@ -528,7 +530,7 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 				delete_wall(pe, pe->sel.data.mvwall);
 			break;
 		case SEL_WALL:
-			log_printf("Click ends");
+			log_printf("Clicked some place with no wall in it, adding wall");
 			add_wall(pe);
 			break;
 		default:
