@@ -127,12 +127,6 @@ struct Line {
 	Vec3 dir;         // nonzero vector going in direction of the line
 };
 
-/*
-If line and plane are parallel, returns false. Otherwise returns true and sets *res
-to the intersection point.
-*/
-bool line_intersect_plane(struct Line ln, struct Plane pl, Vec3 *res);
-
 // distance between line and point, ^2 to avoid slow sqrt
 float line_point_distanceSQUARED(struct Line ln, Vec3 pt);
 

@@ -178,27 +178,6 @@ float plane_point_distanceSQUARED(struct Plane pl, Vec3 pt)
 }
 
 
-bool line_intersect_plane(struct Line ln, struct Plane pl, Vec3 *res)
-{
-	float dot = vec3_dot(ln.dir, pl.normal);
-	//if (fabsf(dot) < 1e-5f) {
-	if (dot == 0) {
-		// ln.normal and pl.dir perpendicular, so line and plane are parallel
-		return false;
-	}
-
-	/*
-	ln equation: (x,y,z) = ln.point + number*ln.dir
-	pl equation: (x,y,z) dot pl.normal = pl.constant
-
-	Plugging equations into each other and solving gives this
-	*/
-	*res = ln.point;
-	float number = (pl.constant - vec3_dot(ln.point, pl.normal))/dot;
-	*res = vec3_add(ln.point, vec3_mul_float(ln.dir, number));
-	return true;
-}
-
 float line_point_distanceSQUARED(struct Line ln, Vec3 pt)
 {
 	// any vector from line to pt
