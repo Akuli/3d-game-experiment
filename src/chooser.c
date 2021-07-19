@@ -383,11 +383,6 @@ static void show_title_text(SDL_Surface *winsurf)
 	SDL_FreeSurface(s);
 }
 
-static void copy_current_place(struct ChooserPlaceStuff *plcch)
-{
-	plcch->placeidx = place_copy(&plcch->places, &plcch->nplaces, plcch->placeidx);
-}
-
 enum MiscState chooser_run(struct Chooser *ch)
 {
 	if (ch->placech.placeidx >= ch->placech.nplaces)
@@ -427,7 +422,7 @@ enum MiscState chooser_run(struct Chooser *ch)
 		if (editclicked)
 			return MISC_STATE_EDITPLACE;
 		if (cpclicked) {
-			copy_current_place(&ch->placech);
+			ch->placech.placeidx = place_copy(&ch->placech.places, &ch->placech.nplaces, ch->placech.placeidx);
 			return MISC_STATE_EDITPLACE;
 		}
 
