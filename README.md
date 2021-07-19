@@ -101,48 +101,6 @@ Map editor's delete confirming dialog:
 
 ## Windows Build
 
-You can build a Windows `.exe` file of this game on Linux.
-
-Start by downloading the Windows "Development Libraries" of SDL2, SDL_mixer and SDL_ttf.
-Choose MinGW when you need to choose between MinGW and Visual C++.
-
-https://www.libsdl.org/download-2.0.php
-
-https://www.libsdl.org/projects/SDL_mixer/
-
-https://www.libsdl.org/projects/SDL_ttf/
-
-Copy them to a directory named `libs` and extract:
-
-```
-$ cd path-to-directory-containing-this-README-file
-$ mkdir libs
-$ cp ~/Downloads/{SDL2,SDL2_mixer,SDL2_ttf}-devel-*-mingw.tar.gz libs
-$ cd libs
-$ tar xf SDL2-*
-$ tar xf SDL2_mixer-*
-$ tar xf SDL2_ttf-*
-$ cd ..
-```
-
-You may need to replace `~/Downloads/...` with something else if your system isn't
-in English. For example, I need `~/Lataukset/...` on my Finnish system.
-
-Do this if you want to use wine for running tests and the produced executable:
-
-```
-$ sudo apt install mingw-w64 winehq-stable
-$ source winbuildenv
-$ make clean
-$ make -j2
-$ wine build/game.exe
-```
-
-Do this if you don't want to use wine:
-
-```
-$ sudo apt install mingw-w64
-$ source winbuildenv
-$ make clean
-$ make -j2 build/game.exe
-```
+GitHub Actions builds a Windows `.exe` file of this game when pushing to master.
+See the config files in `.github/workflows/` and use `make clean` generously
+if you need to do it without GitHub Actions.
