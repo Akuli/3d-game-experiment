@@ -13,8 +13,6 @@
 
 #define COMPILE_TIME_STRLEN(s) (sizeof(s)-1)
 
-#define COMPILE_TIME_STRLEN(s) (sizeof(s)-1)
-
 /*
 Small language for specifying places in assets/(default|custom)_places/placename.txt files:
 - 1x1 squares on xz plane with integer corner coordinates are built of parts like
