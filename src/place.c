@@ -352,15 +352,16 @@ static void ensure_player_doesnt_overlap_other_player_or_enemy(
 	struct PlaceCoords choices[] = {
 		// Worst-case sceario is when player is at corner and place is only 2x2.
 		// Even then, one of these places will be available.
-		{ (int)player->x    , (int)player->z     },
-		{ (int)player->x - 1, (int)player->z     },
-		{ (int)player->x + 1, (int)player->z     },
-		{ (int)player->x    , (int)player->z - 1 },
-		{ (int)player->x    , (int)player->z + 1 },
+		// TODO: neverdie enemies
+		{ player->x    , player->z     },
+		{ player->x - 1, player->z     },
+		{ player->x + 1, player->z     },
+		{ player->x    , player->z - 1 },
+		{ player->x    , player->z + 1 },
 	};
 	struct PlaceCoords used[] = {
-		{ (int)pl->enemyloc.x, (int)pl->enemyloc.z },
-		{ (int)otherplayer.x,  (int)otherplayer.z  },
+		{ pl->enemyloc.x, pl->enemyloc.z },
+		{ otherplayer.x,  otherplayer.z  },
 	};
 
 	for (int c = 0; c < sizeof(choices)/sizeof(choices[0]); c++) {
@@ -437,9 +438,9 @@ void place_save(const struct Place *pl)
 		}
 	}
 
-	set_char(data, linesz, nlines, (int)pl->enemyloc.x, (int)pl->enemyloc.z, 'e', 1);
+	set_char(data, linesz, nlines, pl->enemyloc.x, pl->enemyloc.z, 'e', 1);
 	for (int i = 0; i < 2; i++)
-		set_char(data, linesz, nlines, (int)pl->playerlocs[i].x, (int)pl->playerlocs[i].z, 'p', 1);
+		set_char(data, linesz, nlines, pl->playerlocs[i].x, pl->playerlocs[i].z, 'p', 1);
 
 	// Can get truncated if all data in one log message, maybe limitation in sdl2 logging
 	log_printf("Writing to \"%s\"", pl->path);

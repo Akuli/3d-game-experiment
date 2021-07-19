@@ -91,8 +91,8 @@ static short *number_connected_regions(const struct Place *pl)
 	prepare_flags(pl, flags);
 
 	short numcounter = 0;
-	int x = (int)pl->enemyloc.x;
-	int z = (int)pl->enemyloc.z;
+	int x = pl->enemyloc.x;
+	int z = pl->enemyloc.z;
 	do {
 		set_region_to_number(pl, flags, nums, ++numcounter, x, z);
 	} while(find_unnumbered_square(pl, nums, &x, &z));
