@@ -257,16 +257,17 @@ static void do_resize(struct PlaceEditor *pe, int mousex, int mousey)
 
 	keep_wall_within_place(pe, &pe->sel.data.resize.mainwall, true);
 	wall_init(&pe->sel.data.resize.mainwall);
-	for (int i = 0; i < pe->sel.data.resize.nwalls; i++) {
+	for (struct Wall *const *w = pe->sel.data.resize.walls; w < &pe->sel.data.resize.walls[pe->sel.data.resize.nwalls]; w++)
+	{
 		switch(pe->sel.data.resize.mainwall.dir) {
 		case WALL_DIR_XY:
-			pe->sel.data.resize.walls[i]->startz = pe->sel.data.resize.mainwall.startz;
+			(*w)->startz = pe->sel.data.resize.mainwall.startz;
 			break;
 		case WALL_DIR_ZY:
-			pe->sel.data.resize.walls[i]->startx = pe->sel.data.resize.mainwall.startx;
+			(*w)->startx = pe->sel.data.resize.mainwall.startx;
 			break;
 		}
-		wall_init(pe->sel.data.resize.walls[i]);
+		wall_init(*w);
 	}
 }
 
