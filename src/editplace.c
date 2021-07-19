@@ -187,11 +187,8 @@ static bool mouse_is_on_ellipsoid_with_no_walls_between(struct PlaceEditor *pe, 
 		return false;
 
 	for (const struct Wall *w = pe->place->walls; w < &pe->place->walls[pe->place->nwalls]; w++) {
-		if (wall_side(w, pe->cam.location) != wall_side(w, el->center)
-			&& mouse_is_on_wall(&pe->cam, w, x, y))
-		{
+		if (wall_side(w, pe->cam.location) != wall_side(w, el->center) && mouse_is_on_wall(&pe->cam, w, x, y))
 			return false;
-		}
 	}
 	return true;
 }
@@ -234,7 +231,7 @@ static bool mouse_location_to_wall(const struct PlaceEditor *pe, struct Wall *ds
 		{ .startx = x+1, .startz = z,   .dir = WALL_DIR_ZY },
 	};
 
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < sizeof(couldbe)/sizeof(couldbe[0]); i++) {
 		wall_init(&couldbe[i]);
 		if (mouse_is_on_wall(&pe->cam, &couldbe[i], mousex, mousey)) {
 			*dst = couldbe[i];
@@ -525,7 +522,7 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 			finish_resize(pe);
 			break;
 		case SEL_MVWALL:
-			log_printf("Moving a wall ends, mousemoved = %d", pe->mousemoved);
+			log_printf("Moving/clicking a wall ends, mousemoved = %d", pe->mousemoved);
 			if (!pe->mousemoved)
 				delete_wall(pe, pe->sel.data.mvwall);
 			break;
@@ -645,7 +642,7 @@ static void show_editor(struct PlaceEditor *pe)
 			&& pe->sel.data.eledit == &pe->eledits[i];
 	}
 
-	struct Wall *hlwall;
+	struct Wall *hlwall;  // to figure out what's in front or behind highlighted stuff
 	switch(pe->sel.mode) {
 	case SEL_MVWALL:
 		hlwall = pe->sel.data.mvwall;
@@ -805,7 +802,6 @@ enum MiscState editplace_run(
 				.loc = &pl->playerlocs[0],
 			},
 			{
-				// TODO: rename variables to plr0pic and plr0pic
 				.el = {
 					.xzradius = PLAYER_XZRADIUS,
 					.yradius = PLAYER_YRADIUS_NOFLAT,

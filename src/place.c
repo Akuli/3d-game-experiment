@@ -288,7 +288,6 @@ static void delete_duplicate_walls(struct Place *pl)
 	}
 }
 
-// FIXME: MAX_WALLS limitation
 static void add_missing_walls_around_edges(struct Place *pl)
 {
 	bool foundx0[MAX_PLACE_SIZE] = {0};

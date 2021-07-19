@@ -215,8 +215,7 @@ static void draw_line(SDL_Surface *surf, Vec2 start, Vec2 end)
 	} else if (y1 == y2) {
 		// Horizontal line
 		draw_rect(surf, (SDL_Rect){ x1, y1-1, x2-x1, 3 });
-	}
-	else if (abs(y2-y1) > abs(x2-x1)) {
+	} else if (abs(y2-y1) > abs(x2-x1)) {
 		// Many vertical lines
 		if (x1 > x2) { swap(&x1, &x2); swap(&y1, &y2); }
 		for (int x = x1; x <= x2; x++) {
