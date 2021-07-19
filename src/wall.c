@@ -237,14 +237,13 @@ static void draw_line(SDL_Surface *surf, Vec2 start, Vec2 end)
 
 void wall_drawborder(const struct Wall *w, const struct Camera *cam)
 {
+	if (!wall_is_visible(w, cam))
+		return;
+
 	/*
 	Can't use wall_visible_xminmax_fillcache(), it gives weird corner case where border
 	disappears when looking along wall
 	*/
-
-	if (!wall_is_visible(w, cam))
-		return;
-
 	Vec2 top1 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->top1));
 	Vec2 top2 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->top2));
 	Vec2 bot1 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->bot1));
