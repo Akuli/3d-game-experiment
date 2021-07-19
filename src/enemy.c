@@ -46,6 +46,7 @@ void enemy_init_epics(const SDL_PixelFormat *fmt)
 		ellipsoidpic_load(&ellipsoid_pics[i], gl.gl_pathv[i], fmt);
 		ellipsoid_pics[i].hidelowerhalf = true;
 	}
+	globfree(&gl);
 }
 
 const struct EllipsoidPic *enemy_getfirstepic(void)
