@@ -61,9 +61,9 @@ Map editor's delete confirming dialog:
 
 ## Feature Ideas
 
+- spinning game over display
 - stereo sound: if left player jumps then jump sound (mostly?) to left speaker
 - network multiplayer lol?
-- map editor gui
 - A player that looks exactly like an enemy
 
 
