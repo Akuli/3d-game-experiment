@@ -219,7 +219,7 @@ static bool project_mouse_to_top_of_place(
 	return true;
 }
 
-static bool find_wall_by_mouse_location(const struct PlaceEditor *pe, struct Wall *dst, int mousex, int mousey)
+static bool mouse_location_to_wall(const struct PlaceEditor *pe, struct Wall *dst, int mousex, int mousey)
 {
 	float fx, fz;
 	if (!project_mouse_to_top_of_place(pe, mousex, mousey, &fx, &fz))
@@ -276,7 +276,7 @@ static void move_wall(struct PlaceEditor *pe, int mousex, int mousey)
 	SDL_assert(pe->sel.mode == SEL_MVWALL);
 
 	struct Wall w;
-	if (find_wall_by_mouse_location(pe, &w, mousex, mousey)) {
+	if (mouse_location_to_wall(pe, &w, mousex, mousey)) {
 		keep_wall_within_place(pe, &w, false);
 		if (!find_wall_from_place(&w, pe->place)) {
 			// Not going on top of another wall, can move
@@ -338,7 +338,7 @@ static void select_by_mouse_coords(struct PlaceEditor *pe, int mousex, int mouse
 	if (idx == -1) {
 		// No ellipsoids under mouse
 		struct Wall w;
-		if (find_wall_by_mouse_location(pe, &w, mousex, mousey) && wall_is_within_place(&w, pe->place))
+		if (mouse_location_to_wall(pe, &w, mousex, mousey) && wall_is_within_place(&w, pe->place))
 			pe->sel = (struct Selection){ .mode = SEL_WALL, .data = { .wall = w }};
 		else
 			pe->sel = (struct Selection){ .mode = SEL_NONE };
