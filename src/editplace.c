@@ -231,7 +231,7 @@ static bool find_wall_by_mouse_location(const struct PlaceEditor *pe, struct Wal
 		{ .startx = x+1, .startz = z,   .dir = WALL_DIR_ZY },
 	};
 
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < sizeof(couldbe)/sizeof(couldbe[0]); i++) {
 		wall_init(&couldbe[i]);
 		if (mouse_is_on_wall(&pe->cam, &couldbe[i], mousex, mousey)) {
 			*dst = couldbe[i];
