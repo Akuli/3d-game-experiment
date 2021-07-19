@@ -804,7 +804,6 @@ enum MiscState editplace_run(
 				.loc = &pl->playerlocs[0],
 			},
 			{
-				// TODO: rename variables to plr0pic and plr0pic
 				.el = {
 					.xzradius = PLAYER_XZRADIUS,
 					.yradius = PLAYER_YRADIUS_NOFLAT,
