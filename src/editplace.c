@@ -187,11 +187,8 @@ static bool mouse_is_on_ellipsoid_with_no_walls_between(struct PlaceEditor *pe, 
 		return false;
 
 	for (const struct Wall *w = pe->place->walls; w < &pe->place->walls[pe->place->nwalls]; w++) {
-		if (wall_side(w, pe->cam.location) != wall_side(w, el->center)
-			&& mouse_is_on_wall(&pe->cam, w, x, y))
-		{
+		if (wall_side(w, pe->cam.location) != wall_side(w, el->center) && mouse_is_on_wall(&pe->cam, w, x, y))
 			return false;
-		}
 	}
 	return true;
 }
