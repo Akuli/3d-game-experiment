@@ -98,8 +98,8 @@ but can't be created if not visible. Visibility checking also produces xmin and 
 */
 bool wall_visible_xminmax_fillcache(
 	const struct Wall *w, const struct Camera *cam,
-	int *xmin, int *xmax,
-	struct WallCache *wc  // Filled if returns true
+	int *xmin, int *xmax,   // If returns true, set to where on screen will wall go
+	struct WallCache *wc    // Filled if returns true
 );
 
 // Which range of screen y coordinates is showing the wall?
