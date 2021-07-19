@@ -1,5 +1,3 @@
-// geometry stuff, mostly 3d and cartesian coordinates
-
 #ifndef MATHSTUFF_H
 #define MATHSTUFF_H
 
@@ -12,10 +10,14 @@
 	#define max(a,b) ((a)>(b) ? (a) : (b))
 #endif
 
-#define min3(a,b,c) min(a,min(b,c))
-#define max3(a,b,c) max(a,max(b,c))
-#define min4(a,b,c,d) min(min(a,b),min(c,d))
-#define max4(a,b,c,d) max(max(a,b),max(c,d))
+inline void clamp(int *val, int lo, int hi) {
+	if (*val < lo) *val = lo;
+	if (*val > hi) *val = hi;
+}
+inline void clamp_float(float *val, float lo, float hi) {
+	if (*val < lo) *val = lo;
+	if (*val > hi) *val = hi;
+}
 
 // matrices are structs because that way it's easier to return them and stuff
 typedef struct { float x,y; } Vec2;

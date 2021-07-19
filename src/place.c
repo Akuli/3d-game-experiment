@@ -324,12 +324,6 @@ static void add_missing_walls_around_edges(struct Place *pl)
 	}
 }
 
-static void clamp(int *val, int lo, int hi)
-{
-	*val = max(*val, lo);
-	*val = min(*val, hi);
-}
-
 // Assumes the enemies are not off in the negative direction
 static void move_players_and_enemies_inside_the_place(struct Place *pl)
 {
