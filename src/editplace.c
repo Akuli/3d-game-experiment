@@ -644,7 +644,7 @@ static void show_editor(struct PlaceEditor *pe)
 			&& pe->sel.data.eledit == &pe->eledits[i];
 	}
 
-	struct Wall *hlwall;
+	struct Wall *hlwall;  // to figure out what's in front or behind highlighted stuff
 	switch(pe->sel.mode) {
 	case SEL_MVWALL:
 		hlwall = pe->sel.data.mvwall;
