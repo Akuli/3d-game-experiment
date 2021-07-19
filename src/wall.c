@@ -284,11 +284,6 @@ bool wall_visible_xminmax_fillcache(
 
 void wall_yminmax(const struct WallCache *wc, int x, int *ymin, int *ymax)
 {
-	if (fabsf(wc->top1.x - wc->top2.x) < 1e-5f) {
-		// would get issues in linear_map()
-		*ymin = 0;
-		*ymax = 0;
-	}
 	*ymin = (int) linear_map(wc->top1.x, wc->top2.x, wc->top1.y, wc->top2.y, x);
 	*ymax = (int) linear_map(wc->bot1.x, wc->bot2.x, wc->bot1.y, wc->bot2.y, x);
 
