@@ -23,11 +23,6 @@
 	#include <windows.h>
 #endif
 
-#ifdef _WIN32
-	#include <direct.h>
-	#include <windows.h>
-#endif
-
 
 /*
 Where are assets and logs?
