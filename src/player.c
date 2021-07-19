@@ -74,8 +74,8 @@ static float get_y_radius(const struct Player *plr)
 
 static void keep_ellipsoid_inside_place(struct Ellipsoid *el, const struct Place *pl)
 {
-	el->center.x = max(el->xzradius, min(pl->xsize - el->xzradius, el->center.x));
-	el->center.z = max(el->xzradius, min(pl->zsize - el->xzradius, el->center.z));
+	clamp_float(&el->center.x, el->xzradius, pl->xsize - el->xzradius);
+	clamp_float(&el->center.z, el->xzradius, pl->zsize - el->xzradius);
 }
 
 void player_eachframe(struct Player *plr, const struct Place *pl)

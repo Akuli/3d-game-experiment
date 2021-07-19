@@ -8,14 +8,12 @@
 #include <SDL2/SDL.h>
 #include "../stb/stb_image.h"
 #include "log.h"
-#include "mathstuff.h"
 #include "misc.h"
 
 #ifdef _WIN32
 #include <windows.h>
 #endif
 
-#define CLAMP_TO_U8(val) ( (unsigned char) min(max(val, 0), 0xff) )
 #define IS_TRANSPARENT(alpha) ((alpha) < 0x80)
 
 // yes, rgb math is bad ikr
@@ -38,9 +36,9 @@ static void replace_alpha_with_average(unsigned char *bytes, size_t npixels)
 
 	for (size_t i = 0; i < 4*npixels; i += 4) {
 		if (IS_TRANSPARENT(bytes[i+3])) {
-			bytes[i] = CLAMP_TO_U8(rsum / count);
-			bytes[i+1] = CLAMP_TO_U8(gsum / count);
-			bytes[i+2] = CLAMP_TO_U8(bsum / count);
+			bytes[i] = (unsigned char)(rsum / count);
+			bytes[i+1] = (unsigned char)(gsum / count);
+			bytes[i+2] = (unsigned char)(bsum / count);
 		}
 	}
 }
