@@ -125,9 +125,9 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 
 static void create_player_ellipsoids(struct Chooser *ch)
 {
+	SDL_assert(player_nepics <= sizeof(ch->ellipsoids)/sizeof(ch->ellipsoids[0]));
 	float pi = acosf(-1);
 
-	SDL_assert(player_nepics <= sizeof(ch->ellipsoids)/sizeof(ch->ellipsoids[0]));
 	for (int i = 0; i < player_nepics; i++) {
 		// pi/2 to make first players (i=0 and i=1) look at camera
 		float angle = pi/2 - ( i/(float)player_nepics * (2*pi) );

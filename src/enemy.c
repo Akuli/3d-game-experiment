@@ -3,7 +3,6 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <SDL2/SDL.h>
 #include "ellipsoid.h"
 #include "camera.h"

@@ -145,6 +145,7 @@ void ellipsoidpic_load(
 	epic->hidelowerhalf = false;
 }
 
+// no way to pass data to atexit callbacks
 static struct {
 	struct EllipsoidPic **arr;
 	int len;

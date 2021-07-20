@@ -2,9 +2,7 @@
 #include <stddef.h>
 #include <SDL2/SDL.h>
 #include "ellipsoid.h"
-#include "glob.h"
 #include "guard.h"
-#include "log.h"
 #include "mathstuff.h"
 #include "place.h"
 #include "sound.h"
