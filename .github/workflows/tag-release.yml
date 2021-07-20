@@ -52,5 +52,7 @@ jobs:
               artifact_id: artifact.id,
               archive_format: 'zip',
           });
+          console.log(zip);
           fs.writeFileSync("windows-build.zip", zip.data);
+    - run: file windows-build.zip
     - run: python3 -m zipfile -l windows-build.zip
