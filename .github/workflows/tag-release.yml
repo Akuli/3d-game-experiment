@@ -21,11 +21,14 @@ jobs:
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
         script: |
-          const runs = (
-            await github.actions.listWorkflowRunsForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              branch: 'cron',
-            })
-          ).data.workflow_runs;
-          console.log(runs.map(run => Object.entries(run)));
+          const run = (
+              await github.actions.listWorkflowRunsForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch: 'cron',
+              })
+            ).data.workflow_runs
+            .filter(run => run.name == '.github/workflows/main.yml')
+            .sort((a, b) => (+new Date(b.created_at)) - (+new Date(a.created_at)))[0];
+          console.log(run);
+          console.log(Object.entries(run));
