@@ -21,9 +21,11 @@ jobs:
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
         script: |
-          const runs = await github.actions.listWorkflowRunsForRepo({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            branch: 'master',
-          });
-          console.log(runs);
+          const runs = (
+            await github.actions.listWorkflowRunsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: 'cron',
+            })
+          ).data.workflow_runs;
+          console.log(runs.map(run => Object.entries(run)));
