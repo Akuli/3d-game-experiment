@@ -28,7 +28,8 @@ jobs:
               await github.actions.listWorkflowRunsForRepo({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                branch: 'master',
+                //branch: 'master',
+                branch: 'cron',
               })
             ).data.workflow_runs
             .filter(run => run.name === '.github/workflows/main.yml')
