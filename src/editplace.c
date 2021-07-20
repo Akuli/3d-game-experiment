@@ -40,7 +40,7 @@ struct Selection {
 struct PlaceEditor {
 	enum MiscState state;
 	struct Place *place;
-	struct EllipsoidEdit eledits[3];  // FIXME: neverdie enemies
+	struct EllipsoidEdit eledits[3];
 	int neledits;
 	struct Camera cam;
 	int rotatedir;

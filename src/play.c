@@ -163,9 +163,8 @@ static void handle_players_bumping_enemies(struct GameState *gs)
 		for (int e = gs->nenemies - 1; e >= 0; e--) {
 			if (ellipsoid_bump_amount(&gs->players[p].ellipsoid, &gs->enemies[e].ellipsoid) != 0) {
 				log_printf(
-					"enemy %d/%d (%s) hits player %d (%d guards)",
+					"enemy %d/%d hits player %d (%d guards)",
 					e, gs->nenemies,
-					(gs->enemies[e].flags & ENEMY_NEVERDIE) ? "neverdie" : "non-neverdie",
 					p, gs->players[p].nguards);
 				sound_play("farts/fart*.wav");
 				int nguards = --gs->players[p].nguards;   // can become negative
@@ -174,7 +173,7 @@ static void handle_players_bumping_enemies(struct GameState *gs)
 				If the game is over, then don't delete the enemy. This way it
 				shows up in game over screen.
 				*/
-				if (nguards >= 0 && !(gs->enemies[e].flags & ENEMY_NEVERDIE))
+				if (nguards >= 0)
 					gs->enemies[e] = gs->enemies[--gs->nenemies];
 			}
 		}
@@ -281,16 +280,6 @@ enum MiscState play_the_game(
 			},
 		},
 	};
-
-	for (int i = 0; i < pl->nneverdielocs; i++) {
-		struct Enemy *en = add_enemy(&gs, ENEMY_NEVERDIE);
-		if (!en)
-			continue;
-
-		en->ellipsoid.center.x = pl->neverdielocs[i].x + 0.5f;
-		en->ellipsoid.center.z = pl->neverdielocs[i].z + 0.5f;
-		en->flags |= ENEMY_NEVERDIE;
-	}
 
 	struct LoopTimer lt = {0};
 	enum MiscState ret;

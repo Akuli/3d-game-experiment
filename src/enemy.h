@@ -18,7 +18,6 @@ enum EnemyDir {
 enum EnemyFlags {
 	ENEMY_STUCK = 0x01,     // can't move anywhere, so just spin without changing ellipsoid.center
 	ENEMY_TURNING = 0x02,   // soon will be looking into enemy->dir direction
-	ENEMY_NEVERDIE = 0x04,  // see place.c for description
 };
 
 struct Enemy {

@@ -24,8 +24,6 @@ Small language for specifying places in files:
 - content of square doesn't have to be spaces like above, can also be:
 	- 'p': initial player place (need two of these in the place)
 	- 'e': initial place for enemies (need one of these in the place)
-	- 'E': add an enemy that never dies. Use this for places otherwise unreacahble
-	  by enemies
 - any of the '--' or '|' walls may be replaced with spaces, that means no wall
 - each line is padded with spaces to have same length
 - must have these walls:
@@ -102,16 +100,12 @@ static void parse_square_content(char c, struct SquareParsingState *st)
 	case 'e':
 		st->place->enemyloc = st->loc;
 		break;
-	case 'E':
-		SDL_assert(st->place->nneverdielocs < MAX_ENEMIES);
-		st->place->neverdielocs[st->place->nneverdielocs++] = st->loc;
-		break;
 	case 'p':
 		SDL_assert(st->place->playerlocs <= st->playerlocptr && st->playerlocptr < st->place->playerlocs + 2);
 		*st->playerlocptr++ = st->loc;
 		break;
 	default:
-		log_printf_abort("expected ' ', 'e', 'E' or 'p', got '%c'", c);
+		log_printf_abort("expected ' ', 'e' or 'p', got '%c'", c);
 	}
 }
 
@@ -131,7 +125,6 @@ static void print_place_info(const struct Place *pl)
 	log_printf("    custom = %s", pl->custom ? "true" : "false");
 	log_printf("    size %dx%d", pl->xsize, pl->zsize);
 	log_printf("    %d walls", pl->nwalls);
-	log_printf("    %d enemies that never die", pl->nneverdielocs);
 	log_printf("    enemies go to x=%d z=%d", pl->enemyloc.x, pl->enemyloc.z);
 	for (int i = 0; i < 2; i++)
 		log_printf("    player %d goes to x=%d z=%d", i, pl->playerlocs[i].x, pl->playerlocs[i].z);
@@ -255,10 +248,6 @@ void place_movecontent(struct Place *pl, int dx, int dz)
 		pl->playerlocs[i].x += dx;
 		pl->playerlocs[i].z += dz;
 	}
-	for (int i = 0; i < pl->nneverdielocs; i++) {
-		pl->neverdielocs[i].x += dx;
-		pl->neverdielocs[i].z += dz;
-	}
 }
 
 static void delete_walls_outside_the_place(struct Place *pl)
@@ -333,10 +322,6 @@ static void move_players_and_enemies_inside_the_place(struct Place *pl)
 		clamp(&pl->playerlocs[p].x, 0, pl->xsize-1);
 		clamp(&pl->playerlocs[p].z, 0, pl->zsize-1);
 	}
-	for (int i = 0; i < pl->nneverdielocs; i++) {
-		clamp(&pl->neverdielocs[i].x, 0, pl->xsize-1);
-		clamp(&pl->neverdielocs[i].z, 0, pl->zsize-1);
-	}
 }
 
 static void ensure_player_doesnt_overlap_other_player_or_enemy(
@@ -345,7 +330,6 @@ static void ensure_player_doesnt_overlap_other_player_or_enemy(
 	struct PlaceCoords choices[] = {
 		// Worst-case sceario is when player is at corner and place is only 2x2.
 		// Even then, one of these places will be available.
-		// TODO: neverdie enemies
 		{ player->x    , player->z     },
 		{ player->x - 1, player->z     },
 		{ player->x + 1, player->z     },
@@ -380,7 +364,6 @@ static void ensure_player_doesnt_overlap_other_player_or_enemy(
 	log_printf_abort("the impossible happened: no place found for player");
 }
 
-// FIXME: neverdielocs
 void place_fix(struct Place *pl)
 {
 	SDL_assert(2 <= pl->xsize && pl->xsize <= MAX_PLACE_SIZE);

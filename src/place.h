@@ -15,10 +15,6 @@ struct Place {
 	int xsize, zsize;    // players and enemies must have 0 <= x <= xsize, 0 <= z <= zsize
 
 	struct PlaceCoords enemyloc, playerlocs[2];   // initial places
-
-	// locations for enemies with neverdie set to true, created when playing begins
-	struct PlaceCoords neverdielocs[MAX_ENEMIES];
-	int nneverdielocs;
 };
 
 // Result array must be free()d
