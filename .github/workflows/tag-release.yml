@@ -13,11 +13,13 @@ jobs:
     - id: tagname
       run: |
         if [ $(git rev-parse $(git tag | tail -1)) != $(git rev-parse HEAD) ]; then
-          echo "::set-output name=newtag::$(date +'%Y-%m-%d-%H-%M')"
+          #echo "::set-output name=datetag::master-$(date +'%Y-%m-%d')"
+          echo "::set-output name=datetag::cron-$(date +'%Y-%m-%d-%H-%M')"
         else
-          echo "::set-output name=newtag::"
+          echo "::set-output name=datetag::"
         fi
-    - uses: actions/github-script@v3
+    - if: ${{ steps.tagname.outputs.datetag != '' }}
+      uses: actions/github-script@v3
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
         script: |
@@ -52,6 +54,35 @@ jobs:
               archive_format: 'zip',
           });
           fs.writeFileSync("windows-build.zip", new Buffer(zip.data));
-    - run: unzip -d build windows-build.zip
-    - run: ls
-    - run: ls *
+    - if: ${{ steps.tagname.outputs.datetag != '' }}
+      run: |
+        # Couldn't figure out how to get archive to have nested directory inside it
+        unzip -d 3D_game_${{ steps.tagname.outputs.datetag }} windows-build.zip
+        zip -r build.zip 3D_game_${{ steps.tagname.outputs.datetag }}
+    # https://stackoverflow.com/a/64479344
+    - if: ${{ steps.tagname.outputs.datetag != '' }}
+      uses: actions/github-script@v3
+      with:
+        github-token: ${{ github.token }}
+        script: |
+          github.git.createRef({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            ref: "refs/tags/${{ steps.tagname.outputs.datetag }}",
+            sha: context.sha
+          })
+    - id: create_release
+      uses: actions/create-release@v1.0.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: master-${{ steps.info.outputs.date }}
+        release_name: ${{ steps.info.outputs.date }}
+    - uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: build.zip
+        asset_name: 3D_game_${{ steps.tagname.outputs.datetag }}.zip
+        asset_content_type: application/zip
