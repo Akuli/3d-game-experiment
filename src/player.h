@@ -34,8 +34,7 @@ struct Player {
 	int nguards;
 };
 
-// Call player_init_epics() before accessing player_ellipsoidpics
-extern const struct EllipsoidPic *player_epics;
+extern struct EllipsoidPic *const *player_epics;  // NULL terminated
 extern int player_nepics;
 void player_init_epics(const SDL_PixelFormat *fmt);
 

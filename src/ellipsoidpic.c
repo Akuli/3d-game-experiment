@@ -1,6 +1,7 @@
 #include "ellipsoid.h"
 #include <errno.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
@@ -9,6 +10,7 @@
 #include "../stb/stb_image.h"
 #include "log.h"
 #include "misc.h"
+#include "glob.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -92,6 +94,7 @@ static void read_image(struct EllipsoidPic *epic)
 	Currently there's no way to give a utf-8 filename to stbi_load(), unless you
 	use Microsoft's compiler. There's also a buffer overflow.
 	https://github.com/nothings/stb/issues/939
+	TODO: issue was closed, update stbi
 	*/
 #ifdef _WIN32
 	FILE *f = _wfopen(misc_utf8_to_windows(epic->path), L"rb");
@@ -141,4 +144,48 @@ void ellipsoidpic_load(
 	epic->pixfmt = fmt;
 	read_image(epic);
 	epic->hidelowerhalf = false;
+}
+
+// no way to pass data to atexit callbacks
+static struct {
+	struct EllipsoidPic **arr;
+	int len;
+} epicarrays[10];
+static int nepicarrays = 0;
+
+static void atexit_callback(void)
+{
+	for (int k = 0; k < nepicarrays; k++) {
+		for (int i = 0; i < epicarrays[k].len; i++)
+			free(epicarrays[k].arr[i]);
+		free(epicarrays[k].arr);
+	}
+}
+
+struct EllipsoidPic *const *ellipsoidpic_loadmany(int *n, const char *globpat, const SDL_PixelFormat *fmt)
+{
+	glob_t gl;
+	if (glob(globpat, 0, NULL, &gl) != 0)
+		log_printf_abort("globbing with \"%s\" failed", globpat);
+
+	*n = (int)gl.gl_pathc;
+	struct EllipsoidPic **epics = malloc(sizeof(epics[0]) * (*n));
+	if (!epics)
+		log_printf_abort("not enough memory for array of %d pointers", *n);
+
+	SDL_assert(nepicarrays < sizeof(epicarrays)/sizeof(epicarrays[0]));
+	epicarrays[nepicarrays].arr = epics;
+	epicarrays[nepicarrays].len = *n;
+	if (nepicarrays == 0)
+		atexit(atexit_callback);
+	nepicarrays++;
+
+	for (int i = 0; i < *n; i++) {
+		if (!( epics[i] = malloc(sizeof(*epics[0])) ))
+			log_printf("not enough mem to load ellipsoid pic from \"%s\"", gl.gl_pathv[i]);
+		ellipsoidpic_load(epics[i], gl.gl_pathv[i], fmt);
+	}
+
+	globfree(&gl);
+	return epics;
 }

@@ -51,12 +51,20 @@ static void rotate_player_chooser(struct ChooserPlayerStuff *plrch, int dir)
 {
 	SDL_assert(dir == +1 || dir == -1);
 
-	if (plrch->epic == &player_epics[0] && dir == -1)
-		plrch->epic = &player_epics[player_nepics - 1];
-	else if (plrch->epic == &player_epics[player_nepics - 1] && dir == +1)
-		plrch->epic = &player_epics[0];
-	else
-		plrch->epic += dir;
+	// I considered making plrch->epic point directly into player_epics, so this would be easier.
+	// But then it had to be a double pointer and that caused some difficulty elsewhere.
+	if (plrch->epic == player_epics[0] && dir == -1)
+		plrch->epic = player_epics[player_nepics-1];
+	else if (plrch->epic == player_epics[player_nepics-1] && dir == +1)
+		plrch->epic = player_epics[0];
+	else {
+		for (int i = 0; i < player_nepics; i++) {
+			if (player_epics[i] == plrch->epic) {
+				plrch->epic = player_epics[i+dir];
+				break;
+			}
+		}
+	}
 	update_player_name_display(plrch);
 
 	// why subtracting: more angle = clockwise from above = left in chooser
@@ -125,7 +133,7 @@ static void create_player_ellipsoids(struct Chooser *ch)
 		float angle = pi/2 - ( i/(float)player_nepics * (2*pi) );
 
 		ch->ellipsoids[i] = (struct Ellipsoid){
-			.epic = &player_epics[i],
+			.epic = player_epics[i],
 			.center = mat3_mul_vec3(mat3_rotation_xz(angle), (Vec3){ ELLIPSOID_XZ_DISTANCE_FROM_ORIGIN, 0, 0 }),
 			.angle = angle,
 			.xzradius = PLAYER_XZRADIUS,
