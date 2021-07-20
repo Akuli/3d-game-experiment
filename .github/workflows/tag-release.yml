@@ -21,6 +21,9 @@ jobs:
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
         script: |
+          const fs = require('fs');
+
+          // Based on:  https://github.com/python/typeshed/blob/82fa8473ffddc57a53b4dbcb1063aa2e66352ca9/.github/workflows/mypy_primer_comment.yml
           const run = (
               await github.actions.listWorkflowRunsForRepo({
                 owner: context.repo.owner,
@@ -28,15 +31,25 @@ jobs:
                 branch: 'master',
               })
             ).data.workflow_runs
-            .filter(run => run.name == '.github/workflows/main.yml')
-            .sort((a, b) => (+new Date(b.created_at)) - (+new Date(a.created_at)))[0];
+            .filter(run => run.name === '.github/workflows/main.yml')
+//            .sort((a, b) => (+new Date(b.created_at)) - (+new Date(a.created_at)))[0];
+            .sort((a, b) => -((+new Date(b.created_at)) - (+new Date(a.created_at))))[0];
 
-          const artifacts = (
+          const [artifact] = (
               await github.actions.listWorkflowRunArtifacts({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 run_id: run.id,
               })
-            ).data.artifacts;
-          console.log(artifacts);
-          console.log(artifacts.map(a => Object.entries(a)));
+            ).data.artifacts
+            .filter(a => a.name === 'windows-build');
+          console.log(artifact);
+
+          const zip = await github.actions.downloadArtifact({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              artifact_id: artifact.id,
+              archive_format: 'zip',
+          });
+          fs.writeFileSync("windows-build.zip", zip.data);
+    - run: python3 -m zipfile -l windows-build.zip
