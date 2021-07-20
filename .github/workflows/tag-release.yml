@@ -25,13 +25,11 @@ jobs:
               await github.actions.listWorkflowRunsForRepo({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                branch: 'cron',
+                branch: 'master',
               })
             ).data.workflow_runs
             .filter(run => run.name == '.github/workflows/main.yml')
             .sort((a, b) => (+new Date(b.created_at)) - (+new Date(a.created_at)))[0];
-          console.log(run);
-          console.log(Object.entries(run));
 
           const artifacts = (
               await github.actions.listWorkflowRunArtifacts({
