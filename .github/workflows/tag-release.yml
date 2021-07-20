@@ -21,7 +21,7 @@ jobs:
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
         script: |
-          const runs = github.actions.listWorkflowRunsForRepo({
+          const runs = await github.actions.listWorkflowRunsForRepo({
             owner: context.repo.owner,
             repo: context.repo.repo,
             branch: 'master',
