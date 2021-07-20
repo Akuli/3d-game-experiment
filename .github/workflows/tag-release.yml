@@ -12,11 +12,12 @@ jobs:
     - uses: actions/checkout@v2
     - id: tagname
       run: |
-        if [ $(git rev-parse $(git tag | tail -1)) != $(git rev-parse HEAD) ]; then
+        if git tag -l --contains HEAD | grep .; then
+          # Commit already tagged
+          echo "::set-output name=datetag::"
+        else
           #echo "::set-output name=datetag::master-$(date +'%Y-%m-%d')"
           echo "::set-output name=datetag::cron-$(date +'%Y-%m-%d-%H-%M')"
-        else
-          echo "::set-output name=datetag::"
         fi
     - if: ${{ steps.tagname.outputs.datetag != '' }}
       uses: actions/github-script@v3
