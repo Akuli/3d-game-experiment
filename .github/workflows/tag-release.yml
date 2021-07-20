@@ -1,9 +1,6 @@
 on:
-#  schedule:
-#    - cron: '0 0 * * 0'
-  push:
-    branches:
-      - cron
+  schedule:
+    - cron: '0 0 * * 0'
 
 jobs:
   release:
@@ -19,8 +16,7 @@ jobs:
           # Commit already tagged
           echo "::set-output name=datetag::"
         else
-          #echo "::set-output name=datetag::master-$(date +'%Y-%m-%d')"
-          echo "::set-output name=datetag::cron-$(date +'%Y-%m-%d-%H-%M')"
+          echo "::set-output name=datetag::master-$(date +'%Y-%m-%d')"
         fi
     - if: ${{ steps.tagname.outputs.datetag != '' }}
       uses: actions/github-script@v3
@@ -39,8 +35,7 @@ jobs:
               })
             ).data.workflow_runs
             .filter(run => run.name === '.github/workflows/main.yml')
-            //.sort((a, b) => (+new Date(b.created_at)) - (+new Date(a.created_at)))[0];
-            .sort((a, b) => -((+new Date(b.created_at)) - (+new Date(a.created_at))))[0];
+            .sort((a, b) => (+new Date(b.created_at)) - (+new Date(a.created_at)))[0];
 
           const [artifact] = (
               await github.actions.listWorkflowRunArtifacts({
@@ -75,14 +70,16 @@ jobs:
             ref: "refs/tags/${{ steps.tagname.outputs.datetag }}",
             sha: context.sha
           })
-    - id: create_release
+    - if: ${{ steps.tagname.outputs.datetag != '' }}
+      id: create_release
       uses: actions/create-release@v1.0.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.tagname.outputs.datetag }}
         release_name: ${{ steps.tagname.outputs.datetag }}
-    - uses: actions/upload-release-asset@v1.0.1
+    - if: ${{ steps.tagname.outputs.datetag != '' }}
+      uses: actions/upload-release-asset@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
