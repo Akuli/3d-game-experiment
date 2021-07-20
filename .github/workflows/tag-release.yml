@@ -32,7 +32,7 @@ jobs:
               })
             ).data.workflow_runs
             .filter(run => run.name === '.github/workflows/main.yml')
-//            .sort((a, b) => (+new Date(b.created_at)) - (+new Date(a.created_at)))[0];
+            //.sort((a, b) => (+new Date(b.created_at)) - (+new Date(a.created_at)))[0];
             .sort((a, b) => -((+new Date(b.created_at)) - (+new Date(a.created_at))))[0];
 
           const [artifact] = (
