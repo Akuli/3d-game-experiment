@@ -10,9 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - run: git tag
+    - run: git tag -l --contains HEAD
     - id: tagname
       run: |
-        git tag -l --contains HEAD
         if git tag -l --contains HEAD | grep .; then
           # Commit already tagged
           echo "::set-output name=datetag::"
