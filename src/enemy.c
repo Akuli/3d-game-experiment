@@ -3,11 +3,9 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <SDL2/SDL.h>
 #include "ellipsoid.h"
 #include "camera.h"
-#include "glob.h"
 #include "mathstuff.h"
 #include "wall.h"
 #include "log.h"
@@ -15,40 +13,30 @@
 #define IMAGE_FILE_COUNT 1
 #define MOVE_UNITS_PER_SECOND 2.5f
 
+static struct EllipsoidPic *const *ellipsoid_pics = NULL;
 static int n_ellipsoid_pics = -1;
-static struct EllipsoidPic ellipsoid_pics[20];
 
 void enemy_init_epics(const SDL_PixelFormat *fmt)
 {
-	SDL_assert(n_ellipsoid_pics == -1);
+	SDL_assert(ellipsoid_pics == NULL);
+	ellipsoid_pics = ellipsoidpic_loadmany(&n_ellipsoid_pics, "assets/enemies/*.png", fmt);
+	SDL_assert(ellipsoid_pics != NULL);
 
-	glob_t gl;
-	if (glob("assets/enemies/*.png", 0, NULL, &gl) != 0)
-		log_printf_abort("enemy pictures not found");
-
-	n_ellipsoid_pics = gl.gl_pathc;
-	SDL_assert(n_ellipsoid_pics <= sizeof(ellipsoid_pics)/sizeof(ellipsoid_pics[0]));
-
-	for (int i = 0; i < n_ellipsoid_pics; i++) {
-		ellipsoidpic_load(&ellipsoid_pics[i], gl.gl_pathv[i], fmt);
-		ellipsoid_pics[i].hidelowerhalf = true;
-	}
-	globfree(&gl);
+	for (int i = 0; i < n_ellipsoid_pics; i++)
+		ellipsoid_pics[i]->hidelowerhalf = true;
 }
 
 const struct EllipsoidPic *enemy_getfirstepic(void)
 {
-	SDL_assert(n_ellipsoid_pics != -1);
-	return &ellipsoid_pics[0];
+	return ellipsoid_pics[0];
 }
 
 struct Enemy enemy_new(const struct Place *pl, enum EnemyFlags fl)
 {
-	SDL_assert(n_ellipsoid_pics != -1);
 	struct Enemy res = {
 		.ellipsoid = {
 			.center = { pl->enemyloc.x + 0.5f, 0, pl->enemyloc.z + 0.5f },
-			.epic = &ellipsoid_pics[rand() % n_ellipsoid_pics],
+			.epic = ellipsoid_pics[rand() % n_ellipsoid_pics],
 			.highlighted = !!(fl & ENEMY_NEVERDIE),
 			.angle = 0,
 			.xzradius = ENEMY_XZRADIUS,
