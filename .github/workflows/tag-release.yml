@@ -44,7 +44,6 @@ jobs:
               })
             ).data.artifacts
             .filter(a => a.name === 'windows-build');
-          console.log(artifact);
 
           const zip = await github.actions.downloadArtifact({
               owner: context.repo.owner,
@@ -52,7 +51,7 @@ jobs:
               artifact_id: artifact.id,
               archive_format: 'zip',
           });
-          console.log(zip);
           fs.writeFileSync("windows-build.zip", new Buffer(zip.data));
-    - run: file windows-build.zip
-    - run: python3 -m zipfile -l windows-build.zip
+    - run: unzip windows-build.zip
+    - run: ls
+    - run: ls *
