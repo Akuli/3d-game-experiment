@@ -76,8 +76,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: master-${{ steps.info.outputs.date }}
-        release_name: ${{ steps.info.outputs.date }}
+        tag_name: master-${{ steps.tagname.outputs.datetag }}
+        release_name: ${{ steps.tagname.outputs.datetag }}
     - uses: actions/upload-release-asset@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
