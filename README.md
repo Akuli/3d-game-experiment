@@ -7,15 +7,21 @@ This is a dual-player 3D game with no libraries used for drawing the 3D stuff.
 
 ## Setup
 
-Commands to compile and run:
+If you are on Windows, you can download this game by clicking "Releases" on GitHub.
+Unzip it and run `build\game.exe`.
+
+To develop this game, you need some other operating system.
 
 ```
+$ git clone https://github.com/Akuli/3d-game-experiment
+$ cd 3d-game-experiment
 $ git submodule init
 $ git submodule update
 $ sudo apt install gcc make libsdl2-dev libsdl2-mixer-dev libsdl2-ttf-dev
-$ make -j2
-$ ./game
+$ make -j2 && ./game
 ```
+
+I don't know what you should do if you don't have `apt`.
 
 ## Key Bindings
 

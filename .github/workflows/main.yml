@@ -49,47 +49,7 @@ jobs:
         tar xf SDL2_mixer-*
         tar xf SDL2_ttf-*
     - run: source winbuildenv && make -j2 build/game.exe
-    - run: zip -r build.zip build
     - uses: actions/upload-artifact@v2
       with:
-        name: windows-zip
-        path: build.zip
-
-  release:
-    if: github.ref == 'refs/heads/master'  # https://github.community/t/github-actions-branch-conditional/16057
-    needs: [windows-build]
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/download-artifact@v2
-      with:
-        name: windows-zip
-    # https://stackoverflow.com/a/60942437
-    - id: info
-      run: |
-        echo "::set-output name=date::$(date +'%Y-%m-%d-%H-%M')"
-    # https://stackoverflow.com/a/64479344
-    - uses: actions/github-script@v3
-      with:
-        github-token: ${{ github.token }}
-        script: |
-          github.git.createRef({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            ref: "refs/tags/master-${{ steps.info.outputs.date }}",
-            sha: context.sha
-          })
-    - id: create_release
-      uses: actions/create-release@v1.0.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: master-${{ steps.info.outputs.date }}
-        release_name: ${{ steps.info.outputs.date }}
-    - uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: build.zip
-        asset_name: 3D_game_${{ steps.info.outputs.date }}.zip
-        asset_content_type: application/zip
+        name: windows-build
+        path: build
