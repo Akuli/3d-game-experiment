@@ -32,9 +32,23 @@ jobs:
   windows-build:
     runs-on: ubuntu-latest
     steps:
-    - run: mkdir build
-    - run: touch build/a
-    - run: touch build/b
+    - uses: actions/checkout@v2
+    - run: git submodule init && git submodule update
+    - run: sudo apt install make mingw-w64
+    # Download links used (choose mingw instead of visual studio):
+    #  https://www.libsdl.org/download-2.0.php
+    #  https://www.libsdl.org/projects/SDL_mixer/
+    #  https://www.libsdl.org/projects/SDL_ttf/
+    - run: |
+        mkdir libs
+        cd libs
+        wget https://www.libsdl.org/release/SDL2-devel-2.0.14-mingw.tar.gz
+        wget https://www.libsdl.org/projects/SDL_mixer/release/SDL2_mixer-devel-2.0.4-mingw.tar.gz
+        wget https://www.libsdl.org/projects/SDL_ttf/release/SDL2_ttf-devel-2.0.15-mingw.tar.gz
+        tar xf SDL2-*
+        tar xf SDL2_mixer-*
+        tar xf SDL2_ttf-*
+    - run: source winbuildenv && make -j2 build/game.exe
     - uses: actions/upload-artifact@v2
       with:
         name: windows-build
