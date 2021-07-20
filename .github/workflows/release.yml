@@ -8,8 +8,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: git fetch --tags
-    - run: git tag
-    - run: git tag -l --contains HEAD
     - id: tagname
       run: |
         if git tag -l --contains HEAD | grep .; then
@@ -30,8 +28,7 @@ jobs:
               await github.actions.listWorkflowRunsForRepo({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                //branch: 'master',
-                branch: 'cron',
+                branch: 'master',
               })
             ).data.workflow_runs
             .filter(run => run.name === '.github/workflows/main.yml')
