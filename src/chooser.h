@@ -11,7 +11,7 @@
 #include "misc.h"
 
 struct ChooserPlayerStuff {
-	const struct EllipsoidPic *epic;   // pointer into player_getepics()
+	const struct EllipsoidPic *epic;   // pointer into player_epics
 
 	// rest of this struct isn't meant to be used outside chooser.c
 	int leftx;

@@ -9,6 +9,7 @@
 #include "../stb/stb_image.h"
 #include "log.h"
 #include "misc.h"
+#include "glob.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -141,4 +142,46 @@ void ellipsoidpic_load(
 	epic->pixfmt = fmt;
 	read_image(epic);
 	epic->hidelowerhalf = false;
+}
+
+static struct EllipsoidPic **epicarrays[10] = {0};
+
+static void atexit_callback(void)
+{
+	for (int k = 0; epicarrays[k]; k++) {
+		for (int i = 0; epicarrays[k][i]; i++)
+			free(epicarrays[k][i]);
+		free(epicarrays[k]);
+	}
+}
+
+struct EllipsoidPic *const *ellipsoidpic_loadmany(const char *globpat, const SDL_PixelFormat *fmt)
+{
+	glob_t gl;
+	if (glob(globpat, 0, NULL, &gl) != 0)
+		log_printf_abort("globbing with \"%s\" failed", globpat);
+
+	struct EllipsoidPic **epics = malloc(sizeof(epics[0]) * (gl.gl_pathc + 1));
+	if (!epics)
+		log_printf_abort("not enough memory for array of %d pointers", (int)(gl.gl_pathc + 1));
+
+	int k = 0;
+	while (epicarrays[k])
+		k++;
+	SDL_assert(k+1 < sizeof(epicarrays)/sizeof(epicarrays[0]));
+	SDL_assert(epicarrays[k+1] == NULL);
+	epicarrays[k] = epics;
+	if (k == 0)
+		atexit(atexit_callback);
+
+	for (int i = 0; i < gl.gl_pathc; i++) {
+		if (!( epics[i] = malloc(sizeof(*epics[0])) ))
+			log_printf("not enough mem to load ellipsoid pic from \"%s\"", gl.gl_pathv[i]);
+		ellipsoidpic_load(epics[i], gl.gl_pathv[i], fmt);
+	}
+
+	globfree(&gl);
+	epics[gl.gl_pathc] = NULL;
+
+	return epics;  // https://stackoverflow.com/q/5055655
 }

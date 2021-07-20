@@ -29,27 +29,13 @@ issues with this. To avoid that, we limit things that flat players can do:
 #define JUMP_MAX_HEIGHT 3.0f
 #define JUMP_DURATION_SEC 0.6f
 
-static struct EllipsoidPic epics[50];
-const struct EllipsoidPic *player_epics = epics;
-int player_nepics = -1;
+struct EllipsoidPic *const *player_epics = NULL;
 
 void player_init_epics(const SDL_PixelFormat *fmt)
 {
-	static bool inited = false;
-	SDL_assert(!inited);
-	inited = true;
-
-	glob_t gl;
-	if (glob("assets/players/*.png", 0, NULL, &gl) != 0)
-		log_printf_abort("player pictures not found");
-	log_printf("found %d players", (int)gl.gl_pathc);   // no %zu on windows
-
-	player_nepics = gl.gl_pathc;
-	SDL_assert(0 < player_nepics && player_nepics <= sizeof(epics)/sizeof(epics[0]));
-	for (int i = 0; i < player_nepics; i++)
-		ellipsoidpic_load(&epics[i], gl.gl_pathv[i], fmt);
-
-	globfree(&gl);
+	SDL_assert(player_epics == NULL);
+	player_epics = ellipsoidpic_loadmany("assets/players/*.png", fmt);
+	SDL_assert(player_epics != NULL);
 }
 
 static float get_jump_height(int jumpframe)

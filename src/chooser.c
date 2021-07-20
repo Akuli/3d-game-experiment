@@ -47,21 +47,32 @@ static void update_player_name_display(struct ChooserPlayerStuff *plrch)
 	SDL_FreeSurface(s);
 }
 
+// find_player_epic(NULL) counts number of epics
+static int find_player_epic(const struct EllipsoidPic *look4)
+{
+	for (int i = 0; ; i++) {
+		if (player_epics[i] == look4)
+			return i;
+		SDL_assert(player_epics[i]);
+	}
+}
+
 static void rotate_player_chooser(struct ChooserPlayerStuff *plrch, int dir)
 {
 	SDL_assert(dir == +1 || dir == -1);
 
-	if (plrch->epic == &player_epics[0] && dir == -1)
-		plrch->epic = &player_epics[player_nepics - 1];
-	else if (plrch->epic == &player_epics[player_nepics - 1] && dir == +1)
-		plrch->epic = &player_epics[0];
+	int n = find_player_epic(NULL);
+	if (plrch->epic == player_epics[0] && dir == -1)
+		plrch->epic = player_epics[n-1];
+	else if (plrch->epic == player_epics[n-1] && dir == +1)
+		plrch->epic = player_epics[0];
 	else
-		plrch->epic += dir;
+		plrch->epic = player_epics[find_player_epic(plrch->epic) + dir];
 	update_player_name_display(plrch);
 
 	// why subtracting: more angle = clockwise from above = left in chooser
 	float pi = acosf(-1);
-	plrch->anglediff -= dir * (2*pi) / (float)player_nepics;
+	plrch->anglediff -= dir * (2*pi) / (float)n;
 }
 
 static void rotate_left (void *plrch) { rotate_player_chooser(plrch, -1); }
@@ -105,7 +116,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 		.cam = {
 			.screencentery = -preview.h / 10,
 			.surface = misc_create_cropped_surface(ch->winsurf, preview),
-			.angle = -(2*pi)/player_nepics * idx,
+			.angle = -(2*pi)/find_player_epic(NULL) * idx,
 		},
 	};
 
@@ -117,15 +128,16 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 
 static void create_player_ellipsoids(struct Chooser *ch)
 {
-	SDL_assert(player_nepics <= sizeof(ch->ellipsoids)/sizeof(ch->ellipsoids[0]));
 	float pi = acosf(-1);
 
-	for (int i = 0; i < player_nepics; i++) {
+	int n = find_player_epic(NULL);
+	SDL_assert(n <= sizeof(ch->ellipsoids)/sizeof(ch->ellipsoids[0]));
+	for (int i = 0; i < n; i++) {
 		// pi/2 to make first players (i=0 and i=1) look at camera
-		float angle = pi/2 - ( i/(float)player_nepics * (2*pi) );
+		float angle = pi/2 - ( i/(float)n * (2*pi) );
 
 		ch->ellipsoids[i] = (struct Ellipsoid){
-			.epic = &player_epics[i],
+			.epic = player_epics[i],
 			.center = mat3_mul_vec3(mat3_rotation_xz(angle), (Vec3){ ELLIPSOID_XZ_DISTANCE_FROM_ORIGIN, 0, 0 }),
 			.angle = angle,
 			.xzradius = PLAYER_XZRADIUS,
@@ -137,7 +149,7 @@ static void create_player_ellipsoids(struct Chooser *ch)
 
 static void rotate_player_ellipsoids(struct Ellipsoid *els)
 {
-	for (int i = 0; i < player_nepics; i++) {
+	for (int i = 0; player_epics[i]; i++) {
 		els[i].angle += 1.0f / CAMERA_FPS;
 		ellipsoid_update_transforms(&els[i]);
 	}
@@ -153,7 +165,8 @@ static float restrict_absolute_value(float val, float maxabs)
 
 static void turn_camera(struct ChooserPlayerStuff *plrch)
 {
-	float turn = restrict_absolute_value(plrch->anglediff, 50.0f / (CAMERA_FPS * player_nepics));
+	int n = find_player_epic(NULL);
+	float turn = restrict_absolute_value(plrch->anglediff, 50.0f / (CAMERA_FPS * n));
 	plrch->cam.angle += turn;
 	plrch->anglediff -= turn;
 
@@ -174,7 +187,7 @@ static void show_player_chooser_each_frame(const struct Chooser *ch, struct Choo
 {
 	turn_camera(plrch);
 	SDL_FillRect(plrch->cam.surface, NULL, 0);
-	show_all(NULL, 0, false, ch->ellipsoids, player_nepics, &plrch->cam);
+	show_all(NULL, 0, false, ch->ellipsoids, find_player_epic(NULL), &plrch->cam);
 }
 
 static void show_place_chooser_each_frame(struct ChooserPlaceStuff *plcch)
