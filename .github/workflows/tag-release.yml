@@ -32,3 +32,13 @@ jobs:
             .sort((a, b) => (+new Date(b.created_at)) - (+new Date(a.created_at)))[0];
           console.log(run);
           console.log(Object.entries(run));
+
+          const artifacts = (
+              await github.actions.listWorkflowRunArtifacts({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: run.id,
+              })
+            ).data.artifacts;
+          console.log(artifacts);
+          console.log(artifacts.map(a => Object.entries(a)));
