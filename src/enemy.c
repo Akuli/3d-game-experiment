@@ -16,14 +16,15 @@
 #define MOVE_UNITS_PER_SECOND 2.5f
 
 static struct EllipsoidPic *const *ellipsoid_pics = NULL;
+static int n_ellipsoid_pics = -1;
 
 void enemy_init_epics(const SDL_PixelFormat *fmt)
 {
 	SDL_assert(ellipsoid_pics == NULL);
-	ellipsoid_pics = ellipsoidpic_loadmany("assets/enemies/*.png", fmt);
+	ellipsoid_pics = ellipsoidpic_loadmany(&n_ellipsoid_pics, "assets/enemies/*.png", fmt);
 	SDL_assert(ellipsoid_pics != NULL);
 
-	for (int i = 0; ellipsoid_pics[i]; i++)
+	for (int i = 0; i < n_ellipsoid_pics; i++)
 		ellipsoid_pics[i]->hidelowerhalf = true;
 }
 
@@ -34,14 +35,10 @@ const struct EllipsoidPic *enemy_getfirstepic(void)
 
 struct Enemy enemy_new(const struct Place *pl, enum EnemyFlags fl)
 {
-	int count = 0;
-	while (ellipsoid_pics[count])
-		count++;
-
 	struct Enemy res = {
 		.ellipsoid = {
 			.center = { pl->enemyloc.x + 0.5f, 0, pl->enemyloc.z + 0.5f },
-			.epic = ellipsoid_pics[rand() % count],
+			.epic = ellipsoid_pics[rand() % n_ellipsoid_pics],
 			.highlighted = !!(fl & ENEMY_NEVERDIE),
 			.angle = 0,
 			.xzradius = ENEMY_XZRADIUS,

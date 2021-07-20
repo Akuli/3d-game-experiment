@@ -30,11 +30,12 @@ issues with this. To avoid that, we limit things that flat players can do:
 #define JUMP_DURATION_SEC 0.6f
 
 struct EllipsoidPic *const *player_epics = NULL;
+int player_nepics = -1;
 
 void player_init_epics(const SDL_PixelFormat *fmt)
 {
 	SDL_assert(player_epics == NULL);
-	player_epics = ellipsoidpic_loadmany("assets/players/*.png", fmt);
+	player_epics = ellipsoidpic_loadmany(&player_nepics, "assets/players/*.png", fmt);
 	SDL_assert(player_epics != NULL);
 }
 
