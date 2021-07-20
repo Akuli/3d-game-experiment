@@ -93,6 +93,7 @@ static void read_image(struct EllipsoidPic *epic)
 	Currently there's no way to give a utf-8 filename to stbi_load(), unless you
 	use Microsoft's compiler. There's also a buffer overflow.
 	https://github.com/nothings/stb/issues/939
+	TODO: issue was closed, update stbi
 	*/
 #ifdef _WIN32
 	FILE *f = _wfopen(misc_utf8_to_windows(epic->path), L"rb");
@@ -182,6 +183,5 @@ struct EllipsoidPic *const *ellipsoidpic_loadmany(const char *globpat, const SDL
 
 	globfree(&gl);
 	epics[gl.gl_pathc] = NULL;
-
-	return epics;  // https://stackoverflow.com/q/5055655
+	return epics;
 }
