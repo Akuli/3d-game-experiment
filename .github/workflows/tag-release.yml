@@ -1,0 +1,29 @@
+on:
+#  schedule:
+#    - cron: '0 0 * * 0'
+  push:
+    branches:
+      - cron
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - id: tagname
+      run: |
+        if [ $(git rev-parse $(git tag | tail -1)) != $(git rev-parse HEAD) ]; then
+          echo "::set-output name=newtag::$(date +'%Y-%m-%d-%H-%M')"
+        else
+          echo "::set-output name=newtag::"
+        fi
+    - uses: actions/github-script@v3
+      with:
+        github-token: ${{secrets.GITHUB_TOKEN}}
+        script: |
+          const runs = github.actions.listWorkflowRunsForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            branch: 'master',
+          });
+          console.log(runs);
