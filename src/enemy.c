@@ -15,19 +15,6 @@
 #define IMAGE_FILE_COUNT 1
 #define MOVE_UNITS_PER_SECOND 2.5f
 
-// average of rgb colors works well enough
-// TODO: combine this with similar code in wall.c?
-static uint8_t more(uint8_t val) { return val + (0xff - val)/2; }
-static uint8_t less(uint8_t val) { return val/2; }
-
-static inline uint32_t make_color_more_red(uint32_t color, const SDL_PixelFormat *fmt)
-{
-	return
-		(more((color >> fmt->Rshift) & 0xff) << fmt->Rshift) |
-		(less((color >> fmt->Gshift) & 0xff) << fmt->Gshift) |
-		(less((color >> fmt->Bshift) & 0xff) << fmt->Bshift);
-}
-
 static int n_ellipsoid_pics = -1;
 static struct EllipsoidPic ellipsoid_pics[20];
 
