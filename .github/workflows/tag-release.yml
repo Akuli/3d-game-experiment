@@ -52,6 +52,6 @@ jobs:
               archive_format: 'zip',
           });
           fs.writeFileSync("windows-build.zip", new Buffer(zip.data));
-    - run: unzip windows-build.zip
+    - run: unzip -d build windows-build.zip
     - run: ls
     - run: ls *
