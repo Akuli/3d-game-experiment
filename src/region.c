@@ -1,36 +1,35 @@
 #include "region.h"
 #include "log.h"
 
-static bool can_move(const struct Place *pl, struct PlaceCoords cur, int dx, int dz)
+static bool exists_wall_between_points(const struct Place *pl, struct PlaceCoords p1, struct PlaceCoords p2)
 {
 	SDL_assert(
-		(dx == 0 && (dz == -1 || dz == 1)) ||
-		(dz == 0 && (dx == -1 || dx == 1)));
+		(p1.x == p2.x && abs(p2.z - p1.z) == 1) ||
+		(p1.z == p2.z && abs(p2.x - p1.x) == 1));
 
 	for (int i = 0; i < pl->nwalls; i++) {
 		if (
 			(
-				dz != 0
+				p1.x == p2.x
 				&& pl->walls[i].dir == WALL_DIR_XY
-				&& pl->walls[i].startx == cur.x
-				&& pl->walls[i].startz == min(cur.z, cur.z + dz)
+				&& pl->walls[i].startx == p1.x
+				&& pl->walls[i].startz == max(p1.z, p2.z)
 			) || (
-				dx != 0
+				p1.z == p2.z
 				&& pl->walls[i].dir == WALL_DIR_ZY
-				&& pl->walls[i].startx == min(cur.x, cur.x + dx)
-				&& pl->walls[i].startz == cur.z
+				&& pl->walls[i].startx == max(p1.x, p2.x)
+				&& pl->walls[i].startz == p1.z
 			)
 		) {
-			return false;
+			return true;
 		}
 	}
-	return true;
+	return false;
 }
 
 int region_size(const struct Place *pl, struct PlaceCoords start)
 {
-	// tovisit is always a subset of the region
-	bool region[MAX_PLACE_SIZE][MAX_PLACE_SIZE] = {0};
+	char region[MAX_PLACE_SIZE][MAX_PLACE_SIZE] = {0};
 	struct PlaceCoords *todo = malloc(sizeof todo[0]);
 	SDL_assert(todo);
 	todo[0] = start;
@@ -39,22 +38,34 @@ int region_size(const struct Place *pl, struct PlaceCoords start)
 
 	while (todolen != 0) {
 		struct PlaceCoords p = todo[--todolen];
+		SDL_assert(0 <= p.x && p.x < pl->xsize);
+		SDL_assert(0 <= p.z && p.z < pl->zsize);
+
+		if (region[p.x][p.z])
+			continue;
 		region[p.x][p.z] = true;
 
-		while (todoalloc < todolen + 4)
-			todoalloc *= 2;
-		log_printf("region_size(): realloc to %d elements", todoalloc);
-		todo = realloc(todo, sizeof(todo[0]) * todoalloc);
-		SDL_assert(todo);
+		struct PlaceCoords neighbors[] = {
+			{ p.x-1, p.z },
+			{ p.x+1, p.z },
+			{ p.x, p.z-1 },
+			{ p.x, p.z+1 },
+		};
 
-		if (can_move(pl, p, -1, 0))
-			todo[todolen++] = (struct PlaceCoords){ p.x-1, p.z };
-		if (can_move(pl, p, 1, 0))
-			todo[todolen++] = (struct PlaceCoords){ p.x+1, p.z };
-		if (can_move(pl, p, 0, -1))
-			todo[todolen++] = (struct PlaceCoords){ p.x, p.z-1 };
-		if (can_move(pl, p, 0, 1))
-			todo[todolen++] = (struct PlaceCoords){ p.x, p.z+1 };
+		bool needrealloc = false;
+		while (todoalloc < todolen + sizeof(neighbors)/sizeof(neighbors[0])) {
+			todoalloc *= 2;
+			needrealloc = true;
+		}
+		if (needrealloc) {
+			todo = realloc(todo, sizeof(todo[0]) * todoalloc);
+			SDL_assert(todo);
+		}
+
+		for (int i = 0; i < sizeof(neighbors)/sizeof(neighbors[0]); i++) {
+			if (!region[neighbors[i].x][neighbors[i].z] && !exists_wall_between_points(pl, p, neighbors[i]))
+				todo[todolen++] = neighbors[i];
+		}
 	}
 	free(todo);
 
