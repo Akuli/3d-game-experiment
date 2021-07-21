@@ -906,6 +906,7 @@ enum MiscState editplace_run(
 		},
 		.addenemybtn = {
 			.text = "Add\nenemy",
+			.scancodes = { SDL_SCANCODE_E },
 			.destsurf = wndsurf,
 			.center = {
 				CAMERA_SCREEN_WIDTH - button_width(0)/2,
