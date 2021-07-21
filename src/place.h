@@ -14,7 +14,9 @@ struct Place {
 	int nwalls;
 	int xsize, zsize;    // players and enemies must have 0 <= x <= xsize, 0 <= z <= zsize
 
-	struct PlaceCoords enemyloc, playerlocs[2];   // initial places
+	struct PlaceCoords playerlocs[2];
+	struct PlaceCoords enemylocs[MAX_ENEMIES];
+	int nenemylocs;
 };
 
 // Result array must be free()d

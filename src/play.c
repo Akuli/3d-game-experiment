@@ -17,6 +17,7 @@
 #include "player.h"
 #include "showall.h"
 #include "sound.h"
+#include "region.h"
 
 // includes all the GameObjects that all players should see
 struct GameState {
@@ -27,6 +28,9 @@ struct GameState {
 
 	struct Enemy enemies[MAX_ENEMIES];
 	int nenemies;
+
+	// How many squares can reach from enemy location. Same length as place->enemylocs
+	int enemyregionsizes[MAX_ENEMIES];
 
 	struct Ellipsoid unpicked_guards[MAX_UNPICKED_GUARDS];
 	int n_unpicked_guards;
@@ -45,15 +49,38 @@ static bool time_to_do_something(unsigned *frameptr, unsigned thisframe, unsigne
 	return false;
 }
 
-static struct Enemy *add_enemy(struct GameState *gs, enum EnemyFlags fl)
+static struct Enemy *add_enemy(struct GameState *gs, const struct PlaceCoords *coordptr)
 {
-	if (gs->nenemies >= MAX_ENEMIES) {
+	SDL_assert(gs->nenemies <= MAX_ENEMIES);
+	if (gs->nenemies == MAX_ENEMIES) {
 		log_printf("hitting MAX_ENEMIES=%d", MAX_ENEMIES);
 		return NULL;
 	}
 
+	struct PlaceCoords pc;
+	if (coordptr)
+		pc = *coordptr;
+	else {
+		// Choose random enemy location. Use region sizes as weights.
+		int sum = 0;
+		for (int i = 0; i < gs->place->nenemylocs; i++)
+			sum += gs->enemyregionsizes[i];
+		int val = rand() % sum;
+		int lo = 0;
+		int i = 0;
+		while(1) {
+			SDL_assert(i < gs->place->nenemylocs);
+			int hi = lo + gs->enemyregionsizes[i];
+			if (lo <= val && val < hi)
+				break;
+			lo = hi;
+			i++;
+		}
+		pc = gs->place->enemylocs[i];
+	}
+
 	struct Enemy *en = &gs->enemies[gs->nenemies++];
-	*en = enemy_new(gs->place, fl);
+	*en = enemy_new(gs->place,pc);
 	return en;
 }
 
@@ -98,7 +125,7 @@ static void add_guards_and_enemies_as_needed(struct GameState *gs)
 	}
 	if (time_to_do_something(&gs->lastenemyframe, gs->thisframe, enemydelay)) {
 		log_printf("There are %d enemies, adding one more", gs->nenemies);
-		add_enemy(gs, 0);
+		add_enemy(gs, NULL);
 	}
 }
 
@@ -270,6 +297,10 @@ enum MiscState play_the_game(
 			},
 		},
 	};
+	for (int i = 0; i < pl->nenemylocs; i++) {
+		gs.enemyregionsizes[i] = region_size(pl, pl->enemylocs[i]);
+		add_enemy(&gs, &pl->enemylocs[i]);
+	}
 
 	struct LoopTimer lt = {0};
 	enum MiscState ret;

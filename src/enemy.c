@@ -31,18 +31,18 @@ const struct EllipsoidPic *enemy_getfirstepic(void)
 	return ellipsoid_pics[0];
 }
 
-struct Enemy enemy_new(const struct Place *pl, enum EnemyFlags fl)
+struct Enemy enemy_new(const struct Place *pl, struct PlaceCoords loc)
 {
 	struct Enemy res = {
 		.ellipsoid = {
-			.center = { pl->enemyloc.x + 0.5f, 0, pl->enemyloc.z + 0.5f },
+			.center = { loc.x + 0.5f, 0, loc.z + 0.5f },
 			.epic = ellipsoid_pics[rand() % n_ellipsoid_pics],
 			.angle = 0,
 			.xzradius = ENEMY_XZRADIUS,
 			.yradius = ENEMY_YRADIUS,
 		},
 		.dir = ENEMY_DIR_XPOS,
-		.flags = fl,
+		.flags = 0,
 		.place = pl,
 	};
 	ellipsoid_update_transforms(&res.ellipsoid);

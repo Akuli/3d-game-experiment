@@ -29,7 +29,7 @@ struct Enemy {
 
 // call enemy_init_epics() once before calling enemy_new() as many times as you like
 void enemy_init_epics(const SDL_PixelFormat *fmt);
-struct Enemy enemy_new(const struct Place *pl, enum EnemyFlags fl);
+struct Enemy enemy_new(const struct Place *pl, struct PlaceCoords loc);
 
 // for place editor
 const struct EllipsoidPic *enemy_getfirstepic(void);

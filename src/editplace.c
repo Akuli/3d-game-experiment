@@ -40,8 +40,8 @@ struct Selection {
 struct PlaceEditor {
 	enum MiscState state;
 	struct Place *place;
-	struct EllipsoidEdit eledits[3];
-	int neledits;
+	struct EllipsoidEdit playeredits[2];
+	struct EllipsoidEdit enemyedits[MAX_ENEMIES];
 	struct Camera cam;
 	int rotatedir;
 	struct Button deletebtn, donebtn;
@@ -49,6 +49,28 @@ struct PlaceEditor {
 	bool mousemoved;
 	bool up, down, left, right;   // are arrow keys pressed
 };
+
+bool next_ellipsoid_edit(struct PlaceEditor *pe, struct EllipsoidEdit **ptr)
+{
+	if (*ptr == NULL)
+		*ptr = &pe->playeredits[0];
+	else
+		++*ptr;
+
+	// Make sure this works when there are no enemy locations
+	if (*ptr == &pe->playeredits[2])
+		*ptr = &pe->enemyedits[0];
+	if (*ptr == &pe->enemyedits[pe->place->nenemylocs])
+		*ptr = NULL;
+
+	return !!*ptr;
+}
+
+// Hard to make it const-safe, but let's hide it in a function like any other ugly thing
+bool next_ellipsoid_edit_const(const struct PlaceEditor *pe, const struct EllipsoidEdit **ptr)
+{
+	return next_ellipsoid_edit((void*)pe, (void*)ptr);
+}
 
 static void rotate_camera(struct PlaceEditor *pe, float speed)
 {
@@ -284,8 +306,8 @@ static void move_wall(struct PlaceEditor *pe, int mousex, int mousey)
 
 static bool find_ellipsoid_by_coords(const struct PlaceEditor *pe, int x, int z)
 {
-	for (int i=0; i < pe->neledits; i++) {
-		if (pe->eledits[i].loc->x == x && pe->eledits[i].loc->z == z)
+	for (const struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit_const(pe, &ee); ) {
+		if (ee->loc->x == x && ee->loc->z == z)
 			return true;
 	}
 	return false;
@@ -310,31 +332,32 @@ static void move_ellipsoid(const struct PlaceEditor *pe, int mousex, int mousey,
 
 static void select_by_mouse_coords(struct PlaceEditor *pe, int mousex, int mousey)
 {
-	// Find ellipsoid visible with no walls between having smallest distance to camera
-	int idx = -1;
 	float smallestd = HUGE_VALF;
-	for (int i = 0; i < pe->neledits; i++) {
-		if (mouse_is_on_ellipsoid_with_no_walls_between(pe, &pe->eledits[i].el, mousex, mousey)) {
-			float d = vec3_lengthSQUARED(vec3_sub(pe->eledits[i].el.center, pe->cam.location));
+	struct EllipsoidEdit *nearest = NULL;
+
+	// Find ellipsoid visible with no walls between having smallest distance to camera
+	for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(pe, &ee); ) {
+		if (mouse_is_on_ellipsoid_with_no_walls_between(pe, &ee->el, mousex, mousey)) {
+			float d = vec3_lengthSQUARED(vec3_sub(ee->el.center, pe->cam.location));
 			if (d < smallestd) {
-				idx = i;
+				nearest = ee;
 				smallestd = d;
 			}
 		}
 	}
 
-	if (idx == -1) {
+	if (nearest) {
+		pe->sel = (struct Selection){
+			.mode = SEL_ELLIPSOID,
+			.data = { .eledit = nearest },
+		};
+	} else {
 		// No ellipsoids under mouse
 		struct Wall w;
 		if (mouse_location_to_wall(pe, &w, mousex, mousey) && wall_is_within_place(&w, pe->place))
 			pe->sel = (struct Selection){ .mode = SEL_WALL, .data = { .wall = w }};
 		else
 			pe->sel = (struct Selection){ .mode = SEL_NONE };
-	} else {
-		pe->sel = (struct Selection){
-			.mode = SEL_ELLIPSOID,
-			.data = { .eledit = &pe->eledits[idx] },
-		};
 	}
 }
 
@@ -384,11 +407,11 @@ static void on_arrow_key(struct PlaceEditor *pe, float angle, bool oppositespres
 		{
 			int px = pe->sel.data.wall.startx + min(0, dx);
 			int pz = pe->sel.data.wall.startz + min(0, dz);
-			for (int i = 0; i < pe->neledits; i++) {
-				if (pe->eledits[i].loc->x == px && pe->eledits[i].loc->z == pz) {
+			for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(pe, &ee); ) {
+				if (ee->loc->x == px && ee->loc->z == pz) {
 					pe->sel = (struct Selection){
 						.mode = SEL_ELLIPSOID,
-						.data = { .eledit = &pe->eledits[i] },
+						.data = { .eledit = ee },
 					};
 					return;
 				}
@@ -620,7 +643,7 @@ static bool wall_should_be_highlighted(const struct PlaceEditor *pe, const struc
 struct ToShow {
 	struct Wall walls[MAX_WALLS];
 	int nwalls;
-	struct Ellipsoid els[3];
+	struct Ellipsoid els[2 + MAX_ENEMIES];
 	int nels;
 };
 
@@ -632,10 +655,10 @@ static void show_editor(struct PlaceEditor *pe)
 	select.nwalls = select.nels = 0;
 	front.nwalls = front.nels = 0;
 
-	for (int i = 0; i < pe->neledits; i++) {
-		pe->eledits[i].el.highlighted =
+	for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(pe, &ee); ) {
+		ee->el.highlighted =
 			(pe->sel.mode == SEL_ELLIPSOID || pe->sel.mode == SEL_MVELLIPSOID)
-			&& pe->sel.data.eledit == &pe->eledits[i];
+			&& pe->sel.data.eledit == ee;
 	}
 
 	struct Wall *hlwall;  // to figure out what's in front or behind highlighted stuff
@@ -663,11 +686,11 @@ static void show_editor(struct PlaceEditor *pe)
 				behind.walls[behind.nwalls++] = *w;
 		}
 
-		for (int i = 0; i < pe->neledits; i++) {
-			if (wall_side(hlwall, pe->eledits[i].el.center) == wall_side(hlwall, pe->cam.location))
-				front.els[front.nels++] = pe->eledits[i].el;
+		for (const struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit_const(pe, &ee); ) {
+			if (wall_side(hlwall, ee->el.center) == wall_side(hlwall, pe->cam.location))
+				front.els[front.nels++] = ee->el;
 			else
-				behind.els[behind.nels++] = pe->eledits[i].el;
+				behind.els[behind.nels++] = ee->el;
 		}
 	} else {
 		// Everything is "behind", could also use front
@@ -675,9 +698,8 @@ static void show_editor(struct PlaceEditor *pe)
 		for (int i=0; i < behind.nwalls; i++)
 			behind.walls[i] = pe->place->walls[i];
 
-		behind.nels = pe->neledits;
-		for (int i = 0; i < pe->neledits; i++)
-			behind.els[i] = pe->eledits[i].el;
+		for (const struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit_const(pe, &ee); )
+			behind.els[behind.nels++] = ee->el;
 	}
 
 	show_all(behind.walls, behind.nwalls, false, behind.els, behind.nels, &pe->cam);
@@ -787,7 +809,7 @@ enum MiscState editplace_run(
 		.sel = { .mode = SEL_NONE },
 		.state = MISC_STATE_EDITPLACE,
 		.place = pl,
-		.eledits = {
+		.playeredits = {
 			{
 				.el = {
 					.xzradius = PLAYER_XZRADIUS,
@@ -806,16 +828,7 @@ enum MiscState editplace_run(
 				},
 				.loc = &pl->playerlocs[1],
 			},
-			{
-				.el = {
-					.xzradius = ENEMY_XZRADIUS,
-					.yradius = ENEMY_YRADIUS,
-					.epic = enemy_getfirstepic()
-				},
-				.loc = &pl->enemyloc,
-			},
 		},
-		.neledits = 3,
 		.cam = {
 			.screencentery = 0,
 			.surface = misc_create_cropped_surface(wndsurf, (SDL_Rect){
@@ -848,9 +861,21 @@ enum MiscState editplace_run(
 		},
 	};
 
+	for (int i = 0; i < pl->nenemylocs; i++) {
+		pe.enemyedits[i] = (struct EllipsoidEdit){
+			.el = {
+				.xzradius = ENEMY_XZRADIUS,
+				.yradius = ENEMY_YRADIUS,
+				.epic = enemy_getfirstepic(),  // TODO: first --> random
+			},
+			.loc = &pl->enemylocs[i],
+		};
+	}
+
 	deldata.editor = &pe;
-	for (int i = 0; i < pe.neledits; i++)
-		ellipsoid_update_transforms(&pe.eledits[i].el);
+
+	for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(&pe, &ee); )
+		ellipsoid_update_transforms(&ee->el);
 
 	struct LoopTimer lt = {0};
 
@@ -870,10 +895,10 @@ enum MiscState editplace_run(
 			redraw = true;
 
 		if (redraw) {
-			for (int i = 0; i < pe.neledits; i++) {
-				pe.eledits[i].el.center.x = pe.eledits[i].loc->x + 0.5f;
-				pe.eledits[i].el.center.z = pe.eledits[i].loc->z + 0.5f;
-				ellipsoid_update_transforms(&pe.eledits[i].el);
+			for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(&pe, &ee); ) {
+				ee->el.center.x = ee->loc->x + 0.5f;
+				ee->el.center.z = ee->loc->z + 0.5f;
+				ellipsoid_update_transforms(&ee->el);
 			}
 			rotate_camera(&pe, pe.rotatedir * 3.0f);
 
