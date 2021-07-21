@@ -340,7 +340,7 @@ static void manhattan_spiral(struct PlaceCoords *p, struct PlaceCoords center)
 		p->x--;
 		p->z++;
 	} else if (p->x <= center.x && p->z > center.z) {
-		p->x++;
+		p->x--;
 		p->z--;
 	} else if (p->x < center.x && p->z <= center.z) {
 		p->x++;
@@ -372,11 +372,18 @@ static bool point_is_available(const struct Place *pl, const struct PlaceCoords 
 	return true;
 }
 
-static void fix_location(const struct Place *pl, struct PlaceCoords *p)
+static void fix_location(const struct Place *pl, struct PlaceCoords *ptr)
 {
-	struct PlaceCoords center = *p;
-	while (!point_is_available(pl, *p))
-		manhattan_spiral(p, center);
+	struct PlaceCoords center = *ptr;
+	struct PlaceCoords p = *ptr;
+
+	// If there's a different location overlapping, this has to move
+	// Make it temporary disappear from the world, so we won't see it when looking for free place
+	*ptr = (struct PlaceCoords){ -1, -1 };
+
+	while (!point_is_available(pl, p))
+		manhattan_spiral(&p, center);
+	*ptr = p;
 }
 
 static void ensure_players_and_enemies_are_inside_the_place_and_dont_overlap(struct Place *pl)
