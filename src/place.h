@@ -22,7 +22,7 @@ struct Place {
 // Result array must be free()d
 struct Place *place_list(int *nplaces);
 
-// asserts that we are not hitting max number of walls/e
+// asserts that we are not hitting max number of walls
 void place_addwall(struct Place *pl, int x, int z, enum WallDirection dir);
 
 // find a location where there is not enemy or player
