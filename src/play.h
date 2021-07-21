@@ -3,7 +3,6 @@
 #ifndef PLAY_H
 #define PLAY_H
 
-#include <stdbool.h>
 #include <SDL2/SDL.h>
 #include "ellipsoid.h"
 #include "misc.h"

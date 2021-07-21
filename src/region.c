@@ -1,5 +1,10 @@
 #include "region.h"
-#include "log.h"
+#include <SDL2/SDL.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include "mathstuff.h"
+#include "max.h"
+#include "wall.h"
 
 static bool exists_wall_between_points(const struct Place *pl, struct PlaceCoords p1, struct PlaceCoords p2)
 {

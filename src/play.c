@@ -10,7 +10,6 @@
 #include "guard.h"
 #include "log.h"
 #include "looptimer.h"
-#include "mathstuff.h"
 #include "max.h"
 #include "misc.h"
 #include "place.h"

@@ -3,7 +3,6 @@
 #ifndef CHOOSER_H
 #define CHOOSER_H
 
-#include <stdbool.h>
 #include <SDL2/SDL.h>
 #include "button.h"
 #include "camera.h"
