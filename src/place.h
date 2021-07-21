@@ -22,8 +22,12 @@ struct Place {
 // Result array must be free()d
 struct Place *place_list(int *nplaces);
 
-// asserts that we are not hitting max number of walls
+// asserts that we are not hitting max number of walls/e
 void place_addwall(struct Place *pl, int x, int z, enum WallDirection dir);
+
+// find a location where there is not enemy or player
+// new location is usually near hint, but could be far if place e.g. contains lots of enemies
+struct PlaceCoords place_findempty(const struct Place *pl, struct PlaceCoords hint);
 
 // Moves playerlocs, enemies and walls
 // needs place_fix()

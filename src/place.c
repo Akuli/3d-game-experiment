@@ -372,18 +372,30 @@ static bool point_is_available(const struct Place *pl, const struct PlaceCoords 
 	return true;
 }
 
+static struct PlaceCoords findempty_without_the_check(const struct Place *pl, struct PlaceCoords hint)
+{
+	struct PlaceCoords p = hint;
+	while (!point_is_available(pl, p))
+		manhattan_spiral(&p, hint);
+	return p;
+}
+
+struct PlaceCoords place_findempty(const struct Place *pl, struct PlaceCoords hint)
+{
+	SDL_assert(2 + pl->nenemylocs < pl->xsize*pl->zsize);   // must not be full
+	return findempty_without_the_check(pl, hint);
+}
+
 static void fix_location(const struct Place *pl, struct PlaceCoords *ptr)
 {
-	struct PlaceCoords center = *ptr;
-	struct PlaceCoords p = *ptr;
+	SDL_assert(2 + pl->nenemylocs <= pl->xsize*pl->zsize);
+	struct PlaceCoords hint = *ptr;
 
-	// If there's a different location overlapping, this has to move
 	// Make it temporary disappear from the world, so we won't see it when looking for free place
+	// Prevents it from always moving, but still moves in case of overlaps
+	// Also ensures there's enough room for it
 	*ptr = (struct PlaceCoords){ -1, -1 };
-
-	while (!point_is_available(pl, p))
-		manhattan_spiral(&p, center);
-	*ptr = p;
+	*ptr = findempty_without_the_check(pl, hint);
 }
 
 static void ensure_players_and_enemies_are_inside_the_place_and_dont_overlap(struct Place *pl)

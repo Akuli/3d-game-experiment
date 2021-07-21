@@ -44,10 +44,12 @@ struct PlaceEditor {
 	struct EllipsoidEdit enemyedits[MAX_ENEMIES];
 	struct Camera cam;
 	int rotatedir;
-	struct Button deletebtn, donebtn;
+	struct Button delplacebtn, donebtn;
+	struct Button addenemybtn, delenemybtn;
 	struct Selection sel;
 	bool mousemoved;
 	bool up, down, left, right;   // are arrow keys pressed
+	bool redraw;
 };
 
 bool next_ellipsoid_edit(struct PlaceEditor *pe, struct EllipsoidEdit **ptr)
@@ -496,8 +498,10 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 {
 	float pi = acosf(-1);
 
-	button_handle_event(e, &pe->deletebtn);
+	button_handle_event(e, &pe->delplacebtn);
 	button_handle_event(e, &pe->donebtn);
+	button_handle_event(e, &pe->addenemybtn);
+	button_handle_event(e, &pe->delenemybtn);
 
 	// If "Yes, delete this place" button was clicked and the place no longer
 	// exists, we must avoid handling the click event again
@@ -711,6 +715,52 @@ static void show_editor(struct PlaceEditor *pe)
 	show_all(front.walls,  front.nwalls,  false, front.els,  front.nels,  &pe->cam);
 }
 
+static void add_enemy(void *editorptr)
+{
+	struct PlaceEditor *pe = editorptr;
+	if (pe->place->nenemylocs == MAX_ENEMIES) {  // TODO: disable button
+		log_printf("can't add more enemies, running into MAX_ENEMIES = %d", MAX_ENEMIES);
+		return;
+	}
+
+	struct PlaceCoords hint;
+	switch(pe->sel.mode) {
+		case SEL_ELLIPSOID:
+		case SEL_MVELLIPSOID:
+			hint = *pe->sel.data.eledit->loc;
+			break;
+		case SEL_WALL:
+			hint = (struct PlaceCoords){ pe->sel.data.wall.startx, pe->sel.data.wall.startz };
+			break;
+		case SEL_MVWALL:
+			hint = (struct PlaceCoords){ pe->sel.data.mvwall->startx, pe->sel.data.mvwall->startz };
+			break;
+		default:
+			hint = (struct PlaceCoords){0,0};
+			break;
+	}
+
+	// evaluation order rules troll me
+	struct PlaceCoords c = place_findempty(pe->place, hint);
+	pe->place->enemylocs[pe->place->nenemylocs++] = c;
+	pe->redraw = true;
+}
+
+static void remove_enemy(void *editorptr)
+{
+	// TODO: if enemy selected, remove it instead of an arbitrary enemy
+	struct PlaceEditor *pe = editorptr;
+	if (pe->place->nenemylocs > 0) {  // TODO: disable button
+		pe->place->nenemylocs--;
+		pe->redraw = true;
+	}
+}
+
+static void set_to_true(void *ptr)
+{
+	*(bool *)ptr = true;
+}
+
 static void on_done_clicked(void *data)
 {
 	struct PlaceEditor *pe = data;
@@ -724,11 +774,6 @@ struct DeleteData {
 	struct Place *places;
 	int *nplaces;
 };
-
-static void set_to_true(void *ptr)
-{
-	*(bool *)ptr = true;
-}
 
 static void confirm_delete(void *ptr)
 {
@@ -849,7 +894,7 @@ enum MiscState editplace_run(
 			.onclick = on_done_clicked,
 			.onclickdata = &pe,
 		},
-		.deletebtn = {
+		.delplacebtn = {
 			.text = "Delete\nthis place",
 			.destsurf = wndsurf,
 			.center = {
@@ -859,9 +904,30 @@ enum MiscState editplace_run(
 			.onclick = confirm_delete,
 			.onclickdata = &deldata,
 		},
+		.addenemybtn = {
+			.text = "Add\nenemy",
+			.destsurf = wndsurf,
+			.center = {
+				CAMERA_SCREEN_WIDTH - button_width(0)/2,
+				button_height(0)/2
+			},
+			.onclick = add_enemy,
+			.onclickdata = &pe,
+		},
+		.delenemybtn = {
+			.text = "Remove\nenemy",
+			.destsurf = wndsurf,
+			.center = {
+				CAMERA_SCREEN_WIDTH - button_width(0)/2,
+				button_height(0)*3/2
+			},
+			.onclick = remove_enemy,
+			.onclickdata = &pe,
+		},
 	};
 
-	for (int i = 0; i < pl->nenemylocs; i++) {
+	// Fill all the way to max so don't have to ever do this again, even if add more enemies
+	for (int i = 0; i < MAX_ENEMIES; i++) {
 		pe.enemyedits[i] = (struct EllipsoidEdit){
 			.el = {
 				.xzradius = ENEMY_XZRADIUS,
@@ -870,7 +936,10 @@ enum MiscState editplace_run(
 			},
 			.loc = &pl->enemylocs[i],
 		};
+		ellipsoid_update_transforms(&pe.enemyedits[i].el);
 	}
+	ellipsoid_update_transforms(&pe.playeredits[0].el);
+	ellipsoid_update_transforms(&pe.playeredits[1].el);
 
 	deldata.editor = &pe;
 
@@ -879,22 +948,22 @@ enum MiscState editplace_run(
 
 	struct LoopTimer lt = {0};
 
-	for (bool redraw = true; ; redraw = false) { // First iteration always redraws
+	for (pe.redraw = true; ; pe.redraw = false) { // First iteration always redraws
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
 			if (e.type == SDL_QUIT)
 				return MISC_STATE_QUIT;
 
 			if (handle_event(&pe, &e))
-				redraw = true;
+				pe.redraw = true;
 			if (pe.state != MISC_STATE_EDITPLACE)
 				return pe.state;
 		}
 
 		if (pe.rotatedir != 0)
-			redraw = true;
+			pe.redraw = true;
 
-		if (redraw) {
+		if (pe.redraw) {
 			for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(&pe, &ee); ) {
 				ee->el.center.x = ee->loc->x + 0.5f;
 				ee->el.center.z = ee->loc->z + 0.5f;
@@ -905,7 +974,9 @@ enum MiscState editplace_run(
 			SDL_FillRect(wndsurf, NULL, 0);
 			show_editor(&pe);
 			button_show(&pe.donebtn);
-			button_show(&pe.deletebtn);
+			button_show(&pe.delplacebtn);
+			button_show(&pe.addenemybtn);
+			button_show(&pe.delenemybtn);
 		}
 
 		SDL_UpdateWindowSurface(wnd);  // Run every time, in case buttons redraw themselves
