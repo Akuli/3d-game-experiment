@@ -147,12 +147,11 @@ int main(int argc, char **argv)
 
 		case MISC_STATE_PLAY:
 			log_printf(
-				"playing the game begins (place from \"%s\", enemies %s)",
-				ch.placech.places[ch.placech.placeidx].path,
-				ch.withoutenemies ? "disabled" : "enabled");
+				"playing the game begins with place from \"%s\"",
+				ch.placech.places[ch.placech.placeidx].path);
 			s = play_the_game(
 				wnd, ch.playerch[0].epic, ch.playerch[1].epic, &winner,
-				&ch.placech.places[ch.placech.placeidx], !ch.withoutenemies);
+				&ch.placech.places[ch.placech.placeidx]);
 			break;
 
 		case MISC_STATE_GAMEOVER:

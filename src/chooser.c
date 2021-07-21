@@ -230,26 +230,8 @@ static void select_prev_next_place(struct ChooserPlaceStuff *ch, int diff)
 static void select_prev_place(void *ch) { select_prev_next_place(ch, -1); }
 static void select_next_place(void *ch) { select_prev_next_place(ch, +1); }
 
-// x and y are mouse location
-static void show_or_hide_without_enemies_text(struct Chooser *ch, int x, int y)
+static void handle_event(const SDL_Event *evt, struct Chooser *ch)
 {
-	SDL_Rect r = ch->withoutenemiesrect;
-	bool hovering = (r.x <= x && x <= r.x+r.w && r.y <= y && y <= r.y+r.h);
-	if (ch->withoutenemies == hovering)
-		return;
-
-	if (hovering)
-		SDL_BlitSurface(ch->withoutenemiestxt, NULL, ch->winsurf, &r);
-	else
-		SDL_FillRect(ch->winsurf, &r, 0);
-	ch->withoutenemies = hovering;
-}
-
-static enum MiscState handle_event(const SDL_Event *evt, struct Chooser *ch)
-{
-	if (evt->type == SDL_QUIT)
-		return MISC_STATE_QUIT;
-
 	for (int i = 0; i < 2; i++) {
 		button_handle_event(evt, &ch->playerch[i].prevbtn);
 		button_handle_event(evt, &ch->playerch[i].nextbtn);
@@ -259,13 +241,6 @@ static enum MiscState handle_event(const SDL_Event *evt, struct Chooser *ch)
 	button_handle_event(evt, &ch->placech.editbtn);
 	button_handle_event(evt, &ch->placech.cpbtn);
 	button_handle_event(evt, &ch->bigplaybtn);
-
-	if (evt->type == SDL_MOUSEMOTION)
-		show_or_hide_without_enemies_text(ch, evt->motion.x, evt->motion.y);
-	if (evt->type == SDL_MOUSEBUTTONUP && ch->withoutenemies)
-		return MISC_STATE_PLAY;
-
-	return MISC_STATE_CHOOSER;
 }
 
 static void set_to_true(void *ptr)
@@ -356,16 +331,8 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				// onclickdata is set in chooser_run()
 			},
 		},
-		.withoutenemiestxt = misc_create_text_surface("Practice without enemies", white_color, 10),
 	};
 	ch->placech.places = place_list(&ch->placech.nplaces);
-
-	ch->withoutenemiesrect = (SDL_Rect){
-		20,
-		CAMERA_SCREEN_HEIGHT - ch->withoutenemiestxt->h - 20,
-		ch->withoutenemiestxt->w,
-		ch->withoutenemiestxt->h,
-	};
 
 	ch->placech.prevbtn.onclickdata = &ch->placech;
 	ch->placech.nextbtn.onclickdata = &ch->placech;
@@ -380,7 +347,6 @@ void chooser_destroy(const struct Chooser *ch)
 	SDL_FreeSurface(ch->playerch[0].cam.surface);
 	SDL_FreeSurface(ch->playerch[1].cam.surface);
 	SDL_FreeSurface(ch->placech.cam.surface);
-	SDL_FreeSurface(ch->withoutenemiestxt);
 	free(ch->placech.places);
 }
 
@@ -420,9 +386,9 @@ enum MiscState chooser_run(struct Chooser *ch)
 	while(1) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
-			enum MiscState s = handle_event(&e, ch);
-			if (s != MISC_STATE_CHOOSER)
-				return s;
+			if (e.type == SDL_QUIT)
+				return MISC_STATE_QUIT;
+			handle_event(&e, ch);
 		}
 
 		if (playclicked)
