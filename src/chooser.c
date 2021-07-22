@@ -18,8 +18,8 @@
 #define FONT_SIZE 40
 
 #define PLAYER_CHOOSER_HEIGHT ( CAMERA_SCREEN_HEIGHT/2 )
-#define PLACE_CHOOSER_HEIGHT (CAMERA_SCREEN_HEIGHT - PLAYER_CHOOSER_HEIGHT)
-#define PLACE_CHOOSER_WIDTH (CAMERA_SCREEN_WIDTH - button_width(BUTTON_BIG))
+#define MAP_CHOOSER_HEIGHT (CAMERA_SCREEN_HEIGHT - PLAYER_CHOOSER_HEIGHT)
+#define MAP_CHOOSER_WIDTH (CAMERA_SCREEN_WIDTH - button_width(BUTTON_BIG))
 
 #define ELLIPSOID_XZ_DISTANCE_FROM_ORIGIN 2.0f
 #define CAMERA_XZ_DISTANCE_FROM_ORIGIN 5.0f
@@ -266,8 +266,8 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 			.destsurf = winsurf,
 			.scancodes = { SDL_SCANCODE_RETURN, SDL_SCANCODE_SPACE },
 			.center = {
-				(PLACE_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
-				CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT/2 - button_height(BUTTON_BIG)/2,
+				(MAP_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
+				CAMERA_SCREEN_HEIGHT - MAP_CHOOSER_HEIGHT/2 - button_height(BUTTON_BIG)/2,
 			},
 			.onclick = set_to_true,
 			// onclickdata is set in chooser_run()
@@ -276,12 +276,12 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 			// maps and nmaps loaded below
 			.mapidx = 0,
 			.cam = {
-				.screencentery = -0.55f*PLACE_CHOOSER_HEIGHT,
+				.screencentery = -0.55f*MAP_CHOOSER_HEIGHT,
 				.surface = misc_create_cropped_surface(winsurf, (SDL_Rect){
 					0,
-					CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT + button_height(mapchflags),
-					PLACE_CHOOSER_WIDTH,
-					PLACE_CHOOSER_HEIGHT - 2*button_height(mapchflags)
+					CAMERA_SCREEN_HEIGHT - MAP_CHOOSER_HEIGHT + button_height(mapchflags),
+					MAP_CHOOSER_WIDTH,
+					MAP_CHOOSER_HEIGHT - 2*button_height(mapchflags)
 				}),
 				.angle = 0,
 			},
@@ -291,8 +291,8 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				.destsurf = winsurf,
 				.scancodes = { SDL_SCANCODE_W, SDL_SCANCODE_UP },
 				.center = {
-					PLACE_CHOOSER_WIDTH/2,
-					CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT + button_height(mapchflags)/2,
+					MAP_CHOOSER_WIDTH/2,
+					CAMERA_SCREEN_HEIGHT - MAP_CHOOSER_HEIGHT + button_height(mapchflags)/2,
 				},
 				.onclick = select_prev_map,
 			},
@@ -302,7 +302,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				.destsurf = winsurf,
 				.scancodes = { SDL_SCANCODE_S, SDL_SCANCODE_DOWN },
 				.center = {
-					PLACE_CHOOSER_WIDTH/2,
+					MAP_CHOOSER_WIDTH/2,
 					CAMERA_SCREEN_HEIGHT - button_height(mapchflags)/2,
 				},
 				.onclick = select_next_map,
@@ -313,7 +313,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				.destsurf = winsurf,
 				.scancodes = { SDL_SCANCODE_E },
 				.center = {
-					(PLACE_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
+					(MAP_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
 					CAMERA_SCREEN_HEIGHT - button_height(0)*3/2
 				},
 				.onclick = set_to_true,
@@ -325,7 +325,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				.destsurf = winsurf,
 				.scancodes = { SDL_SCANCODE_C },
 				.center = {
-					(PLACE_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
+					(MAP_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
 					CAMERA_SCREEN_HEIGHT - button_height(0)/2,
 				},
 				.onclick = set_to_true,

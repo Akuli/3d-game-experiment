@@ -57,7 +57,7 @@ static bool exists_wall_between_points(const struct Map *map, struct MapCoords p
 
 int region_size(const struct Map *map, struct MapCoords start)
 {
-	char region[MAX_PLACE_SIZE][MAX_PLACE_SIZE] = {0};
+	char region[MAX_MAP_SIZE][MAX_MAP_SIZE] = {0};
 	struct MapCoords *todo = malloc(sizeof todo[0]);
 	SDL_assert(todo);
 	todo[0] = start;
@@ -98,8 +98,8 @@ int region_size(const struct Map *map, struct MapCoords start)
 	free(todo);
 
 	int count = 0;
-	for (int x = 0; x < MAX_PLACE_SIZE; x++) {
-		for (int z = 0; z < MAX_PLACE_SIZE; z++) {
+	for (int x = 0; x < MAX_MAP_SIZE; x++) {
+		for (int z = 0; z < MAX_MAP_SIZE; z++) {
 			if (region[x][z])
 				count++;
 		}

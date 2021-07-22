@@ -1,5 +1,5 @@
-#ifndef PLACE_H
-#define PLACE_H
+#ifndef MAP_H
+#define MAP_H
 
 #include <stdbool.h>
 #include "max.h"
@@ -46,4 +46,4 @@ int map_copy(struct Map **maps, int *nmaps, int srcidx);
 void map_delete(struct Map *maps, int *nmaps, int srcidx);
 
 
-#endif   // PLACE_H
+#endif   // MAP_H

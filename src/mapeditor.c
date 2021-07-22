@@ -22,7 +22,7 @@ struct EllipsoidEdit {
 
 enum SelectMode { SEL_NONE, SEL_RESIZE, SEL_WALL, SEL_MVWALL, SEL_ELLIPSOID, SEL_MVELLIPSOID };
 struct ResizeData {
-	struct Wall *walls[MAX_PLACE_SIZE];
+	struct Wall *walls[MAX_MAP_SIZE];
 	int nwalls;
 	struct Wall mainwall;  // This is the wall whose border is highlighted during resize
 	bool negative;   // true if shrinks/expands in negative x or z direction
@@ -150,20 +150,20 @@ static void keep_wall_within_map(const struct MapEditor *pe, struct Wall *w, boo
 		switch(w->dir) {
 			case WALL_DIR_XY:
 				if (pe->sel.data.resize.negative) {
-					zmin = pe->map->zsize - MAX_PLACE_SIZE;
+					zmin = pe->map->zsize - MAX_MAP_SIZE;
 					zmax = pe->map->zsize - 2;
 				} else {
 					zmin = 2;
-					zmax = MAX_PLACE_SIZE;
+					zmax = MAX_MAP_SIZE;
 				}
 				break;
 			case WALL_DIR_ZY:
 				if (pe->sel.data.resize.negative) {
-					xmin = pe->map->xsize - MAX_PLACE_SIZE;
+					xmin = pe->map->xsize - MAX_MAP_SIZE;
 					xmax = pe->map->xsize - 2;
 				} else {
 					xmin = 2;
-					xmax = MAX_PLACE_SIZE;
+					xmax = MAX_MAP_SIZE;
 				}
 				break;
 		}
