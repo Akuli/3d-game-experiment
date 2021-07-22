@@ -742,6 +742,7 @@ static void add_enemy(void *editorptr)
 	// evaluation order rules troll me
 	struct MapCoords c = map_findempty(ed->map, hint);
 	ed->map->enemylocs[ed->map->nenemylocs++] = c;
+	map_save(ed->map);
 	ed->redraw = true;
 }
 
@@ -752,6 +753,7 @@ static void remove_enemy(void *editorptr)
 	log_printf("%d enemies, removing the last one", ed->map->nenemylocs);
 	SDL_assert(ed->map->nenemylocs > 0);  // button should be disabled if not
 	ed->map->nenemylocs--;
+	map_save(ed->map);
 	ed->redraw = true;
 }
 
