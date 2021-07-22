@@ -3,7 +3,6 @@
 #ifndef PLAY_H
 #define PLAY_H
 
-#include <stdbool.h>
 #include <SDL2/SDL.h>
 #include "ellipsoid.h"
 #include "misc.h"
@@ -14,7 +13,7 @@ enum MiscState play_the_game(
 	SDL_Window *wnd,
 	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic,
 	const struct EllipsoidPic **winnerpic,
-	const struct Place *pl, bool enemies);
+	const struct Place *pl);
 
 
 #endif   // PLAY_H

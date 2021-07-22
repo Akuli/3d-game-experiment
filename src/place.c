@@ -24,8 +24,6 @@ Small language for specifying places in files:
 - content of square doesn't have to be spaces like above, can also be:
 	- 'p': initial player place (need two of these in the place)
 	- 'e': initial place for enemies (need one of these in the place)
-	- 'E': add an enemy that never dies. Use this for places otherwise unreacahble
-	  by enemies
 - any of the '--' or '|' walls may be replaced with spaces, that means no wall
 - each line is padded with spaces to have same length
 - must have these walls:
@@ -100,18 +98,15 @@ static void parse_square_content(char c, struct SquareParsingState *st)
 	case ' ':
 		break;
 	case 'e':
-		st->place->enemyloc = st->loc;
-		break;
-	case 'E':
-		SDL_assert(st->place->nneverdielocs < MAX_ENEMIES);
-		st->place->neverdielocs[st->place->nneverdielocs++] = st->loc;
+		SDL_assert(st->place->nenemylocs < MAX_ENEMIES);
+		st->place->enemylocs[st->place->nenemylocs++] = st->loc;
 		break;
 	case 'p':
 		SDL_assert(st->place->playerlocs <= st->playerlocptr && st->playerlocptr < st->place->playerlocs + 2);
 		*st->playerlocptr++ = st->loc;
 		break;
 	default:
-		log_printf_abort("expected ' ', 'e', 'E' or 'p', got '%c'", c);
+		log_printf_abort("expected ' ', 'e' or 'p', got '%c'", c);
 	}
 }
 
@@ -131,8 +126,7 @@ static void print_place_info(const struct Place *pl)
 	log_printf("    custom = %s", pl->custom ? "true" : "false");
 	log_printf("    size %dx%d", pl->xsize, pl->zsize);
 	log_printf("    %d walls", pl->nwalls);
-	log_printf("    %d enemies that never die", pl->nneverdielocs);
-	log_printf("    enemies go to x=%d z=%d", pl->enemyloc.x, pl->enemyloc.z);
+	log_printf("    %d enemy locations", pl->nenemylocs);
 	for (int i = 0; i < 2; i++)
 		log_printf("    player %d goes to x=%d z=%d", i, pl->playerlocs[i].x, pl->playerlocs[i].z);
 }
@@ -249,15 +243,13 @@ void place_movecontent(struct Place *pl, int dx, int dz)
 		pl->walls[i].startz += dz;
 		wall_init(&pl->walls[i]);
 	}
-	pl->enemyloc.x += dx;
-	pl->enemyloc.z += dz;
 	for (int i = 0; i < 2; i++) {
 		pl->playerlocs[i].x += dx;
 		pl->playerlocs[i].z += dz;
 	}
-	for (int i = 0; i < pl->nneverdielocs; i++) {
-		pl->neverdielocs[i].x += dx;
-		pl->neverdielocs[i].z += dz;
+	for (int i = 0; i < pl->nenemylocs; i++) {
+		pl->enemylocs[i].x += dx;
+		pl->enemylocs[i].z += dz;
 	}
 }
 
@@ -324,63 +316,96 @@ static void add_missing_walls_around_edges(struct Place *pl)
 	}
 }
 
-// Assumes the enemies are not off in the negative direction
-static void move_players_and_enemies_inside_the_place(struct Place *pl)
+/*
+When called repeatedly, spirals around center like this (0 = center = called 0 times):
+
+	   z
+	/|\        .
+	 |      7   '.
+	 |   8  2  6  14
+	 |9  3  0  1  5  13
+	 |   10 4  12
+	 |      11
+	 |
+	  ------------->  x
+
+Note that manhattan distance (see wikipedia) between center and the spiral points
+never decreases, hence the name.
+*/
+static void manhattan_spiral(struct PlaceCoords *p, struct PlaceCoords center)
 {
-	clamp(&pl->enemyloc.x, 0, pl->xsize-1);
-	clamp(&pl->enemyloc.z, 0, pl->zsize-1);
-	for (int p=0; p<2; p++) {
-		clamp(&pl->playerlocs[p].x, 0, pl->xsize-1);
-		clamp(&pl->playerlocs[p].z, 0, pl->zsize-1);
+	if (p->x > center.x && p->z >= center.z) {
+		p->x--;
+		p->z++;
+	} else if (p->x <= center.x && p->z > center.z) {
+		p->x--;
+		p->z--;
+	} else if (p->x < center.x && p->z <= center.z) {
+		p->x++;
+		p->z--;
+	} else if (p->x >= center.x && p->z < center.z) {
+		p->x++;
+		p->z++;
 	}
-	for (int i = 0; i < pl->nneverdielocs; i++) {
-		clamp(&pl->neverdielocs[i].x, 0, pl->xsize-1);
-		clamp(&pl->neverdielocs[i].z, 0, pl->zsize-1);
+
+	if (p->x >= center.x && p->z == center.z) {
+		// Move further away from center
+		p->x++;
 	}
 }
 
-static void ensure_player_doesnt_overlap_other_player_or_enemy(
-	const struct Place *pl, struct PlaceCoords *player, struct PlaceCoords otherplayer)
+static bool point_is_available(const struct Place *pl, const struct PlaceCoords p)
 {
-	struct PlaceCoords choices[] = {
-		// Worst-case sceario is when player is at corner and place is only 2x2.
-		// Even then, one of these places will be available.
-		// TODO: neverdie enemies
-		{ player->x    , player->z     },
-		{ player->x - 1, player->z     },
-		{ player->x + 1, player->z     },
-		{ player->x    , player->z - 1 },
-		{ player->x    , player->z + 1 },
-	};
-	struct PlaceCoords used[] = {
-		{ pl->enemyloc.x, pl->enemyloc.z },
-		{ otherplayer.x,  otherplayer.z  },
-	};
+	if (p.x < 0 || p.x >= pl->xsize || p.z < 0 || p.z >= pl->zsize)
+		return false;
 
-	for (int c = 0; c < sizeof(choices)/sizeof(choices[0]); c++) {
-		if (choices[c].x < 0 || choices[c].x >= pl->xsize ||
-			choices[c].z < 0 || choices[c].z >= pl->zsize)
-		{
-			continue;
-		}
-
-		bool inuse = false;
-		for (int u = 0; u < sizeof(used)/sizeof(used[0]); u++) {
-			if (choices[c].x == used[u].x && choices[c].z == used[u].z) {
-				inuse = true;
-				break;
-			}
-		}
-		if (inuse)
-			continue;
-
-		*player = choices[c];
-		return;
+	for (int i=0; i<2; i++) {
+		if (pl->playerlocs[i].x == p.x && pl->playerlocs[i].z == p.z)
+			return false;
 	}
-	log_printf_abort("the impossible happened: no place found for player");
+	for (int i = 0; i < pl->nenemylocs; i++) {
+		if (pl->enemylocs[i].x == p.x && pl->enemylocs[i].z == p.z)
+			return false;
+	}
+	return true;
 }
 
-// FIXME: neverdielocs
+static struct PlaceCoords findempty_without_the_check(const struct Place *pl, struct PlaceCoords hint)
+{
+	struct PlaceCoords p = hint;
+	while (!point_is_available(pl, p))
+		manhattan_spiral(&p, hint);
+	return p;
+}
+
+struct PlaceCoords place_findempty(const struct Place *pl, struct PlaceCoords hint)
+{
+	SDL_assert(2 + pl->nenemylocs < pl->xsize*pl->zsize);   // must not be full
+	return findempty_without_the_check(pl, hint);
+}
+
+static void fix_location(const struct Place *pl, struct PlaceCoords *ptr)
+{
+	SDL_assert(2 + pl->nenemylocs <= pl->xsize*pl->zsize);
+	struct PlaceCoords hint = *ptr;
+
+	// Make it temporary disappear from the world, so we won't see it when looking for free place
+	// Prevents it from always moving, but still moves in case of overlaps
+	// Also ensures there's enough room for it
+	*ptr = (struct PlaceCoords){ -1, -1 };
+	*ptr = findempty_without_the_check(pl, hint);
+}
+
+static void ensure_players_and_enemies_are_inside_the_place_and_dont_overlap(struct Place *pl)
+{
+	clamp(&pl->nenemylocs, 0, pl->xsize*pl->zsize - 2);  // leave room for 2 players
+
+	for (int i=0; i<2; i++)
+		fix_location(pl, &pl->playerlocs[i]);
+	for (int i = 0; i < pl->nenemylocs; i++)
+		fix_location(pl, &pl->enemylocs[i]);
+}
+
 void place_fix(struct Place *pl)
 {
 	SDL_assert(2 <= pl->xsize && pl->xsize <= MAX_PLACE_SIZE);
@@ -389,9 +414,7 @@ void place_fix(struct Place *pl)
 	delete_walls_outside_the_place(pl);
 	delete_duplicate_walls(pl);
 	add_missing_walls_around_edges(pl);
-	move_players_and_enemies_inside_the_place(pl);
-	ensure_player_doesnt_overlap_other_player_or_enemy(pl, &pl->playerlocs[0], pl->playerlocs[1]);
-	ensure_player_doesnt_overlap_other_player_or_enemy(pl, &pl->playerlocs[1], pl->playerlocs[0]);
+	ensure_players_and_enemies_are_inside_the_place_and_dont_overlap(pl);
 }
 
 static void set_char(char *data, int linesz, int nlines, int x, int z, char c, int offset)
@@ -431,9 +454,10 @@ void place_save(const struct Place *pl)
 		}
 	}
 
-	set_char(data, linesz, nlines, pl->enemyloc.x, pl->enemyloc.z, 'e', 1);
 	for (int i = 0; i < 2; i++)
 		set_char(data, linesz, nlines, pl->playerlocs[i].x, pl->playerlocs[i].z, 'p', 1);
+	for (int i = 0; i < pl->nenemylocs; i++)
+		set_char(data, linesz, nlines, pl->enemylocs[i].x, pl->enemylocs[i].z, 'e', 1);
 
 	// Can get truncated if all data in one log message, maybe limitation in sdl2 logging
 	log_printf("Writing to \"%s\"", pl->path);

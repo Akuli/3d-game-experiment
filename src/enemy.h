@@ -18,7 +18,6 @@ enum EnemyDir {
 enum EnemyFlags {
 	ENEMY_STUCK = 0x01,     // can't move anywhere, so just spin without changing ellipsoid.center
 	ENEMY_TURNING = 0x02,   // soon will be looking into enemy->dir direction
-	ENEMY_NEVERDIE = 0x04,  // see place.c for description
 };
 
 struct Enemy {
@@ -30,10 +29,9 @@ struct Enemy {
 
 // call enemy_init_epics() once before calling enemy_new() as many times as you like
 void enemy_init_epics(const SDL_PixelFormat *fmt);
-struct Enemy enemy_new(const struct Place *pl, enum EnemyFlags fl);
+struct Enemy enemy_new(const struct Place *pl, struct PlaceCoords loc);
 
-// for place editor
-const struct EllipsoidPic *enemy_getfirstepic(void);
+const struct EllipsoidPic *enemy_getrandomepic(void);
 
 // runs fps times per second for each enemy
 void enemy_eachframe(struct Enemy *en);

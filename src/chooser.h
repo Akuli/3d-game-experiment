@@ -3,7 +3,6 @@
 #ifndef CHOOSER_H
 #define CHOOSER_H
 
-#include <stdbool.h>
 #include <SDL2/SDL.h>
 #include "button.h"
 #include "camera.h"
@@ -35,16 +34,11 @@ struct Chooser {
 	struct ChooserPlayerStuff playerch[2];
 	struct ChooserPlaceStuff placech;
 
-	// is "practice without enemies" easter egg selected?
-	bool withoutenemies;
-
 	// rest of this struct isn't meant to be used outside chooser.c
 	SDL_Window *win;
 	SDL_Surface *winsurf;
 	struct Ellipsoid ellipsoids[50];
 	struct Button bigplaybtn;
-	SDL_Surface *withoutenemiestxt;
-	SDL_Rect withoutenemiesrect;
 };
 
 /*
