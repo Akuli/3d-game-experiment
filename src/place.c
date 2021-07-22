@@ -10,7 +10,6 @@
 #include "max.h"
 #include "mathstuff.h"
 #include "misc.h"
-#include "region.h"
 
 #define COMPILE_TIME_STRLEN(s) (sizeof(s)-1)
 
