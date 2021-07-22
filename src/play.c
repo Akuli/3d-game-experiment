@@ -48,12 +48,17 @@ static bool time_to_do_something(unsigned *frameptr, unsigned thisframe, unsigne
 	return false;
 }
 
-static struct Enemy *add_enemy(struct GameState *gs, const struct MapCoords *coordptr)
+static void add_enemy(struct GameState *gs, const struct MapCoords *coordptr)
 {
+	if (gs->map->nenemylocs == 0) {  // avoid crash in "% 0" below
+		log_printf("map has no enemies");
+		return;
+	}
+
 	SDL_assert(gs->nenemies <= MAX_ENEMIES);
 	if (gs->nenemies == MAX_ENEMIES) {
 		log_printf("hitting MAX_ENEMIES=%d", MAX_ENEMIES);
-		return NULL;
+		return;
 	}
 
 	struct MapCoords pc;
@@ -78,9 +83,7 @@ static struct Enemy *add_enemy(struct GameState *gs, const struct MapCoords *coo
 		pc = gs->map->enemylocs[i];
 	}
 
-	struct Enemy *en = &gs->enemies[gs->nenemies++];
-	*en = enemy_new(gs->map,pc);
-	return en;
+	gs->enemies[gs->nenemies++] = enemy_new(gs->map, pc);
 }
 
 // runs each frame
