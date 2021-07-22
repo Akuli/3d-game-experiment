@@ -45,7 +45,7 @@ Map editor:
 - Selection: arrow keys
 - Add wall: Enter
 - Add enemy: E
-- Remove selected enemy or wall: Delete or right-click
+- Remove selected enemy or wall: Delete key or right-click
 - Move player, enemy or wall: drag and drop (no keyboard support yet)
 - Resizing the place: drag and drop (no keyboard support yet)
 - Done editing: Escape
