@@ -34,8 +34,8 @@ Small language for specifying maps in files:
 - NULL after last row
 */
 
-#define MAX_LINE_LEN (COMPILE_TIME_STRLEN("|--")*MAX_MAP_SIZE + COMPILE_TIME_STRLEN("|\n"))
-#define MAX_LINE_COUNT (2*MAX_MAP_SIZE + 1)
+#define MAX_LINE_LEN (COMPILE_TIME_STRLEN("|--")*MAX_MAPSIZE + COMPILE_TIME_STRLEN("|\n"))
+#define MAX_LINE_COUNT (2*MAX_MAPSIZE + 1)
 
 static const char *read_file_with_trailing_spaces_added(const char *path, int *nlines)
 {
@@ -282,10 +282,10 @@ static void delete_duplicate_walls(struct Map *map)
 
 static void add_missing_walls_around_edges(struct Map *map)
 {
-	bool foundx0[MAX_MAP_SIZE] = {0};
-	bool foundz0[MAX_MAP_SIZE] = {0};
-	bool foundxmax[MAX_MAP_SIZE] = {0};
-	bool foundzmax[MAX_MAP_SIZE] = {0};
+	bool foundx0[MAX_MAPSIZE] = {0};
+	bool foundz0[MAX_MAPSIZE] = {0};
+	bool foundxmax[MAX_MAPSIZE] = {0};
+	bool foundzmax[MAX_MAPSIZE] = {0};
 	for (const struct Wall *w = map->walls; w < &map->walls[map->nwalls]; w++) {
 		switch(w->dir) {
 			case WALL_DIR_XY:
@@ -408,8 +408,8 @@ static void ensure_players_and_enemies_are_inside_the_map_and_dont_overlap(struc
 
 void map_fix(struct Map *map)
 {
-	SDL_assert(2 <= map->xsize && map->xsize <= MAX_MAP_SIZE);
-	SDL_assert(2 <= map->zsize && map->zsize <= MAX_MAP_SIZE);
+	SDL_assert(2 <= map->xsize && map->xsize <= MAX_MAPSIZE);
+	SDL_assert(2 <= map->zsize && map->zsize <= MAX_MAPSIZE);
 
 	delete_walls_outside_the_map(map);
 	delete_duplicate_walls(map);
