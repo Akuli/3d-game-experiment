@@ -46,6 +46,12 @@ void sound_init(void)
 	*/
 	Mix_Init(0);
 
+	if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, 2, CHUNK_SIZE) == -1)
+	{
+		log_printf("Mix_OpenAudio failed: %s", Mix_GetError());
+		return;
+	}
+
 	/*
 	Make sure that we can play all the needed sounds at the same time, even
 	when smashing buttons. With 20 channels, I could barely smash buttons fast
@@ -53,12 +59,6 @@ void sound_init(void)
 	default seems to be 16 channels.
 	*/
 	Mix_AllocateChannels(32);
-
-	if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, 2, CHUNK_SIZE) == -1)
-	{
-		log_printf("Mix_OpenAudio failed: %s", Mix_GetError());
-		return;
-	}
 
 	glob_t gl = {0};
 	if (glob("assets/sounds/*.wav", GLOB_APPEND, NULL, &gl) != 0)
@@ -111,8 +111,13 @@ static Mix_Chunk *choose_sound(const char *pattern)
 void sound_play(const char *fnpattern)
 {
 	Mix_Chunk *c = choose_sound(fnpattern);
-	if (c != NULL && Mix_PlayChannel(-1, c, 0) == -1)
-		log_printf("Mix_PlayChannel failed: %s", Mix_GetError());
+	if (c != NULL) {
+		int chan = Mix_PlayChannel(-1, c, 0);
+		if (chan == -1)
+			log_printf("Mix_PlayChannel failed: %s", Mix_GetError());
+		else
+			log_printf("Playing on channel %d/%d", chan, Mix_AllocateChannels(-1));
+	}
 }
 
 void sound_deinit(void)
