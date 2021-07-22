@@ -448,6 +448,36 @@ static void on_arrow_key(struct MapEditor *ed, float angle, bool oppositespresse
 	}
 }
 
+static void delete_selected(struct MapEditor *ed)
+{
+	switch(ed->sel.mode) {
+		case SEL_ELLIPSOID:
+		{
+			struct EllipsoidEdit *ee = ed->sel.data.eledit;
+			// Watch out for ub, comparing pointers to different arrays is undefined
+			if (ee == &ed->playeredits[0] || ee == &ed->playeredits[1])
+				return;
+			SDL_assert(&ed->enemyedits[0] <= ee && ee < &ed->enemyedits[ed->map->nenemylocs]);
+			log_printf("there are %d enemies, removing one", ed->map->nenemylocs);
+
+			// Once ellipsoid location is deleted, must select something else
+			struct Wall w = { .startx = ee->loc->x, .startz = ee->loc->z };
+
+			*ee->loc = ed->map->enemylocs[--ed->map->nenemylocs];
+			ed->sel = (struct Selection){ .mode = SEL_WALL, .data = { .wall = w }};
+			map_save(ed->map);
+			break;
+		}
+
+		case SEL_WALL:
+			delete_wall(ed, &ed->sel.data.wall);
+			break;
+
+		default:
+			return;
+	}
+}
+
 static struct ResizeData begin_resize(const struct Wall *edgewall, struct Map *map)
 {
 	struct ResizeData rd = { .mainwall = *edgewall, .nwalls = 0 };
@@ -607,6 +637,9 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 					delete_wall(ed, &ed->sel.data.wall);
 			}
 			return true;
+		case SDL_SCANCODE_DELETE:
+			delete_selected(ed);
+			return true;
 		default:
 			return false;
 		}
@@ -678,6 +711,7 @@ static void show_editor(struct MapEditor *ed)
 		break;
 	default:
 		hlwall = NULL;
+		break;
 	}
 
 	if (hlwall) {
