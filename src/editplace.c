@@ -979,7 +979,6 @@ enum MiscState editplace_run(
 			for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(&pe, &ee); ) {
 				ee->el.center.x = ee->loc->x + 0.5f;
 				ee->el.center.z = ee->loc->z + 0.5f;
-				ellipsoid_update_transforms(&ee->el);
 			}
 			rotate_camera(&pe, pe.rotatedir * 3.0f);
 
