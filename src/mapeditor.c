@@ -52,7 +52,7 @@ struct MapEditor {
 	bool redraw;
 };
 
-bool next_ellipsoid_edit(struct MapEditor *ed, struct EllipsoidEdit **ptr)
+static bool next_ellipsoid_edit(struct MapEditor *ed, struct EllipsoidEdit **ptr)
 {
 	if (*ptr == NULL)
 		*ptr = &ed->playeredits[0];
@@ -69,7 +69,7 @@ bool next_ellipsoid_edit(struct MapEditor *ed, struct EllipsoidEdit **ptr)
 }
 
 // Hard to make it const-safe, but let's hide it in a function like any other ugly thing
-bool next_ellipsoid_edit_const(const struct MapEditor *ed, const struct EllipsoidEdit **ptr)
+static bool next_ellipsoid_edit_const(const struct MapEditor *ed, const struct EllipsoidEdit **ptr)
 {
 	return next_ellipsoid_edit((void*)ed, (void*)ptr);
 }
@@ -494,7 +494,7 @@ static void finish_resize(struct MapEditor *ed)
 }
 
 // Returns whether redrawing needed
-bool handle_event(struct MapEditor *ed, const SDL_Event *e)
+static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 {
 	float pi = acosf(-1);
 
