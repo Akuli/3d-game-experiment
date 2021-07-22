@@ -867,7 +867,8 @@ out:
 	SDL_FreeSurface(textsurf);
 }
 
-enum MiscState mapeditor_run(
+static void init_map_editor(
+	struct MapEditor *ed,
 	SDL_Window *wnd,
 	struct Map *maps, int *nmaps, int mapidx,
 	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic)
@@ -879,7 +880,7 @@ enum MiscState mapeditor_run(
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 	SDL_FillRect(wndsurf, NULL, 0);
 
-	struct MapEditor ed = {
+	*ed = (struct MapEditor){
 		.wnd = wnd,
 		.wndsurf = wndsurf,
 		.map = map,
@@ -925,7 +926,7 @@ enum MiscState mapeditor_run(
 			},
 			.scancodes = { SDL_SCANCODE_ESCAPE },
 			.onclick = on_done_clicked,
-			.onclickdata = &ed,
+			.onclickdata = ed,
 		},
 		.delmapbtn = {
 			.text = "Delete\nthis map",
@@ -935,7 +936,7 @@ enum MiscState mapeditor_run(
 				button_height(0)*3/2
 			},
 			.onclick = confirm_delete,
-			.onclickdata = &ed,
+			.onclickdata = ed,
 		},
 		.addenemybtn = {
 			.text = "Add\nenemy",
@@ -946,13 +947,13 @@ enum MiscState mapeditor_run(
 				button_height(0)/2
 			},
 			.onclick = add_enemy,
-			.onclickdata = &ed,
+			.onclickdata = ed,
 		},
 	};
 
 	// Fill all the way to max so don't have to ever do this again, even if add more enemies
 	for (int i = 0; i < MAX_ENEMIES; i++) {
-		ed.enemyedits[i] = (struct EllipsoidEdit){
+		ed->enemyedits[i] = (struct EllipsoidEdit){
 			.el = {
 				.xzradius = ENEMY_XZRADIUS,
 				.yradius = ENEMY_YRADIUS,
@@ -960,13 +961,21 @@ enum MiscState mapeditor_run(
 			},
 			.loc = &map->enemylocs[i],
 		};
-		ellipsoid_update_transforms(&ed.enemyedits[i].el);
+		ellipsoid_update_transforms(&ed->enemyedits[i].el);
 	}
-	ellipsoid_update_transforms(&ed.playeredits[0].el);
-	ellipsoid_update_transforms(&ed.playeredits[1].el);
+	ellipsoid_update_transforms(&ed->playeredits[0].el);
+	ellipsoid_update_transforms(&ed->playeredits[1].el);
+}
+
+enum MiscState mapeditor_run(
+	SDL_Window *wnd,
+	struct Map *maps, int *nmaps, int mapidx,
+	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic)
+{
+	static struct MapEditor ed;
+	init_map_editor(&ed, wnd, maps, nmaps, mapidx, plr0pic, plr1pic);
 
 	struct LoopTimer lt = {0};
-
 	for (ed.redraw = true; ; ed.redraw = false) { // First iteration always redraws
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
@@ -989,7 +998,7 @@ enum MiscState mapeditor_run(
 			}
 			rotate_camera(&ed, ed.rotatedir * 3.0f);
 
-			SDL_FillRect(wndsurf, NULL, 0);
+			SDL_FillRect(ed.wndsurf, NULL, 0);
 			show_editor(&ed);
 			update_button_disableds(&ed);
 			button_show(&ed.donebtn);
