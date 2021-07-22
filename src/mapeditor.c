@@ -523,6 +523,9 @@ static void finish_resize(struct MapEditor *ed)
 	map_save(ed->map);
 }
 
+#define LEFT_CLICK 1
+#define RIGHT_CLICK 3
+
 // Returns whether redrawing needed
 static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 {
@@ -540,53 +543,65 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 
 	switch(e->type) {
 	case SDL_MOUSEBUTTONDOWN:
-		switch (ed->sel.mode) {
-		case SEL_WALL:
-			if (is_at_edge(&ed->sel.data.wall, ed->map)) {
-				log_printf("Resize begins");
-				struct Wall w = ed->sel.data.wall;
-				ed->sel = (struct Selection) {
-					.mode = SEL_RESIZE,
-					.data = { .resize = begin_resize(&w, ed->map) },
-				};
-			} else {
-				struct Wall *w = find_wall_from_map(&ed->sel.data.wall, ed->map);
-				if(w) {
-					log_printf("Moving wall begins");
-					ed->sel = (struct Selection) { .mode = SEL_MVWALL, .data = { .mvwall = w }};
-				}
-			}
-			break;
+		switch(e->button.button) {
+		case RIGHT_CLICK:
+			delete_selected(ed);
+			return true;
 
-		case SEL_ELLIPSOID:
-			ed->sel.mode = SEL_MVELLIPSOID;
-			break;
+		case LEFT_CLICK:
+			switch (ed->sel.mode) {
+			case SEL_WALL:
+				if (is_at_edge(&ed->sel.data.wall, ed->map)) {
+					log_printf("Resize begins");
+					struct Wall w = ed->sel.data.wall;
+					ed->sel = (struct Selection) {
+						.mode = SEL_RESIZE,
+						.data = { .resize = begin_resize(&w, ed->map) },
+					};
+				} else {
+					struct Wall *w = find_wall_from_map(&ed->sel.data.wall, ed->map);
+					if(w) {
+						log_printf("Moving wall begins");
+						ed->sel = (struct Selection) { .mode = SEL_MVWALL, .data = { .mvwall = w }};
+					}
+				}
+				break;
+
+			case SEL_ELLIPSOID:
+				ed->sel.mode = SEL_MVELLIPSOID;
+				break;
+
+			default:
+				break;
+			}
+			ed->mousemoved = false;
+			return true;
 
 		default:
-			break;
+			return false;
 		}
-		ed->mousemoved = false;
-		return true;
 
 	case SDL_MOUSEBUTTONUP:
-		switch(ed->sel.mode) {
-		case SEL_RESIZE:
-			log_printf("Resize ends");
-			finish_resize(ed);
-			break;
-		case SEL_MVWALL:
-			log_printf("Moving/clicking a wall ends, mousemoved = %d", ed->mousemoved);
-			if (!ed->mousemoved)
-				delete_wall(ed, ed->sel.data.mvwall);
-			break;
-		case SEL_WALL:
-			log_printf("Clicked some place with no wall in it, adding wall");
-			add_wall(ed);
-			break;
-		default:
-			break;
+		if (e->button.button == LEFT_CLICK) {
+			switch(ed->sel.mode) {
+			case SEL_RESIZE:
+				log_printf("Resize ends");
+				finish_resize(ed);
+				break;
+			case SEL_MVWALL:
+				log_printf("Moving/clicking a wall ends, mousemoved = %d", ed->mousemoved);
+				if (!ed->mousemoved)
+					delete_wall(ed, ed->sel.data.mvwall);
+				break;
+			case SEL_WALL:
+				log_printf("Clicked some place with no wall in it, adding wall");
+				add_wall(ed);
+				break;
+			default:
+				break;
+			}
+			ed->sel.mode = SEL_NONE;
 		}
-		ed->sel.mode = SEL_NONE;
 		// fall through
 
 	case SDL_MOUSEMOTION:
