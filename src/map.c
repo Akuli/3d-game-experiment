@@ -22,8 +22,8 @@ Small language for specifying maps in files:
 	 --
 
 - content of square doesn't have to be spaces like above, can also be:
-	- 'p': initial player map (need two of these in the map)
-	- 'e': initial map for enemies (need one of these in the map)
+	- 'p': initial player place (need two of these in the map)
+	- 'e': initial place for enemies (need one of these in the map)
 - any of the '--' or '|' walls may be replaced with spaces, that means no wall
 - each line is padded with spaces to have same length
 - must have these walls:
@@ -389,7 +389,7 @@ static void fix_location(const struct Map *map, struct MapCoords *ptr)
 	SDL_assert(2 + map->nenemylocs <= map->xsize*map->zsize);
 	struct MapCoords hint = *ptr;
 
-	// Make it temporary disappear from the world, so we won't see it when looking for free map
+	// Make it temporary disappear from the map, so we won't see it when looking for free place
 	// Prevents it from always moving, but still moves in case of overlaps
 	// Also ensures there's enough room for it
 	*ptr = (struct MapCoords){ -1, -1 };
