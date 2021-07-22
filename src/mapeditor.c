@@ -550,7 +550,7 @@ bool handle_event(struct MapEditor *pe, const SDL_Event *e)
 				delete_wall(pe, pe->sel.data.mvwall);
 			break;
 		case SEL_WALL:
-			log_printf("Clicked some map with no wall in it, adding wall");
+			log_printf("Clicked some place with no wall in it, adding wall");
 			add_wall(pe);
 			break;
 		default:
