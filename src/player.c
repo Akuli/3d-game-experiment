@@ -74,7 +74,7 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 	if (plr->moving) {
 		float speed = plr->flat ? FLAT_SPEED : NORMAL_SPEED;
 		Vec3 diff = mat3_mul_vec3(plr->cam.cam2world, (Vec3){ 0, 0, -speed/CAMERA_FPS });
-		vec3_add_inmap(&plr->ellipsoid.center, diff);
+		vec3_add_inplace(&plr->ellipsoid.center, diff);
 	}
 
 	float y = 0;
