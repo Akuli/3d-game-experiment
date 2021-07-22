@@ -476,12 +476,6 @@ void map_save(const struct Map *map)
 	free(data);
 }
 
-static void remove_prefix(const char **s, const char *pre)
-{
-	SDL_assert(strstr(*s, pre) == *s);
-	*s += strlen(pre);
-}
-
 int map_copy(struct Map **maps, int *nmaps, int srcidx)
 {
 	log_printf("Copying map %d", srcidx);
