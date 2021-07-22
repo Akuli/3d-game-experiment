@@ -38,6 +38,8 @@ struct Selection {
 };
 
 struct MapEditor {
+	SDL_Window *wnd;
+	SDL_Surface *wndsurf;
 	enum MiscState state;
 	struct Map *map;
 	struct EllipsoidEdit playeredits[2];
@@ -49,6 +51,10 @@ struct MapEditor {
 	struct Selection sel;
 	bool up, down, left, right;   // are arrow keys pressed
 	bool redraw;
+
+	// for deleting
+	struct Map *maps;
+	int *nmaps;
 };
 
 static bool next_ellipsoid_edit(struct MapEditor *ed, struct EllipsoidEdit **ptr)
@@ -804,20 +810,12 @@ static void on_done_clicked(void *data)
 	ed->state = MISC_STATE_CHOOSER;
 }
 
-struct DeleteData {
-	SDL_Window *wnd;
-	SDL_Surface *wndsurf;
-	struct MapEditor *editor;
-	struct Map *maps;
-	int *nmaps;
-};
-
 static void confirm_delete(void *ptr)
 {
 	log_printf("Delete button clicked, entering confirm loop");
 
-	struct DeleteData *dd = ptr;
-	SDL_FillRect(dd->wndsurf, NULL, 0);
+	struct MapEditor *ed = ptr;
+	SDL_FillRect(ed->wndsurf, NULL, 0);
 	SDL_Surface *textsurf = misc_create_text_surface(
 		"Are you sure you want to permanently delete this map?",
 		(SDL_Color){0xff,0xff,0xff}, 25);
@@ -826,43 +824,43 @@ static void confirm_delete(void *ptr)
 	bool noclicked = false;
 	struct Button yesbtn = {
 		.text = "Yes, please\ndelete it",
-		.destsurf = dd->wndsurf,
+		.destsurf = ed->wndsurf,
 		.scancodes = { SDL_SCANCODE_Y },
-		.center = { dd->wndsurf->w/2 - button_width(0)/2, dd->wndsurf->h/2 },
+		.center = { ed->wndsurf->w/2 - button_width(0)/2, ed->wndsurf->h/2 },
 		.onclick = set_to_true,
 		.onclickdata = &yesclicked,
 	};
 	struct Button nobtn = {
 		.text = "No, don't\ntouch it",
 		.scancodes = { SDL_SCANCODE_N, SDL_SCANCODE_ESCAPE },
-		.destsurf = dd->wndsurf,
-		.center = { dd->wndsurf->w/2 + button_width(0)/2, dd->wndsurf->h/2 },
+		.destsurf = ed->wndsurf,
+		.center = { ed->wndsurf->w/2 + button_width(0)/2, ed->wndsurf->h/2 },
 		.onclick = set_to_true,
 		.onclickdata = &noclicked,
 	};
 
 	button_show(&yesbtn);
 	button_show(&nobtn);
-	misc_blit_with_center(textsurf, dd->wndsurf, &(SDL_Point){ dd->wndsurf->w/2, dd->wndsurf->h/4 });
+	misc_blit_with_center(textsurf, ed->wndsurf, &(SDL_Point){ ed->wndsurf->w/2, ed->wndsurf->h/4 });
 
 	struct LoopTimer lt = {0};
 	while(!yesclicked && !noclicked) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
 			if (e.type == SDL_QUIT) {
-				dd->editor->state = MISC_STATE_QUIT;
+				ed->state = MISC_STATE_QUIT;
 				goto out;
 			}
 			button_handle_event(&e, &yesbtn);
 			button_handle_event(&e, &nobtn);
 		}
-		SDL_UpdateWindowSurface(dd->wnd);
+		SDL_UpdateWindowSurface(ed->wnd);
 		looptimer_wait(&lt);
 	}
 
 	if (yesclicked) {
-		map_delete(dd->maps, dd->nmaps, dd->editor->map - dd->maps);
-		dd->editor->state = MISC_STATE_CHOOSER;
+		map_delete(ed->maps, ed->nmaps, ed->map - ed->maps);
+		ed->state = MISC_STATE_CHOOSER;
 	}
 
 out:
@@ -881,16 +879,14 @@ enum MiscState mapeditor_run(
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 	SDL_FillRect(wndsurf, NULL, 0);
 
-	struct DeleteData deldata = {
+	struct MapEditor ed = {
 		.wnd = wnd,
 		.wndsurf = wndsurf,
+		.map = map,
 		.maps = maps,
 		.nmaps = nmaps,
-	};
-	struct MapEditor ed = {
 		.sel = { .mode = SEL_NONE },
 		.state = MISC_STATE_MAPEDITOR,
-		.map = map,
 		.playeredits = {
 			{
 				.el = {
@@ -939,7 +935,7 @@ enum MiscState mapeditor_run(
 				button_height(0)*3/2
 			},
 			.onclick = confirm_delete,
-			.onclickdata = &deldata,
+			.onclickdata = &ed,
 		},
 		.addenemybtn = {
 			.text = "Add\nenemy",
@@ -968,8 +964,6 @@ enum MiscState mapeditor_run(
 	}
 	ellipsoid_update_transforms(&ed.playeredits[0].el);
 	ellipsoid_update_transforms(&ed.playeredits[1].el);
-
-	deldata.editor = &ed;
 
 	struct LoopTimer lt = {0};
 
