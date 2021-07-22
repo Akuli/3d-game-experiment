@@ -39,7 +39,7 @@ struct Selection {
 
 struct MapEditor {
 	SDL_Window *wnd;
-	SDL_Surface *wndsurf;
+	SDL_Surface *surf;
 	enum MiscState state;
 	struct Map *map;
 	struct EllipsoidEdit playeredits[2];
@@ -815,7 +815,7 @@ static void confirm_delete(void *ptr)
 	log_printf("Delete button clicked, entering confirm loop");
 
 	struct MapEditor *ed = ptr;
-	SDL_FillRect(ed->wndsurf, NULL, 0);
+	SDL_FillRect(ed->surf, NULL, 0);
 	SDL_Surface *textsurf = misc_create_text_surface(
 		"Are you sure you want to permanently delete this map?",
 		(SDL_Color){0xff,0xff,0xff}, 25);
@@ -824,24 +824,24 @@ static void confirm_delete(void *ptr)
 	bool noclicked = false;
 	struct Button yesbtn = {
 		.text = "Yes, please\ndelete it",
-		.destsurf = ed->wndsurf,
+		.destsurf = ed->surf,
 		.scancodes = { SDL_SCANCODE_Y },
-		.center = { ed->wndsurf->w/2 - button_width(0)/2, ed->wndsurf->h/2 },
+		.center = { ed->surf->w/2 - button_width(0)/2, ed->surf->h/2 },
 		.onclick = set_to_true,
 		.onclickdata = &yesclicked,
 	};
 	struct Button nobtn = {
 		.text = "No, don't\ntouch it",
 		.scancodes = { SDL_SCANCODE_N, SDL_SCANCODE_ESCAPE },
-		.destsurf = ed->wndsurf,
-		.center = { ed->wndsurf->w/2 + button_width(0)/2, ed->wndsurf->h/2 },
+		.destsurf = ed->surf,
+		.center = { ed->surf->w/2 + button_width(0)/2, ed->surf->h/2 },
 		.onclick = set_to_true,
 		.onclickdata = &noclicked,
 	};
 
 	button_show(&yesbtn);
 	button_show(&nobtn);
-	misc_blit_with_center(textsurf, ed->wndsurf, &(SDL_Point){ ed->wndsurf->w/2, ed->wndsurf->h/4 });
+	misc_blit_with_center(textsurf, ed->surf, &(SDL_Point){ ed->surf->w/2, ed->surf->h/4 });
 
 	struct LoopTimer lt = {0};
 	while(!yesclicked && !noclicked) {
@@ -854,6 +854,7 @@ static void confirm_delete(void *ptr)
 			button_handle_event(&e, &yesbtn);
 			button_handle_event(&e, &nobtn);
 		}
+		SDL_assert(ed->wnd);
 		SDL_UpdateWindowSurface(ed->wnd);
 		looptimer_wait(&lt);
 	}
@@ -867,25 +868,25 @@ out:
 	SDL_FreeSurface(textsurf);
 }
 
-static void init_map_editor(
-	struct MapEditor *ed,
-	SDL_Window *wnd,
+struct MapEditor *mapeditor_new(
+	SDL_Surface *surf,
 	struct Map *maps, int *nmaps, int mapidx,
 	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic)
 {
-	struct Map *map = &maps[mapidx];
+	struct MapEditor *ed = calloc(sizeof(*ed), 1);
+	if (!ed)
+		log_printf_abort("out of mem");
 
-	SDL_Surface *wndsurf = SDL_GetWindowSurface(wnd);
-	if (!wndsurf)
-		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
-	SDL_FillRect(wndsurf, NULL, 0);
+	//struct Map *map = &maps[mapidx];
+
+	SDL_FillRect(surf, NULL, 0);
 
 	*ed = (struct MapEditor){
-		.wnd = wnd,
-		.wndsurf = wndsurf,
-		.map = map,
+		.surf = surf,
+		.map = &maps[mapidx],
 		.maps = maps,
 		.nmaps = nmaps,
+		.redraw = true,  // first iteration always redraws
 		.sel = { .mode = SEL_NONE },
 		.state = MISC_STATE_MAPEDITOR,
 		.playeredits = {
@@ -896,7 +897,7 @@ static void init_map_editor(
 					.epic = plr0pic,
 					.center = { .y = PLAYER_YRADIUS_NOFLAT },
 				},
-				.loc = &map->playerlocs[0],
+				.loc = &maps[mapidx].playerlocs[0],
 			},
 			{
 				.el = {
@@ -905,12 +906,12 @@ static void init_map_editor(
 					.epic = plr1pic,
 					.center = { .y = PLAYER_YRADIUS_NOFLAT },
 				},
-				.loc = &map->playerlocs[1],
+				.loc = &maps[mapidx].playerlocs[1],
 			},
 		},
 		.cam = {
 			.screencentery = 0,
-			.surface = misc_create_cropped_surface(wndsurf, (SDL_Rect){
+			.surface = misc_create_cropped_surface(surf, (SDL_Rect){
 				0, 0,
 				CAMERA_SCREEN_WIDTH, CAMERA_SCREEN_HEIGHT,
 			}),
@@ -919,7 +920,7 @@ static void init_map_editor(
 		.rotatedir = 0,
 		.donebtn = {
 			.text = "Done",
-			.destsurf = wndsurf,
+			.destsurf = surf,
 			.center = {
 				button_width(0)/2,
 				button_height(0)/2
@@ -930,7 +931,7 @@ static void init_map_editor(
 		},
 		.delmapbtn = {
 			.text = "Delete\nthis map",
-			.destsurf = wndsurf,
+			.destsurf = surf,
 			.center = {
 				button_width(0)/2,
 				button_height(0)*3/2
@@ -941,7 +942,7 @@ static void init_map_editor(
 		.addenemybtn = {
 			.text = "Add\nenemy",
 			.scancodes = { SDL_SCANCODE_E },
-			.destsurf = wndsurf,
+			.destsurf = surf,
 			.center = {
 				CAMERA_SCREEN_WIDTH - button_width(0)/2,
 				button_height(0)/2
@@ -959,53 +960,61 @@ static void init_map_editor(
 				.yradius = ENEMY_YRADIUS,
 				.epic = enemy_getrandomepic(),
 			},
-			.loc = &map->enemylocs[i],
+			.loc = &maps[mapidx].enemylocs[i],
 		};
 		ellipsoid_update_transforms(&ed->enemyedits[i].el);
 	}
 	ellipsoid_update_transforms(&ed->playeredits[0].el);
 	ellipsoid_update_transforms(&ed->playeredits[1].el);
+	return ed;
 }
 
-enum MiscState mapeditor_run(
-	SDL_Window *wnd,
-	struct Map *maps, int *nmaps, int mapidx,
-	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic)
+enum MiscState mapeditor_eachframe(struct MapEditor *ed, bool eventhandling)
 {
-	static struct MapEditor ed;
-	init_map_editor(&ed, wnd, maps, nmaps, mapidx, plr0pic, plr1pic);
-
-	struct LoopTimer lt = {0};
-	for (ed.redraw = true; ; ed.redraw = false) { // First iteration always redraws
+	if (eventhandling) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
 			if (e.type == SDL_QUIT)
 				return MISC_STATE_QUIT;
 
-			if (handle_event(&ed, &e))
-				ed.redraw = true;
-			if (ed.state != MISC_STATE_MAPEDITOR)
-				return ed.state;
+			if (handle_event(ed, &e))
+				ed->redraw = true;
+			if (ed->state != MISC_STATE_MAPEDITOR)
+				return ed->state;
 		}
+	}
 
-		if (ed.rotatedir != 0)
-			ed.redraw = true;
-
-		if (ed.redraw) {
-			for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(&ed, &ee); ) {
-				ee->el.center.x = ee->loc->x + 0.5f;
-				ee->el.center.z = ee->loc->z + 0.5f;
-			}
-			rotate_camera(&ed, ed.rotatedir * 3.0f);
-
-			SDL_FillRect(ed.wndsurf, NULL, 0);
-			show_editor(&ed);
-			update_button_disableds(&ed);
-			button_show(&ed.donebtn);
-			button_show(&ed.delmapbtn);
-			button_show(&ed.addenemybtn);
+	if (ed->rotatedir != 0 || ed->redraw) {
+		for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); ) {
+			ee->el.center.x = ee->loc->x + 0.5f;
+			ee->el.center.z = ee->loc->z + 0.5f;
 		}
+		rotate_camera(ed, ed->rotatedir * 3.0f);
 
+		SDL_FillRect(ed->surf, NULL, 0);
+		show_editor(ed);
+		update_button_disableds(ed);
+		button_show(&ed->donebtn);
+		button_show(&ed->delmapbtn);
+		button_show(&ed->addenemybtn);
+	}
+	ed->redraw = false;
+	return ed->state;
+}
+
+enum MiscState mapeditor_run(struct MapEditor *ed, SDL_Window *wnd)
+{
+	ed->wnd = wnd;
+	SDL_Surface *wndsurf = SDL_GetWindowSurface(wnd);
+	if (!wndsurf)
+		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
+	SDL_assert(wndsurf == ed->surf);
+
+	struct LoopTimer lt = {0};
+	while(1) {
+		enum MiscState s = mapeditor_eachframe(ed, true);
+		if (s != MISC_STATE_MAPEDITOR)
+			return s;
 		SDL_UpdateWindowSurface(wnd);  // Run every time, in case buttons redraw themselves
 		looptimer_wait(&lt);
 	}
