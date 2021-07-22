@@ -186,22 +186,22 @@ static void show_player_chooser_each_frame(const struct Chooser *ch, struct Choo
 	show_all(NULL, 0, false, ch->ellipsoids, player_nepics, &plrch->cam);
 }
 
-static void show_map_chooser_each_frame(struct ChooserMapStuff *mapch)
+static void show_map_chooser_each_frame(struct ChooserMapStuff *plcch)
 {
-	const struct Map *map = &mapch->maps[mapch->mapidx];
+	const struct Map *map = &plcch->maps[plcch->mapidx];
 	Vec3 mapcenter = { map->xsize/2, 0, map->zsize/2 };
 
 	float d = hypotf(map->xsize, map->zsize);
 	Vec3 tocamera = vec3_mul_float((Vec3){0,0.8f,1}, 1.1f*d);
-	vec3_apply_matrix(&tocamera, mat3_rotation_xz(mapch->cam.angle));
+	vec3_apply_matrix(&tocamera, mat3_rotation_xz(plcch->cam.angle));
 
 	// TODO: see if adjusting angle earlier makes it look somehow better
-	mapch->cam.location = vec3_add(mapcenter, tocamera);
-	mapch->cam.angle -= 0.5f/CAMERA_FPS;   // subtracting makes it spin same direction as ellipsoids
-	camera_update_caches(&mapch->cam);
+	plcch->cam.location = vec3_add(mapcenter, tocamera);
+	plcch->cam.angle -= 0.5f/CAMERA_FPS;   // subtracting makes it spin same direction as ellipsoids
+	camera_update_caches(&plcch->cam);
 
-	SDL_FillRect(mapch->cam.surface, NULL, 0);
-	show_all(map->walls, map->nwalls, false, NULL, 0, &mapch->cam);
+	SDL_FillRect(plcch->cam.surface, NULL, 0);
+	show_all(map->walls, map->nwalls, false, NULL, 0, &plcch->cam);
 }
 
 static void set_disabled(struct Button *btn, bool dis)
