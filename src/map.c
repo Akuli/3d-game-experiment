@@ -24,7 +24,7 @@ Small language for specifying maps in files:
 - content of square doesn't have to be spaces like above, can also be:
 	- 'p': initial player map (need two of these in the map)
 	- 'e': initial map for enemies (need one of these in the map)
-- any of the '--' or '|' walls may be remapd with spaces, that means no wall
+- any of the '--' or '|' walls may be replaced with spaces, that means no wall
 - each line is padded with spaces to have same length
 - must have these walls:
 	- wall at z=0 (first line)

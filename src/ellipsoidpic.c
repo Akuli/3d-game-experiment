@@ -19,7 +19,7 @@
 #define IS_TRANSPARENT(alpha) ((alpha) < 0x80)
 
 // yes, rgb math is bad ikr
-static void remap_alpha_with_average(unsigned char *bytes, size_t npixels)
+static void replace_alpha_with_average(unsigned char *bytes, size_t npixels)
 {
 	long long rsum = 0, gsum = 0, bsum = 0;
 	size_t count = 0;
@@ -110,7 +110,7 @@ static void read_image(struct EllipsoidPic *epic)
 	if (!filedata)
 		log_printf_abort("stbi_load failed for file opened from '%s': %s", epic->path, stbi_failure_reason());
 
-	remap_alpha_with_average(filedata, (size_t)filew*(size_t)fileh);
+	replace_alpha_with_average(filedata, (size_t)filew*(size_t)fileh);
 
 	float pi = acosf(-1);
 	uint32_t red = epic->pixfmt->Rmask;
