@@ -49,7 +49,8 @@ jobs:
               artifact_id: artifact.id,
               archive_format: 'zip',
           });
-          fs.writeFileSync("windows-build.zip", new Buffer(zip.data));
+          // https://stackoverflow.com/a/46779188
+          fs.writeFileSync("windows-build.zip", Buffer.from(zip.data));
     - if: ${{ steps.tagname.outputs.datetag != '' }}
       run: |
         # Couldn't figure out how to get archive to have nested directory inside it
