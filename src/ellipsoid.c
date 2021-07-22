@@ -360,6 +360,6 @@ void ellipsoid_move_apart(struct Ellipsoid *el1, struct Ellipsoid *el2, float mv
 	}
 
 	from1to2 = vec3_withlength(from1to2, mv/2);
-	vec3_add_inplace(&el2->center, from1to2);
-	vec3_sub_inplace(&el1->center, from1to2);
+	vec3_add_inmap(&el2->center, from1to2);
+	vec3_sub_inmap(&el1->center, from1to2);
 }

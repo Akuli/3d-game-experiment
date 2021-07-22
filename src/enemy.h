@@ -3,7 +3,7 @@
 
 #include <SDL2/SDL.h>
 #include "ellipsoid.h"
-#include "place.h"
+#include "map.h"
 
 #define ENEMY_XZRADIUS 0.45f
 #define ENEMY_YRADIUS  1.2f
@@ -21,7 +21,7 @@ enum EnemyFlags {
 };
 
 struct Enemy {
-	const struct Place *place;
+	const struct Map *map;
 	struct Ellipsoid ellipsoid;
 	enum EnemyFlags flags;
 	enum EnemyDir dir;
@@ -29,7 +29,7 @@ struct Enemy {
 
 // call enemy_init_epics() once before calling enemy_new() as many times as you like
 void enemy_init_epics(const SDL_PixelFormat *fmt);
-struct Enemy enemy_new(const struct Place *pl, struct PlaceCoords loc);
+struct Enemy enemy_new(const struct Map *map, struct MapCoords loc);
 
 const struct EllipsoidPic *enemy_getrandomepic(void);
 

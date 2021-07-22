@@ -6,13 +6,13 @@
 #include "max.h"
 #include "wall.h"
 
-static bool exists_wall_between_points(const struct Place *pl, struct PlaceCoords p1, struct PlaceCoords p2)
+static bool exists_wall_between_points(const struct Map *map, struct MapCoords p1, struct MapCoords p2)
 {
 	SDL_assert(
 		(p1.x == p2.x && abs(p2.z - p1.z) == 1) ||
 		(p1.z == p2.z && abs(p2.x - p1.x) == 1));
 
-	for (int i = 0; i < pl->nwalls; i++) {
+	for (int i = 0; i < map->nwalls; i++) {
 		if (
 			(
 				/*
@@ -39,14 +39,14 @@ static bool exists_wall_between_points(const struct Place *pl, struct PlaceCoord
 				z
 				*/
 				p1.x == p2.x
-				&& pl->walls[i].dir == WALL_DIR_XY
-				&& pl->walls[i].startx == p1.x
-				&& pl->walls[i].startz == max(p1.z, p2.z)
+				&& map->walls[i].dir == WALL_DIR_XY
+				&& map->walls[i].startx == p1.x
+				&& map->walls[i].startz == max(p1.z, p2.z)
 			) || (
 				p1.z == p2.z
-				&& pl->walls[i].dir == WALL_DIR_ZY
-				&& pl->walls[i].startx == max(p1.x, p2.x)
-				&& pl->walls[i].startz == p1.z
+				&& map->walls[i].dir == WALL_DIR_ZY
+				&& map->walls[i].startx == max(p1.x, p2.x)
+				&& map->walls[i].startz == p1.z
 			)
 		) {
 			return true;
@@ -55,25 +55,25 @@ static bool exists_wall_between_points(const struct Place *pl, struct PlaceCoord
 	return false;
 }
 
-int region_size(const struct Place *pl, struct PlaceCoords start)
+int region_size(const struct Map *map, struct MapCoords start)
 {
 	char region[MAX_PLACE_SIZE][MAX_PLACE_SIZE] = {0};
-	struct PlaceCoords *todo = malloc(sizeof todo[0]);
+	struct MapCoords *todo = malloc(sizeof todo[0]);
 	SDL_assert(todo);
 	todo[0] = start;
 	int todolen = 1;
 	int todoalloc = 1;
 
 	while (todolen != 0) {
-		struct PlaceCoords p = todo[--todolen];
-		SDL_assert(0 <= p.x && p.x < pl->xsize);
-		SDL_assert(0 <= p.z && p.z < pl->zsize);
+		struct MapCoords p = todo[--todolen];
+		SDL_assert(0 <= p.x && p.x < map->xsize);
+		SDL_assert(0 <= p.z && p.z < map->zsize);
 
 		if (region[p.x][p.z])
 			continue;
 		region[p.x][p.z] = true;
 
-		struct PlaceCoords neighbors[] = {
+		struct MapCoords neighbors[] = {
 			{ p.x-1, p.z },
 			{ p.x+1, p.z },
 			{ p.x, p.z-1 },
@@ -91,7 +91,7 @@ int region_size(const struct Place *pl, struct PlaceCoords start)
 		}
 
 		for (int i = 0; i < sizeof(neighbors)/sizeof(neighbors[0]); i++) {
-			if (!region[neighbors[i].x][neighbors[i].z] && !exists_wall_between_points(pl, p, neighbors[i]))
+			if (!region[neighbors[i].x][neighbors[i].z] && !exists_wall_between_points(map, p, neighbors[i]))
 				todo[todolen++] = neighbors[i];
 		}
 	}

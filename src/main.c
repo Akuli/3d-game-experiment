@@ -15,7 +15,7 @@
 #include "player.h"
 #include "sound.h"
 #include "log.h"
-#include "place.h"
+#include "map.h"
 #include "mapeditor.h"
 
 #ifdef _WIN32
@@ -26,7 +26,7 @@
 
 /*
 Where are assets and logs?
-- on windows, in same place as the .exe file (that's where DLL's are)
+- on windows, in same map as the .exe file (that's where DLL's are)
 - on posix, assume current working directory, because nobody wants to actually
   install this game permanently to their system and they run it with ./game
 */
@@ -147,11 +147,11 @@ int main(int argc, char **argv)
 
 		case MISC_STATE_PLAY:
 			log_printf(
-				"playing the game begins with place from \"%s\"",
-				ch.placech.places[ch.placech.placeidx].path);
+				"playing the game begins with map from \"%s\"",
+				ch.mapch.maps[ch.mapch.mapidx].path);
 			s = play_the_game(
 				wnd, ch.playerch[0].epic, ch.playerch[1].epic, &winner,
-				&ch.placech.places[ch.placech.placeidx]);
+				&ch.mapch.maps[ch.mapch.mapidx]);
 			break;
 
 		case MISC_STATE_GAMEOVER:
@@ -160,9 +160,9 @@ int main(int argc, char **argv)
 			break;
 
 		case MISC_STATE_MAPEDITOR:
-			log_printf("starting place editor");
+			log_printf("starting map editor");
 			s = mapeditor_run(
-				wnd, ch.placech.places, &ch.placech.nplaces, ch.placech.placeidx,
+				wnd, ch.mapch.maps, &ch.mapch.nmaps, ch.mapch.mapidx,
 				ch.playerch[0].epic, ch.playerch[1].epic);
 			break;
 

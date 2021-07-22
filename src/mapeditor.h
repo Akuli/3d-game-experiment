@@ -3,13 +3,13 @@
 
 #include <SDL2/SDL.h>
 #include "ellipsoid.h"
-#include "place.h"
+#include "map.h"
 #include "misc.h"
 
-// Needs array of all places because it's possible to delete a place
+// Needs array of all maps because it's possible to delete a map
 enum MiscState mapeditor_run(
 	SDL_Window *wnd,
-	struct Place *places, int *nplaces, int placeidx,
+	struct Map *maps, int *nmaps, int mapidx,
 	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic);
 
 #endif   // MAPEDITOR_H

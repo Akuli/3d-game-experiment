@@ -109,7 +109,7 @@ void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el)
 				}
 			}
 
-			vec3_add_inplace(&el->center, diff);
+			vec3_add_inmap(&el->center, diff);
 			elcenter = mat3_mul_vec3(el->transform_inverse, el->center);   // cache invalidation
 		}
 	}

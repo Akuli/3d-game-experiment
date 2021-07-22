@@ -4,7 +4,7 @@
 #include <SDL2/SDL.h>
 #include "mathstuff.h"
 #include "ellipsoid.h"
-#include "place.h"
+#include "map.h"
 #include "player.h"
 
 #define GUARD_XZRADIUS 0.25f
@@ -17,13 +17,13 @@ All guards added to exactly the same x and z values go on top of each other, so
 the y coordinate of the center is not always used exactly as it is given.
 The center argument is the center of the bottom of the visible half of the guard.
 Guards array never grows larger than MAX_UNPICKED_GUARDS.
-The _random suffixed function chooses the center randomly to fit the place.
+The _random suffixed function chooses the center randomly to fit the map.
 These functions return the number of guards actually added (without overflowing the array)
 */
 int guard_create_unpickeds_center(
 	struct Ellipsoid *guards, int *nguards, int howmany2add, Vec3 center);
 int guard_create_unpickeds_random(
-	struct Ellipsoid *guards, int *nguards, int howmany2add, const struct Place *pl);
+	struct Ellipsoid *guards, int *nguards, int howmany2add, const struct Map *map);
 
 // don't run this for picked guards
 void guard_unpicked_eachframe(struct Ellipsoid *el);

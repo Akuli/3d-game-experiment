@@ -1,4 +1,4 @@
-// choose player pictures and place in beginning of game
+// choose player pictures and map in beginning of game
 
 #ifndef CHOOSER_H
 #define CHOOSER_H
@@ -20,10 +20,10 @@ struct ChooserPlayerStuff {
 	int namew, nameh;   // size of name display text
 };
 
-struct ChooserPlaceStuff {
-	struct Place *places;
-	int nplaces;
-	int placeidx;
+struct ChooserMapStuff {
+	struct Map *maps;
+	int nmaps;
+	int mapidx;
 
 	// rest of this struct isn't meant to be used outside chooser.c
 	struct Button prevbtn, nextbtn, editbtn, cpbtn;
@@ -32,7 +32,7 @@ struct ChooserPlaceStuff {
 
 struct Chooser {
 	struct ChooserPlayerStuff playerch[2];
-	struct ChooserPlaceStuff placech;
+	struct ChooserMapStuff mapch;
 
 	// rest of this struct isn't meant to be used outside chooser.c
 	SDL_Window *win;
