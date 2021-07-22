@@ -31,7 +31,7 @@ const struct EllipsoidPic *enemy_getrandomepic(void)
 	return ellipsoid_pics[rand() % n_ellipsoid_pics];
 }
 
-struct Enemy enemy_new(const struct Place *pl, struct PlaceCoords loc)
+struct Enemy enemy_new(const struct Map *map, struct MapCoords loc)
 {
 	struct Enemy res = {
 		.ellipsoid = {
@@ -43,7 +43,7 @@ struct Enemy enemy_new(const struct Place *pl, struct PlaceCoords loc)
 		},
 		.dir = ENEMY_DIR_XPOS,
 		.flags = 0,
-		.place = pl,
+		.map = map,
 	};
 	ellipsoid_update_transforms(&res.ellipsoid);
 	return res;
@@ -93,8 +93,8 @@ static void begin_turning(struct Enemy *en)
 	int x = (int) floorf(en->ellipsoid.center.x);
 	int z = (int) floorf(en->ellipsoid.center.z);
 
-	for (int i = 0; i < en->place->nwalls; i++) {
-		struct Wall w = en->place->walls[i];
+	for (int i = 0; i < en->map->nwalls; i++) {
+		struct Wall w = en->map->walls[i];
 
 		switch(w.dir) {
 		case WALL_DIR_XY:

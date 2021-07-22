@@ -15,7 +15,7 @@
 	)*2                                            /* for both players */ \
 )
 
-#define MAX_PLACE_SIZE 30
-#define MAX_WALLS (2*MAX_PLACE_SIZE*(MAX_PLACE_SIZE + 1))
+#define MAX_MAPSIZE 30
+#define MAX_WALLS (2*MAX_MAPSIZE*(MAX_MAPSIZE + 1))
 
 #endif    // MAX_H

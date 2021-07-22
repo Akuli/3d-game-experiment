@@ -32,16 +32,16 @@ In the game:
   please [let me know](https://github.com/Akuli/3d-game-experiment/issues/new)
   which key would be more convenient for you.
 
-In the player and place choosing screen, you can click the buttons or press these keys:
+In the player and map choosing screen, you can click the buttons or press these keys:
 - Player chooser: right player uses left and right arrow keys, left player users A and D.
-- Place chooser: up and down arrow keys, or W and S. The purpose is that both players can use the place chooser.
+- Map chooser: up and down arrow keys, or W and S. The purpose is that both players can use the map chooser.
 - Play button: enter or space.
 
 In the game over screen, you can again click buttons or press these keys:
 - Play again button: F5. This is for compatibility with games where you can play again by refreshing the browser window.
-- Player and place chooser button: enter or space.
+- Player and map chooser button: enter or space.
 
-In the place editor, the keyboard is quite limited (use mouse instead):
+In the map editor, the keyboard is quite limited (use mouse instead):
 - Selection: arrow keys
 - Add/remove wall: enter
 - Done editing: Escape

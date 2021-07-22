@@ -2,9 +2,9 @@
 #
 # Usage:
 #
-#   python3 scripts/generate_random_place.py | tee assets/default_places/mynewplace.txt
+#   python3 scripts/generate_random_map.py | tee assets/default_maps/foo.txt
 #
-# Repeat that until the printed place is good enough, and then modify the
+# Repeat that until the printed map is good enough, and then modify the
 # output file by hand however you want
 
 import enum

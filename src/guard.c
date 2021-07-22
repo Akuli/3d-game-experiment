@@ -63,9 +63,9 @@ int guard_create_unpickeds_center(
 }
 
 int guard_create_unpickeds_random(
-	struct Ellipsoid *guards, int *nguards, int howmany2add, const struct Place *pl)
+	struct Ellipsoid *guards, int *nguards, int howmany2add, const struct Map *map)
 {
-	Vec3 center = { (rand() % pl->xsize) + 0.5f, 0, (rand() % pl->zsize) + 0.5f };
+	Vec3 center = { (rand() % map->xsize) + 0.5f, 0, (rand() % map->zsize) + 0.5f };
 	return guard_create_unpickeds_center(guards, nguards, howmany2add, center);
 }
 

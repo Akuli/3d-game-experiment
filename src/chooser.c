@@ -11,15 +11,15 @@
 #include "looptimer.h"
 #include "mathstuff.h"
 #include "misc.h"
-#include "place.h"
+#include "map.h"
 #include "player.h"
 #include "showall.h"
 
 #define FONT_SIZE 40
 
 #define PLAYER_CHOOSER_HEIGHT ( CAMERA_SCREEN_HEIGHT/2 )
-#define PLACE_CHOOSER_HEIGHT (CAMERA_SCREEN_HEIGHT - PLAYER_CHOOSER_HEIGHT)
-#define PLACE_CHOOSER_WIDTH (CAMERA_SCREEN_WIDTH - button_width(BUTTON_BIG))
+#define MAP_CHOOSER_HEIGHT (CAMERA_SCREEN_HEIGHT - PLAYER_CHOOSER_HEIGHT)
+#define MAP_CHOOSER_WIDTH (CAMERA_SCREEN_WIDTH - button_width(BUTTON_BIG))
 
 #define ELLIPSOID_XZ_DISTANCE_FROM_ORIGIN 2.0f
 #define CAMERA_XZ_DISTANCE_FROM_ORIGIN 5.0f
@@ -186,22 +186,22 @@ static void show_player_chooser_each_frame(const struct Chooser *ch, struct Choo
 	show_all(NULL, 0, false, ch->ellipsoids, player_nepics, &plrch->cam);
 }
 
-static void show_place_chooser_each_frame(struct ChooserPlaceStuff *plcch)
+static void show_map_chooser_each_frame(struct ChooserMapStuff *ch)
 {
-	const struct Place *pl = &plcch->places[plcch->placeidx];
-	Vec3 placecenter = { pl->xsize/2, 0, pl->zsize/2 };
+	const struct Map *map = &ch->maps[ch->mapidx];
+	Vec3 mapcenter = { map->xsize/2, 0, map->zsize/2 };
 
-	float d = hypotf(pl->xsize, pl->zsize);
+	float d = hypotf(map->xsize, map->zsize);
 	Vec3 tocamera = vec3_mul_float((Vec3){0,0.8f,1}, 1.1f*d);
-	vec3_apply_matrix(&tocamera, mat3_rotation_xz(plcch->cam.angle));
+	vec3_apply_matrix(&tocamera, mat3_rotation_xz(ch->cam.angle));
 
 	// TODO: see if adjusting angle earlier makes it look somehow better
-	plcch->cam.location = vec3_add(placecenter, tocamera);
-	plcch->cam.angle -= 0.5f/CAMERA_FPS;   // subtracting makes it spin same direction as ellipsoids
-	camera_update_caches(&plcch->cam);
+	ch->cam.location = vec3_add(mapcenter, tocamera);
+	ch->cam.angle -= 0.5f/CAMERA_FPS;   // subtracting makes it spin same direction as ellipsoids
+	camera_update_caches(&ch->cam);
 
-	SDL_FillRect(plcch->cam.surface, NULL, 0);
-	show_all(pl->walls, pl->nwalls, false, NULL, 0, &plcch->cam);
+	SDL_FillRect(ch->cam.surface, NULL, 0);
+	show_all(map->walls, map->nwalls, false, NULL, 0, &ch->cam);
 }
 
 static void set_disabled(struct Button *btn, bool dis)
@@ -212,24 +212,24 @@ static void set_disabled(struct Button *btn, bool dis)
 		btn->flags &= ~BUTTON_DISABLED;
 }
 
-static void update_place_chooser_buttons(struct ChooserPlaceStuff *ch)
+static void update_map_chooser_buttons(struct ChooserMapStuff *ch)
 {
-	SDL_assert(0 <= ch->placeidx && ch->placeidx < ch->nplaces);
-	set_disabled(&ch->prevbtn, ch->placeidx == 0);
-	set_disabled(&ch->nextbtn, ch->placeidx == ch->nplaces-1);
-	set_disabled(&ch->editbtn, !ch->places[ch->placeidx].custom);
+	SDL_assert(0 <= ch->mapidx && ch->mapidx < ch->nmaps);
+	set_disabled(&ch->prevbtn, ch->mapidx == 0);
+	set_disabled(&ch->nextbtn, ch->mapidx == ch->nmaps-1);
+	set_disabled(&ch->editbtn, !ch->maps[ch->mapidx].custom);
 	button_show(&ch->prevbtn);
 	button_show(&ch->nextbtn);
 	button_show(&ch->editbtn);
 }
 
-static void select_prev_next_place(struct ChooserPlaceStuff *ch, int diff)
+static void select_prev_next_map(struct ChooserMapStuff *ch, int diff)
 {
-	ch->placeidx += diff;
-	update_place_chooser_buttons(ch);
+	ch->mapidx += diff;
+	update_map_chooser_buttons(ch);
 }
-static void select_prev_place(void *ch) { select_prev_next_place(ch, -1); }
-static void select_next_place(void *ch) { select_prev_next_place(ch, +1); }
+static void select_prev_map(void *ch) { select_prev_next_map(ch, -1); }
+static void select_next_map(void *ch) { select_prev_next_map(ch, +1); }
 
 static void handle_event(const SDL_Event *evt, struct Chooser *ch)
 {
@@ -237,10 +237,10 @@ static void handle_event(const SDL_Event *evt, struct Chooser *ch)
 		button_handle_event(evt, &ch->playerch[i].prevbtn);
 		button_handle_event(evt, &ch->playerch[i].nextbtn);
 	}
-	button_handle_event(evt, &ch->placech.prevbtn);
-	button_handle_event(evt, &ch->placech.nextbtn);
-	button_handle_event(evt, &ch->placech.editbtn);
-	button_handle_event(evt, &ch->placech.cpbtn);
+	button_handle_event(evt, &ch->mapch.prevbtn);
+	button_handle_event(evt, &ch->mapch.nextbtn);
+	button_handle_event(evt, &ch->mapch.editbtn);
+	button_handle_event(evt, &ch->mapch.cpbtn);
 	button_handle_event(evt, &ch->bigplaybtn);
 }
 
@@ -255,7 +255,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 	if (!winsurf)
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 
-	enum ButtonFlags placechflags = 0;
+	enum ButtonFlags mapchflags = 0;
 
 	*ch = (struct Chooser){
 		.win = win,
@@ -266,46 +266,46 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 			.destsurf = winsurf,
 			.scancodes = { SDL_SCANCODE_RETURN, SDL_SCANCODE_SPACE },
 			.center = {
-				(PLACE_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
-				CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT/2 - button_height(BUTTON_BIG)/2,
+				(MAP_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
+				CAMERA_SCREEN_HEIGHT - MAP_CHOOSER_HEIGHT/2 - button_height(BUTTON_BIG)/2,
 			},
 			.onclick = set_to_true,
 			// onclickdata is set in chooser_run()
 		},
-		.placech = {
-			// places and nplaces loaded below
-			.placeidx = 0,
+		.mapch = {
+			// maps and nmaps loaded below
+			.mapidx = 0,
 			.cam = {
-				.screencentery = -0.55f*PLACE_CHOOSER_HEIGHT,
+				.screencentery = -0.55f*MAP_CHOOSER_HEIGHT,
 				.surface = misc_create_cropped_surface(winsurf, (SDL_Rect){
 					0,
-					CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT + button_height(placechflags),
-					PLACE_CHOOSER_WIDTH,
-					PLACE_CHOOSER_HEIGHT - 2*button_height(placechflags)
+					CAMERA_SCREEN_HEIGHT - MAP_CHOOSER_HEIGHT + button_height(mapchflags),
+					MAP_CHOOSER_WIDTH,
+					MAP_CHOOSER_HEIGHT - 2*button_height(mapchflags)
 				}),
 				.angle = 0,
 			},
 			.prevbtn = {
 				.imgpath = "assets/arrows/up.png",
-				.flags = placechflags,
+				.flags = mapchflags,
 				.destsurf = winsurf,
 				.scancodes = { SDL_SCANCODE_W, SDL_SCANCODE_UP },
 				.center = {
-					PLACE_CHOOSER_WIDTH/2,
-					CAMERA_SCREEN_HEIGHT - PLACE_CHOOSER_HEIGHT + button_height(placechflags)/2,
+					MAP_CHOOSER_WIDTH/2,
+					CAMERA_SCREEN_HEIGHT - MAP_CHOOSER_HEIGHT + button_height(mapchflags)/2,
 				},
-				.onclick = select_prev_place,
+				.onclick = select_prev_map,
 			},
 			.nextbtn = {
 				.imgpath = "assets/arrows/down.png",
-				.flags = placechflags,
+				.flags = mapchflags,
 				.destsurf = winsurf,
 				.scancodes = { SDL_SCANCODE_S, SDL_SCANCODE_DOWN },
 				.center = {
-					PLACE_CHOOSER_WIDTH/2,
-					CAMERA_SCREEN_HEIGHT - button_height(placechflags)/2,
+					MAP_CHOOSER_WIDTH/2,
+					CAMERA_SCREEN_HEIGHT - button_height(mapchflags)/2,
 				},
-				.onclick = select_next_place,
+				.onclick = select_next_map,
 			},
 			.editbtn = {
 				.text = "Edit",
@@ -313,7 +313,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				.destsurf = winsurf,
 				.scancodes = { SDL_SCANCODE_E },
 				.center = {
-					(PLACE_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
+					(MAP_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
 					CAMERA_SCREEN_HEIGHT - button_height(0)*3/2
 				},
 				.onclick = set_to_true,
@@ -325,7 +325,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				.destsurf = winsurf,
 				.scancodes = { SDL_SCANCODE_C },
 				.center = {
-					(PLACE_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
+					(MAP_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
 					CAMERA_SCREEN_HEIGHT - button_height(0)/2,
 				},
 				.onclick = set_to_true,
@@ -333,10 +333,10 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 			},
 		},
 	};
-	ch->placech.places = place_list(&ch->placech.nplaces);
+	ch->mapch.maps = map_list(&ch->mapch.nmaps);
 
-	ch->placech.prevbtn.onclickdata = &ch->placech;
-	ch->placech.nextbtn.onclickdata = &ch->placech;
+	ch->mapch.prevbtn.onclickdata = &ch->mapch;
+	ch->mapch.nextbtn.onclickdata = &ch->mapch;
 
 	create_player_ellipsoids(ch);
 	setup_player_chooser(ch, 0, SDL_SCANCODE_A, SDL_SCANCODE_D);
@@ -347,36 +347,36 @@ void chooser_destroy(const struct Chooser *ch)
 {
 	SDL_FreeSurface(ch->playerch[0].cam.surface);
 	SDL_FreeSurface(ch->playerch[1].cam.surface);
-	SDL_FreeSurface(ch->placech.cam.surface);
-	free(ch->placech.places);
+	SDL_FreeSurface(ch->mapch.cam.surface);
+	free(ch->mapch.maps);
 }
 
 static void show_title_text(SDL_Surface *winsurf)
 {
-	SDL_Surface *s = misc_create_text_surface("Choose players and place:", white_color, FONT_SIZE);
+	SDL_Surface *s = misc_create_text_surface("Choose players and map:", white_color, FONT_SIZE);
 	misc_blit_with_center(s, winsurf, &(SDL_Point){ winsurf->w/2, FONT_SIZE/2 });
 	SDL_FreeSurface(s);
 }
 
 enum MiscState chooser_run(struct Chooser *ch)
 {
-	if (ch->placech.placeidx >= ch->placech.nplaces)
-		ch->placech.placeidx = ch->placech.nplaces-1;
-	update_place_chooser_buttons(&ch->placech);
+	if (ch->mapch.mapidx >= ch->mapch.nmaps)
+		ch->mapch.mapidx = ch->mapch.nmaps-1;
+	update_map_chooser_buttons(&ch->mapch);
 
 	bool playclicked = false;
 	bool editclicked = false;
 	bool cpclicked = false;
 
 	ch->bigplaybtn.onclickdata = &playclicked;
-	ch->placech.editbtn.onclickdata = &editclicked;
-	ch->placech.cpbtn.onclickdata = &cpclicked;
+	ch->mapch.editbtn.onclickdata = &editclicked;
+	ch->mapch.cpbtn.onclickdata = &cpclicked;
 
 	SDL_FillRect(ch->winsurf, NULL, 0);
-	button_show(&ch->placech.prevbtn);
-	button_show(&ch->placech.nextbtn);
-	button_show(&ch->placech.editbtn);
-	button_show(&ch->placech.cpbtn);
+	button_show(&ch->mapch.prevbtn);
+	button_show(&ch->mapch.nextbtn);
+	button_show(&ch->mapch.editbtn);
+	button_show(&ch->mapch.cpbtn);
 	button_show(&ch->bigplaybtn);
 	show_player_chooser_in_beginning(&ch->playerch[0]);
 	show_player_chooser_in_beginning(&ch->playerch[1]);
@@ -395,16 +395,16 @@ enum MiscState chooser_run(struct Chooser *ch)
 		if (playclicked)
 			return MISC_STATE_PLAY;
 		if (editclicked)
-			return MISC_STATE_EDITPLACE;
+			return MISC_STATE_MAPEDITOR;
 		if (cpclicked) {
-			ch->placech.placeidx = place_copy(&ch->placech.places, &ch->placech.nplaces, ch->placech.placeidx);
-			return MISC_STATE_EDITPLACE;
+			ch->mapch.mapidx = map_copy(&ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
+			return MISC_STATE_MAPEDITOR;
 		}
 
 		rotate_player_ellipsoids(ch->ellipsoids);
 		show_player_chooser_each_frame(ch, &ch->playerch[0]);
 		show_player_chooser_each_frame(ch, &ch->playerch[1]);
-		show_place_chooser_each_frame(&ch->placech);
+		show_map_chooser_each_frame(&ch->mapch);
 
 		SDL_UpdateWindowSurface(ch->win);
 		looptimer_wait(&lt);

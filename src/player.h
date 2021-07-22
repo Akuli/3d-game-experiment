@@ -5,7 +5,7 @@
 #include <SDL2/SDL.h>
 #include "camera.h"
 #include "ellipsoid.h"
-#include "place.h"
+#include "map.h"
 
 // smallest possible height of the player (then ellipsoid.yradius is half of this)
 #define PLAYER_HEIGHT_FLAT 0.1f
@@ -39,7 +39,7 @@ extern int player_nepics;
 void player_init_epics(const SDL_PixelFormat *fmt);
 
 // run before showing stuff to user
-void player_eachframe(struct Player *plr, const struct Place *pl);
+void player_eachframe(struct Player *plr, const struct Map *map);
 
 // key press callbacks. dir values: -1 for left, +1 for right
 void player_set_turning(struct Player *plr, int dir, bool turn);
