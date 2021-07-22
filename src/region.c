@@ -15,6 +15,29 @@ static bool exists_wall_between_points(const struct Place *pl, struct PlaceCoord
 	for (int i = 0; i < pl->nwalls; i++) {
 		if (
 			(
+				/*
+				- p1 and p2 coordinates point towards top-left from actual location
+				- Picture has p1.z < p2.z, but they could also be the other way
+				- We are checking whether there is a wall at =========. Wall coordinates
+				  of a wall like this specify the corner having smaller x value, hence
+				  it's called startx
+
+				 ---------> x
+				|
+				|
+				|   (p1.x,p1.z)
+				|
+				|
+				|                 p1
+				|
+				|
+				|   (p2.x,p2.z)=========
+				|
+				|
+				|                 p2
+				V
+				z
+				*/
 				p1.x == p2.x
 				&& pl->walls[i].dir == WALL_DIR_XY
 				&& pl->walls[i].startx == p1.x
