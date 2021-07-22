@@ -16,7 +16,7 @@
 #include "sound.h"
 #include "log.h"
 #include "place.h"
-#include "editplace.h"
+#include "mapeditor.h"
 
 #ifdef _WIN32
 	#include <direct.h>
@@ -159,9 +159,9 @@ int main(int argc, char **argv)
 			s = game_over(wnd, winner);
 			break;
 
-		case MISC_STATE_EDITPLACE:
+		case MISC_STATE_MAPEDITOR:
 			log_printf("starting place editor");
-			s = editplace_run(
+			s = mapeditor_run(
 				wnd, ch.placech.places, &ch.placech.nplaces, ch.placech.placeidx,
 				ch.playerch[0].epic, ch.playerch[1].epic);
 			break;

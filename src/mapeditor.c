@@ -1,4 +1,4 @@
-#include "editplace.h"
+#include "mapeditor.h"
 #include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -505,7 +505,7 @@ bool handle_event(struct PlaceEditor *pe, const SDL_Event *e)
 
 	// If "Yes, delete this place" button was clicked and the place no longer
 	// exists, we must avoid handling the click event again
-	if (pe->state != MISC_STATE_EDITPLACE)
+	if (pe->state != MISC_STATE_MAPEDITOR)
 		return false;
 
 	switch(e->type) {
@@ -846,7 +846,7 @@ out:
 	SDL_FreeSurface(textsurf);
 }
 
-enum MiscState editplace_run(
+enum MiscState mapeditor_run(
 	SDL_Window *wnd,
 	struct Place *places, int *nplaces, int placeidx,
 	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic)
@@ -866,7 +866,7 @@ enum MiscState editplace_run(
 	};
 	struct PlaceEditor pe = {
 		.sel = { .mode = SEL_NONE },
-		.state = MISC_STATE_EDITPLACE,
+		.state = MISC_STATE_MAPEDITOR,
 		.place = pl,
 		.playeredits = {
 			{
@@ -968,7 +968,7 @@ enum MiscState editplace_run(
 
 			if (handle_event(&pe, &e))
 				pe.redraw = true;
-			if (pe.state != MISC_STATE_EDITPLACE)
+			if (pe.state != MISC_STATE_MAPEDITOR)
 				return pe.state;
 		}
 

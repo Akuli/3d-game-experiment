@@ -1,5 +1,5 @@
-#ifndef EDITPLACE_H
-#define EDITPLACE_H
+#ifndef MAPEDITOR_H
+#define MAPEDITOR_H
 
 #include <SDL2/SDL.h>
 #include "ellipsoid.h"
@@ -7,9 +7,9 @@
 #include "misc.h"
 
 // Needs array of all places because it's possible to delete a place
-enum MiscState editplace_run(
+enum MiscState mapeditor_run(
 	SDL_Window *wnd,
 	struct Place *places, int *nplaces, int placeidx,
 	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic);
 
-#endif   // EDITPLACE_H
+#endif   // MAPEDITOR_H

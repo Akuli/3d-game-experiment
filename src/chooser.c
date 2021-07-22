@@ -395,10 +395,10 @@ enum MiscState chooser_run(struct Chooser *ch)
 		if (playclicked)
 			return MISC_STATE_PLAY;
 		if (editclicked)
-			return MISC_STATE_EDITPLACE;
+			return MISC_STATE_MAPEDITOR;
 		if (cpclicked) {
 			ch->placech.placeidx = place_copy(&ch->placech.places, &ch->placech.nplaces, ch->placech.placeidx);
-			return MISC_STATE_EDITPLACE;
+			return MISC_STATE_MAPEDITOR;
 		}
 
 		rotate_player_ellipsoids(ch->ellipsoids);
