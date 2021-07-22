@@ -220,7 +220,7 @@ struct Map *map_list(int *nmaps)
 		log_printf_abort("default maps not found");
 
 	int ndefault = gl.gl_pathc;
-	int r = glob("custom_maps/custom-*.txt", GLOB_APPEND, NULL, &gl);
+	int r = glob("custom_maps/*.txt", GLOB_APPEND, NULL, &gl);
 	if (r != 0 && r != GLOB_NOMATCH)
 		log_printf_abort("error while globbing custom maps");
 
@@ -464,7 +464,7 @@ void map_save(const struct Map *map)
 	for (int i = 0; i < nlines; i++)
 		log_printf("%.*s", linesz, data+(i*linesz));
 
-	misc_mkdir("custom_maps");  // map->path is like "custom_maps/custom-00006.txt"
+	misc_mkdir("custom_maps");  // map->path is like "custom_maps/00006.txt"
 	FILE *f = fopen(map->path, "w");
 	if (!f)
 		log_printf_abort("opening \"%s\" failed: %s", map->path, strerror(errno));
@@ -493,18 +493,15 @@ int map_copy(struct Map **maps, int *nmaps, int srcidx)
 	int newnum = 0;
 	for (int i = 0; i < n; i++) {
 		if (arr[i].custom) {
-			// Parse custom_maps/custom-12345.txt
-			const char *ptr = arr[i].path;
-			remove_prefix(&ptr, "custom_maps");
-			SDL_assert(*ptr == '/' || *ptr == '\\');
-			ptr++;
-			remove_prefix(&ptr, "custom-");
-			newnum = max(newnum, atoi(ptr)+1);
+			// Parse custom_maps/12345.txt
+			char digits[10];
+			misc_basename_without_extension(arr[i].path, digits, sizeof digits);
+			newnum = max(newnum, atoi(digits)+1);
 		}
 	}
 
 	arr[n] = arr[srcidx];
-	sprintf(arr[n].path, "custom_maps/custom-%05d.txt", newnum);
+	sprintf(arr[n].path, "custom_maps/%05d.txt", newnum);
 	arr[n].custom = true;
 	map_save(&arr[n]);
 
