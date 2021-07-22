@@ -718,10 +718,9 @@ static void show_editor(struct PlaceEditor *pe)
 static void add_enemy(void *editorptr)
 {
 	struct PlaceEditor *pe = editorptr;
-	if (pe->place->nenemylocs == MAX_ENEMIES) {  // TODO: disable button
-		log_printf("can't add more enemies, running into MAX_ENEMIES = %d", MAX_ENEMIES);
-		return;
-	}
+	log_printf("%d enemies, adding one more", pe->place->nenemylocs);
+	int m = min(MAX_ENEMIES, pe->place->xsize*pe->place->zsize - 2);
+	SDL_assert(pe->place->nenemylocs < m);  // button should be disabled if not
 
 	struct PlaceCoords hint;
 	switch(pe->sel.mode) {
@@ -750,10 +749,25 @@ static void remove_enemy(void *editorptr)
 {
 	// TODO: if enemy selected, remove it instead of an arbitrary enemy
 	struct PlaceEditor *pe = editorptr;
-	if (pe->place->nenemylocs > 0) {  // TODO: disable button
-		pe->place->nenemylocs--;
-		pe->redraw = true;
-	}
+	log_printf("%d enemies, removing the last one", pe->place->nenemylocs);
+	SDL_assert(pe->place->nenemylocs > 0);  // button should be disabled if not
+	pe->place->nenemylocs--;
+	pe->redraw = true;
+}
+
+static void update_button_disableds(struct PlaceEditor *pe)
+{
+	if (pe->place->nenemylocs == 0)
+		pe->delenemybtn.flags |= BUTTON_DISABLED;
+	else
+		pe->delenemybtn.flags &= ~BUTTON_DISABLED;
+
+	int m = min(MAX_ENEMIES, pe->place->xsize*pe->place->zsize - 2);
+	SDL_assert(pe->place->nenemylocs <= m);
+	if (pe->place->nenemylocs == m)
+		pe->addenemybtn.flags |= BUTTON_DISABLED;
+	else
+		pe->addenemybtn.flags &= ~BUTTON_DISABLED;
 }
 
 static void set_to_true(void *ptr)
@@ -974,6 +988,7 @@ enum MiscState editplace_run(
 
 			SDL_FillRect(wndsurf, NULL, 0);
 			show_editor(&pe);
+			update_button_disableds(&pe);
 			button_show(&pe.donebtn);
 			button_show(&pe.delplacebtn);
 			button_show(&pe.addenemybtn);
