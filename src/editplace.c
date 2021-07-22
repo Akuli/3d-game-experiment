@@ -958,9 +958,6 @@ enum MiscState editplace_run(
 
 	deldata.editor = &pe;
 
-	for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(&pe, &ee); )
-		ellipsoid_update_transforms(&ee->el);
-
 	struct LoopTimer lt = {0};
 
 	for (pe.redraw = true; ; pe.redraw = false) { // First iteration always redraws
