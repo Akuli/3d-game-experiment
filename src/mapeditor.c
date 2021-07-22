@@ -45,9 +45,8 @@ struct MapEditor {
 	struct Camera cam;
 	int rotatedir;
 	struct Button delmapbtn, donebtn;
-	struct Button addenemybtn, delenemybtn;
+	struct Button addenemybtn;
 	struct Selection sel;
-	bool mousemoved;
 	bool up, down, left, right;   // are arrow keys pressed
 	bool redraw;
 };
@@ -96,22 +95,20 @@ static struct Wall *find_wall_from_map(const struct Wall *w, struct Map *map)
 	return NULL;
 }
 
-static bool add_wall(struct MapEditor *ed)
+static void add_wall(struct MapEditor *ed)
 {
 	SDL_assert(ed->sel.mode == SEL_WALL);
 	SDL_assert(ed->map->nwalls <= MAX_WALLS);
 	if (ed->map->nwalls == MAX_WALLS) {
 		log_printf("hitting max number of walls, can't add more");
-		return false;
+		return;
 	}
 
-	if (find_wall_from_map(&ed->sel.data.wall, ed->map))
-		return false;
-
-	map_addwall(ed->map, ed->sel.data.wall.startx, ed->sel.data.wall.startz, ed->sel.data.wall.dir);
-	log_printf("Added wall, now there are %d walls", ed->map->nwalls);
-	map_save(ed->map);
-	return true;
+	if (!find_wall_from_map(&ed->sel.data.wall, ed->map)) {
+		map_addwall(ed->map, ed->sel.data.wall.startx, ed->sel.data.wall.startz, ed->sel.data.wall.dir);
+		log_printf("Added wall, now there are %d walls", ed->map->nwalls);
+		map_save(ed->map);
+	}
 }
 
 static bool is_at_edge(const struct Wall *w, const struct Map *map)
@@ -119,16 +116,6 @@ static bool is_at_edge(const struct Wall *w, const struct Map *map)
 	return
 		(w->dir == WALL_DIR_XY && (w->startz == 0 || w->startz == map->zsize)) ||
 		(w->dir == WALL_DIR_ZY && (w->startx == 0 || w->startx == map->xsize));
-}
-
-static void delete_wall(struct MapEditor *ed, struct Wall *w)
-{
-	w = find_wall_from_map(w, ed->map);
-	if (w && !is_at_edge(w, ed->map)) {
-		*w = ed->map->walls[--ed->map->nwalls];
-		log_printf("Deleted wall, now there are %d walls", ed->map->nwalls);
-		map_save(ed->map);
-	}
 }
 
 static bool wall_is_within_map(const struct Wall *w, const struct Map *map)
@@ -448,6 +435,44 @@ static void on_arrow_key(struct MapEditor *ed, float angle, bool oppositespresse
 	}
 }
 
+static void delete_selected(struct MapEditor *ed)
+{
+	log_printf("Trying to delete selected item");
+	switch(ed->sel.mode) {
+		case SEL_ELLIPSOID:
+		{
+			struct EllipsoidEdit *ee = ed->sel.data.eledit;
+			// Watch out for ub, comparing pointers to different arrays is undefined
+			if (ee != &ed->playeredits[0] && ee != &ed->playeredits[1]) {
+				SDL_assert(&ed->enemyedits[0] <= ee && ee < &ed->enemyedits[ed->map->nenemylocs]);
+
+				// Once ellipsoid location is deleted, must select something else
+				struct Wall w = { .startx = ee->loc->x, .startz = ee->loc->z };
+
+				*ee->loc = ed->map->enemylocs[--ed->map->nenemylocs];
+				log_printf("Deleted enemy, now there are %d enemies", ed->map->nenemylocs);
+				ed->sel = (struct Selection){ .mode = SEL_WALL, .data = { .wall = w }};
+				map_save(ed->map);
+			}
+			break;
+		}
+
+		case SEL_WALL:
+		{
+			struct Wall *w = find_wall_from_map(&ed->sel.data.wall, ed->map);
+			if (w && !is_at_edge(w, ed->map)) {
+				*w = ed->map->walls[--ed->map->nwalls];
+				log_printf("Deleted wall, now there are %d walls", ed->map->nwalls);
+				map_save(ed->map);
+			}
+			break;
+		}
+
+		default:
+			break;
+	}
+}
+
 static struct ResizeData begin_resize(const struct Wall *edgewall, struct Map *map)
 {
 	struct ResizeData rd = { .mainwall = *edgewall, .nwalls = 0 };
@@ -493,6 +518,9 @@ static void finish_resize(struct MapEditor *ed)
 	map_save(ed->map);
 }
 
+#define LEFT_CLICK 1
+#define RIGHT_CLICK 3
+
 // Returns whether redrawing needed
 static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 {
@@ -501,7 +529,6 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 	button_handle_event(e, &ed->delmapbtn);
 	button_handle_event(e, &ed->donebtn);
 	button_handle_event(e, &ed->addenemybtn);
-	button_handle_event(e, &ed->delenemybtn);
 
 	// If "Yes, delete this map" button was clicked and the map no longer
 	// exists, we must avoid handling the click event again
@@ -510,53 +537,62 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 
 	switch(e->type) {
 	case SDL_MOUSEBUTTONDOWN:
-		switch (ed->sel.mode) {
-		case SEL_WALL:
-			if (is_at_edge(&ed->sel.data.wall, ed->map)) {
-				log_printf("Resize begins");
-				struct Wall w = ed->sel.data.wall;
-				ed->sel = (struct Selection) {
-					.mode = SEL_RESIZE,
-					.data = { .resize = begin_resize(&w, ed->map) },
-				};
-			} else {
-				struct Wall *w = find_wall_from_map(&ed->sel.data.wall, ed->map);
-				if(w) {
-					log_printf("Moving wall begins");
-					ed->sel = (struct Selection) { .mode = SEL_MVWALL, .data = { .mvwall = w }};
-				}
-			}
-			break;
+		switch(e->button.button) {
+		case RIGHT_CLICK:
+			delete_selected(ed);
+			return true;
 
-		case SEL_ELLIPSOID:
-			ed->sel.mode = SEL_MVELLIPSOID;
-			break;
+		case LEFT_CLICK:
+			switch (ed->sel.mode) {
+			case SEL_WALL:
+				if (is_at_edge(&ed->sel.data.wall, ed->map)) {
+					log_printf("Resize begins");
+					struct Wall w = ed->sel.data.wall;
+					ed->sel = (struct Selection) {
+						.mode = SEL_RESIZE,
+						.data = { .resize = begin_resize(&w, ed->map) },
+					};
+				} else {
+					struct Wall *w = find_wall_from_map(&ed->sel.data.wall, ed->map);
+					if(w) {
+						log_printf("Moving wall begins");
+						ed->sel = (struct Selection) { .mode = SEL_MVWALL, .data = { .mvwall = w }};
+					}
+				}
+				break;
+
+			case SEL_ELLIPSOID:
+				ed->sel.mode = SEL_MVELLIPSOID;
+				break;
+
+			default:
+				break;
+			}
+			return true;
 
 		default:
-			break;
+			return false;
 		}
-		ed->mousemoved = false;
-		return true;
 
 	case SDL_MOUSEBUTTONUP:
-		switch(ed->sel.mode) {
-		case SEL_RESIZE:
-			log_printf("Resize ends");
-			finish_resize(ed);
-			break;
-		case SEL_MVWALL:
-			log_printf("Moving/clicking a wall ends, mousemoved = %d", ed->mousemoved);
-			if (!ed->mousemoved)
-				delete_wall(ed, ed->sel.data.mvwall);
-			break;
-		case SEL_WALL:
-			log_printf("Clicked some place with no wall in it, adding wall");
-			add_wall(ed);
-			break;
-		default:
-			break;
+		if (e->button.button == LEFT_CLICK) {
+			switch(ed->sel.mode) {
+			case SEL_RESIZE:
+				log_printf("Resize ends");
+				finish_resize(ed);
+				break;
+			case SEL_MVWALL:
+				log_printf("Moving a wall ends");
+				break;
+			case SEL_WALL:
+				log_printf("Clicked some place with no wall in it, adding wall");
+				add_wall(ed);
+				break;
+			default:
+				break;
+			}
+			ed->sel.mode = SEL_NONE;
 		}
-		ed->sel.mode = SEL_NONE;
 		// fall through
 
 	case SDL_MOUSEMOTION:
@@ -574,7 +610,6 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 			select_by_mouse_coords(ed, e->button.x, e->button.y);
 			break;
 		}
-		ed->mousemoved = true;
 		return true;
 
 	case SDL_KEYDOWN:
@@ -602,10 +637,11 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 			ed->rotatedir = -1;
 			return false;
 		case SDL_SCANCODE_RETURN:
-			if (ed->sel.mode == SEL_WALL) {
-				if (!add_wall(ed))
-					delete_wall(ed, &ed->sel.data.wall);
-			}
+			if (ed->sel.mode == SEL_WALL)
+				add_wall(ed);
+			return true;
+		case SDL_SCANCODE_DELETE:
+			delete_selected(ed);
 			return true;
 		default:
 			return false;
@@ -678,6 +714,7 @@ static void show_editor(struct MapEditor *ed)
 		break;
 	default:
 		hlwall = NULL;
+		break;
 	}
 
 	if (hlwall) {
@@ -718,7 +755,6 @@ static void show_editor(struct MapEditor *ed)
 static void add_enemy(void *editorptr)
 {
 	struct MapEditor *ed = editorptr;
-	log_printf("%d enemies, adding one more", ed->map->nenemylocs);
 	int m = min(MAX_ENEMIES, ed->map->xsize*ed->map->zsize - 2);
 	SDL_assert(ed->map->nenemylocs < m);  // button should be disabled if not
 
@@ -742,28 +778,13 @@ static void add_enemy(void *editorptr)
 	// evaluation order rules troll me
 	struct MapCoords c = map_findempty(ed->map, hint);
 	ed->map->enemylocs[ed->map->nenemylocs++] = c;
-	map_save(ed->map);
-	ed->redraw = true;
-}
-
-static void remove_enemy(void *editorptr)
-{
-	// TODO: if enemy selected, remove it instead of an arbitrary enemy
-	struct MapEditor *ed = editorptr;
-	log_printf("%d enemies, removing the last one", ed->map->nenemylocs);
-	SDL_assert(ed->map->nenemylocs > 0);  // button should be disabled if not
-	ed->map->nenemylocs--;
+	log_printf("Added enemy, now there are %d enemies", ed->map->nenemylocs);
 	map_save(ed->map);
 	ed->redraw = true;
 }
 
 static void update_button_disableds(struct MapEditor *ed)
 {
-	if (ed->map->nenemylocs == 0)
-		ed->delenemybtn.flags |= BUTTON_DISABLED;
-	else
-		ed->delenemybtn.flags &= ~BUTTON_DISABLED;
-
 	int m = min(MAX_ENEMIES, ed->map->xsize*ed->map->zsize - 2);
 	SDL_assert(ed->map->nenemylocs <= m);
 	if (ed->map->nenemylocs == m)
@@ -931,16 +952,6 @@ enum MiscState mapeditor_run(
 			.onclick = add_enemy,
 			.onclickdata = &ed,
 		},
-		.delenemybtn = {
-			.text = "Remove\nenemy",
-			.destsurf = wndsurf,
-			.center = {
-				CAMERA_SCREEN_WIDTH - button_width(0)/2,
-				button_height(0)*3/2
-			},
-			.onclick = remove_enemy,
-			.onclickdata = &ed,
-		},
 	};
 
 	// Fill all the way to max so don't have to ever do this again, even if add more enemies
@@ -990,7 +1001,6 @@ enum MiscState mapeditor_run(
 			button_show(&ed.donebtn);
 			button_show(&ed.delmapbtn);
 			button_show(&ed.addenemybtn);
-			button_show(&ed.delenemybtn);
 		}
 
 		SDL_UpdateWindowSurface(wnd);  // Run every time, in case buttons redraw themselves
