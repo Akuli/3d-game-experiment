@@ -31,8 +31,7 @@ struct Enemy {
 void enemy_init_epics(const SDL_PixelFormat *fmt);
 struct Enemy enemy_new(const struct Place *pl, struct PlaceCoords loc);
 
-// for place editor
-const struct EllipsoidPic *enemy_getfirstepic(void);
+const struct EllipsoidPic *enemy_getrandomepic(void);
 
 // runs fps times per second for each enemy
 void enemy_eachframe(struct Enemy *en);

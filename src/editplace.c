@@ -947,7 +947,7 @@ enum MiscState editplace_run(
 			.el = {
 				.xzradius = ENEMY_XZRADIUS,
 				.yradius = ENEMY_YRADIUS,
-				.epic = enemy_getfirstepic(),  // TODO: first --> random
+				.epic = enemy_getrandomepic(),
 			},
 			.loc = &pl->enemylocs[i],
 		};

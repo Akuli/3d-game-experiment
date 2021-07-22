@@ -26,9 +26,9 @@ void enemy_init_epics(const SDL_PixelFormat *fmt)
 		ellipsoid_pics[i]->hidelowerhalf = true;
 }
 
-const struct EllipsoidPic *enemy_getfirstepic(void)
+const struct EllipsoidPic *enemy_getrandomepic(void)
 {
-	return ellipsoid_pics[0];
+	return ellipsoid_pics[rand() % n_ellipsoid_pics];
 }
 
 struct Enemy enemy_new(const struct Place *pl, struct PlaceCoords loc)
@@ -36,7 +36,7 @@ struct Enemy enemy_new(const struct Place *pl, struct PlaceCoords loc)
 	struct Enemy res = {
 		.ellipsoid = {
 			.center = { loc.x + 0.5f, 0, loc.z + 0.5f },
-			.epic = ellipsoid_pics[rand() % n_ellipsoid_pics],
+			.epic = enemy_getrandomepic(),
 			.angle = 0,
 			.xzradius = ENEMY_XZRADIUS,
 			.yradius = ENEMY_YRADIUS,
