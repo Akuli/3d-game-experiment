@@ -73,8 +73,8 @@ static void rotate_player_chooser(struct ChooserPlayerStuff *plrch, int dir)
 	plrch->anglediff -= dir * (2*pi) / (float)player_nepics;
 }
 
-static void rotate_left (void *plrch) { rotate_player_chooser(plrch, -1); }
-static void rotate_right(void *plrch) { rotate_player_chooser(plrch, +1); }
+static void rotate_left (void *ch) { rotate_player_chooser(ch, -1); }
+static void rotate_right(void *ch) { rotate_player_chooser(ch, +1); }
 
 static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int scnext)
 {
@@ -186,24 +186,6 @@ static void show_player_chooser_each_frame(const struct Chooser *ch, struct Choo
 	show_all(NULL, 0, false, ch->ellipsoids, player_nepics, &plrch->cam);
 }
 
-static void show_map_chooser_each_frame(struct ChooserMapStuff *ch)
-{
-	const struct Map *map = &ch->maps[ch->mapidx];
-	Vec3 mapcenter = { map->xsize/2, 0, map->zsize/2 };
-
-	float d = hypotf(map->xsize, map->zsize);
-	Vec3 tocamera = vec3_mul_float((Vec3){0,0.8f,1}, 1.1f*d);
-	vec3_apply_matrix(&tocamera, mat3_rotation_xz(ch->cam.angle));
-
-	// TODO: see if adjusting angle earlier makes it look somehow better
-	ch->cam.location = vec3_add(mapcenter, tocamera);
-	ch->cam.angle -= 0.5f/CAMERA_FPS;   // subtracting makes it spin same direction as ellipsoids
-	camera_update_caches(&ch->cam);
-
-	SDL_FillRect(ch->cam.surface, NULL, 0);
-	show_all(map->walls, map->nwalls, false, NULL, 0, &ch->cam);
-}
-
 static void set_disabled(struct Button *btn, bool dis)
 {
 	if (dis)
@@ -223,10 +205,20 @@ static void update_map_chooser_buttons(struct ChooserMapStuff *ch)
 	button_show(&ch->editbtn);
 }
 
-static void select_prev_next_map(struct ChooserMapStuff *ch, int diff)
+static void recreate_map_editor(struct Chooser *ch)
 {
-	ch->mapidx += diff;
-	update_map_chooser_buttons(ch);
+	free(ch->mapch.editor);
+	ch->mapch.editor = mapeditor_new(
+		ch->mapch.editorsurf, -0.55f*MAP_CHOOSER_HEIGHT,
+		ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx,
+		ch->playerch[0].epic, ch->playerch[1].epic);
+}
+
+static void select_prev_next_map(struct Chooser *ch, int diff)
+{
+	ch->mapch.mapidx += diff;
+	recreate_map_editor(ch);
+	update_map_chooser_buttons(&ch->mapch);
 }
 static void select_prev_map(void *ch) { select_prev_next_map(ch, -1); }
 static void select_next_map(void *ch) { select_prev_next_map(ch, +1); }
@@ -275,16 +267,6 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 		.mapch = {
 			// maps and nmaps loaded below
 			.mapidx = 0,
-			.cam = {
-				.screencentery = -0.55f*MAP_CHOOSER_HEIGHT,
-				.surface = misc_create_cropped_surface(winsurf, (SDL_Rect){
-					0,
-					CAMERA_SCREEN_HEIGHT - MAP_CHOOSER_HEIGHT + button_height(mapchflags),
-					MAP_CHOOSER_WIDTH,
-					MAP_CHOOSER_HEIGHT - 2*button_height(mapchflags)
-				}),
-				.angle = 0,
-			},
 			.prevbtn = {
 				.imgpath = "assets/arrows/up.png",
 				.flags = mapchflags,
@@ -295,6 +277,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 					CAMERA_SCREEN_HEIGHT - MAP_CHOOSER_HEIGHT + button_height(mapchflags)/2,
 				},
 				.onclick = select_prev_map,
+				.onclickdata = ch,
 			},
 			.nextbtn = {
 				.imgpath = "assets/arrows/down.png",
@@ -306,6 +289,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 					CAMERA_SCREEN_HEIGHT - button_height(mapchflags)/2,
 				},
 				.onclick = select_next_map,
+				.onclickdata = ch,
 			},
 			.editbtn = {
 				.text = "Edit",
@@ -333,21 +317,27 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 			},
 		},
 	};
-	ch->mapch.maps = map_list(&ch->mapch.nmaps);
-
-	ch->mapch.prevbtn.onclickdata = &ch->mapch;
-	ch->mapch.nextbtn.onclickdata = &ch->mapch;
 
 	create_player_ellipsoids(ch);
 	setup_player_chooser(ch, 0, SDL_SCANCODE_A, SDL_SCANCODE_D);
 	setup_player_chooser(ch, 1, SDL_SCANCODE_LEFT, SDL_SCANCODE_RIGHT);
+
+	ch->mapch.maps = map_list(&ch->mapch.nmaps);
+	ch->mapch.editorsurf = misc_create_cropped_surface(winsurf, (SDL_Rect){
+		0,
+		CAMERA_SCREEN_HEIGHT - MAP_CHOOSER_HEIGHT + button_height(mapchflags),
+		MAP_CHOOSER_WIDTH,
+		MAP_CHOOSER_HEIGHT - 2*button_height(mapchflags)
+	});
+	recreate_map_editor(ch);
 }
 
 void chooser_destroy(const struct Chooser *ch)
 {
 	SDL_FreeSurface(ch->playerch[0].cam.surface);
 	SDL_FreeSurface(ch->playerch[1].cam.surface);
-	SDL_FreeSurface(ch->mapch.cam.surface);
+	SDL_FreeSurface(ch->mapch.editorsurf);
+	free(ch->mapch.editor);
 	free(ch->mapch.maps);
 }
 
@@ -404,7 +394,8 @@ enum MiscState chooser_run(struct Chooser *ch)
 		rotate_player_ellipsoids(ch->ellipsoids);
 		show_player_chooser_each_frame(ch, &ch->playerch[0]);
 		show_player_chooser_each_frame(ch, &ch->playerch[1]);
-		show_map_chooser_each_frame(&ch->mapch);
+		mapeditor_setplayers(ch->mapch.editor, ch->playerch[0].epic, ch->playerch[1].epic);
+		mapeditor_displayonly_eachframe(ch->mapch.editor);
 
 		SDL_UpdateWindowSurface(ch->win);
 		looptimer_wait(&lt);

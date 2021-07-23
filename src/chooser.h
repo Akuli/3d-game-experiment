@@ -8,6 +8,7 @@
 #include "camera.h"
 #include "ellipsoid.h"
 #include "misc.h"
+#include "mapeditor.h"
 
 struct ChooserPlayerStuff {
 	const struct EllipsoidPic *epic;   // pointer into a value in player_epics
@@ -27,7 +28,8 @@ struct ChooserMapStuff {
 
 	// rest of this struct isn't meant to be used outside chooser.c
 	struct Button prevbtn, nextbtn, editbtn, cpbtn;
-	struct Camera cam;
+	SDL_Surface *editorsurf;
+	struct MapEditor *editor;  // Not actually used for editing, only to display map
 };
 
 struct Chooser {

@@ -83,7 +83,8 @@ static void rotate_camera(struct MapEditor *ed, float speed)
 {
 	ed->cam.angle += speed/CAMERA_FPS;
 
-	float d = hypotf(ed->map->xsize, ed->map->zsize);
+	// d is inversely proportional to surface size, camera further away when surface is small
+	float d = hypotf(ed->map->xsize, ed->map->zsize) * CAMERA_SCREEN_WIDTH / ed->surf->w;
 	Vec3 tocamera = vec3_mul_float((Vec3){ 0, 0.5f, 0.7f }, d);
 	vec3_apply_matrix(&tocamera, mat3_rotation_xz(ed->cam.angle));
 
@@ -869,7 +870,7 @@ out:
 }
 
 struct MapEditor *mapeditor_new(
-	SDL_Surface *surf,
+	SDL_Surface *surf, int ytop,
 	struct Map *maps, int *nmaps, int mapidx,
 	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic)
 {
@@ -910,11 +911,8 @@ struct MapEditor *mapeditor_new(
 			},
 		},
 		.cam = {
-			.screencentery = 0,
-			.surface = misc_create_cropped_surface(surf, (SDL_Rect){
-				0, 0,
-				CAMERA_SCREEN_WIDTH, CAMERA_SCREEN_HEIGHT,
-			}),
+			.screencentery = ytop,
+			.surface = surf,
 			.angle = 0,
 		},
 		.rotatedir = 0,
@@ -969,37 +967,37 @@ struct MapEditor *mapeditor_new(
 	return ed;
 }
 
-enum MiscState mapeditor_eachframe(struct MapEditor *ed, bool eventhandling)
+static void show_and_rotate_map_editor(struct MapEditor *ed, bool canedit)
 {
-	if (eventhandling) {
-		SDL_Event e;
-		while (SDL_PollEvent(&e)) {
-			if (e.type == SDL_QUIT)
-				return MISC_STATE_QUIT;
-
-			if (handle_event(ed, &e))
-				ed->redraw = true;
-			if (ed->state != MISC_STATE_MAPEDITOR)
-				return ed->state;
-		}
-	}
-
 	if (ed->rotatedir != 0 || ed->redraw) {
 		for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); ) {
 			ee->el.center.x = ee->loc->x + 0.5f;
 			ee->el.center.z = ee->loc->z + 0.5f;
 		}
-		rotate_camera(ed, ed->rotatedir * 3.0f);
+		rotate_camera(ed, ed->rotatedir * (canedit ? 3.0f : 1.0f));
 
 		SDL_FillRect(ed->surf, NULL, 0);
 		show_editor(ed);
-		update_button_disableds(ed);
-		button_show(&ed->donebtn);
-		button_show(&ed->delmapbtn);
-		button_show(&ed->addenemybtn);
+		if (canedit) {
+			update_button_disableds(ed);
+			button_show(&ed->donebtn);
+			button_show(&ed->delmapbtn);
+			button_show(&ed->addenemybtn);
+		}
 	}
 	ed->redraw = false;
-	return ed->state;
+}
+
+void mapeditor_displayonly_eachframe(struct MapEditor *ed)
+{
+	ed->rotatedir = 1;
+	show_and_rotate_map_editor(ed, false);
+}
+
+void mapeditor_setplayers(struct MapEditor *ed, const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic)
+{
+	ed->playeredits[0].el.epic = plr0pic;
+	ed->playeredits[1].el.epic = plr1pic;
 }
 
 enum MiscState mapeditor_run(struct MapEditor *ed, SDL_Window *wnd)
@@ -1012,9 +1010,17 @@ enum MiscState mapeditor_run(struct MapEditor *ed, SDL_Window *wnd)
 
 	struct LoopTimer lt = {0};
 	while(1) {
-		enum MiscState s = mapeditor_eachframe(ed, true);
-		if (s != MISC_STATE_MAPEDITOR)
-			return s;
+		SDL_Event e;
+		while (SDL_PollEvent(&e)) {
+			if (e.type == SDL_QUIT)
+				return MISC_STATE_QUIT;
+			if (handle_event(ed, &e))
+				ed->redraw = true;
+			if (ed->state != MISC_STATE_MAPEDITOR)
+				return ed->state;
+		}
+
+		show_and_rotate_map_editor(ed, true);
 		SDL_UpdateWindowSurface(wnd);  // Run every time, in case buttons redraw themselves
 		looptimer_wait(&lt);
 	}
