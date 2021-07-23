@@ -910,13 +910,13 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop)
 		},
 	};
 
-	// Enemies go all the way to max, so don't need to do again if add enemies
 	for (int p = 0; p < 2; p++) {
 		ed->playeredits[p].el.xzradius = PLAYER_XZRADIUS;
 		ed->playeredits[p].el.yradius = PLAYER_YRADIUS_NOFLAT;
 		ed->playeredits[p].el.center.y = PLAYER_YRADIUS_NOFLAT;
 		ellipsoid_update_transforms(&ed->playeredits[p].el);
 	}
+	// Enemies go all the way to max, so don't need to do again if add enemies
 	for (int i = 0; i < MAX_ENEMIES; i++) {
 		ed->enemyedits[i].el.xzradius = ENEMY_XZRADIUS;
 		ed->enemyedits[i].el.yradius = ENEMY_YRADIUS,
