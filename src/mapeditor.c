@@ -39,7 +39,7 @@ struct Selection {
 
 struct MapEditor {
 	SDL_Window *wnd;
-	SDL_Surface *surf;
+	SDL_Surface *surf;  // TODO: delete, accessible through camera
 	enum MiscState state;
 	struct Map *map;
 	struct EllipsoidEdit playeredits[2];
@@ -869,81 +869,54 @@ out:
 	SDL_FreeSurface(textsurf);
 }
 
-static void init_map_editor(
-	struct MapEditor *ed,
-	SDL_Surface *surf, float screencentery,
-	struct Map *maps, int *nmaps, int mapidx,
-	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic,
-	float camangle)
+void mapeditor_reinit(struct MapEditor *ed, struct Map *maps, int *nmaps, int mapidx)
 {
-	SDL_FillRect(surf, NULL, 0);
+	SDL_FillRect(ed->surf, NULL, 0);
 
-	*ed = (struct MapEditor){
-		.surf = surf,
-		.map = &maps[mapidx],
-		.maps = maps,
-		.nmaps = nmaps,
-		.redraw = true,  // first iteration always redraws
-		.sel = { .mode = SEL_NONE },
-		.state = MISC_STATE_MAPEDITOR,
-		.playeredits = {
-			{
-				.el = {
-					.xzradius = PLAYER_XZRADIUS,
-					.yradius = PLAYER_YRADIUS_NOFLAT,
-					.epic = plr0pic,
-					.center = { .y = PLAYER_YRADIUS_NOFLAT },
-				},
-				.loc = &maps[mapidx].playerlocs[0],
-			},
-			{
-				.el = {
-					.xzradius = PLAYER_XZRADIUS,
-					.yradius = PLAYER_YRADIUS_NOFLAT,
-					.epic = plr1pic,
-					.center = { .y = PLAYER_YRADIUS_NOFLAT },
-				},
-				.loc = &maps[mapidx].playerlocs[1],
-			},
+	ed->map = &maps[mapidx];
+	ed->maps = maps;
+	ed->nmaps = nmaps;
+	ed->redraw = true;   // first iteration always redraws
+	ed->sel = (struct Selection){ .mode = SEL_NONE };
+	ed->state = MISC_STATE_MAPEDITOR;
+	for (int p=0; p<2; p++) {
+		ed->playeredits[p].el.xzradius = PLAYER_XZRADIUS;
+		ed->playeredits[p].el.yradius = PLAYER_YRADIUS_NOFLAT;
+		ed->playeredits[p].el.center.y = PLAYER_YRADIUS_NOFLAT;
+		ed->playeredits[p].loc = &maps[mapidx].playerlocs[p];
+	}
+	ed->rotatedir = 0;
+	ed->donebtn = (struct Button){
+		.text = "Done",
+		.destsurf = ed->surf,
+		.center = {
+			button_width(0)/2,
+			button_height(0)/2
 		},
-		.cam = {
-			.screencentery = screencentery,
-			.surface = surf,
-			.angle = camangle,
+		.scancodes = { SDL_SCANCODE_ESCAPE },
+		.onclick = on_done_clicked,
+		.onclickdata = ed,
+	};
+	ed->delmapbtn = (struct Button){
+		.text = "Delete\nthis map",
+		.destsurf = ed->surf,
+		.center = {
+			button_width(0)/2,
+			button_height(0)*3/2
 		},
-		.rotatedir = 0,
-		.donebtn = {
-			.text = "Done",
-			.destsurf = surf,
-			.center = {
-				button_width(0)/2,
-				button_height(0)/2
-			},
-			.scancodes = { SDL_SCANCODE_ESCAPE },
-			.onclick = on_done_clicked,
-			.onclickdata = ed,
+		.onclick = confirm_delete,
+		.onclickdata = ed,
+	};
+	ed->addenemybtn = (struct Button){
+		.text = "Add\nenemy",
+		.scancodes = { SDL_SCANCODE_E },
+		.destsurf = ed->surf,
+		.center = {
+			CAMERA_SCREEN_WIDTH - button_width(0)/2,
+			button_height(0)/2
 		},
-		.delmapbtn = {
-			.text = "Delete\nthis map",
-			.destsurf = surf,
-			.center = {
-				button_width(0)/2,
-				button_height(0)*3/2
-			},
-			.onclick = confirm_delete,
-			.onclickdata = ed,
-		},
-		.addenemybtn = {
-			.text = "Add\nenemy",
-			.scancodes = { SDL_SCANCODE_E },
-			.destsurf = surf,
-			.center = {
-				CAMERA_SCREEN_WIDTH - button_width(0)/2,
-				button_height(0)/2
-			},
-			.onclick = add_enemy,
-			.onclickdata = ed,
-		},
+		.onclick = add_enemy,
+		.onclickdata = ed,
 	};
 
 	// Fill all the way to max so don't have to ever do this again, even if add more enemies
@@ -971,15 +944,13 @@ struct MapEditor *mapeditor_new(
 	if (!ed)
 		log_printf_abort("out of mem");
 
-	init_map_editor(ed, surf, ytop, maps, nmaps, mapidx, plr0pic, plr1pic, 0);
+	*ed = (struct MapEditor){0};
+	ed->surf = surf;
+	ed->cam = (struct Camera){ .surface = surf, .screencentery = ytop, .angle = 0 };
+	ed->playeredits[0].el.epic = plr0pic;
+	ed->playeredits[1].el.epic = plr1pic;
+	mapeditor_reinit(ed, maps, nmaps, mapidx);
 	return ed;
-}
-
-void mapeditor_reinit(struct MapEditor *ed, struct Map *maps, int *nmaps, int mapidx)
-{
-	init_map_editor(
-		ed, ed->surf, ed->cam.screencentery, maps, nmaps, mapidx,
-		ed->playeredits[0].el.epic, ed->playeredits[1].el.epic, ed->cam.angle);
 }
 
 static void show_and_rotate_map_editor(struct MapEditor *ed, bool canedit)
