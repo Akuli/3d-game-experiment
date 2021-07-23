@@ -877,61 +877,57 @@ struct MapEditor *mapeditor_new(
 	if (!ed)
 		log_printf_abort("out of mem");
 
-	*ed = (struct MapEditor){0};  // no calloc or memset because floats
-	ed->cam = (struct Camera){ .surface = surf, .screencentery = ytop, .angle = 0 };
-	ed->playeredits[0].el.epic = plr0pic;
-	ed->playeredits[1].el.epic = plr1pic;
-	ed->donebtn = (struct Button){
-		.text = "Done",
-		.destsurf = ed->cam.surface,
-		.center = {
-			button_width(0)/2,
-			button_height(0)/2
+	*ed = (struct MapEditor){
+		.cam = { .surface = surf, .screencentery = ytop, .angle = 0 },
+		.donebtn = {
+			.text = "Done",
+			.destsurf = ed->cam.surface,
+			.center = {
+				button_width(0)/2,
+				button_height(0)/2
+			},
+			.scancodes = { SDL_SCANCODE_ESCAPE },
+			.onclick = on_done_clicked,
+			.onclickdata = ed,
 		},
-		.scancodes = { SDL_SCANCODE_ESCAPE },
-		.onclick = on_done_clicked,
-		.onclickdata = ed,
-	};
-	ed->delmapbtn = (struct Button){
-		.text = "Delete\nthis map",
-		.destsurf = ed->cam.surface,
-		.center = {
-			button_width(0)/2,
-			button_height(0)*3/2
+		.delmapbtn = {
+			.text = "Delete\nthis map",
+			.destsurf = ed->cam.surface,
+			.center = {
+				button_width(0)/2,
+				button_height(0)*3/2
+			},
+			.onclick = confirm_delete,
+			.onclickdata = ed,
 		},
-		.onclick = confirm_delete,
-		.onclickdata = ed,
-	};
-	ed->addenemybtn = (struct Button){
-		.text = "Add\nenemy",
-		.scancodes = { SDL_SCANCODE_E },
-		.destsurf = ed->cam.surface,
-		.center = {
-			CAMERA_SCREEN_WIDTH - button_width(0)/2,
-			button_height(0)/2
+		.addenemybtn = {
+			.text = "Add\nenemy",
+			.scancodes = { SDL_SCANCODE_E },
+			.destsurf = ed->cam.surface,
+			.center = {
+				CAMERA_SCREEN_WIDTH - button_width(0)/2,
+				button_height(0)/2
+			},
+			.onclick = add_enemy,
+			.onclickdata = ed,
 		},
-		.onclick = add_enemy,
-		.onclickdata = ed,
 	};
 
 	// Enemies go all the way to max, so don't need to do again if add enemies
-	for (int p=0; p<2; p++) {
+	for (int p = 0; p < 2; p++) {
 		ed->playeredits[p].el.xzradius = PLAYER_XZRADIUS;
 		ed->playeredits[p].el.yradius = PLAYER_YRADIUS_NOFLAT;
 		ed->playeredits[p].el.center.y = PLAYER_YRADIUS_NOFLAT;
 		ellipsoid_update_transforms(&ed->playeredits[p].el);
 	}
 	for (int i = 0; i < MAX_ENEMIES; i++) {
-		ed->enemyedits[i] = (struct EllipsoidEdit){
-			.el = {
-				.xzradius = ENEMY_XZRADIUS,
-				.yradius = ENEMY_YRADIUS,
-				.epic = enemy_getrandomepic(),
-			},
-		};
+		ed->enemyedits[i].el.xzradius = ENEMY_XZRADIUS;
+		ed->enemyedits[i].el.yradius = ENEMY_YRADIUS,
+		ed->enemyedits[i].el.epic = enemy_getrandomepic();
 		ellipsoid_update_transforms(&ed->enemyedits[i].el);
 	}
 
+	mapeditor_setplayers(ed, plr0pic, plr1pic);
 	mapeditor_reinit(ed, maps, nmaps, mapidx);
 	return ed;
 }
@@ -948,7 +944,7 @@ void mapeditor_reinit(struct MapEditor *ed, struct Map *maps, int *nmaps, int ma
 	ed->state = MISC_STATE_MAPEDITOR;
 	ed->rotatedir = 0;
 
-	for (int p=0; p<2; p++)
+	for (int p = 0; p < 2; p++)
 		ed->playeredits[p].loc = &maps[mapidx].playerlocs[p];
 	for (int i = 0; i < MAX_ENEMIES; i++)
 		ed->enemyedits[i].loc = &maps[mapidx].enemylocs[i];
