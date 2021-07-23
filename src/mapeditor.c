@@ -39,7 +39,6 @@ struct Selection {
 
 struct MapEditor {
 	SDL_Window *wnd;
-	SDL_Surface *surf;  // TODO: delete, accessible through camera
 	enum MiscState state;
 	struct Map *map;
 	struct EllipsoidEdit playeredits[2];
@@ -84,7 +83,7 @@ static void rotate_camera(struct MapEditor *ed, float speed)
 	ed->cam.angle += speed/CAMERA_FPS;
 
 	// d is inversely proportional to surface size, camera further away when surface is small
-	float d = hypotf(ed->map->xsize, ed->map->zsize) * CAMERA_SCREEN_WIDTH / ed->surf->w;
+	float d = hypotf(ed->map->xsize, ed->map->zsize) * CAMERA_SCREEN_WIDTH / ed->cam.surface->w;
 	Vec3 tocamera = vec3_mul_float((Vec3){ 0, 0.5f, 0.7f }, d);
 	vec3_apply_matrix(&tocamera, mat3_rotation_xz(ed->cam.angle));
 
@@ -816,7 +815,7 @@ static void confirm_delete(void *ptr)
 	log_printf("Delete button clicked, entering confirm loop");
 
 	struct MapEditor *ed = ptr;
-	SDL_FillRect(ed->surf, NULL, 0);
+	SDL_FillRect(ed->cam.surface, NULL, 0);
 	SDL_Surface *textsurf = misc_create_text_surface(
 		"Are you sure you want to permanently delete this map?",
 		(SDL_Color){0xff,0xff,0xff}, 25);
@@ -825,24 +824,24 @@ static void confirm_delete(void *ptr)
 	bool noclicked = false;
 	struct Button yesbtn = {
 		.text = "Yes, please\ndelete it",
-		.destsurf = ed->surf,
+		.destsurf = ed->cam.surface,
 		.scancodes = { SDL_SCANCODE_Y },
-		.center = { ed->surf->w/2 - button_width(0)/2, ed->surf->h/2 },
+		.center = { ed->cam.surface->w/2 - button_width(0)/2, ed->cam.surface->h/2 },
 		.onclick = set_to_true,
 		.onclickdata = &yesclicked,
 	};
 	struct Button nobtn = {
 		.text = "No, don't\ntouch it",
 		.scancodes = { SDL_SCANCODE_N, SDL_SCANCODE_ESCAPE },
-		.destsurf = ed->surf,
-		.center = { ed->surf->w/2 + button_width(0)/2, ed->surf->h/2 },
+		.destsurf = ed->cam.surface,
+		.center = { ed->cam.surface->w/2 + button_width(0)/2, ed->cam.surface->h/2 },
 		.onclick = set_to_true,
 		.onclickdata = &noclicked,
 	};
 
 	button_show(&yesbtn);
 	button_show(&nobtn);
-	misc_blit_with_center(textsurf, ed->surf, &(SDL_Point){ ed->surf->w/2, ed->surf->h/4 });
+	misc_blit_with_center(textsurf, ed->cam.surface, &(SDL_Point){ ed->cam.surface->w/2, ed->cam.surface->h/4 });
 
 	struct LoopTimer lt = {0};
 	while(!yesclicked && !noclicked) {
@@ -871,7 +870,7 @@ out:
 
 void mapeditor_reinit(struct MapEditor *ed, struct Map *maps, int *nmaps, int mapidx)
 {
-	SDL_FillRect(ed->surf, NULL, 0);
+	SDL_FillRect(ed->cam.surface, NULL, 0);
 
 	ed->map = &maps[mapidx];
 	ed->maps = maps;
@@ -888,7 +887,7 @@ void mapeditor_reinit(struct MapEditor *ed, struct Map *maps, int *nmaps, int ma
 	ed->rotatedir = 0;
 	ed->donebtn = (struct Button){
 		.text = "Done",
-		.destsurf = ed->surf,
+		.destsurf = ed->cam.surface,
 		.center = {
 			button_width(0)/2,
 			button_height(0)/2
@@ -899,7 +898,7 @@ void mapeditor_reinit(struct MapEditor *ed, struct Map *maps, int *nmaps, int ma
 	};
 	ed->delmapbtn = (struct Button){
 		.text = "Delete\nthis map",
-		.destsurf = ed->surf,
+		.destsurf = ed->cam.surface,
 		.center = {
 			button_width(0)/2,
 			button_height(0)*3/2
@@ -910,7 +909,7 @@ void mapeditor_reinit(struct MapEditor *ed, struct Map *maps, int *nmaps, int ma
 	ed->addenemybtn = (struct Button){
 		.text = "Add\nenemy",
 		.scancodes = { SDL_SCANCODE_E },
-		.destsurf = ed->surf,
+		.destsurf = ed->cam.surface,
 		.center = {
 			CAMERA_SCREEN_WIDTH - button_width(0)/2,
 			button_height(0)/2
@@ -945,7 +944,6 @@ struct MapEditor *mapeditor_new(
 		log_printf_abort("out of mem");
 
 	*ed = (struct MapEditor){0};
-	ed->surf = surf;
 	ed->cam = (struct Camera){ .surface = surf, .screencentery = ytop, .angle = 0 };
 	ed->playeredits[0].el.epic = plr0pic;
 	ed->playeredits[1].el.epic = plr1pic;
@@ -962,7 +960,7 @@ static void show_and_rotate_map_editor(struct MapEditor *ed, bool canedit)
 		}
 		rotate_camera(ed, ed->rotatedir * (canedit ? 3.0f : 1.0f));
 
-		SDL_FillRect(ed->surf, NULL, 0);
+		SDL_FillRect(ed->cam.surface, NULL, 0);
 		show_editor(ed);
 		if (canedit) {
 			update_button_disableds(ed);
@@ -992,7 +990,7 @@ enum MiscState mapeditor_run(struct MapEditor *ed, SDL_Window *wnd)
 	SDL_Surface *wndsurf = SDL_GetWindowSurface(wnd);
 	if (!wndsurf)
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
-	SDL_assert(wndsurf == ed->surf);
+	SDL_assert(wndsurf == ed->cam.surface);
 
 	struct LoopTimer lt = {0};
 	while(1) {
