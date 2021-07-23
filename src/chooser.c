@@ -205,19 +205,10 @@ static void update_map_chooser_buttons(struct ChooserMapStuff *ch)
 	button_show(&ch->editbtn);
 }
 
-static void recreate_map_editor(struct Chooser *ch)
-{
-	ch->mapch.editor = mapeditor_new(
-		ch->mapch.editor,  // can be NULL
-		ch->mapch.editorsurf, -0.55f*MAP_CHOOSER_HEIGHT,
-		ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx,
-		ch->playerch[0].epic, ch->playerch[1].epic);
-}
-
 static void select_prev_next_map(struct Chooser *ch, int diff)
 {
 	ch->mapch.mapidx += diff;
-	recreate_map_editor(ch);
+	mapeditor_reinit(ch->mapch.editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
 	update_map_chooser_buttons(&ch->mapch);
 }
 static void select_prev_map(void *ch) { select_prev_next_map(ch, -1); }
@@ -329,7 +320,10 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 		MAP_CHOOSER_WIDTH,
 		MAP_CHOOSER_HEIGHT - 2*button_height(mapchflags)
 	});
-	recreate_map_editor(ch);
+	ch->mapch.editor = mapeditor_new(
+		ch->mapch.editorsurf, -0.55f*MAP_CHOOSER_HEIGHT,
+		ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx,
+		ch->playerch[0].epic, ch->playerch[1].epic);
 }
 
 void chooser_destroy(const struct Chooser *ch)
@@ -387,7 +381,9 @@ enum MiscState chooser_run(struct Chooser *ch)
 		if (editclicked)
 			return MISC_STATE_MAPEDITOR;
 		if (cpclicked) {
+			// map_copy() can reallocate map list, editor can have old copy
 			ch->mapch.mapidx = map_copy(&ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
+			mapeditor_reinit(ch->mapch.editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
 			return MISC_STATE_MAPEDITOR;
 		}
 

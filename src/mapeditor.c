@@ -869,20 +869,13 @@ out:
 	SDL_FreeSurface(textsurf);
 }
 
-struct MapEditor *mapeditor_new(
+static void init_map_editor(
 	struct MapEditor *ed,
-	SDL_Surface *surf, int ytop,
+	SDL_Surface *surf, float screencentery,
 	struct Map *maps, int *nmaps, int mapidx,
-	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic)
+	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic,
+	float camangle)
 {
-	if (!ed) {
-		ed = calloc(sizeof(*ed), 1);
-		if (!ed)
-			log_printf_abort("out of mem");
-	}
-
-	//struct Map *map = &maps[mapidx];
-
 	SDL_FillRect(surf, NULL, 0);
 
 	*ed = (struct MapEditor){
@@ -914,9 +907,9 @@ struct MapEditor *mapeditor_new(
 			},
 		},
 		.cam = {
-			.screencentery = ytop,
+			.screencentery = screencentery,
 			.surface = surf,
-			.angle = ed->cam.angle,  // Preserving this between calls makes chooser smoother to use
+			.angle = camangle,
 		},
 		.rotatedir = 0,
 		.donebtn = {
@@ -967,7 +960,26 @@ struct MapEditor *mapeditor_new(
 	}
 	ellipsoid_update_transforms(&ed->playeredits[0].el);
 	ellipsoid_update_transforms(&ed->playeredits[1].el);
+}
+
+struct MapEditor *mapeditor_new(
+	SDL_Surface *surf, int ytop,
+	struct Map *maps, int *nmaps, int mapidx,
+	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic)
+{
+	struct MapEditor *ed = malloc(sizeof(*ed));
+	if (!ed)
+		log_printf_abort("out of mem");
+
+	init_map_editor(ed, surf, ytop, maps, nmaps, mapidx, plr0pic, plr1pic, 0);
 	return ed;
+}
+
+void mapeditor_reinit(struct MapEditor *ed, struct Map *maps, int *nmaps, int mapidx)
+{
+	init_map_editor(
+		ed, ed->surf, ed->cam.screencentery, maps, nmaps, mapidx,
+		ed->playeredits[0].el.epic, ed->playeredits[1].el.epic, ed->cam.angle);
 }
 
 static void show_and_rotate_map_editor(struct MapEditor *ed, bool canedit)

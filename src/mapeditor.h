@@ -8,13 +8,15 @@
 
 struct MapEditor;
 
-// Can be called several times, free() the return value when done but not between calls
+// free() the return value when done but not between calls
 // Needs array of all maps because it's possible to delete a map
 struct MapEditor *mapeditor_new(
-	struct MapEditor *ed,  // NULL when called for the first time, otherwise previous return value
 	SDL_Surface *surf, int ytop,
 	struct Map *maps, int *nmaps, int mapidx,
 	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic);
+
+// Call this when current map or the array of all maps changes
+void mapeditor_reinit(struct MapEditor *ed, struct Map *maps, int *nmaps, int mapidx);
 
 // Useful if you want to use MapEditor to display a map, but not actually edit it
 void mapeditor_displayonly_eachframe(struct MapEditor *ed);
