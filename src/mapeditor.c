@@ -943,7 +943,7 @@ struct MapEditor *mapeditor_new(
 	if (!ed)
 		log_printf_abort("out of mem");
 
-	*ed = (struct MapEditor){0};
+	*ed = (struct MapEditor){0};  // no calloc or memset because floats
 	ed->cam = (struct Camera){ .surface = surf, .screencentery = ytop, .angle = 0 };
 	ed->playeredits[0].el.epic = plr0pic;
 	ed->playeredits[1].el.epic = plr1pic;
