@@ -8,9 +8,10 @@
 
 struct MapEditor;
 
-// Use free() to destroy the map editor when done
+// Can be called several times, free() the return value when done but not between calls
 // Needs array of all maps because it's possible to delete a map
 struct MapEditor *mapeditor_new(
+	struct MapEditor *ed,  // NULL when called for the first time, otherwise previous return value
 	SDL_Surface *surf, int ytop,
 	struct Map *maps, int *nmaps, int mapidx,
 	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic);

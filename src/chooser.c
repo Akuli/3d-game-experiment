@@ -207,8 +207,8 @@ static void update_map_chooser_buttons(struct ChooserMapStuff *ch)
 
 static void recreate_map_editor(struct Chooser *ch)
 {
-	free(ch->mapch.editor);
 	ch->mapch.editor = mapeditor_new(
+		ch->mapch.editor,  // can be NULL
 		ch->mapch.editorsurf, -0.55f*MAP_CHOOSER_HEIGHT,
 		ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx,
 		ch->playerch[0].epic, ch->playerch[1].epic);

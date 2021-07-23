@@ -870,13 +870,16 @@ out:
 }
 
 struct MapEditor *mapeditor_new(
+	struct MapEditor *ed,
 	SDL_Surface *surf, int ytop,
 	struct Map *maps, int *nmaps, int mapidx,
 	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic)
 {
-	struct MapEditor *ed = calloc(sizeof(*ed), 1);
-	if (!ed)
-		log_printf_abort("out of mem");
+	if (!ed) {
+		ed = calloc(sizeof(*ed), 1);
+		if (!ed)
+			log_printf_abort("out of mem");
+	}
 
 	//struct Map *map = &maps[mapidx];
 
@@ -913,7 +916,7 @@ struct MapEditor *mapeditor_new(
 		.cam = {
 			.screencentery = ytop,
 			.surface = surf,
-			.angle = 0,
+			.angle = ed->cam.angle,  // Preserving this between calls makes chooser smoother to use
 		},
 		.rotatedir = 0,
 		.donebtn = {
