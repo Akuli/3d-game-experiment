@@ -1,7 +1,7 @@
 #include "mapeditor.h"
 #include <math.h>
 #include <stdbool.h>
-#include <stddef.h>
+#include <stdlib.h>
 #include "mathstuff.h"
 #include "enemy.h"
 #include "button.h"
