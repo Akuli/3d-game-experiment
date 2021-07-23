@@ -875,7 +875,7 @@ void mapeditor_reinit(struct MapEditor *ed, struct Map *maps, int *nmaps, int ma
 	ed->map = &maps[mapidx];
 	ed->maps = maps;
 	ed->nmaps = nmaps;
-	ed->redraw = true;   // first iteration always redraws
+	ed->redraw = true;
 	ed->sel = (struct Selection){ .mode = SEL_NONE };
 	ed->state = MISC_STATE_MAPEDITOR;
 	for (int p=0; p<2; p++) {
