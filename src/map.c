@@ -228,7 +228,7 @@ struct Map *map_list(int *nmaps)
 
 	struct Map *maps = malloc(gl.gl_pathc * sizeof maps[0]);
 	if (!maps)
-		log_printf_abort("not enough memory for %d maps", gl.gl_pathc);
+		log_printf_abort("not enough memory for %d maps", (int)gl.gl_pathc);
 
 	for (int i = 0; i < gl.gl_pathc; i++)
 		read_map_from_file(&maps[i], gl.gl_pathv[i], i >= ndefault);
