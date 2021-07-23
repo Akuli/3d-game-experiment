@@ -974,7 +974,7 @@ static void show_and_rotate_map_editor(struct MapEditor *ed, bool canedit)
 
 void mapeditor_displayonly_eachframe(struct MapEditor *ed)
 {
-	ed->rotatedir = 1;
+	ed->rotatedir = -1;  // same direction as players in chooser
 	show_and_rotate_map_editor(ed, false);
 }
 
