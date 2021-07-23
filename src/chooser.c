@@ -344,6 +344,9 @@ static void show_title_text(SDL_Surface *winsurf)
 
 enum MiscState chooser_run(struct Chooser *ch)
 {
+	// Maps array can get reallocated while not running chooser, e.g. copying a maps
+	mapeditor_reinit(ch->mapch.editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
+
 	if (ch->mapch.mapidx >= ch->mapch.nmaps)
 		ch->mapch.mapidx = ch->mapch.nmaps-1;
 	update_map_chooser_buttons(&ch->mapch);
@@ -381,9 +384,7 @@ enum MiscState chooser_run(struct Chooser *ch)
 		if (editclicked)
 			return MISC_STATE_MAPEDITOR;
 		if (cpclicked) {
-			// map_copy() can reallocate map list, editor can have old copy
 			ch->mapch.mapidx = map_copy(&ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
-			mapeditor_reinit(ch->mapch.editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
 			return MISC_STATE_MAPEDITOR;
 		}
 
