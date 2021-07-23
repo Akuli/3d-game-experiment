@@ -22,7 +22,7 @@ struct ChooserPlayerStuff {
 };
 
 struct ChooserMapStuff {
-	struct Map *maps;  // FIXME: recreate mapeditor when reallocated
+	struct Map *maps;
 	int nmaps;
 	int mapidx;
 
