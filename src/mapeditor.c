@@ -82,12 +82,16 @@ static void rotate_camera(struct MapEditor *ed, float speed)
 {
 	ed->cam.angle += speed/CAMERA_FPS;
 
+	float d = hypotf(ed->map->xsize, ed->map->zsize);
+	clamp_float(&d, 8, HUGE_VALF);
+
 	// d is inversely proportional to surface size, camera further away when surface is small
-	float d = hypotf(ed->map->xsize, ed->map->zsize) * CAMERA_SCREEN_WIDTH / ed->cam.surface->w;
+	d *= (float)CAMERA_SCREEN_WIDTH / ed->cam.surface->w;
+
 	Vec3 tocamera = vec3_mul_float((Vec3){ 0, 0.5f, 0.7f }, d);
 	vec3_apply_matrix(&tocamera, mat3_rotation_xz(ed->cam.angle));
 
-	Vec3 mapcenter = { ed->map->xsize/2, 0, ed->map->zsize/2 };
+	Vec3 mapcenter = { ed->map->xsize*0.5f, 0, ed->map->zsize*0.5f };
 	ed->cam.location = vec3_add(mapcenter, tocamera);
 	camera_update_caches(&ed->cam);
 }

@@ -320,7 +320,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 		MAP_CHOOSER_WIDTH,
 		MAP_CHOOSER_HEIGHT - 2*button_height(mapchflags)
 	});
-	ch->mapch.editor = mapeditor_new(ch->mapch.editorsurf, -0.55f*MAP_CHOOSER_HEIGHT);
+	ch->mapch.editor = mapeditor_new(ch->mapch.editorsurf, -0.5f*MAP_CHOOSER_HEIGHT);
 	mapeditor_setmaps(ch->mapch.editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
 	mapeditor_setplayers(ch->mapch.editor, ch->playerch[0].epic, ch->playerch[1].epic);
 }
