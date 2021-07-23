@@ -8,8 +8,7 @@
 #include "camera.h"
 #include "ellipsoid.h"
 #include "misc.h"
-// No idea why iwyu wnats to delete this, doesn't compile without
-#include "mapeditor.h"  // IWYU pragma: keep
+#include "mapeditor.h"
 
 struct ChooserPlayerStuff {
 	const struct EllipsoidPic *epic;   // pointer into a value in player_epics

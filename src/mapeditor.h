@@ -6,7 +6,7 @@
 #include "map.h"
 #include "misc.h"
 
-struct MapEditor;  // IWYU pragma: keep
+struct MapEditor;  // IWYU pragma: export
 
 // You also need to call mapeditor_setmaps and mapeditor_setplayers
 // free() the return value when done but not between calls
