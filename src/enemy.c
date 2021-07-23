@@ -24,7 +24,7 @@ void enemy_init_epics(const SDL_PixelFormat *fmt)
 
 	for (int i = 0; i < n_ellipsoid_pics; i++)
 		ellipsoid_pics[i]->hidelowerhalf = true;
-};
+}
 
 const struct EllipsoidPic *enemy_getrandomepic(void)
 {
