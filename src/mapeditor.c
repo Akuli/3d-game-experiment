@@ -878,7 +878,7 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop)
 		.cam = { .surface = surf, .screencentery = ytop, .angle = 0 },
 		.donebtn = {
 			.text = "Done",
-			.destsurf = ed->cam.surface,
+			.destsurf = surf,
 			.center = {
 				button_width(0)/2,
 				button_height(0)/2
@@ -889,7 +889,7 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop)
 		},
 		.delmapbtn = {
 			.text = "Delete\nthis map",
-			.destsurf = ed->cam.surface,
+			.destsurf = surf,
 			.center = {
 				button_width(0)/2,
 				button_height(0)*3/2
@@ -900,7 +900,7 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop)
 		.addenemybtn = {
 			.text = "Add\nenemy",
 			.scancodes = { SDL_SCANCODE_E },
-			.destsurf = ed->cam.surface,
+			.destsurf = surf,
 			.center = {
 				CAMERA_SCREEN_WIDTH - button_width(0)/2,
 				button_height(0)/2

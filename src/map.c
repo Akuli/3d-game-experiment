@@ -168,6 +168,8 @@ static void read_map_from_file(struct Map *map, const char *path, bool custom)
 	map->xsize = linelen / 3;
 
 	map->nwalls = 0;
+	map->nenemylocs = 0;
+
 	struct SquareParsingState st = { .map = map, .playerlocptr = map->playerlocs };
 	for (int z = 0; z < map->zsize; z++) {
 		const char *line1 = fdata;
@@ -226,7 +228,7 @@ struct Map *map_list(int *nmaps)
 
 	struct Map *maps = malloc(gl.gl_pathc * sizeof maps[0]);
 	if (!maps)
-		log_printf_abort("not enough memory for %d maps", *nmaps);
+		log_printf_abort("not enough memory for %d maps", gl.gl_pathc);
 
 	for (int i = 0; i < gl.gl_pathc; i++)
 		read_map_from_file(&maps[i], gl.gl_pathv[i], i >= ndefault);
