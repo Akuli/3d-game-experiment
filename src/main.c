@@ -161,10 +161,9 @@ int main(int argc, char **argv)
 
 		case MISC_STATE_MAPEDITOR:
 			log_printf("starting map editor");
-			struct MapEditor *ed = mapeditor_new(
-				wndsurf, 0,
-				ch.mapch.maps, &ch.mapch.nmaps, ch.mapch.mapidx,
-				ch.playerch[0].epic, ch.playerch[1].epic);
+			struct MapEditor *ed = mapeditor_new(wndsurf, 0);
+			mapeditor_setmaps(ed, ch.mapch.maps, &ch.mapch.nmaps, ch.mapch.mapidx);
+			mapeditor_setplayers(ed, ch.playerch[0].epic, ch.playerch[1].epic);
 			s = mapeditor_run(ed, wnd);
 			free(ed);
 			break;

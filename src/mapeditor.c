@@ -868,10 +868,7 @@ out:
 	SDL_FreeSurface(textsurf);
 }
 
-struct MapEditor *mapeditor_new(
-	SDL_Surface *surf, int ytop,
-	struct Map *maps, int *nmaps, int mapidx,
-	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic)
+struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop)
 {
 	struct MapEditor *ed = malloc(sizeof(*ed));
 	if (!ed)
@@ -926,13 +923,10 @@ struct MapEditor *mapeditor_new(
 		ed->enemyedits[i].el.epic = enemy_getrandomepic();
 		ellipsoid_update_transforms(&ed->enemyedits[i].el);
 	}
-
-	mapeditor_setplayers(ed, plr0pic, plr1pic);
-	mapeditor_reinit(ed, maps, nmaps, mapidx);
 	return ed;
 }
 
-void mapeditor_reinit(struct MapEditor *ed, struct Map *maps, int *nmaps, int mapidx)
+void mapeditor_setmaps(struct MapEditor *ed, struct Map *maps, int *nmaps, int mapidx)
 {
 	SDL_FillRect(ed->cam.surface, NULL, 0);
 

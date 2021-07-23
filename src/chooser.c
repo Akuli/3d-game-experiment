@@ -208,7 +208,7 @@ static void update_map_chooser_buttons(struct ChooserMapStuff *ch)
 static void select_prev_next_map(struct Chooser *ch, int diff)
 {
 	ch->mapch.mapidx += diff;
-	mapeditor_reinit(ch->mapch.editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
+	mapeditor_setmaps(ch->mapch.editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
 	update_map_chooser_buttons(&ch->mapch);
 }
 static void select_prev_map(void *ch) { select_prev_next_map(ch, -1); }
@@ -320,10 +320,9 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 		MAP_CHOOSER_WIDTH,
 		MAP_CHOOSER_HEIGHT - 2*button_height(mapchflags)
 	});
-	ch->mapch.editor = mapeditor_new(
-		ch->mapch.editorsurf, -0.55f*MAP_CHOOSER_HEIGHT,
-		ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx,
-		ch->playerch[0].epic, ch->playerch[1].epic);
+	ch->mapch.editor = mapeditor_new(ch->mapch.editorsurf, -0.55f*MAP_CHOOSER_HEIGHT);
+	mapeditor_setmaps(ch->mapch.editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
+	mapeditor_setplayers(ch->mapch.editor, ch->playerch[0].epic, ch->playerch[1].epic);
 }
 
 void chooser_destroy(const struct Chooser *ch)
@@ -345,7 +344,7 @@ static void show_title_text(SDL_Surface *winsurf)
 enum MiscState chooser_run(struct Chooser *ch)
 {
 	// Maps array can get reallocated while not running chooser, e.g. copying maps
-	mapeditor_reinit(ch->mapch.editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
+	mapeditor_setmaps(ch->mapch.editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
 
 	if (ch->mapch.mapidx >= ch->mapch.nmaps)
 		ch->mapch.mapidx = ch->mapch.nmaps-1;
