@@ -38,7 +38,7 @@ struct Chooser {
 	SDL_Window *win;
 	SDL_Surface *winsurf;
 	struct Ellipsoid ellipsoids[50];
-	struct Button bigplaybtn;
+	struct Button playbtn;
 	SDL_Surface *editorsurf;
 	struct MapEditor *editor;  // Not actually used for editing, only to preview
 };
