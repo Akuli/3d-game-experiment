@@ -199,10 +199,10 @@ static void set_disabled(struct Button *btn, bool dis)
 
 static void update_map_chooser_buttons(struct ChooserMapStuff *ch)
 {
-	SDL_assert(0 <= ch->mapidx && ch->mapidx < ch->nmaps);
-	set_disabled(&ch->prevbtn, ch->mapidx == 0);
-	set_disabled(&ch->nextbtn, ch->mapidx == ch->nmaps-1);
-	set_disabled(&ch->editbtn, !ch->maps[ch->mapidx].custom);
+	SDL_assert(0 <= ch->listbox.selectidx && ch->listbox.selectidx < ch->nmaps);
+	set_disabled(&ch->prevbtn, ch->listbox.selectidx == 0);
+	set_disabled(&ch->nextbtn, ch->listbox.selectidx == ch->nmaps-1);
+	set_disabled(&ch->editbtn, !ch->maps[ch->listbox.selectidx].custom);
 	button_show(&ch->prevbtn);
 	button_show(&ch->nextbtn);
 	button_show(&ch->editbtn);
@@ -210,9 +210,10 @@ static void update_map_chooser_buttons(struct ChooserMapStuff *ch)
 
 static void select_prev_next_map(struct Chooser *ch, int diff)
 {
-	ch->mapch.mapidx += diff;
-	mapeditor_setmaps(ch->editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
+	ch->mapch.listbox.selectidx += diff;
+	mapeditor_setmaps(ch->editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.listbox.selectidx);
 	update_map_chooser_buttons(&ch->mapch);
+	ch->mapch.listbox.redraw = true;
 }
 static void select_prev_map(void *ch) { select_prev_next_map(ch, -1); }
 static void select_next_map(void *ch) { select_prev_next_map(ch, +1); }
@@ -259,7 +260,6 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 		},
 		.mapch = {
 			// maps and nmaps loaded below
-			.mapidx = 0,
 			.prevbtn = {
 				.imgpath = "assets/arrows/up.png",
 				.flags = mapchflags,
@@ -333,7 +333,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 		MAP_CHOOSER_HEIGHT - button_height(0)
 	});
 	ch->editor = mapeditor_new(ch->editorsurf, -0.2f*CAMERA_SCREEN_HEIGHT);
-	mapeditor_setmaps(ch->editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
+	mapeditor_setmaps(ch->editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.listbox.selectidx);
 	mapeditor_setplayers(ch->editor, ch->playerch[0].epic, ch->playerch[1].epic);
 }
 
@@ -370,11 +370,11 @@ static void update_listbox_entries(struct ChooserMapStuff *ch)
 enum MiscState chooser_run(struct Chooser *ch)
 {
 	// Maps array can get reallocated while not running chooser, e.g. copying maps
-	mapeditor_setmaps(ch->editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
+	mapeditor_setmaps(ch->editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.listbox.selectidx);
 	update_listbox_entries(&ch->mapch);
 
-	if (ch->mapch.mapidx >= ch->mapch.nmaps)
-		ch->mapch.mapidx = ch->mapch.nmaps-1;
+	if (ch->mapch.listbox.selectidx >= ch->mapch.nmaps)
+		ch->mapch.listbox.selectidx = ch->mapch.nmaps-1;
 	update_map_chooser_buttons(&ch->mapch);
 
 	bool playclicked = false;
@@ -412,7 +412,7 @@ enum MiscState chooser_run(struct Chooser *ch)
 		if (editclicked)
 			return MISC_STATE_MAPEDITOR;
 		if (cpclicked) {
-			ch->mapch.mapidx = map_copy(&ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
+			ch->mapch.listbox.selectidx = map_copy(&ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.listbox.selectidx);
 			return MISC_STATE_MAPEDITOR;
 		}
 
