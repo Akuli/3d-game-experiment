@@ -273,6 +273,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 					MAP_CHOOSER_WIDTH, MAP_CHOOSER_HEIGHT - 2*MARGIN,
 #undef MARGIN
 				}),
+				.buttontexts = { "Copy", "Edit" },   // FIXME: finnish "Kopioi" and "Muokkaa" don't fit
 				.upscancodes = { SDL_SCANCODE_W, SDL_SCANCODE_UP },
 				.downscancodes = { SDL_SCANCODE_S, SDL_SCANCODE_DOWN },
 			},
@@ -323,8 +324,12 @@ static void update_listbox_entries(struct ChooserMapStuff *ch)
 		log_printf_abort("out of mem");
 	ch->listbox.nentries = ch->nmaps;
 
-	for (int i = 0; i < ch->nmaps; i++)
-		ch->listbox.entries[i] = (struct ListboxEntry){ .text = ch->maps[i].path };
+	for (int i = 0; i < ch->nmaps; i++) {
+		ch->listbox.entries[i] = (struct ListboxEntry){
+			.text = ch->maps[i].path,
+			.hasbuttons = ch->maps[i].custom,
+		};
+	}
 
 	ch->listbox.redraw = true;
 }

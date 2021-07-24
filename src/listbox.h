@@ -3,6 +3,7 @@
 
 #include <SDL2/SDL.h>
 #include <stdbool.h>
+#include "button.h"
 
 struct ListboxEntry {
 	const char *text;

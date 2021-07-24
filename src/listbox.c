@@ -65,6 +65,22 @@ void listbox_show(struct Listbox *lb)
 			lb->entries[i].text, (SDL_Color){0xff,0xff,0xff,0xff}, 20);
 		SDL_BlitSurface(t, NULL, lb->destsurf, &(SDL_Rect){ 10, y });
 		SDL_FreeSurface(t);
+
+		if (lb->entries[i].hasbuttons) {
+			enum ButtonFlags f = BUTTON_TINY;
+			struct Button b = {
+				.text = lb->buttontexts[0],
+				.destsurf = lb->destsurf,
+				// FIXME: center x looks wrong in gui
+				.center = { lb->destsurf->w - button_width(f)*3/2, y + lb->selectimg->h/2 },
+				.flags = f,
+			};
+			button_show(&b);
+
+			b.text = lb->buttontexts[1];
+			b.center.x += button_width(f);
+			button_show(&b);
+		}
 	}
 }
 

@@ -40,9 +40,24 @@ static void free_image_surfaces(void)
 	}
 }
 
-static SDL_Surface *get_image(enum ButtonFlags f)
+static const char *get_size_name(enum ButtonFlags f)
 {
 	SDL_assert(!( (f & BUTTON_BIG) && (f & BUTTON_SMALL) ));
+	SDL_assert(!( (f & BUTTON_BIG) && (f & BUTTON_TINY) ));
+	SDL_assert(!( (f & BUTTON_SMALL) && (f & BUTTON_TINY) ));
+
+	if (f & BUTTON_TINY)
+		return "tiny";
+	if (f & BUTTON_SMALL)
+		return "small";
+	if (f & BUTTON_BIG)
+		return "big";
+	return "medium";
+}
+
+static SDL_Surface *get_image(enum ButtonFlags f)
+{
+
 	static bool atexitdone = false;
 	if (!atexitdone) {
 		atexit(free_image_surfaces);
@@ -51,22 +66,24 @@ static SDL_Surface *get_image(enum ButtonFlags f)
 
 	if (!image_surfaces[f]) {
 		char path[100];
-		snprintf(path, sizeof path, "assets/buttons/%s/%s/%s",
-			(f & BUTTON_BIG) ? "big" : (f & BUTTON_SMALL) ? "small" : "medium",
+		snprintf(path, sizeof path, "assets/buttons/%s/%s/%s.png",
+			get_size_name(f),
 			(f & BUTTON_VERTICAL) ? "vertical" : "horizontal",
-			(f & BUTTON_DISABLED) ? "disabled.png" : (
-				(f & BUTTON_PRESSED) ? "pressed.png" : "normal.png"
-			)
+			(f & BUTTON_DISABLED) ? "disabled" : ((f & BUTTON_PRESSED) ? "pressed" : "normal")
 		);
 		image_surfaces[f] = load_image(path);
 	}
 	return image_surfaces[f];
 }
 
-#define MARGIN 15
-int button_width(enum ButtonFlags f)  { return get_image(f)->w + MARGIN; }
-int button_height(enum ButtonFlags f) { return get_image(f)->h + MARGIN; }
-#undef MARGIN
+static int get_margin(enum ButtonFlags f) {
+	if (f & BUTTON_TINY)
+		return 5;
+	return 15;
+}
+
+int button_width(enum ButtonFlags f)  { return get_image(f)->w + get_margin(f); }
+int button_height(enum ButtonFlags f) { return get_image(f)->h + get_margin(f); }
 
 void button_show(const struct Button *butt)
 {
@@ -80,7 +97,11 @@ void button_show(const struct Button *butt)
 
 	if (butt->text) {
 		SDL_Color black = { 0x00, 0x00, 0x00, 0xff };
-		int fontsz = button_height(butt->flags)/2;
+		int fontsz;
+		if (butt->flags & BUTTON_TINY)
+			fontsz = 16;
+		else
+			fontsz = button_height(butt->flags)/2;
 
 		const char *newln = strchr(butt->text, '\n');
 		if (newln) {

@@ -3,14 +3,15 @@ set -ex
 
 # Create assets/buttons/big and assets/buttons/small from assets/buttons/huge
 cd assets/buttons
-rm -rvf medium small big
-mkdir -vp {medium,small,big}/{horizontal,vertical}
+rm -rvf tiny small medium big
+mkdir -vp {tiny,small,medium,big}/{horizontal,vertical}
 
 for file in $(cd huge/narrow && echo */*.png); do
     convert huge/narrow/$file -resize 55x55 small/$file
 done
 
 for file in $(cd huge/wide && echo */*.png); do
+    convert huge/wide/$file -resize 65x65   tiny/$file
     convert huge/wide/$file -resize 150x150 medium/$file
     convert huge/wide/$file -resize 300x300 big/$file
 done
