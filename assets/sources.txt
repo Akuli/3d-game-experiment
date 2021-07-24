@@ -16,6 +16,7 @@ buttons/medium/*/*.png: see scripts/resize_images
 buttons/big/*/*.png:    see scripts/resize_images
 
 listbox/huge/*.png: edited from https://pixabay.com/vectors/the-button-button-icon-web-pages-859346/
+listbox/*.png:      see scripts/resize_images
 
 enemies/enemy1.png: I drew this myself with gimp
 guard.png: https://pixabay.com/photos/corrugated-sheet-metal-plate-2370925/
