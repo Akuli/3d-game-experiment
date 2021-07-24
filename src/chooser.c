@@ -339,6 +339,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 
 void chooser_destroy(const struct Chooser *ch)
 {
+	free(ch->mapch.listbox.entries);
 	listbox_destroy(&ch->mapch.listbox);
 	SDL_FreeSurface(ch->playerch[0].cam.surface);
 	SDL_FreeSurface(ch->playerch[1].cam.surface);
@@ -355,7 +356,7 @@ static void show_title_text(SDL_Surface *winsurf)
 	SDL_FreeSurface(s);
 }
 
-static void update_listbox(struct ChooserMapStuff *ch)
+static void update_listbox_entries(struct ChooserMapStuff *ch)
 {
 	ch->listbox.entries = realloc(ch->listbox.entries, ch->nmaps * sizeof(ch->listbox.entries[0]));
 	if (!ch->listbox.entries)
@@ -370,7 +371,7 @@ enum MiscState chooser_run(struct Chooser *ch)
 {
 	// Maps array can get reallocated while not running chooser, e.g. copying maps
 	mapeditor_setmaps(ch->editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
-	update_listbox(&ch->mapch);
+	update_listbox_entries(&ch->mapch);
 
 	if (ch->mapch.mapidx >= ch->mapch.nmaps)
 		ch->mapch.mapidx = ch->mapch.nmaps-1;

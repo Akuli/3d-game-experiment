@@ -32,6 +32,8 @@ void listbox_init(struct Listbox *lb)
 	lb->selectimg = load_image("assets/listbox/selected.png");
 	SDL_assert(lb->selectimg->w == lb->bgimg->w);
 	SDL_assert(lb->selectimg->h == lb->bgimg->h);
+
+	lb->redraw = true;
 }
 
 void listbox_destroy(const struct Listbox *lb)
@@ -40,11 +42,14 @@ void listbox_destroy(const struct Listbox *lb)
 	stbi_image_free(lb->bgimg->pixels);
 	SDL_FreeSurface(lb->selectimg);
 	SDL_FreeSurface(lb->bgimg);
-
 }
 
-void listbox_show(const struct Listbox *lb)
+void listbox_show(struct Listbox *lb)
 {
+	if (!lb->redraw)
+		return;
+	lb->redraw = false;
+
 	SDL_FillRect(lb->destsurf, NULL, 0);
 	// FIXME: blitting is slow, called too often
 	SDL_BlitSurface(lb->bgimg, NULL, lb->destsurf, &(SDL_Rect){0,0});

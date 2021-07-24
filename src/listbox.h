@@ -15,6 +15,7 @@ struct Listbox {
 	int nentries;
 	int selectidx;  // something always selected, no -1 or whatever
 	const char *buttontexts[2];  // used only with hasbuttons=true entries
+	bool redraw;   // set to true after changing anything
 
 	// don't use rest of this outside listbox.c
 	SDL_Surface *bgimg;
@@ -25,6 +26,6 @@ struct Listbox {
 void listbox_init(struct Listbox *lb);
 void listbox_destroy(const struct Listbox *lb);
 
-void listbox_show(const struct Listbox *lb);
+void listbox_show(struct Listbox *lb);
 
 #endif   // LISTBOX_H
