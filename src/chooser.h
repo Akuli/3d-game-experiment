@@ -28,7 +28,7 @@ struct ChooserMapStuff {
 	struct Listbox listbox;  // use listbox.selectidx to figure out what map selected
 
 	// rest of this struct isn't meant to be used outside chooser.c
-	struct Button prevbtn, nextbtn, editbtn, cpbtn;
+	struct Button editbtn, cpbtn;
 };
 
 struct Chooser {

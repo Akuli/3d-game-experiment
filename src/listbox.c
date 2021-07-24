@@ -1,4 +1,5 @@
 #include "listbox.h"
+#include <assert.h>
 #include "log.h"
 #include "misc.h"
 #include "mathstuff.h"
@@ -64,5 +65,39 @@ void listbox_show(struct Listbox *lb)
 			lb->entries[i].text, (SDL_Color){0xff,0xff,0xff,0xff}, 20);
 		SDL_BlitSurface(t, NULL, lb->destsurf, &(SDL_Rect){ 10, y });
 		SDL_FreeSurface(t);
+	}
+}
+
+static int scancode_to_delta(const SDL_Event *evt, const struct Listbox *lb)
+{
+	static_assert(sizeof(lb->upscancodes) == sizeof(lb->downscancodes), "");
+	static_assert(sizeof(lb->upscancodes[0]) == sizeof(lb->downscancodes[0]), "");
+
+	int sc = misc_handle_scancode(evt->key.keysym.scancode);
+	for (int i = 0; i < sizeof(lb->upscancodes)/sizeof(lb->upscancodes[0]); i++) {
+		if (lb->upscancodes[i] != 0 && lb->upscancodes[i] == sc)
+			return -1;
+		if (lb->downscancodes[i] != 0 && lb->downscancodes[i] == sc)
+			return +1;
+	}
+	return 0;
+}
+
+void listbox_handle_event(struct Listbox *lb, const SDL_Event *e)
+{
+	switch(e->type) {
+	case SDL_KEYDOWN:
+	{
+		int d = scancode_to_delta(e, lb);
+		if (d != 0) {
+			lb->selectidx += d;
+			clamp(&lb->selectidx, 0, lb->nentries - 1);
+			lb->redraw = true;
+		}
+		break;
+	}
+	// TODO: mouse
+	default:
+		break;
 	}
 }

@@ -117,7 +117,7 @@ static bool mouse_on_button(const SDL_MouseButtonEvent *me, const struct Button 
 
 static bool scancode_matches_button(const SDL_Event *evt, const struct Button *butt)
 {
-	int sc = misc_handle_scancode(evt->key.keysym.scancode);   // sc comes directly from event
+	int sc = misc_handle_scancode(evt->key.keysym.scancode);
 	for (int i = 0; i < sizeof(butt->scancodes)/sizeof(butt->scancodes[0]); i++) {
 		if (butt->scancodes[i] != 0 && butt->scancodes[i] == sc)
 			return true;

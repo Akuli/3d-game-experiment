@@ -189,34 +189,15 @@ static void show_player_chooser_each_frame(const struct Chooser *ch, struct Choo
 	show_all(NULL, 0, false, ch->ellipsoids, player_nepics, &plrch->cam);
 }
 
-static void set_disabled(struct Button *btn, bool dis)
-{
-	if (dis)
-		btn->flags |= BUTTON_DISABLED;
-	else
-		btn->flags &= ~BUTTON_DISABLED;
-}
-
 static void update_map_chooser_buttons(struct ChooserMapStuff *ch)
 {
 	SDL_assert(0 <= ch->listbox.selectidx && ch->listbox.selectidx < ch->nmaps);
-	set_disabled(&ch->prevbtn, ch->listbox.selectidx == 0);
-	set_disabled(&ch->nextbtn, ch->listbox.selectidx == ch->nmaps-1);
-	set_disabled(&ch->editbtn, !ch->maps[ch->listbox.selectidx].custom);
-	button_show(&ch->prevbtn);
-	button_show(&ch->nextbtn);
+	if (ch->maps[ch->listbox.selectidx].custom)
+		ch->editbtn.flags &= ~BUTTON_DISABLED;
+	else
+		ch->editbtn.flags |= BUTTON_DISABLED;
 	button_show(&ch->editbtn);
 }
-
-static void select_prev_next_map(struct Chooser *ch, int diff)
-{
-	ch->mapch.listbox.selectidx += diff;
-	mapeditor_setmaps(ch->editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.listbox.selectidx);
-	update_map_chooser_buttons(&ch->mapch);
-	ch->mapch.listbox.redraw = true;
-}
-static void select_prev_map(void *ch) { select_prev_next_map(ch, -1); }
-static void select_next_map(void *ch) { select_prev_next_map(ch, +1); }
 
 static void handle_event(const SDL_Event *evt, struct Chooser *ch)
 {
@@ -224,11 +205,14 @@ static void handle_event(const SDL_Event *evt, struct Chooser *ch)
 		button_handle_event(evt, &ch->playerch[i].prevbtn);
 		button_handle_event(evt, &ch->playerch[i].nextbtn);
 	}
-	button_handle_event(evt, &ch->mapch.prevbtn);
-	button_handle_event(evt, &ch->mapch.nextbtn);
 	button_handle_event(evt, &ch->mapch.editbtn);
 	button_handle_event(evt, &ch->mapch.cpbtn);
 	button_handle_event(evt, &ch->playbtn);
+
+	int oldidx = ch->mapch.listbox.selectidx;
+	listbox_handle_event(&ch->mapch.listbox, evt);
+	if (ch->mapch.listbox.selectidx != oldidx)
+		mapeditor_setmaps(ch->editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.listbox.selectidx);
 }
 
 static void set_to_true(void *ptr)
@@ -241,8 +225,6 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 	SDL_Surface *winsurf = SDL_GetWindowSurface(win);
 	if (!winsurf)
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
-
-	enum ButtonFlags mapchflags = 0;
 
 	*ch = (struct Chooser){
 		.win = win,
@@ -260,30 +242,6 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 		},
 		.mapch = {
 			// maps and nmaps loaded below
-			.prevbtn = {
-				.imgpath = "assets/arrows/up.png",
-				.flags = mapchflags,
-				.destsurf = winsurf,
-				.scancodes = { SDL_SCANCODE_W, SDL_SCANCODE_UP },
-				.center = {
-					MAP_CHOOSER_WIDTH/2,
-					CAMERA_SCREEN_HEIGHT - MAP_CHOOSER_HEIGHT + button_height(mapchflags)/2,
-				},
-				.onclick = select_prev_map,
-				.onclickdata = ch,
-			},
-			.nextbtn = {
-				.imgpath = "assets/arrows/down.png",
-				.flags = mapchflags,
-				.destsurf = winsurf,
-				.scancodes = { SDL_SCANCODE_S, SDL_SCANCODE_DOWN },
-				.center = {
-					MAP_CHOOSER_WIDTH/2,
-					CAMERA_SCREEN_HEIGHT - button_height(mapchflags)/2,
-				},
-				.onclick = select_next_map,
-				.onclickdata = ch,
-			},
 			.editbtn = {
 				.text = "Edit",
 				.flags = 0,
@@ -315,6 +273,8 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 					MAP_CHOOSER_WIDTH, MAP_CHOOSER_HEIGHT - 2*MARGIN,
 #undef MARGIN
 				}),
+				.upscancodes = { SDL_SCANCODE_W, SDL_SCANCODE_UP },
+				.downscancodes = { SDL_SCANCODE_S, SDL_SCANCODE_DOWN },
 			},
 		},
 	};
@@ -365,6 +325,8 @@ static void update_listbox_entries(struct ChooserMapStuff *ch)
 
 	for (int i = 0; i < ch->nmaps; i++)
 		ch->listbox.entries[i] = (struct ListboxEntry){ .text = ch->maps[i].path };
+
+	ch->listbox.redraw = true;
 }
 
 enum MiscState chooser_run(struct Chooser *ch)
@@ -387,8 +349,6 @@ enum MiscState chooser_run(struct Chooser *ch)
 
 	SDL_FillRect(ch->winsurf, NULL, 0);
 	/*
-	button_show(&ch->mapch.prevbtn);
-	button_show(&ch->mapch.nextbtn);
 	button_show(&ch->mapch.editbtn);
 	button_show(&ch->mapch.cpbtn);
 	*/
