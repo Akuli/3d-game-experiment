@@ -9,6 +9,7 @@
 #include "ellipsoid.h"
 #include "misc.h"
 #include "mapeditor.h"  // IWYU pragma: keep
+#include "listbox.h"
 
 struct ChooserPlayerStuff {
 	const struct EllipsoidPic *epic;   // pointer into a value in player_epics
@@ -28,6 +29,7 @@ struct ChooserMapStuff {
 
 	// rest of this struct isn't meant to be used outside chooser.c
 	struct Button prevbtn, nextbtn, editbtn, cpbtn;
+	struct Listbox listbox;
 };
 
 struct Chooser {

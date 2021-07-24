@@ -308,6 +308,14 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				.onclick = set_to_true,
 				// onclickdata is set in chooser_run()
 			},
+			.listbox = {
+				.destsurf = misc_create_cropped_surface(winsurf, (SDL_Rect){
+#define MARGIN 5
+					0, PLAYER_CHOOSER_HEIGHT + MARGIN,
+					MAP_CHOOSER_WIDTH, MAP_CHOOSER_HEIGHT - 2*MARGIN,
+#undef MARGIN
+				}),
+			},
 		},
 	};
 
@@ -316,9 +324,11 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 	setup_player_chooser(ch, 1, SDL_SCANCODE_LEFT, SDL_SCANCODE_RIGHT);
 
 	ch->mapch.maps = map_list(&ch->mapch.nmaps);
+	listbox_init(&ch->mapch.listbox);
+
 	ch->editorsurf = misc_create_cropped_surface(winsurf, (SDL_Rect){
 		MAP_CHOOSER_WIDTH,
-		CAMERA_SCREEN_HEIGHT - PLAYER_CHOOSER_HEIGHT,
+		MAP_CHOOSER_HEIGHT,
 		CAMERA_SCREEN_WIDTH - MAP_CHOOSER_WIDTH,
 		MAP_CHOOSER_HEIGHT - button_height(0)
 	});
@@ -329,8 +339,10 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 
 void chooser_destroy(const struct Chooser *ch)
 {
+	listbox_destroy(&ch->mapch.listbox);
 	SDL_FreeSurface(ch->playerch[0].cam.surface);
 	SDL_FreeSurface(ch->playerch[1].cam.surface);
+	SDL_FreeSurface(ch->mapch.listbox.destsurf);
 	SDL_FreeSurface(ch->editorsurf);
 	free(ch->editor);
 	free(ch->mapch.maps);
@@ -343,10 +355,22 @@ static void show_title_text(SDL_Surface *winsurf)
 	SDL_FreeSurface(s);
 }
 
+static void update_listbox(struct ChooserMapStuff *ch)
+{
+	ch->listbox.entries = realloc(ch->listbox.entries, ch->nmaps * sizeof(ch->listbox.entries[0]));
+	if (!ch->listbox.entries)
+		log_printf_abort("out of mem");
+	ch->listbox.nentries = ch->nmaps;
+
+	for (int i = 0; i < ch->nmaps; i++)
+		ch->listbox.entries[i] = (struct ListboxEntry){ .text = ch->maps[i].path };
+}
+
 enum MiscState chooser_run(struct Chooser *ch)
 {
 	// Maps array can get reallocated while not running chooser, e.g. copying maps
 	mapeditor_setmaps(ch->editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
+	update_listbox(&ch->mapch);
 
 	if (ch->mapch.mapidx >= ch->mapch.nmaps)
 		ch->mapch.mapidx = ch->mapch.nmaps-1;
@@ -396,6 +420,7 @@ enum MiscState chooser_run(struct Chooser *ch)
 		show_player_chooser_each_frame(ch, &ch->playerch[1]);
 		mapeditor_setplayers(ch->editor, ch->playerch[0].epic, ch->playerch[1].epic);
 		mapeditor_displayonly_eachframe(ch->editor);
+		listbox_show(&ch->mapch.listbox);
 
 		SDL_UpdateWindowSurface(ch->win);
 		looptimer_wait(&lt);
