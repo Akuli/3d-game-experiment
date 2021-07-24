@@ -208,7 +208,7 @@ static void update_map_chooser_buttons(struct ChooserMapStuff *ch)
 static void select_prev_next_map(struct Chooser *ch, int diff)
 {
 	ch->mapch.mapidx += diff;
-	mapeditor_setmaps(ch->mapch.editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
+	mapeditor_setmaps(ch->editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
 	update_map_chooser_buttons(&ch->mapch);
 }
 static void select_prev_map(void *ch) { select_prev_next_map(ch, -1); }
@@ -314,23 +314,23 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 	setup_player_chooser(ch, 1, SDL_SCANCODE_LEFT, SDL_SCANCODE_RIGHT);
 
 	ch->mapch.maps = map_list(&ch->mapch.nmaps);
-	ch->mapch.editorsurf = misc_create_cropped_surface(winsurf, (SDL_Rect){
+	ch->editorsurf = misc_create_cropped_surface(winsurf, (SDL_Rect){
 		0,
 		CAMERA_SCREEN_HEIGHT - MAP_CHOOSER_HEIGHT + button_height(mapchflags),
 		MAP_CHOOSER_WIDTH,
 		MAP_CHOOSER_HEIGHT - 2*button_height(mapchflags)
 	});
-	ch->mapch.editor = mapeditor_new(ch->mapch.editorsurf, -0.5f*MAP_CHOOSER_HEIGHT);
-	mapeditor_setmaps(ch->mapch.editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
-	mapeditor_setplayers(ch->mapch.editor, ch->playerch[0].epic, ch->playerch[1].epic);
+	ch->editor = mapeditor_new(ch->editorsurf, -0.5f*MAP_CHOOSER_HEIGHT);
+	mapeditor_setmaps(ch->editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
+	mapeditor_setplayers(ch->editor, ch->playerch[0].epic, ch->playerch[1].epic);
 }
 
 void chooser_destroy(const struct Chooser *ch)
 {
 	SDL_FreeSurface(ch->playerch[0].cam.surface);
 	SDL_FreeSurface(ch->playerch[1].cam.surface);
-	SDL_FreeSurface(ch->mapch.editorsurf);
-	free(ch->mapch.editor);
+	SDL_FreeSurface(ch->editorsurf);
+	free(ch->editor);
 	free(ch->mapch.maps);
 }
 
@@ -344,7 +344,7 @@ static void show_title_text(SDL_Surface *winsurf)
 enum MiscState chooser_run(struct Chooser *ch)
 {
 	// Maps array can get reallocated while not running chooser, e.g. copying maps
-	mapeditor_setmaps(ch->mapch.editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
+	mapeditor_setmaps(ch->editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.mapidx);
 
 	if (ch->mapch.mapidx >= ch->mapch.nmaps)
 		ch->mapch.mapidx = ch->mapch.nmaps-1;
@@ -390,8 +390,8 @@ enum MiscState chooser_run(struct Chooser *ch)
 		rotate_player_ellipsoids(ch->ellipsoids);
 		show_player_chooser_each_frame(ch, &ch->playerch[0]);
 		show_player_chooser_each_frame(ch, &ch->playerch[1]);
-		mapeditor_setplayers(ch->mapch.editor, ch->playerch[0].epic, ch->playerch[1].epic);
-		mapeditor_displayonly_eachframe(ch->mapch.editor);
+		mapeditor_setplayers(ch->editor, ch->playerch[0].epic, ch->playerch[1].epic);
+		mapeditor_displayonly_eachframe(ch->editor);
 
 		SDL_UpdateWindowSurface(ch->win);
 		looptimer_wait(&lt);

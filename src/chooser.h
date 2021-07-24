@@ -28,8 +28,6 @@ struct ChooserMapStuff {
 
 	// rest of this struct isn't meant to be used outside chooser.c
 	struct Button prevbtn, nextbtn, editbtn, cpbtn;
-	SDL_Surface *editorsurf;
-	struct MapEditor *editor;  // Not actually used for editing, only to display map
 };
 
 struct Chooser {
@@ -41,6 +39,8 @@ struct Chooser {
 	SDL_Surface *winsurf;
 	struct Ellipsoid ellipsoids[50];
 	struct Button bigplaybtn;
+	SDL_Surface *editorsurf;
+	struct MapEditor *editor;  // Not actually used for editing, only to preview
 };
 
 /*
