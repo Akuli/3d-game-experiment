@@ -46,7 +46,7 @@ struct MapEditor {
 	struct Camera cam;
 	float zoom;
 	int rotatedir;
-	struct Button delmapbtn, donebtn;
+	struct Button donebtn;
 	struct Button addenemybtn;
 	struct Selection sel;
 	bool up, down, left, right;   // are arrow keys pressed
@@ -534,7 +534,6 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 {
 	float pi = acosf(-1);
 
-	button_handle_event(e, &ed->delmapbtn);
 	button_handle_event(e, &ed->donebtn);
 	button_handle_event(e, &ed->addenemybtn);
 
@@ -801,73 +800,10 @@ static void update_button_disableds(struct MapEditor *ed)
 		ed->addenemybtn.flags &= ~BUTTON_DISABLED;
 }
 
-static void set_to_true(void *ptr)
-{
-	*(bool *)ptr = true;
-}
-
 static void on_done_clicked(void *data)
 {
 	struct MapEditor *ed = data;
 	ed->state = MISC_STATE_CHOOSER;
-}
-
-static void confirm_delete(void *ptr)
-{
-	log_printf("Delete button clicked, entering confirm loop");
-
-	struct MapEditor *ed = ptr;
-	SDL_FillRect(ed->cam.surface, NULL, 0);
-	SDL_Surface *textsurf = misc_create_text_surface(
-		"Are you sure you want to permanently delete this map?",
-		(SDL_Color){0xff,0xff,0xff}, 25);
-
-	bool yesclicked = false;
-	bool noclicked = false;
-	struct Button yesbtn = {
-		.text = "Yes, please\ndelete it",
-		.destsurf = ed->cam.surface,
-		.scancodes = { SDL_SCANCODE_Y },
-		.center = { ed->cam.surface->w/2 - button_width(0)/2, ed->cam.surface->h/2 },
-		.onclick = set_to_true,
-		.onclickdata = &yesclicked,
-	};
-	struct Button nobtn = {
-		.text = "No, don't\ntouch it",
-		.scancodes = { SDL_SCANCODE_N, SDL_SCANCODE_ESCAPE },
-		.destsurf = ed->cam.surface,
-		.center = { ed->cam.surface->w/2 + button_width(0)/2, ed->cam.surface->h/2 },
-		.onclick = set_to_true,
-		.onclickdata = &noclicked,
-	};
-
-	button_show(&yesbtn);
-	button_show(&nobtn);
-	misc_blit_with_center(textsurf, ed->cam.surface, &(SDL_Point){ ed->cam.surface->w/2, ed->cam.surface->h/4 });
-
-	struct LoopTimer lt = {0};
-	while(!yesclicked && !noclicked) {
-		SDL_Event e;
-		while (SDL_PollEvent(&e)) {
-			if (e.type == SDL_QUIT) {
-				ed->state = MISC_STATE_QUIT;
-				goto out;
-			}
-			button_handle_event(&e, &yesbtn);
-			button_handle_event(&e, &nobtn);
-		}
-		SDL_assert(ed->wnd);
-		SDL_UpdateWindowSurface(ed->wnd);
-		looptimer_wait(&lt);
-	}
-
-	if (yesclicked) {
-		map_delete(ed->maps, ed->nmaps, ed->map - ed->maps);
-		ed->state = MISC_STATE_CHOOSER;
-	}
-
-out:
-	SDL_FreeSurface(textsurf);
 }
 
 struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
@@ -888,16 +824,6 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 			},
 			.scancodes = { SDL_SCANCODE_ESCAPE },
 			.onclick = on_done_clicked,
-			.onclickdata = ed,
-		},
-		.delmapbtn = {
-			.text = "Delete\nthis map",
-			.destsurf = surf,
-			.center = {
-				button_width(0)/2,
-				button_height(0)*3/2
-			},
-			.onclick = confirm_delete,
 			.onclickdata = ed,
 		},
 		.addenemybtn = {
@@ -961,7 +887,6 @@ static void show_and_rotate_map_editor(struct MapEditor *ed, bool canedit)
 		if (canedit) {
 			update_button_disableds(ed);
 			button_show(&ed->donebtn);
-			button_show(&ed->delmapbtn);
 			button_show(&ed->addenemybtn);
 		}
 	}

@@ -49,17 +49,16 @@ void listbox_destroy(const struct Listbox *lb)
 	SDL_FreeSurface(lb->bgimg);
 }
 
-static void click_first(void *lbptr)
+static void click(struct Listbox *lb, int i)
 {
-	struct Listbox *lb = lbptr;
-	lb->clicktext = lb->entries[lb->selectidx].buttontexts[0];
+	lb->clicktext = lb->entries[lb->selectidx].buttontexts[i];
 }
 
-static void click_second(void *lbptr)
-{
-	struct Listbox *lb = lbptr;
-	lb->clicktext = lb->entries[lb->selectidx].buttontexts[1];
-}
+// FIXME: these functions suck
+static void click_first(void *lbptr) { click(lbptr, 0); }
+static void click_second(void *lbptr) { click(lbptr, 1); }
+static void click_third(void *lbptr) { click(lbptr, 2); }
+static_assert(LISTBOX_BUTTONS_MAX == 3, "");
 
 void listbox_show(struct Listbox *lb)
 {
@@ -81,17 +80,15 @@ void listbox_show(struct Listbox *lb)
 		SDL_BlitSurface(t, NULL, lb->destsurf, &(SDL_Rect){ lb->destrect.x + 10, y });
 		SDL_FreeSurface(t);
 
-		static_assert(sizeof(lb->entries[0].buttontexts) / sizeof(lb->entries[0].buttontexts[0]) == 2, "");
-		static_assert(sizeof(lb->entries[0].buttons) / sizeof(lb->entries[0].buttons[0]) == 2, "");
 		int centerx = lb->destrect.x + lb->destrect.w - button_width(BUTTON_TINY)/2;
-		for (int k = 1; k >= 0; k--) {
+		for (int k = LISTBOX_BUTTONS_MAX-1; k >= 0; k--) {
 			if (lb->entries[i].buttontexts[k]) {
 				lb->entries[i].buttons[k] = (struct Button){
 					.text = lb->entries[i].buttontexts[k],
 					.destsurf = lb->destsurf,
 					.flags = lb->entries[i].buttons[k].flags | BUTTON_TINY,
 					.center = (SDL_Point){ centerx, y + lb->selectimg->h/2 },
-					.onclick = k ? click_second : click_first,
+					.onclick = k==2 ? click_third : k==1 ? click_second : click_first,
 					.onclickdata = lb,
 				};
 				button_show(&lb->entries[i].buttons[k]);
@@ -143,7 +140,7 @@ const char *listbox_handle_event(struct Listbox *lb, const SDL_Event *e)
 	}
 
 	for (int i = 0; i < rows_on_screen(lb); i++) {
-		for (int k = 0; k < 2; k++) {
+		for (int k = 0; k < LISTBOX_BUTTONS_MAX; k++) {
 			if (lb->entries[i].buttontexts[k])
 				button_handle_event(e, &lb->entries[i].buttons[k]);
 		}

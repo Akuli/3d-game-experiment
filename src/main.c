@@ -17,6 +17,7 @@
 #include "log.h"
 #include "map.h"
 #include "mapeditor.h"
+#include "deletemap.h"
 
 #ifdef _WIN32
 	#include <direct.h>
@@ -166,6 +167,11 @@ int main(int argc, char **argv)
 			mapeditor_setplayers(ed, ch.playerch[0].epic, ch.playerch[1].epic);
 			s = mapeditor_run(ed, wnd);
 			free(ed);
+			break;
+
+		case MISC_STATE_DELETEMAP:
+			log_printf("starting delete map dialog");
+			s = deletemap_dialog(wnd, ch.mapch.maps, &ch.mapch.nmaps, ch.mapch.listbox.selectidx);
 			break;
 
 		case MISC_STATE_QUIT:
