@@ -33,6 +33,7 @@ struct Chooser {
 	struct ChooserMapStuff mapch;
 
 	// rest of this struct isn't meant to be used outside chooser.c
+	enum MiscState state;
 	SDL_Window *win;
 	SDL_Surface *winsurf;
 	struct Ellipsoid ellipsoids[50];

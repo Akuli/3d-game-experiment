@@ -11,9 +11,6 @@
 
 struct ListboxEntry {
 	const char *text;
-	const char *buttontexts[LISTBOX_BUTTONS_MAX];
-
-	// don't use rest of this outside listbox.c
 	struct Button buttons[LISTBOX_BUTTONS_MAX];
 };
 
@@ -33,7 +30,6 @@ struct Listbox {
 	// don't use rest of this outside listbox.c
 	SDL_Surface *bgimg;
 	SDL_Surface *selectimg;
-	const char *clicktext;
 };
 
 // fill lb->destsurf, lb->entries etc before initing
@@ -44,6 +40,6 @@ void listbox_destroy(const struct Listbox *lb);
 void listbox_show(struct Listbox *lb);
 
 // Return text of clicked button, or NULL if nothing clicked
-const char *listbox_handle_event(struct Listbox *lb, const SDL_Event *e);
+void listbox_handle_event(struct Listbox *lb, const SDL_Event *e);
 
 #endif   // LISTBOX_H

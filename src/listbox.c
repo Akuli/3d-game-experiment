@@ -49,17 +49,6 @@ void listbox_destroy(const struct Listbox *lb)
 	SDL_FreeSurface(lb->bgimg);
 }
 
-static void click(struct Listbox *lb, int i)
-{
-	lb->clicktext = lb->entries[lb->selectidx].buttontexts[i];
-}
-
-// FIXME: these functions suck
-static void click_first(void *lbptr) { click(lbptr, 0); }
-static void click_second(void *lbptr) { click(lbptr, 1); }
-static void click_third(void *lbptr) { click(lbptr, 2); }
-static_assert(LISTBOX_BUTTONS_MAX == 3, "");
-
 void listbox_show(struct Listbox *lb)
 {
 	if (!lb->redraw)
@@ -82,15 +71,10 @@ void listbox_show(struct Listbox *lb)
 
 		int centerx = lb->destrect.x + lb->destrect.w - button_width(BUTTON_TINY)/2;
 		for (int k = LISTBOX_BUTTONS_MAX-1; k >= 0; k--) {
-			if (lb->entries[i].buttontexts[k]) {
-				lb->entries[i].buttons[k] = (struct Button){
-					.text = lb->entries[i].buttontexts[k],
-					.destsurf = lb->destsurf,
-					.flags = lb->entries[i].buttons[k].flags | BUTTON_TINY,
-					.center = (SDL_Point){ centerx, y + lb->selectimg->h/2 },
-					.onclick = k==2 ? click_third : k==1 ? click_second : click_first,
-					.onclickdata = lb,
-				};
+			if (lb->entries[i].buttons[k].text) {
+				lb->entries[i].buttons[k].destsurf = lb->destsurf;
+				lb->entries[i].buttons[k].flags |= BUTTON_TINY;
+				lb->entries[i].buttons[k].center = (SDL_Point){ centerx, y + lb->selectimg->h/2 };
 				button_show(&lb->entries[i].buttons[k]);
 			}
 			centerx -= button_width(BUTTON_TINY);
@@ -124,7 +108,7 @@ static void select_index(struct Listbox *lb, int i, bool wantclamp)
 	}
 }
 
-const char *listbox_handle_event(struct Listbox *lb, const SDL_Event *e)
+void listbox_handle_event(struct Listbox *lb, const SDL_Event *e)
 {
 	switch(e->type) {
 	case SDL_KEYDOWN:
@@ -134,19 +118,14 @@ const char *listbox_handle_event(struct Listbox *lb, const SDL_Event *e)
 	case SDL_MOUSEBUTTONDOWN:
 		if (SDL_PointInRect(&(SDL_Point){e->button.x, e->button.y}, &lb->destrect))
 			select_index(lb, (e->button.y - lb->destrect.y)/lb->selectimg->h, false);
+		break;
 
 	default:
 		break;
 	}
 
-	for (int i = 0; i < rows_on_screen(lb); i++) {
-		for (int k = 0; k < LISTBOX_BUTTONS_MAX; k++) {
-			if (lb->entries[i].buttontexts[k])
-				button_handle_event(e, &lb->entries[i].buttons[k]);
-		}
+	for (int k = 0; k < LISTBOX_BUTTONS_MAX; k++) {
+		if (lb->entries[lb->selectidx].buttons[k].text)
+			button_handle_event(e, &lb->entries[lb->selectidx].buttons[k]);
 	}
-
-	const char *ret = lb->clicktext;
-	lb->clicktext = NULL;
-	return ret;
 }

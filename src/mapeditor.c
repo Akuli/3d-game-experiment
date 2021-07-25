@@ -51,10 +51,6 @@ struct MapEditor {
 	struct Selection sel;
 	bool up, down, left, right;   // are arrow keys pressed
 	bool redraw;
-
-	// for deleting
-	struct Map *maps;
-	int *nmaps;
 };
 
 static bool next_ellipsoid_edit(struct MapEditor *ed, struct EllipsoidEdit **ptr)
@@ -855,22 +851,20 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 	return ed;
 }
 
-void mapeditor_setmaps(struct MapEditor *ed, struct Map *maps, int *nmaps, int mapidx)
+void mapeditor_setmap(struct MapEditor *ed, struct Map *map)
 {
 	SDL_FillRect(ed->cam.surface, NULL, 0);
 
-	ed->map = &maps[mapidx];
-	ed->maps = maps;
-	ed->nmaps = nmaps;
+	ed->map = map;
 	ed->redraw = true;
 	ed->sel = (struct Selection){ .mode = SEL_NONE };
 	ed->state = MISC_STATE_MAPEDITOR;
 	ed->rotatedir = 0;
 
 	for (int p = 0; p < 2; p++)
-		ed->playeredits[p].loc = &maps[mapidx].playerlocs[p];
+		ed->playeredits[p].loc = &map->playerlocs[p];
 	for (int i = 0; i < MAX_ENEMIES; i++)
-		ed->enemyedits[i].loc = &maps[mapidx].enemylocs[i];
+		ed->enemyedits[i].loc = &map->enemylocs[i];
 }
 
 static void show_and_rotate_map_editor(struct MapEditor *ed, bool canedit)

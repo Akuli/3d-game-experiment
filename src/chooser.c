@@ -1,4 +1,5 @@
 #include "chooser.h"
+#include <assert.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -188,28 +189,63 @@ static void show_player_chooser_each_frame(const struct Chooser *ch, struct Choo
 	show_all(NULL, 0, false, ch->ellipsoids, player_nepics, &plrch->cam);
 }
 
-static void update_listbox_entries(struct ChooserMapStuff *ch)
-{
-	ch->listbox.entries = realloc(ch->listbox.entries, ch->nmaps * sizeof(ch->listbox.entries[0]));
-	if (!ch->listbox.entries)
-		log_printf_abort("out of mem");
-	ch->listbox.nentries = ch->nmaps;
+static void update_listbox_entries(struct Chooser *ch);
 
-	for (int i = 0; i < ch->nmaps; i++) {
-		ch->listbox.entries[i] = (struct ListboxEntry){
-			.text = ch->maps[i].name,
-			.buttontexts = {
-				ch->maps[i].custom ? "Edit" : NULL,
-				ch->maps[i].custom ? "Delete" : NULL,
-				"Copy",
+static void on_copy_clicked(void *chptr)
+{
+	struct Chooser *ch = chptr;
+	map_copy(&ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.listbox.selectidx);
+	mapeditor_setmap(ch->editor, &ch->mapch.maps[ch->mapch.listbox.selectidx]);
+	update_listbox_entries(ch);
+}
+static void on_edit_clicked(void *chptr) { ((struct Chooser *)chptr)->state = MISC_STATE_MAPEDITOR; }
+static void on_delete_clicked(void *chptr) { ((struct Chooser *)chptr)->state = MISC_STATE_DELETEMAP; }
+
+static void update_listbox_entries(struct Chooser *ch)
+{
+	size_t sz = ch->mapch.nmaps * sizeof(ch->mapch.listbox.entries[0]);
+	ch->mapch.listbox.entries = realloc(ch->mapch.listbox.entries, sz);
+	if (!ch->mapch.listbox.entries)
+		log_printf_abort("out of mem");
+	ch->mapch.listbox.nentries = ch->mapch.nmaps;
+
+	struct ListboxEntry *e = &ch->mapch.listbox.entries[0];
+	struct Map *m = &ch->mapch.maps[0];
+	for ( ; e < &ch->mapch.listbox.entries[ch->mapch.nmaps]; (e++, m++)) {
+		*e = (struct ListboxEntry){
+			.text = m->name,
+			.buttons = {
+				{
+					.text = "Edit",
+					.scancodes = { SDL_SCANCODE_E },
+					.onclick = on_edit_clicked,
+					.onclickdata = ch,
+				},
+				{
+					.text = "Delete",
+					.scancodes = { SDL_SCANCODE_DELETE },
+					.onclick = on_delete_clicked,
+					.onclickdata = ch,
+				},
+				{
+					.text = "Copy",
+					.scancodes = { SDL_SCANCODE_C },
+					.onclick = on_copy_clicked,
+					.onclickdata = ch,
+				},
 			},
 		};
+		if (!m->custom) {
+			// not editable
+			e->buttons[0].text = NULL;
+			e->buttons[1].text = NULL;
+		}
 	}
 
-	ch->listbox.redraw = true;
+	ch->mapch.listbox.redraw = true;
 }
 
-static void handle_event(const SDL_Event *evt, struct Chooser *ch, enum MiscState *s)
+static void handle_event(const SDL_Event *evt, struct Chooser *ch)
 {
 	for (int i = 0; i < 2; i++) {
 		button_handle_event(evt, &ch->playerch[i].prevbtn);
@@ -218,26 +254,9 @@ static void handle_event(const SDL_Event *evt, struct Chooser *ch, enum MiscStat
 	button_handle_event(evt, &ch->playbtn);
 
 	int oldidx = ch->mapch.listbox.selectidx;
-	const char *clicked = listbox_handle_event(&ch->mapch.listbox, evt);
-	bool needsetmaps = ch->mapch.listbox.selectidx != oldidx;
-
-	// TODO: i don't like having code like this
-	if (clicked != NULL) {
-		if (strcmp(clicked, "Copy") == 0) {
-			map_copy(&ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.listbox.selectidx);
-			update_listbox_entries(&ch->mapch);
-			needsetmaps = true;
-		} else if (strcmp(clicked, "Edit") == 0) {
-			*s = MISC_STATE_MAPEDITOR;
-		} else if (strcmp(clicked, "Delete") == 0) {
-			*s = MISC_STATE_DELETEMAP;
-		} else {
-			log_printf_abort("unknown button text: %s", clicked);
-		}
-	}
-
-	if (needsetmaps)
-		mapeditor_setmaps(ch->editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.listbox.selectidx);
+	listbox_handle_event(&ch->mapch.listbox, evt);
+	if (ch->mapch.listbox.selectidx != oldidx)
+		mapeditor_setmap(ch->editor, &ch->mapch.maps[ch->mapch.listbox.selectidx]);
 }
 
 static void on_play_clicked(void *ptr)
@@ -296,7 +315,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 		MAP_CHOOSER_HEIGHT - button_height(0)
 	});
 	ch->editor = mapeditor_new(ch->editorsurf, -0.2f*CAMERA_SCREEN_HEIGHT, 0.6f);
-	mapeditor_setmaps(ch->editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.listbox.selectidx);
+	mapeditor_setmap(ch->editor, &ch->mapch.maps[ch->mapch.listbox.selectidx]);
 	mapeditor_setplayers(ch->editor, ch->playerch[0].epic, ch->playerch[1].epic);
 }
 
@@ -321,12 +340,11 @@ static void show_title_text(SDL_Surface *winsurf)
 enum MiscState chooser_run(struct Chooser *ch)
 {
 	// Maps array can get reallocated while not running chooser, e.g. copying maps
-	mapeditor_setmaps(ch->editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.listbox.selectidx);
-	update_listbox_entries(&ch->mapch);
+	mapeditor_setmap(ch->editor, &ch->mapch.maps[ch->mapch.listbox.selectidx]);
+	update_listbox_entries(ch);
 
 	if (ch->mapch.listbox.selectidx >= ch->mapch.nmaps)
 		ch->mapch.listbox.selectidx = ch->mapch.nmaps-1;
-
 
 	SDL_FillRect(ch->winsurf, NULL, 0);
 	button_show(&ch->playbtn);
@@ -336,19 +354,19 @@ enum MiscState chooser_run(struct Chooser *ch)
 
 	struct LoopTimer lt = {0};
 
-	enum MiscState s = MISC_STATE_CHOOSER;
-	ch->playbtn.onclickdata = &s;
+	ch->state = MISC_STATE_CHOOSER;
+	ch->playbtn.onclickdata = &ch->state;
 
 	while(1) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
 			if (e.type == SDL_QUIT)
 				return MISC_STATE_QUIT;
-			handle_event(&e, ch, &s);
+			handle_event(&e, ch);
 		}
 
-		if (s != MISC_STATE_CHOOSER)
-			return s;
+		if (ch->state != MISC_STATE_CHOOSER)
+			return ch->state;
 
 		rotate_player_ellipsoids(ch->ellipsoids);
 		show_player_chooser_each_frame(ch, &ch->playerch[0]);

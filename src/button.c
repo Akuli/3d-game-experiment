@@ -151,6 +151,7 @@ void button_handle_event(const SDL_Event *evt, struct Button *butt)
 	if (butt->flags & BUTTON_DISABLED)
 		return;
 
+	bool click = false;
 	if ((
 		(evt->type == SDL_MOUSEBUTTONDOWN && mouse_on_button(&evt->button, butt)) ||
 		(evt->type == SDL_KEYDOWN && scancode_matches_button(evt, butt))
@@ -161,7 +162,7 @@ void button_handle_event(const SDL_Event *evt, struct Button *butt)
 		(evt->type == SDL_KEYUP && scancode_matches_button(evt, butt))
 	) && (butt->flags & BUTTON_PRESSED)) {
 		butt->flags &= ~BUTTON_PRESSED;
-		butt->onclick(butt->onclickdata);
+		click = true;
 	} else if (evt->type == SDL_MOUSEBUTTONUP && (butt->flags & BUTTON_PRESSED)) {
 		// if button has been pressed and mouse has been moved away, unpress button but don't click
 		butt->flags &= ~BUTTON_PRESSED;
@@ -169,5 +170,8 @@ void button_handle_event(const SDL_Event *evt, struct Button *butt)
 		// nothing has changed, no need to show button
 		return;
 	}
+
 	button_show(butt);
+	if (click)
+		butt->onclick(butt->onclickdata);  // may free the button, must be last
 }
