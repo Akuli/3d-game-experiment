@@ -245,14 +245,16 @@ static float ellipse_move_amount_x(
 float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid *el2)
 {
 	Vec3 diff = vec3_sub(el1->center, el2->center);
-	float difflen = hypotf(diff.x, diff.z);   // ignore diff.y
-	if (difflen < 1e-5f) {
-		// centers very near each other
-		return el1->xzradius + el2->xzradius;
+	float cos = diff.x/hypotf(diff.x, diff.z);
+	float sin = diff.z/hypotf(diff.x, diff.z);
+	if (!isfinite(cos) || !isfinite(sin)) {
+		// Ellipsoids lined up vertically, just move in some direction lol
+		cos = 1;
+		sin = 0;
 	}
 
 	// Rotate centers so that ellipsoid centers have same z coordinate
-	Mat3 rot = mat3_inverse(mat3_rotation_xz_sincos(diff.z/difflen, diff.x/difflen));
+	Mat3 rot = mat3_inverse(mat3_rotation_xz_sincos(sin, cos));
 	Vec3 center1 = mat3_mul_vec3(rot, el1->center);
 	Vec3 center2 = mat3_mul_vec3(rot, el2->center);
 	SDL_assert(fabsf(center1.z - center2.z) < 1e-5f);
