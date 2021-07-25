@@ -109,7 +109,7 @@ void sound_play(const char *fnpattern)
 		else
 			log_printf("Playing '%s' on channel %d/%d", s->name, chan, Mix_AllocateChannels(-1));
 	} else {
-		log_printf("sounds not loaded: %s", fullpat);
+		log_printf("sounds not loaded: %s", path);
 	}
 }
 
