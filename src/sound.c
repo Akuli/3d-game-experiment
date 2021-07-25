@@ -10,7 +10,7 @@
 
 struct Sound {
 	Mix_Chunk *chunk;
-	char name[1024];    // includes "sounds/" prefix
+	char name[1024];    // includes "assets/sounds/" prefix
 };
 
 static struct Sound sounds[100] = {0};
@@ -66,6 +66,7 @@ void sound_init(void)
 	if (glob("assets/sounds/farts/*.wav", GLOB_APPEND, NULL, &gl) != 0)
 		log_printf("can't find fart sounds");
 
+	SDL_assert(gl.gl_pathc <= sizeof(sounds)/sizeof(sounds[0]));
 	for (int i = 0; i < gl.gl_pathc; i++) {
 		SDL_assert(sounds[nsounds].chunk == NULL);
 		if (( sounds[nsounds].chunk = Mix_LoadWAV(gl.gl_pathv[i]) )) {
