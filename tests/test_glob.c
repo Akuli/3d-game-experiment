@@ -19,9 +19,6 @@ void test_glob_success(void)
 	assert(glob("generated/testdata/*", GLOB_APPEND, NULL, &gl) == 0);
 	assert(glob("assets/sounds/farts/*5.wav", GLOB_APPEND, NULL, &gl) == 0);
 
-	for (int i = 0; i < gl.gl_pathc; i++)
-		printf("asd %s\n", gl.gl_pathv[i]);
-
 	assert(gl.gl_pathc == 5);
 	assert(strcmp(gl.gl_pathv[0], "README.md") == 0);
 	assert(strcmp(gl.gl_pathv[1], "generated/testdata/a") == 0);
