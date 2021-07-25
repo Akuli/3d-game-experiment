@@ -189,29 +189,51 @@ static void show_player_chooser_each_frame(const struct Chooser *ch, struct Choo
 	show_all(NULL, 0, false, ch->ellipsoids, player_nepics, &plrch->cam);
 }
 
-static void update_map_chooser_buttons(struct ChooserMapStuff *ch)
+static void update_listbox_entries(struct ChooserMapStuff *ch)
 {
-	SDL_assert(0 <= ch->listbox.selectidx && ch->listbox.selectidx < ch->nmaps);
-	if (ch->maps[ch->listbox.selectidx].custom)
-		ch->editbtn.flags &= ~BUTTON_DISABLED;
-	else
-		ch->editbtn.flags |= BUTTON_DISABLED;
-	button_show(&ch->editbtn);
+	ch->listbox.entries = realloc(ch->listbox.entries, ch->nmaps * sizeof(ch->listbox.entries[0]));
+	if (!ch->listbox.entries)
+		log_printf_abort("out of mem");
+	ch->listbox.nentries = ch->nmaps;
+
+	for (int i = 0; i < ch->nmaps; i++) {
+		ch->listbox.entries[i] = (struct ListboxEntry){
+			.text = ch->maps[i].path,
+			.buttontexts = {
+				ch->maps[i].custom ? "Edit" : NULL,
+				"Copy",
+			},
+		};
+	}
+
+	ch->listbox.redraw = true;
 }
 
-static void handle_event(const SDL_Event *evt, struct Chooser *ch)
+static void handle_event(const SDL_Event *evt, struct Chooser *ch, bool *editclicked)
 {
 	for (int i = 0; i < 2; i++) {
 		button_handle_event(evt, &ch->playerch[i].prevbtn);
 		button_handle_event(evt, &ch->playerch[i].nextbtn);
 	}
-	button_handle_event(evt, &ch->mapch.editbtn);
-	button_handle_event(evt, &ch->mapch.cpbtn);
 	button_handle_event(evt, &ch->playbtn);
 
 	int oldidx = ch->mapch.listbox.selectidx;
-	listbox_handle_event(&ch->mapch.listbox, evt);
-	if (ch->mapch.listbox.selectidx != oldidx)
+	const char *clicked = listbox_handle_event(&ch->mapch.listbox, evt);
+	bool needsetmaps = ch->mapch.listbox.selectidx != oldidx;
+
+	if (clicked != NULL) {
+		if (strcmp(clicked, "Copy") == 0) {
+			map_copy(&ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.listbox.selectidx);
+			update_listbox_entries(&ch->mapch);
+			needsetmaps = true;
+		} else if (strcmp(clicked, "Edit") == 0) {
+			*editclicked = true;
+		} else {
+			log_printf_abort("unknown button text: %s", clicked);
+		}
+	}
+
+	if (needsetmaps)
 		mapeditor_setmaps(ch->editor, ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.listbox.selectidx);
 }
 
@@ -241,39 +263,16 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 			// onclickdata is set in chooser_run()
 		},
 		.mapch = {
-			// maps and nmaps loaded below
-			.editbtn = {
-				.text = "Edit",
-				.flags = 0,
-				.destsurf = winsurf,
-				.scancodes = { SDL_SCANCODE_E },
-				.center = {
-					(MAP_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
-					CAMERA_SCREEN_HEIGHT - button_height(0)*3/2
-				},
-				.onclick = set_to_true,
-				// onclickdata is set in chooser_run()
-			},
-			.cpbtn = {
-				.text = "Copy and\nedit",
-				.flags = 0,
-				.destsurf = winsurf,
-				.scancodes = { SDL_SCANCODE_C },
-				.center = {
-					(MAP_CHOOSER_WIDTH + CAMERA_SCREEN_WIDTH)/2,
-					CAMERA_SCREEN_HEIGHT - button_height(0)/2,
-				},
-				.onclick = set_to_true,
-				// onclickdata is set in chooser_run()
-			},
 			.listbox = {
-				.destsurf = misc_create_cropped_surface(winsurf, (SDL_Rect){
+				.destsurf = winsurf,
+				.destrect = {
 #define MARGIN 5
-					0, PLAYER_CHOOSER_HEIGHT + MARGIN,
-					MAP_CHOOSER_WIDTH, MAP_CHOOSER_HEIGHT - 2*MARGIN,
+					.x = 0,
+					.y = PLAYER_CHOOSER_HEIGHT + MARGIN,
+					.w = MAP_CHOOSER_WIDTH,
+					.h = MAP_CHOOSER_HEIGHT - 2*MARGIN,
 #undef MARGIN
-				}),
-				.buttontexts = { "Copy", "Edit" },   // FIXME: finnish "Kopioi" and "Muokkaa" don't fit
+				},
 				.upscancodes = { SDL_SCANCODE_W, SDL_SCANCODE_UP },
 				.downscancodes = { SDL_SCANCODE_S, SDL_SCANCODE_DOWN },
 			},
@@ -304,7 +303,6 @@ void chooser_destroy(const struct Chooser *ch)
 	listbox_destroy(&ch->mapch.listbox);
 	SDL_FreeSurface(ch->playerch[0].cam.surface);
 	SDL_FreeSurface(ch->playerch[1].cam.surface);
-	SDL_FreeSurface(ch->mapch.listbox.destsurf);
 	SDL_FreeSurface(ch->editorsurf);
 	free(ch->editor);
 	free(ch->mapch.maps);
@@ -317,23 +315,6 @@ static void show_title_text(SDL_Surface *winsurf)
 	SDL_FreeSurface(s);
 }
 
-static void update_listbox_entries(struct ChooserMapStuff *ch)
-{
-	ch->listbox.entries = realloc(ch->listbox.entries, ch->nmaps * sizeof(ch->listbox.entries[0]));
-	if (!ch->listbox.entries)
-		log_printf_abort("out of mem");
-	ch->listbox.nentries = ch->nmaps;
-
-	for (int i = 0; i < ch->nmaps; i++) {
-		ch->listbox.entries[i] = (struct ListboxEntry){
-			.text = ch->maps[i].path,
-			.hasbuttons = ch->maps[i].custom,
-		};
-	}
-
-	ch->listbox.redraw = true;
-}
-
 enum MiscState chooser_run(struct Chooser *ch)
 {
 	// Maps array can get reallocated while not running chooser, e.g. copying maps
@@ -342,21 +323,13 @@ enum MiscState chooser_run(struct Chooser *ch)
 
 	if (ch->mapch.listbox.selectidx >= ch->mapch.nmaps)
 		ch->mapch.listbox.selectidx = ch->mapch.nmaps-1;
-	update_map_chooser_buttons(&ch->mapch);
 
 	bool playclicked = false;
 	bool editclicked = false;
-	bool cpclicked = false;
 
 	ch->playbtn.onclickdata = &playclicked;
-	ch->mapch.editbtn.onclickdata = &editclicked;
-	ch->mapch.cpbtn.onclickdata = &cpclicked;
 
 	SDL_FillRect(ch->winsurf, NULL, 0);
-	/*
-	button_show(&ch->mapch.editbtn);
-	button_show(&ch->mapch.cpbtn);
-	*/
 	button_show(&ch->playbtn);
 	show_player_chooser_in_beginning(&ch->playerch[0]);
 	show_player_chooser_in_beginning(&ch->playerch[1]);
@@ -369,17 +342,13 @@ enum MiscState chooser_run(struct Chooser *ch)
 		while (SDL_PollEvent(&e)) {
 			if (e.type == SDL_QUIT)
 				return MISC_STATE_QUIT;
-			handle_event(&e, ch);
+			handle_event(&e, ch, &editclicked);
 		}
 
 		if (playclicked)
 			return MISC_STATE_PLAY;
 		if (editclicked)
 			return MISC_STATE_MAPEDITOR;
-		if (cpclicked) {
-			ch->mapch.listbox.selectidx = map_copy(&ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.listbox.selectidx);
-			return MISC_STATE_MAPEDITOR;
-		}
 
 		rotate_player_ellipsoids(ch->ellipsoids);
 		show_player_chooser_each_frame(ch, &ch->playerch[0]);

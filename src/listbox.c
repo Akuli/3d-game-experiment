@@ -1,5 +1,6 @@
 #include "listbox.h"
 #include <assert.h>
+#include <stdlib.h>
 #include "log.h"
 #include "misc.h"
 #include "mathstuff.h"
@@ -24,7 +25,7 @@ static SDL_Surface *load_image(const char *path)
 
 static int rows_on_screen(const struct Listbox *lb)
 {
-	return lb->destsurf->h / lb->bgimg->h;
+	return min(lb->destrect.h / lb->bgimg->h, lb->nentries);
 }
 
 void listbox_init(struct Listbox *lb)
@@ -45,41 +46,54 @@ void listbox_destroy(const struct Listbox *lb)
 	SDL_FreeSurface(lb->bgimg);
 }
 
+static void click_first(void *lbptr)
+{
+	struct Listbox *lb = lbptr;
+	lb->clicktext = lb->entries[lb->selectidx].buttontexts[0];
+}
+
+static void click_second(void *lbptr)
+{
+	struct Listbox *lb = lbptr;
+	lb->clicktext = lb->entries[lb->selectidx].buttontexts[1];
+}
+
 void listbox_show(struct Listbox *lb)
 {
 	if (!lb->redraw)
 		return;
 	lb->redraw = false;
 
-	SDL_FillRect(lb->destsurf, NULL, 0);
-	// FIXME: blitting is slow, called too often
-	SDL_BlitSurface(lb->bgimg, NULL, lb->destsurf, &(SDL_Rect){0,0});
+	SDL_FillRect(lb->destsurf, &lb->destrect, 0);
+	SDL_BlitSurface(lb->bgimg, NULL, lb->destsurf, &(SDL_Rect){ lb->destrect.x, lb->destrect.y });
 
 	// FIXME: horribly slow
-	for (int i = 0; i < min(rows_on_screen(lb), lb->nentries); i++) {
-		int y = i*lb->selectimg->h;
+	for (int i = 0; i < rows_on_screen(lb); i++) {
+		int y = lb->destrect.y + i*lb->selectimg->h;
 		SDL_Surface *img = (i == lb->selectidx) ? lb->selectimg : lb->bgimg;
 
-		SDL_BlitSurface(img, NULL, lb->destsurf, &(SDL_Rect){0,y});
+		SDL_BlitSurface(img, NULL, lb->destsurf, &(SDL_Rect){ lb->destrect.x, y });
 		SDL_Surface *t = misc_create_text_surface(
 			lb->entries[i].text, (SDL_Color){0xff,0xff,0xff,0xff}, 20);
-		SDL_BlitSurface(t, NULL, lb->destsurf, &(SDL_Rect){ 10, y });
+		SDL_BlitSurface(t, NULL, lb->destsurf, &(SDL_Rect){ lb->destrect.x + 10, y });
 		SDL_FreeSurface(t);
 
-		if (lb->entries[i].hasbuttons) {
-			enum ButtonFlags f = BUTTON_TINY;
-			struct Button b = {
-				.text = lb->buttontexts[0],
-				.destsurf = lb->destsurf,
-				// FIXME: center x looks wrong in gui
-				.center = { lb->destsurf->w - button_width(f)*3/2, y + lb->selectimg->h/2 },
-				.flags = f,
-			};
-			button_show(&b);
-
-			b.text = lb->buttontexts[1];
-			b.center.x += button_width(f);
-			button_show(&b);
+		static_assert(sizeof(lb->entries[0].buttontexts) / sizeof(lb->entries[0].buttontexts[0]) == 2, "");
+		static_assert(sizeof(lb->entries[0].buttons) / sizeof(lb->entries[0].buttons[0]) == 2, "");
+		int centerx = lb->destrect.x + lb->destrect.w - button_width(BUTTON_TINY)/2;
+		for (int k = 1; k >= 0; k--) {
+			if (lb->entries[i].buttontexts[k]) {
+				lb->entries[i].buttons[k] = (struct Button){
+					.text = lb->entries[i].buttontexts[k],
+					.destsurf = lb->destsurf,
+					.flags = lb->entries[i].buttons[k].flags | BUTTON_TINY,
+					.center = (SDL_Point){ centerx, y + lb->selectimg->h/2 },
+					.onclick = k ? click_second : click_first,
+					.onclickdata = lb,
+				};
+				button_show(&lb->entries[i].buttons[k]);
+			}
+			centerx -= button_width(BUTTON_TINY);
 		}
 	}
 }
@@ -99,21 +113,40 @@ static int scancode_to_delta(const SDL_Event *evt, const struct Listbox *lb)
 	return 0;
 }
 
-void listbox_handle_event(struct Listbox *lb, const SDL_Event *e)
+static void select_index(struct Listbox *lb, int i, bool wantclamp)
+{
+	if (wantclamp)
+		clamp(&i, 0, lb->nentries - 1);
+
+	if (0 <= i && i < lb->nentries && i != lb->selectidx) {
+		lb->selectidx = i;
+		lb->redraw = true;
+	}
+}
+
+const char *listbox_handle_event(struct Listbox *lb, const SDL_Event *e)
 {
 	switch(e->type) {
 	case SDL_KEYDOWN:
-	{
-		int d = scancode_to_delta(e, lb);
-		if (d != 0) {
-			lb->selectidx += d;
-			clamp(&lb->selectidx, 0, lb->nentries - 1);
-			lb->redraw = true;
-		}
+		select_index(lb, lb->selectidx + scancode_to_delta(e, lb), true);
 		break;
-	}
-	// TODO: mouse
+
+	case SDL_MOUSEBUTTONDOWN:
+		if (SDL_PointInRect(&(SDL_Point){e->button.x, e->button.y}, &lb->destrect))
+			select_index(lb, (e->button.y - lb->destrect.y)/lb->selectimg->h, false);
+
 	default:
 		break;
 	}
+
+	for (int i = 0; i < rows_on_screen(lb); i++) {
+		for (int k = 0; k < 2; k++) {
+			if (lb->entries[i].buttontexts[k])
+				button_handle_event(e, &lb->entries[i].buttons[k]);
+		}
+	}
+
+	const char *ret = lb->clicktext;
+	lb->clicktext = NULL;
+	return ret;
 }
