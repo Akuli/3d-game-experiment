@@ -10,7 +10,7 @@
 
 struct Sound {
 	Mix_Chunk *chunk;
-	char name[1024];    // includes "sounds/" prefix
+	char name[1024];    // includes "assets/sounds/" prefix
 };
 
 static struct Sound sounds[100] = {0};
@@ -66,6 +66,7 @@ void sound_init(void)
 	if (glob("assets/sounds/farts/*.wav", GLOB_APPEND, NULL, &gl) != 0)
 		log_printf("can't find fart sounds");
 
+	SDL_assert(gl.gl_pathc <= sizeof(sounds)/sizeof(sounds[0]));
 	for (int i = 0; i < gl.gl_pathc; i++) {
 		SDL_assert(sounds[nsounds].chunk == NULL);
 		if (( sounds[nsounds].chunk = Mix_LoadWAV(gl.gl_pathv[i]) )) {
@@ -81,43 +82,35 @@ void sound_init(void)
 	qsort(sounds, nsounds, sizeof(sounds[0]), compare_sounds);   // for binary searching
 }
 
-static Mix_Chunk *choose_sound(const char *pattern)
+void sound_play(const char *fnpattern)
 {
 	char fullpat[1024];
-	snprintf(fullpat, sizeof fullpat, "assets/sounds/%s", pattern);
+	snprintf(fullpat, sizeof fullpat, "assets/sounds/%s", fnpattern);
 
 	glob_t gl;
-	switch(glob(fullpat, 0, NULL, &gl)) {
+	int r = glob(fullpat, 0, NULL, &gl);
+	switch(r) {
 		case 0: break;
-		case GLOB_NOMATCH: log_printf("no sounds match pattern \"%s\"", fullpat); return NULL;
-		case GLOB_NOSPACE: log_printf("glob ran out of memory with pattern \"%s\"", fullpat); return NULL;
-		case GLOB_ABORTED: log_printf("glob error with pattern \"%s\": %s", fullpat, strerror(errno)); return NULL;
-		default: log_printf("unexpected glob() return value with pattern \"%s\"", fullpat); return NULL;
+		case GLOB_NOMATCH: log_printf("no sounds match pattern \"%s\"", fullpat); return;
+		case GLOB_NOSPACE: log_printf("glob ran out of memory with pattern \"%s\"", fullpat); return;
+		case GLOB_ABORTED: log_printf("glob error with pattern \"%s\": %s", fullpat, strerror(errno)); return;
+		default: log_printf("unexpected glob() return value %d with pattern \"%s\"", r, fullpat); return;
 	}
 
 	SDL_assert(gl.gl_pathc >= 1);
 	const char *path = gl.gl_pathv[rand() % gl.gl_pathc];
 	const struct Sound *s = bsearch(path, sounds, nsounds, sizeof(sounds[0]), compare_sound_filename);
-
-	if (s)
-		log_printf("playing soon: %s", path);
-	else
-		log_printf("sound not loaded: %s", path);
-	globfree(&gl);
-
-	return s ? s->chunk : NULL;
-}
-
-void sound_play(const char *fnpattern)
-{
-	Mix_Chunk *c = choose_sound(fnpattern);
-	if (c != NULL) {
-		int chan = Mix_PlayChannel(-1, c, 0);
+	if (s && s->chunk) {
+		int chan = Mix_PlayChannel(-1, s->chunk, 0);
 		if (chan == -1)
 			log_printf("Mix_PlayChannel failed: %s", Mix_GetError());
 		else
-			log_printf("Playing on channel %d/%d", chan, Mix_AllocateChannels(-1));
+			log_printf("Playing '%s' on channel %d/%d", s->name, chan, Mix_AllocateChannels(-1));
+	} else {
+		log_printf("sound not loaded: %s", path);
 	}
+
+	globfree(&gl);
 }
 
 void sound_deinit(void)
