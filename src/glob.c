@@ -89,7 +89,7 @@ int glob(const char *pat, int flags, int (*errfunc)(const char *, int), glob_t *
 
 	// https://stackoverflow.com/q/29734737
 	// Posix glob sorts by default, according to man page
-	qsort(pglob->gl_pathv, pglob.gl_pathc, sizeof pglob->gl_pathv[0], compare_pathbufs);
+	qsort(pglob->gl_pathv, pglob->gl_pathc, sizeof pglob->gl_pathv[0], compare_pathbufs);
 
 	return 0;
 }
