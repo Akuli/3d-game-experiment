@@ -5,11 +5,17 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <wchar.h>
 #include <windows.h>
 #include "misc.h"
 
 
 typedef char PathBuf[MAX_PATH];
+
+static int compare_pathbufs(const void *aptr, const void *bptr)
+{
+	return strcmp(*(const PathBuf *)aptr, *(const PathBuf *)bptr);
+}
 
 static PathBuf *get_next_glob_pointer(glob_t *pglob)
 {
@@ -66,7 +72,11 @@ int glob(const char *pat, int flags, int (*errfunc)(const char *, int), glob_t *
 	if (hnd == INVALID_HANDLE_VALUE)
 		return GLOB_NOMATCH;
 
+	size_t start = pglob->gl_pathc;
 	do {
+		if (wcscmp(dat.cFileName, L".") == 0 || wcscmp(dat.cFileName, L"..") == 0)
+			continue;
+
 		PathBuf *buf = get_next_glob_pointer(pglob);
 		if (!buf) {
 			FindClose(hnd);
@@ -80,8 +90,12 @@ int glob(const char *pat, int flags, int (*errfunc)(const char *, int), glob_t *
 		else
 			snprintf(*buf, sizeof(*buf), "%.*s/%s", (int)(lastslash - pat), pat, misc_windows_to_utf8(dat.cFileName));
 	} while (FindNextFileW(hnd, &dat));
-
 	FindClose(hnd);
+
+	// https://stackoverflow.com/q/29734737
+	// Posix glob sorts by default, according to man page, but append still means append
+	qsort(pglob->gl_pathv + start, pglob->gl_pathc - start, sizeof pglob->gl_pathv[0], compare_pathbufs);
+
 	return 0;
 }
 

@@ -24,8 +24,8 @@ COPIED_FILES := $(addprefix $(EXEDIR)/,$(notdir $(FILES_TO_COPY)))
 OBJ := obj/stb_image.o $(SRC:%.c=obj/%.o)
 TESTS_OBJ := $(TESTS_SRC:%.c=obj/%.o)
 
-# each tests/test_bla.c file includes corresponding src/bla.c file, don't link both of them
-TESTS_LINK_OBJ := $(TESTS_OBJ) $(filter-out obj/src/main.o $(TESTS_SRC:tests/test_%.c=obj/src/%.o), $(OBJ))
+# tests/test_ellipsoidbump.c includes src/ellipsoidbump.c, don't link both of them
+TESTS_LINK_OBJ := $(TESTS_OBJ) $(filter-out obj/src/main.o obj/src/ellipsoidbump.o, $(OBJ))
 
 
 all: $(EXEDIR)/game$(EXESUFFIX) test checkassets
@@ -46,14 +46,14 @@ obj/stb_image.o: $(wildcard stb/*.h)
 	-DSTB_IMAGE_IMPLEMENTATION stb/stb_image.h $(VENDOR_CFLAGS)
 
 $(EXEDIR)/game$(EXESUFFIX): $(OBJ) $(HEADERS) $(COPIED_FILES)
-	mkdir -p $(@D) && $(CC) $(CFLAGS) $(OBJ) -o $@ $(LDFLAGS)
+	mkdir -p $(@D) && $(CC) $(CFLAGS) $(OBJ) -o $@ $(LDFLAGS) $(GUI_LDFLAGS)
+
+$(EXEDIR)/testrunner$(EXESUFFIX): tests/main.c $(TESTS_LINK_OBJ) $(HEADERS) $(COPIED_FILES) generated/run_tests.h
+	mkdir -p $(@D) && $(CC) -o $@ tests/main.c $(TESTS_LINK_OBJ) $(CFLAGS) $(LDFLAGS)
 
 # this is lol
 generated/run_tests.h: $(TESTS_OBJ)
 	mkdir -p $(@D) && strings $(TESTS_OBJ) | grep '^test_[a-z0-9_]*$$' | sort | uniq | awk '{ printf "RUN(%s);", $$1 }' > $@
-
-$(EXEDIR)/testrunner$(EXESUFFIX): tests/main.c $(TESTS_LINK_OBJ) generated/run_tests.h
-	mkdir -p $(@D) && $(CC) -o $@ $(filter-out generated/run_tests.h, $^) $(CFLAGS) $(LDFLAGS)
 
 .PHONY: test
 test: $(EXEDIR)/testrunner$(EXESUFFIX)
