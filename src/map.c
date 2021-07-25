@@ -37,29 +37,33 @@ Small language for specifying maps in files:
 #define MAX_LINE_LEN (COMPILE_TIME_STRLEN("|--")*MAX_MAPSIZE + COMPILE_TIME_STRLEN("|\n"))
 #define MAX_LINE_COUNT (2*MAX_MAPSIZE + 1)
 
-static const char *read_file_with_trailing_spaces_added(const char *path, int *nlines)
+static bool read_line(char *line, size_t linesz, FILE *f)
 {
-	FILE *f = fopen(path, "r");
-	if (!f)
-		log_printf_abort("opening \"%s\" failed: %s", path, strerror(errno));
+	if (!fgets(line, linesz, f)) {
+		if (ferror(f))
+			log_printf_abort("can't read file: %s", strerror(errno));
+		return false;  // EOF
+	}
 
+	int n = strlen(line);
+	if (n > 0 && line[n-1] == '\n')
+		line[n-1] = '\0';
+	log_printf("%s", line);
+	return true;
+}
+
+static const char *read_file_with_trailing_spaces_added(FILE *f, int *nlines)
+{
 	static char res[MAX_LINE_LEN*MAX_LINE_COUNT + 1];
 	res[0] = '\0';
 
 	char line[MAX_LINE_LEN + 1];
 	int n = 0;
-	while (fgets(line, sizeof line, f)) {
-		SDL_assert(line[strlen(line)-1] == '\n');
-		line[strlen(line)-1] = '\0';
-		log_printf("%s", line);
+	while (read_line(line, sizeof line, f)) {
 		sprintf(res + strlen(res), "%-*s\n", (int)(MAX_LINE_LEN - strlen("\n")), line);
-
 		SDL_assert(n < MAX_LINE_COUNT);
 		n++;
 	}
-	if (ferror(f))
-		log_printf_abort("can't read from \"%s\": %s", path, strerror(errno));
-	fclose(f);
 
 	*nlines = n;
 	return res;
@@ -120,22 +124,19 @@ static void parse_vertical_wall_string(const char *part, bool *leftwall, bool *r
 	parse_square_content(part[2], st);
 }
 
-static void print_map_info(const struct Map *map)
-{
-	log_printf("    path = %s", map->path);
-	log_printf("    custom = %s", map->custom ? "true" : "false");
-	log_printf("    size %dx%d", map->xsize, map->zsize);
-	log_printf("    %d walls", map->nwalls);
-	log_printf("    %d enemy locations", map->nenemylocs);
-	for (int i = 0; i < 2; i++)
-		log_printf("    player %d goes to x=%d z=%d", i, map->playerlocs[i].x, map->playerlocs[i].z);
-}
-
 static const char *next_line(const char *s)
 {
 	char *nl = strchr(s, '\n');
 	SDL_assert(nl);
 	return nl+1;
+}
+
+static int peek_one_char(FILE *f)
+{
+	int c = fgetc(f);
+	if (c != EOF)
+		ungetc(c, f);
+	return c;
 }
 
 static void read_map_from_file(struct Map *map, const char *path, bool custom)
@@ -145,8 +146,34 @@ static void read_map_from_file(struct Map *map, const char *path, bool custom)
 	strcpy(map->path, path);
 	map->custom = custom;
 
+	FILE *f = fopen(path, "r");
+	if (!f)
+		log_printf_abort("opening \"%s\" failed: %s", path, strerror(errno));
+
+	// These should never be actually used
+	strcpy(map->name, "(no name)");
+	map->sortkey = NAN;
+
+	// Metadata section
+	while (peek_one_char(f) != ' ') {
+		char line[100];
+		if (!read_line(line, sizeof line, f))
+			log_printf_abort("unexpected EOF while reading metadata");
+
+		if (strstr(line, "Name=") == line)
+			snprintf(map->name, sizeof map->name, "%s", strstr(line, "=") + 1);
+		else if (strstr(line, "SortKey=") == line)
+			map->sortkey = atof(strstr(line, "=") + 1);
+		else
+			log_printf_abort("bad metadata line: %s", line);
+	}
+
+	if (!isfinite(map->sortkey))
+		map->sortkey = map->name[0];  // a bit lol, but works for default maps
+
+	// The actual map
 	int nlines;
-	const char *fdata = read_file_with_trailing_spaces_added(path, &nlines);
+	const char *fdata = read_file_with_trailing_spaces_added(f, &nlines);
 
 	/*
 	 -----> x
@@ -211,8 +238,12 @@ static void read_map_from_file(struct Map *map, const char *path, bool custom)
 			if (right)  map_addwall(map, x+1, z,   WALL_DIR_ZY);
 		}
 	}
+}
 
-	print_map_info(map);
+static int compare_maps(const void *a, const void *b)
+{
+	const struct Map *ma = a, *mb = b;
+	return (ma->sortkey > mb->sortkey) - (ma->sortkey < mb->sortkey);
 }
 
 struct Map *map_list(int *nmaps)
@@ -235,6 +266,7 @@ struct Map *map_list(int *nmaps)
 	globfree(&gl);
 
 	*nmaps = gl.gl_pathc;
+	qsort(maps, *nmaps, sizeof maps[0], compare_maps);
 	return maps;
 }
 
@@ -463,6 +495,8 @@ void map_save(const struct Map *map)
 
 	// Can get truncated if all data in one log message, maybe limitation in sdl2 logging
 	log_printf("Writing to \"%s\"", map->path);
+	log_printf("Name=%s", map->name);
+	log_printf("SortKey=%.10f", map->sortkey);
 	for (int i = 0; i < nlines; i++)
 		log_printf("%.*s", linesz, data+(i*linesz));
 
@@ -470,11 +504,12 @@ void map_save(const struct Map *map)
 	FILE *f = fopen(map->path, "w");
 	if (!f)
 		log_printf_abort("opening \"%s\" failed: %s", map->path, strerror(errno));
-	if (fwrite(data, 1, linesz*nlines, f) != linesz*nlines)
-		log_printf_abort("writing to \"%s\" failed: %s", map->path, strerror(errno));
-	fclose(f);
 
-	print_map_info(map);
+	int ret = fprintf(f, "Name=%s\nSortKey=%.10f\n%s", map->name, map->sortkey, data);
+	if (ret < 0)
+		log_printf_abort("writing to \"%s\" failed: %s", map->path, strerror(errno));
+
+	fclose(f);
 	free(data);
 }
 
@@ -498,9 +533,15 @@ int map_copy(struct Map **maps, int *nmaps, int srcidx)
 
 	memmove(&arr[srcidx+1], &arr[srcidx], (n - srcidx)*sizeof(arr[0]));
 	sprintf(arr[srcidx+1].path, "custom_maps/%05d.txt", newnum);
+	snprintf(arr[srcidx+1].name, sizeof arr[srcidx+1].name, "Copy: %s", arr[srcidx].name);
 	arr[srcidx+1].custom = true;
-	map_save(&arr[srcidx+1]);
 
+	if (srcidx+2 < *nmaps)
+		arr[srcidx+1].sortkey = (arr[srcidx].sortkey + arr[srcidx+2].sortkey)/2;
+	else
+		arr[srcidx+1].sortkey += 1;
+
+	map_save(&arr[srcidx+1]);
 	*maps = arr;
 	return srcidx+1;
 }

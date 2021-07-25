@@ -198,7 +198,7 @@ static void update_listbox_entries(struct ChooserMapStuff *ch)
 
 	for (int i = 0; i < ch->nmaps; i++) {
 		ch->listbox.entries[i] = (struct ListboxEntry){
-			.text = ch->maps[i].path,
+			.text = ch->maps[i].name,
 			.buttontexts = {
 				ch->maps[i].custom ? "Edit" : NULL,
 				"Copy",

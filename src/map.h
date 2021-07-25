@@ -9,6 +9,8 @@ struct MapCoords { int x, z; };
 
 struct Map {
 	char path[1024];
+	char name[50];
+	float sortkey;
 	bool custom;  // whether path starts with "custom_maps"
 	struct Wall walls[MAX_WALLS];
 	int nwalls;
