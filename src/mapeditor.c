@@ -44,6 +44,7 @@ struct MapEditor {
 	struct EllipsoidEdit playeredits[2];
 	struct EllipsoidEdit enemyedits[MAX_ENEMIES];
 	struct Camera cam;
+	float zoom;
 	int rotatedir;
 	struct Button delmapbtn, donebtn;
 	struct Button addenemybtn;
@@ -85,10 +86,7 @@ static void rotate_camera(struct MapEditor *ed, float speed)
 	float d = hypotf(ed->map->xsize, ed->map->zsize);
 	clamp_float(&d, 8, HUGE_VALF);
 
-	// d is inversely proportional to surface size, camera further away when surface is small
-	d *= (float)CAMERA_SCREEN_WIDTH / ed->cam.surface->w;
-
-	Vec3 tocamera = vec3_mul_float((Vec3){ 0, 0.5f, 0.7f }, d);
+	Vec3 tocamera = vec3_mul_float((Vec3){ 0, 0.5f, 0.7f }, d / ed->zoom);
 	vec3_apply_matrix(&tocamera, mat3_rotation_xz(ed->cam.angle));
 
 	Vec3 mapcenter = { ed->map->xsize*0.5f, 0, ed->map->zsize*0.5f };
@@ -872,13 +870,14 @@ out:
 	SDL_FreeSurface(textsurf);
 }
 
-struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop)
+struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 {
 	struct MapEditor *ed = malloc(sizeof(*ed));
 	if (!ed)
 		log_printf_abort("out of mem");
 
 	*ed = (struct MapEditor){
+		.zoom = zoom,
 		.cam = { .surface = surf, .screencentery = ytop, .angle = 0 },
 		.donebtn = {
 			.text = "Done",

@@ -5,6 +5,9 @@
 #include <stdbool.h>
 #include "button.h"
 
+// must match image size, see scripts/resize_images
+#define LISTBOX_WIDTH 500
+
 struct ListboxEntry {
 	const char *text;
 	const char *buttontexts[2];

@@ -10,7 +10,7 @@ struct MapEditor;  // IWYU pragma: keep
 
 // You also need to call mapeditor_setmaps and mapeditor_setplayers
 // free() the return value when done but not between calls
-struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop);
+struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom);
 
 void mapeditor_setplayers(struct MapEditor *ed, const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic);
 

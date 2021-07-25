@@ -32,7 +32,10 @@ void listbox_init(struct Listbox *lb)
 {
 	lb->bgimg = load_image("assets/listbox/normal.png");
 	lb->selectimg = load_image("assets/listbox/selected.png");
-	SDL_assert(lb->selectimg->w == lb->bgimg->w);
+
+	SDL_assert(lb->destrect.w == LISTBOX_WIDTH);
+	SDL_assert(lb->selectimg->w == LISTBOX_WIDTH);
+	SDL_assert(lb->bgimg->w == LISTBOX_WIDTH);
 	SDL_assert(lb->selectimg->h == lb->bgimg->h);
 
 	lb->redraw = true;
