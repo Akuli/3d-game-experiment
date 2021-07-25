@@ -11,10 +11,10 @@
 
 typedef char PathBuf[MAX_PATH];
 
-static int compare_pathbufs(void *aptr, void *bptr)
+static int compare_pathbufs(const void *aptr, const void *bptr)
 {
-	PathBuf *a = aptr;
-	PathBuf *b = bptr;
+	const PathBuf *a = aptr;
+	const PathBuf *b = bptr;
 	return strcmp(*a, *b);
 }
 
