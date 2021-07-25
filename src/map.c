@@ -163,7 +163,7 @@ static void read_map_from_file(struct Map *map, const char *path, bool custom)
 		if (strstr(line, "Name=") == line)
 			snprintf(map->name, sizeof map->name, "%s", strstr(line, "=") + 1);
 		else if (strstr(line, "SortKey=") == line)
-			map->sortkey = atof(strstr(line, "=") + 1);
+			map->sortkey = (float)atof(strstr(line, "=") + 1);
 		else
 			log_printf_abort("bad metadata line: %s", line);
 	}
