@@ -1,5 +1,5 @@
 #include <assert.h>
-#include "../src/interval.c"
+#include "../src/interval.h"
 
 /*
 Quick and dirty python script for visualizing intervals (sudo apt install python3-tk):
