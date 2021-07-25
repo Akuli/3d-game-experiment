@@ -1,5 +1,10 @@
 #!/bin/bash
+# sudo apt install imagemagick
+
 set -ex
+
+# https://superuser.com/q/1077910
+convert="convert +set date:create +set date:modify"
 
 # Create assets/buttons/big and assets/buttons/small from assets/buttons/huge
 cd assets/buttons
@@ -7,24 +12,24 @@ rm -rvf medium small big
 mkdir -vp {medium,small,big}/{horizontal,vertical}
 
 for file in $(cd huge/narrow && echo */*.png); do
-    convert huge/narrow/$file -resize 55x55 small/$file
+    $convert huge/narrow/$file -resize 55x55 small/$file
 done
 
 for file in $(cd huge/wide && echo */*.png); do
-    convert huge/wide/$file -resize 150x150 medium/$file
-    convert huge/wide/$file -resize 300x300 big/$file
+    $convert huge/wide/$file -resize 150x150 medium/$file
+    $convert huge/wide/$file -resize 300x300 big/$file
 done
 
 for dir in {small,medium,big}/*; do
     if [ -f $dir/normal.png ]; then
         # MS gives the darkest out of all i tried (MS, RMS, Average, Brightness, Lightness)
-        convert $dir/normal.png -grayscale MS $dir/disabled.png
+        $convert $dir/normal.png -grayscale MS $dir/disabled.png
     fi
 done
 
 # Create all other arrows from huge-right.png
 cd ../arrows
-convert huge-right.png -resize 30x30 right.png
-convert huge-right.png -resize 30x30 -rotate 90 down.png
-convert huge-right.png -resize 30x30 -rotate 180 left.png
-convert huge-right.png -resize 30x30 -rotate 270 up.png
+$convert huge-right.png -resize 30x30 right.png
+$convert huge-right.png -resize 30x30 -rotate 90 down.png
+$convert huge-right.png -resize 30x30 -rotate 180 left.png
+$convert huge-right.png -resize 30x30 -rotate 270 up.png
