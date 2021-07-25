@@ -6,15 +6,21 @@
 
 void test_glob_success(void)
 {
+	// TODO: these generate warnings when dirs exist
 	misc_mkdir("generated");
 	misc_mkdir("generated/testdata");
+
 	fclose(fopen("generated/testdata/a", "w"));
 	fclose(fopen("generated/testdata/c", "w"));
 	fclose(fopen("generated/testdata/b", "w"));
+
 	glob_t gl;
 	assert(glob("README.*", 0, NULL, &gl) == 0);
 	assert(glob("generated/testdata/*", GLOB_APPEND, NULL, &gl) == 0);
 	assert(glob("assets/sounds/farts/*5.wav", GLOB_APPEND, NULL, &gl) == 0);
+
+	for (int i = 0; i < gl.gl_pathc; i++)
+		printf("asd %s\n", gl.gl_pathv[i]);
 
 	assert(gl.gl_pathc == 5);
 	assert(strcmp(gl.gl_pathv[0], "README.md") == 0);

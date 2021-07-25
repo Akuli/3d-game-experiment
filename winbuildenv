@@ -8,9 +8,9 @@ export CFLAGS=$(
     printf -- '-I%s '      libs/*/$ARCH-w64-mingw32/include &&
     printf -- '-I%s/SDL2 ' libs/*/$ARCH-w64-mingw32/include &&
     echo -n "-DSDL_MAIN_HANDLED "            `# SDL and MinGW seem to conflict here in some way` &&
-    echo -n "-D__USE_MINGW_ANSI_STDIO=1 "    `# https://stackoverflow.com/q/44382862` &&
-    echo -n "-mwindows"                      `# don't show cmd while playing game`
+    echo -n "-D__USE_MINGW_ANSI_STDIO=1 "    `# https://stackoverflow.com/q/44382862`
 )
+export GUI_LDFLAGS=-mwindows    # don't show cmd while playing game
 
 export EXEDIR=build
 export LDFLAGS=-Lbuild

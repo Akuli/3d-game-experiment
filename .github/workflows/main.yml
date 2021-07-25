@@ -34,7 +34,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: git submodule init && git submodule update
-    - run: sudo apt install make mingw-w64 wine
+    - run: sudo apt install make mingw-w64 wine   # TODO: don't use wine, github actions supports windows
     # Download links used (choose mingw instead of visual studio):
     #  https://www.libsdl.org/download-2.0.php
     #  https://www.libsdl.org/projects/SDL_mixer/

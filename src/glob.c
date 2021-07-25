@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <wchar.h>
 #include <windows.h>
 #include "misc.h"
 
@@ -73,6 +74,9 @@ int glob(const char *pat, int flags, int (*errfunc)(const char *, int), glob_t *
 
 	size_t start = pglob->gl_pathc;
 	do {
+		if (wcscmp(dat.cFileName, L".") == 0 || wcscmp(dat.cFileName, L"..") == 0)
+			continue;
+
 		PathBuf *buf = get_next_glob_pointer(pglob);
 		if (!buf) {
 			FindClose(hnd);
