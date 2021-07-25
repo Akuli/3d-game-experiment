@@ -29,6 +29,7 @@ struct Listbox {
 	// don't use rest of this outside listbox.c
 	SDL_Surface *bgimg;
 	SDL_Surface *selectimg;
+	int firstvisible;  // scrolling
 };
 
 // fill lb->destsurf, lb->entries etc before initing

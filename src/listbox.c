@@ -23,11 +23,6 @@ static SDL_Surface *load_image(const char *path)
 	return s;
 }
 
-static int rows_on_screen(const struct Listbox *lb)
-{
-	return min(lb->destrect.h / lb->bgimg->h, lb->nentries);
-}
-
 void listbox_init(struct Listbox *lb)
 {
 	lb->bgimg = load_image("assets/listbox/normal.png");
@@ -55,17 +50,28 @@ void listbox_show(struct Listbox *lb)
 		return;
 	lb->redraw = false;
 
+	int fit = lb->destrect.h / lb->bgimg->h;
+	if (fit >= lb->nentries)
+		lb->firstvisible = 0;
+	else {
+		lb->firstvisible = lb->selectidx - fit/2;
+		clamp(&lb->firstvisible, 0, lb->nentries - fit);
+	}
+
 	SDL_FillRect(lb->destsurf, &lb->destrect, 0);
 	SDL_BlitSurface(lb->bgimg, NULL, lb->destsurf, &(SDL_Rect){ lb->destrect.x, lb->destrect.y });
 
-	// FIXME: horribly slow
-	for (struct ListboxEntry *e = &lb->entries[0]; e < &lb->entries[rows_on_screen(lb)]; e++) {
-		int y = lb->destrect.y + (e - lb->entries)*lb->selectimg->h;
+	// horribly slow, but doesn't run very often
+	for (struct ListboxEntry *e = &lb->entries[lb->firstvisible];
+		e < &lb->entries[min(lb->firstvisible + fit, lb->nentries)];
+		e++)
+	{
+		int y = lb->destrect.y + (e - &lb->entries[lb->firstvisible])*lb->selectimg->h;
 		SDL_Surface *img = (e == &lb->entries[lb->selectidx]) ? lb->selectimg : lb->bgimg;
 
-		SDL_BlitSurface(img, NULL, lb->destsurf, &(SDL_Rect){ lb->destrect.x, y });
 		SDL_Surface *t = misc_create_text_surface(e->text, (SDL_Color){0xff,0xff,0xff,0xff}, 20);
-		SDL_BlitSurface(t, NULL, lb->destsurf, &(SDL_Rect){ lb->destrect.x + 10, y });
+		SDL_BlitSurface(img, NULL, lb->destsurf, &(SDL_Rect){lb->destrect.x, y});
+		SDL_BlitSurface(t, NULL, lb->destsurf, &(SDL_Rect){lb->destrect.x + 10, y});
 		SDL_FreeSurface(t);
 
 		int centerx = lb->destrect.x + lb->destrect.w - button_width(BUTTON_TINY)/2;
