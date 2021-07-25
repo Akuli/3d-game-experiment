@@ -71,6 +71,7 @@ int glob(const char *pat, int flags, int (*errfunc)(const char *, int), glob_t *
 	if (hnd == INVALID_HANDLE_VALUE)
 		return GLOB_NOMATCH;
 
+	size_t start = pglob->gl_pathc;
 	do {
 		PathBuf *buf = get_next_glob_pointer(pglob);
 		if (!buf) {
@@ -88,8 +89,8 @@ int glob(const char *pat, int flags, int (*errfunc)(const char *, int), glob_t *
 	FindClose(hnd);
 
 	// https://stackoverflow.com/q/29734737
-	// Posix glob sorts by default, according to man page
-	qsort(pglob->gl_pathv, pglob->gl_pathc, sizeof pglob->gl_pathv[0], compare_pathbufs);
+	// Posix glob sorts by default, according to man page, but append still means append
+	qsort(pglob->gl_pathv + start, pglob->gl_pathc - start, sizeof pglob->gl_pathv[0], compare_pathbufs);
 
 	return 0;
 }

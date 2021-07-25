@@ -23,8 +23,8 @@ COPIED_FILES := $(addprefix $(EXEDIR)/,$(notdir $(FILES_TO_COPY)))
 OBJ := obj/stb_image.o $(SRC:%.c=obj/%.o)
 TESTS_OBJ := $(TESTS_SRC:%.c=obj/%.o)
 
-# each tests/test_bla.c file includes corresponding src/bla.c file, don't link both of them
-TESTS_LINK_OBJ := $(TESTS_OBJ) $(filter-out obj/src/main.o $(TESTS_SRC:tests/test_%.c=obj/src/%.o), $(OBJ))
+# tests/test_ellipsoidbump.c includes src/ellipsoidbump.c, don't link both of them
+TESTS_LINK_OBJ := $(TESTS_OBJ) $(filter-out obj/src/main.o obj/src/ellipsoidbump.o, $(OBJ))
 
 
 all: $(EXEDIR)/game$(EXESUFFIX) test checkassets
