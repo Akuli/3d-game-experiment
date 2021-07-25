@@ -9,6 +9,7 @@
 #include "chooser.h"
 #include "enemy.h"
 #include "guard.h"
+#include "listbox.h"
 #include "play.h"
 #include "gameover.h"
 #include "misc.h"

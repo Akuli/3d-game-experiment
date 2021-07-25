@@ -1,4 +1,6 @@
 #include "deletemap.h"
+#include <stdbool.h>
+#include <stdio.h>
 #include "button.h"
 #include "log.h"
 #include "looptimer.h"

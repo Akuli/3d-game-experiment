@@ -1,5 +1,4 @@
 #include "chooser.h"
-#include <assert.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
