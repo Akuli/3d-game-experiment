@@ -13,9 +13,7 @@ typedef char PathBuf[MAX_PATH];
 
 static int compare_pathbufs(const void *aptr, const void *bptr)
 {
-	const PathBuf *a = aptr;
-	const PathBuf *b = bptr;
-	return strcmp(*a, *b);
+	return strcmp(*(const PathBuf *)aptr, *(const PathBuf *)bptr);
 }
 
 static PathBuf *get_next_glob_pointer(glob_t *pglob)
