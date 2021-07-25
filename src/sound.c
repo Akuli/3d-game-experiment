@@ -100,8 +100,6 @@ void sound_play(const char *fnpattern)
 	SDL_assert(gl.gl_pathc >= 1);
 	const char *path = gl.gl_pathv[rand() % gl.gl_pathc];
 	const struct Sound *s = bsearch(path, sounds, nsounds, sizeof(sounds[0]), compare_sound_filename);
-	globfree(&gl);
-
 	if (s && s->chunk) {
 		int chan = Mix_PlayChannel(-1, s->chunk, 0);
 		if (chan == -1)
@@ -109,8 +107,10 @@ void sound_play(const char *fnpattern)
 		else
 			log_printf("Playing '%s' on channel %d/%d", s->name, chan, Mix_AllocateChannels(-1));
 	} else {
-		log_printf("sounds not loaded: %s", path);
+		log_printf("sound not loaded: %s", path);
 	}
+
+	globfree(&gl);
 }
 
 void sound_deinit(void)
