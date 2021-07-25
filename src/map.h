@@ -39,7 +39,7 @@ void map_fix(struct Map *map);
 // for custom maps only
 void map_save(const struct Map *map);
 
-// May reallocate *maps, returns index into it, saves copied map
+// reallocates *maps, returns index into it, saves copied map
 int map_copy(struct Map **maps, int *nmaps, int srcidx);
 
 // Doesn't reallocate maps

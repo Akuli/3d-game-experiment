@@ -496,13 +496,13 @@ int map_copy(struct Map **maps, int *nmaps, int srcidx)
 		}
 	}
 
-	arr[n] = arr[srcidx];
-	sprintf(arr[n].path, "custom_maps/%05d.txt", newnum);
-	arr[n].custom = true;
-	map_save(&arr[n]);
+	memmove(&arr[srcidx+1], &arr[srcidx], (n - srcidx)*sizeof(arr[0]));
+	sprintf(arr[srcidx+1].path, "custom_maps/%05d.txt", newnum);
+	arr[srcidx+1].custom = true;
+	map_save(&arr[srcidx+1]);
 
 	*maps = arr;
-	return n;
+	return srcidx+1;
 }
 
 void map_delete(struct Map *maps, int *nmaps, int delidx)
