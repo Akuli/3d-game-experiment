@@ -29,6 +29,17 @@ jobs:
     - run: sudo apt update && sudo apt install $APT_PACKAGES iwyu clang-9
     - run: make -j2 -k iwyu
 
+  imagecheck:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - run: git submodule init
+    - run: sudo apt install imagemagick
+    - run: scripts/resize_images
+    # git diff fails if any files have been changed. In that case you need to
+    # run scripts/resize_images and commit the result.
+    - run: git diff --exit-code
+
   windows-build:
     runs-on: ubuntu-latest
     steps:
