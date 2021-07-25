@@ -236,7 +236,7 @@ static void update_listbox_entries(struct Chooser *ch)
 			},
 		};
 		if (!m->custom) {
-			// not editable
+			// hide editing buttons
 			e->buttons[0].text = NULL;
 			e->buttons[1].text = NULL;
 		}

@@ -3,6 +3,8 @@
 #include "log.h"
 #include "looptimer.h"
 
+// TODO: should show preview of map being edited
+
 static void set_to_true(void *ptr)
 {
 	*(bool *)ptr = true;

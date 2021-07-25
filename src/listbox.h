@@ -7,11 +7,10 @@
 
 // must match image size, see scripts/resize_images
 #define LISTBOX_WIDTH 500
-#define LISTBOX_BUTTONS_MAX 3
 
 struct ListboxEntry {
 	const char *text;
-	struct Button buttons[LISTBOX_BUTTONS_MAX];
+	struct Button buttons[3];
 };
 
 struct Listbox {

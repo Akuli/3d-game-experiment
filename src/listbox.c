@@ -59,23 +59,22 @@ void listbox_show(struct Listbox *lb)
 	SDL_BlitSurface(lb->bgimg, NULL, lb->destsurf, &(SDL_Rect){ lb->destrect.x, lb->destrect.y });
 
 	// FIXME: horribly slow
-	for (int i = 0; i < rows_on_screen(lb); i++) {
-		int y = lb->destrect.y + i*lb->selectimg->h;
-		SDL_Surface *img = (i == lb->selectidx) ? lb->selectimg : lb->bgimg;
+	for (struct ListboxEntry *e = &lb->entries[0]; e < &lb->entries[rows_on_screen(lb)]; e++) {
+		int y = lb->destrect.y + (e - lb->entries)*lb->selectimg->h;
+		SDL_Surface *img = (e == &lb->entries[lb->selectidx]) ? lb->selectimg : lb->bgimg;
 
 		SDL_BlitSurface(img, NULL, lb->destsurf, &(SDL_Rect){ lb->destrect.x, y });
-		SDL_Surface *t = misc_create_text_surface(
-			lb->entries[i].text, (SDL_Color){0xff,0xff,0xff,0xff}, 20);
+		SDL_Surface *t = misc_create_text_surface(e->text, (SDL_Color){0xff,0xff,0xff,0xff}, 20);
 		SDL_BlitSurface(t, NULL, lb->destsurf, &(SDL_Rect){ lb->destrect.x + 10, y });
 		SDL_FreeSurface(t);
 
 		int centerx = lb->destrect.x + lb->destrect.w - button_width(BUTTON_TINY)/2;
-		for (int k = LISTBOX_BUTTONS_MAX-1; k >= 0; k--) {
-			if (lb->entries[i].buttons[k].text) {
-				lb->entries[i].buttons[k].destsurf = lb->destsurf;
-				lb->entries[i].buttons[k].flags |= BUTTON_TINY;
-				lb->entries[i].buttons[k].center = (SDL_Point){ centerx, y + lb->selectimg->h/2 };
-				button_show(&lb->entries[i].buttons[k]);
+		for (int k = sizeof(e->buttons)/sizeof(e->buttons[0]) - 1; k >= 0; k--) {
+			if (e->buttons[k].text) {
+				e->buttons[k].destsurf = lb->destsurf;
+				e->buttons[k].flags |= BUTTON_TINY;
+				e->buttons[k].center = (SDL_Point){ centerx, y + lb->selectimg->h/2 };
+				button_show(&e->buttons[k]);
 			}
 			centerx -= button_width(BUTTON_TINY);
 		}
@@ -124,8 +123,10 @@ void listbox_handle_event(struct Listbox *lb, const SDL_Event *e)
 		break;
 	}
 
-	for (int k = 0; k < LISTBOX_BUTTONS_MAX; k++) {
+#define ArrayLen(arr) (sizeof((arr))/sizeof((arr)[0]))
+	for (int k = 0; k < ArrayLen(lb->entries[0].buttons); k++) {
+#undef ArrayLen
 		if (lb->entries[lb->selectidx].buttons[k].text)
-			button_handle_event(e, &lb->entries[lb->selectidx].buttons[k]);
+			button_handle_event(e, &lb->entries[lb->selectidx].buttons[k]);  // may reallocate lb->entries
 	}
 }
