@@ -11,6 +11,13 @@
 
 typedef char PathBuf[MAX_PATH];
 
+static int compare_pathbufs(void *aptr, void *bptr)
+{
+	PathBuf *a = aptr;
+	PathBuf *b = bptr;
+	return strcmp(*a, *b);
+}
+
 static PathBuf *get_next_glob_pointer(glob_t *pglob)
 {
 	assert(pglob->alloc >= pglob->gl_pathc);
@@ -80,8 +87,11 @@ int glob(const char *pat, int flags, int (*errfunc)(const char *, int), glob_t *
 		else
 			snprintf(*buf, sizeof(*buf), "%.*s/%s", (int)(lastslash - pat), pat, misc_windows_to_utf8(dat.cFileName));
 	} while (FindNextFileW(hnd, &dat));
-
 	FindClose(hnd);
+
+	// https://stackoverflow.com/q/29734737
+	qsort(pglob->gl_pathv, pglob.gl_pathc, sizeof pglob->gl_pathv[0], compare_pathbufs);
+
 	return 0;
 }
 
