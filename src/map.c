@@ -515,8 +515,7 @@ void map_save(const struct Map *map)
 	if (!f)
 		log_printf_abort("opening \"%s\" failed: %s", map->path, strerror(errno));
 
-	int ret = fprintf(f, "Name=%s\nSortKey=%.10f\n%s", map->name, map->sortkey, data);
-	if (ret < 0)
+	if (fprintf(f, "Name=%s\nSortKey=%.10f\n%s", map->name, map->sortkey, data) < 0)
 		log_printf_abort("writing to \"%s\" failed: %s", map->path, strerror(errno));
 
 	fclose(f);
