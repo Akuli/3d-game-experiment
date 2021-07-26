@@ -546,12 +546,37 @@ static int parse_name(const char *name, const char **origname)
 	return 0;
 }
 
-static void format_name(char *dst, size_t sizeofdst, int num, const char *origname)
+static void create_map_name(char *dst, size_t sizeofdst, const char *copyfrom, const struct Map *maps, int nmaps)
 {
+	const char *myorig;
+	parse_name(copyfrom, &myorig);
+
+	int num = 1;
+	for (int i = 0; i < nmaps; i++) {
+		const char *otherorig;
+		int k = parse_name(maps[i].name, &otherorig);
+		if (strcmp(myorig, otherorig) == 0)
+			num = max(num, k+1);
+	}
+
 	if (num == 1)
-		snprintf(dst, sizeofdst, "Copy: %s", origname);
+		snprintf(dst, sizeofdst, "Copy: %s", myorig);
 	else
-		snprintf(dst, sizeofdst, "Copy %d: %s", num, origname);
+		snprintf(dst, sizeofdst, "Copy %d: %s", num, myorig);
+}
+
+static int get_unused_filename_number(const struct Map *maps, int nmaps)
+{
+	int res = 0;
+	for (int i = 0; i < nmaps; i++) {
+		if (maps[i].custom) {
+			// Parse custom_maps/12345.txt
+			char digits[10];
+			misc_basename_without_extension(maps[i].path, digits, sizeof digits);
+			res = max(res, atoi(digits)+1);
+		}
+	}
+	return res;
 }
 
 int map_copy(struct Map **maps, int *nmaps, int srcidx)
@@ -573,7 +598,6 @@ int map_copy(struct Map **maps, int *nmaps, int srcidx)
 	}
 
 	const char *origname;
-	parse_name(arr[srcidx].name, &origname);
 
 	int num = 1;
 	for (int i = 0; i < n; i++) {
@@ -583,10 +607,13 @@ int map_copy(struct Map **maps, int *nmaps, int srcidx)
 			num = max(num, k+1);
 	}
 
+	char name[sizeof(arr[0].name)];
+	create_map_name(name, sizeof name, arr[srcidx].name, arr, n);
+
 	struct Map *dst = &arr[srcidx+1];
 	memmove(dst, &arr[srcidx], (n - srcidx)*sizeof(arr[0]));
 	sprintf(dst->path, "custom_maps/%05d.txt", newnum);
-	format_name(dst->name, sizeof dst->name, num, origname);
+	strcpy(dst->name, name);
 	dst->custom = true;
 
 	if (&dst[1] < arr + *nmaps)
