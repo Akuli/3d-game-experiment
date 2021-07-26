@@ -193,7 +193,7 @@ static void update_listbox_entries(struct Chooser *ch);
 static void on_copy_clicked(void *chptr)
 {
 	struct Chooser *ch = chptr;
-	map_copy(&ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.listbox.selectidx);
+	ch->mapch.listbox.selectidx = map_copy(&ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.listbox.selectidx);
 	mapeditor_setmap(ch->editor, &ch->mapch.maps[ch->mapch.listbox.selectidx]);
 	update_listbox_entries(ch);
 }
