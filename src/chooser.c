@@ -338,12 +338,10 @@ static void show_title_text(SDL_Surface *winsurf)
 
 enum MiscState chooser_run(struct Chooser *ch)
 {
-	// Maps array can get reallocated while not running chooser, e.g. copying maps
+	// Maps can be deleted while chooser not running
+	clamp(&ch->mapch.listbox.selectidx, 0, ch->mapch.nmaps-1);
 	mapeditor_setmap(ch->editor, &ch->mapch.maps[ch->mapch.listbox.selectidx]);
 	update_listbox_entries(ch);
-
-	if (ch->mapch.listbox.selectidx >= ch->mapch.nmaps)
-		ch->mapch.listbox.selectidx = ch->mapch.nmaps-1;
 
 	SDL_FillRect(ch->winsurf, NULL, 0);
 	button_show(&ch->playbtn);
