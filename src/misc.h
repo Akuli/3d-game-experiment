@@ -32,6 +32,10 @@ void misc_blit_with_center(SDL_Surface *src, SDL_Surface *dst, const SDL_Point *
 // Return a surface containing text on transparent background. Never returns NULL.
 SDL_Surface *misc_create_text_surface(const char *text, SDL_Color col, int fontsz);
 
+// Use misc_free_image_surface() only for surfaces returned from misc_create_surface()
+SDL_Surface *misc_create_image_surface(const char *path);
+void misc_free_image_surface(SDL_Surface *s);
+
 /*
 Create a surface that refers to another another surface. So, drawing to the
 returned surface actually draws to the surface given as argument. This turns out

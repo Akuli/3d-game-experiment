@@ -6,27 +6,10 @@
 #include "mathstuff.h"
 #include "../stb/stb_image.h"
 
-// FIXME: copy/pasta button.c
-static SDL_Surface *load_image(const char *path)
-{
-	int fmt, w, h;
-	unsigned char *data = stbi_load(path, &w, &h, &fmt, 4);
-	if (!data)
-		log_printf_abort("loading image from '%s' failed: %s", path, stbi_failure_reason());
-
-	// SDL_CreateRGBSurfaceWithFormatFrom docs have example code for using it with stbi :D
-	SDL_Surface *s = SDL_CreateRGBSurfaceWithFormatFrom(
-		data, w, h, 32, 4*w, SDL_PIXELFORMAT_RGBA32);
-	if (!s)
-		log_printf_abort("SDL_CreateRGBSurfaceWithFormatFrom failed: %s", SDL_GetError());
-	SDL_assert(s->pixels == data);
-	return s;
-}
-
 void listbox_init(struct Listbox *lb)
 {
-	lb->bgimg = load_image("assets/listbox/normal.png");
-	lb->selectimg = load_image("assets/listbox/selected.png");
+	lb->bgimg = misc_create_image_surface("assets/listbox/normal.png");
+	lb->selectimg = misc_create_image_surface("assets/listbox/selected.png");
 
 	SDL_assert(lb->destrect.w == LISTBOX_WIDTH);
 	SDL_assert(lb->selectimg->w == LISTBOX_WIDTH);
@@ -38,10 +21,8 @@ void listbox_init(struct Listbox *lb)
 
 void listbox_destroy(const struct Listbox *lb)
 {
-	stbi_image_free(lb->selectimg->pixels);
-	stbi_image_free(lb->bgimg->pixels);
-	SDL_FreeSurface(lb->selectimg);
-	SDL_FreeSurface(lb->bgimg);
+	misc_free_image_surface(lb->selectimg);
+	misc_free_image_surface(lb->bgimg);
 }
 
 void listbox_show(struct Listbox *lb)

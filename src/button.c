@@ -6,23 +6,6 @@
 #include <SDL2/SDL.h>
 #include "log.h"
 #include "misc.h"
-#include "../stb/stb_image.h"
-
-static SDL_Surface *load_image(const char *path)
-{
-	int fmt, w, h;
-	unsigned char *data = stbi_load(path, &w, &h, &fmt, 4);
-	if (!data)
-		log_printf_abort("loading image from '%s' failed: %s", path, stbi_failure_reason());
-
-	// SDL_CreateRGBSurfaceWithFormatFrom docs have example code for using it with stbi :D
-	SDL_Surface *s = SDL_CreateRGBSurfaceWithFormatFrom(
-		data, w, h, 32, 4*w, SDL_PIXELFORMAT_RGBA32);
-	if (!s)
-		log_printf_abort("SDL_CreateRGBSurfaceWithFormatFrom failed: %s", SDL_GetError());
-	SDL_assert(s->pixels == data);
-	return s;
-}
 
 /*
 This must be global because it's cleaned with atexit callback, and there's
@@ -33,10 +16,8 @@ static SDL_Surface *image_surfaces[BUTTON_ALLFLAGS + 1] = {0};
 static void free_image_surfaces(void)
 {
 	for (int i = 0; i < sizeof(image_surfaces)/sizeof(image_surfaces[0]); i++) {
-		if (image_surfaces[i]) {
-			stbi_image_free(image_surfaces[i]->pixels);
-			SDL_FreeSurface(image_surfaces[i]);
-		}
+		if (image_surfaces[i])
+			misc_free_image_surface(image_surfaces[i]);
 	}
 }
 
@@ -71,7 +52,7 @@ static SDL_Surface *get_image(enum ButtonFlags f)
 			(f & BUTTON_VERTICAL) ? "vertical" : "horizontal",
 			(f & BUTTON_DISABLED) ? "disabled" : ((f & BUTTON_PRESSED) ? "pressed" : "normal")
 		);
-		image_surfaces[f] = load_image(path);
+		image_surfaces[f] = misc_create_image_surface(path);
 	}
 	return image_surfaces[f];
 }
@@ -89,10 +70,9 @@ void button_show(const struct Button *butt)
 {
 	misc_blit_with_center(get_image(butt->flags), butt->destsurf, &butt->center);
 	if (butt->imgpath) {
-		SDL_Surface *s = load_image(butt->imgpath);
+		SDL_Surface *s = misc_create_image_surface(butt->imgpath);
 		misc_blit_with_center(s, butt->destsurf, &butt->center);
-		stbi_image_free(s->pixels);
-		SDL_FreeSurface(s);
+		misc_free_image_surface(s);
 	}
 
 	if (butt->text) {

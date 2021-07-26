@@ -15,6 +15,7 @@
 #include "log.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
+#include "../stb/stb_image.h"
 
 
 void misc_mkdir(const char *path)
@@ -81,6 +82,28 @@ SDL_Surface *misc_create_text_surface(const char *text, SDL_Color col, int fonts
 	if (!s)
 		log_printf_abort("TTF_RenderUTF8_Blended failed: %s", TTF_GetError());
 	return s;
+}
+
+SDL_Surface *misc_create_image_surface(const char *path)
+{
+	int fmt, w, h;
+	unsigned char *data = stbi_load(path, &w, &h, &fmt, 4);
+	if (!data)
+		log_printf_abort("loading image from '%s' failed: %s", path, stbi_failure_reason());
+
+	// SDL_CreateRGBSurfaceWithFormatFrom docs have example code for using it with stbi :D
+	SDL_Surface *s = SDL_CreateRGBSurfaceWithFormatFrom(
+		data, w, h, 32, 4*w, SDL_PIXELFORMAT_RGBA32);
+	if (!s)
+		log_printf_abort("SDL_CreateRGBSurfaceWithFormatFrom failed: %s", SDL_GetError());
+	SDL_assert(s->pixels == data);
+	return s;
+}
+
+void misc_free_image_surface(SDL_Surface *s)
+{
+	stbi_image_free(s->pixels);
+	SDL_FreeSurface(s);
 }
 
 SDL_Surface *misc_create_cropped_surface(SDL_Surface *surf, SDL_Rect r)
