@@ -4,13 +4,15 @@
 #include <SDL2/SDL.h>
 
 enum ButtonFlags {
-	BUTTON_BIG = 0x01,
+	// TODO: size flags are getting out of hand, replace with enum
+	BUTTON_TINY = 0x01,
 	BUTTON_SMALL = 0x02,
-	BUTTON_VERTICAL = 0x04,
-	BUTTON_PRESSED = 0x08,
-	BUTTON_DISABLED = 0x10,
+	BUTTON_BIG = 0x04,
+	BUTTON_VERTICAL = 0x08,
+	BUTTON_PRESSED = 0x10,
+	BUTTON_DISABLED = 0x20,
 };
-#define BUTTON_ALLFLAGS (BUTTON_BIG | BUTTON_SMALL | BUTTON_VERTICAL | BUTTON_PRESSED | BUTTON_DISABLED)
+#define BUTTON_ALLFLAGS (BUTTON_TINY | BUTTON_SMALL | BUTTON_BIG | BUTTON_VERTICAL | BUTTON_PRESSED | BUTTON_DISABLED)
 
 struct Button {
 	// imgpath image and text are drawn on top of a generic button background image

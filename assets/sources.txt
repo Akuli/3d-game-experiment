@@ -11,9 +11,13 @@ players/Chick.png: from a picture taken by a relative
 players/Dog.png: from a picture taken by a relative
 
 buttons/huge/*/*/*.png: edited from https://pixabay.com/vectors/the-button-button-icon-web-pages-859346/
-buttons/small/*/*.png:  see scripts/resize_images
-buttons/medium/*/*.png: see scripts/resize_images
 buttons/big/*/*.png:    see scripts/resize_images
+buttons/medium/*/*.png: see scripts/resize_images
+buttons/small/*/*.png:  see scripts/resize_images
+buttons/tiny/*/*.png:   see scripts/resize_images
+
+listbox/huge/*.png: edited from https://pixabay.com/vectors/the-button-button-icon-web-pages-859346/
+listbox/*.png:      see scripts/resize_images
 
 enemies/enemy1.png: I drew this myself with gimp
 guard.png: https://pixabay.com/photos/corrugated-sheet-metal-plate-2370925/

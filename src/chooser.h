@@ -9,6 +9,7 @@
 #include "ellipsoid.h"
 #include "misc.h"
 #include "mapeditor.h"  // IWYU pragma: keep
+#include "listbox.h"
 
 struct ChooserPlayerStuff {
 	const struct EllipsoidPic *epic;   // pointer into a value in player_epics
@@ -24,12 +25,7 @@ struct ChooserPlayerStuff {
 struct ChooserMapStuff {
 	struct Map *maps;
 	int nmaps;
-	int mapidx;
-
-	// rest of this struct isn't meant to be used outside chooser.c
-	struct Button prevbtn, nextbtn, editbtn, cpbtn;
-	SDL_Surface *editorsurf;
-	struct MapEditor *editor;  // Not actually used for editing, only to display map
+	struct Listbox listbox;  // use listbox.selectidx to figure out what map selected
 };
 
 struct Chooser {
@@ -37,10 +33,13 @@ struct Chooser {
 	struct ChooserMapStuff mapch;
 
 	// rest of this struct isn't meant to be used outside chooser.c
+	enum MiscState state;
 	SDL_Window *win;
 	SDL_Surface *winsurf;
 	struct Ellipsoid ellipsoids[50];
-	struct Button bigplaybtn;
+	struct Button playbtn;
+	SDL_Surface *editorsurf;
+	struct MapEditor *editor;  // Not actually used for editing, only to preview
 };
 
 /*

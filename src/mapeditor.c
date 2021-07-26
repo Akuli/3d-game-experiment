@@ -44,16 +44,13 @@ struct MapEditor {
 	struct EllipsoidEdit playeredits[2];
 	struct EllipsoidEdit enemyedits[MAX_ENEMIES];
 	struct Camera cam;
+	float zoom;
 	int rotatedir;
-	struct Button delmapbtn, donebtn;
+	struct Button donebtn;
 	struct Button addenemybtn;
 	struct Selection sel;
 	bool up, down, left, right;   // are arrow keys pressed
 	bool redraw;
-
-	// for deleting
-	struct Map *maps;
-	int *nmaps;
 };
 
 static bool next_ellipsoid_edit(struct MapEditor *ed, struct EllipsoidEdit **ptr)
@@ -85,10 +82,7 @@ static void rotate_camera(struct MapEditor *ed, float speed)
 	float d = hypotf(ed->map->xsize, ed->map->zsize);
 	clamp_float(&d, 8, HUGE_VALF);
 
-	// d is inversely proportional to surface size, camera further away when surface is small
-	d *= (float)CAMERA_SCREEN_WIDTH / ed->cam.surface->w;
-
-	Vec3 tocamera = vec3_mul_float((Vec3){ 0, 0.5f, 0.7f }, d);
+	Vec3 tocamera = vec3_mul_float((Vec3){ 0, 0.5f, 0.7f }, d / ed->zoom);
 	vec3_apply_matrix(&tocamera, mat3_rotation_xz(ed->cam.angle));
 
 	Vec3 mapcenter = { ed->map->xsize*0.5f, 0, ed->map->zsize*0.5f };
@@ -536,7 +530,6 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 {
 	float pi = acosf(-1);
 
-	button_handle_event(e, &ed->delmapbtn);
 	button_handle_event(e, &ed->donebtn);
 	button_handle_event(e, &ed->addenemybtn);
 
@@ -803,82 +796,20 @@ static void update_button_disableds(struct MapEditor *ed)
 		ed->addenemybtn.flags &= ~BUTTON_DISABLED;
 }
 
-static void set_to_true(void *ptr)
-{
-	*(bool *)ptr = true;
-}
-
 static void on_done_clicked(void *data)
 {
 	struct MapEditor *ed = data;
 	ed->state = MISC_STATE_CHOOSER;
 }
 
-static void confirm_delete(void *ptr)
-{
-	log_printf("Delete button clicked, entering confirm loop");
-
-	struct MapEditor *ed = ptr;
-	SDL_FillRect(ed->cam.surface, NULL, 0);
-	SDL_Surface *textsurf = misc_create_text_surface(
-		"Are you sure you want to permanently delete this map?",
-		(SDL_Color){0xff,0xff,0xff}, 25);
-
-	bool yesclicked = false;
-	bool noclicked = false;
-	struct Button yesbtn = {
-		.text = "Yes, please\ndelete it",
-		.destsurf = ed->cam.surface,
-		.scancodes = { SDL_SCANCODE_Y },
-		.center = { ed->cam.surface->w/2 - button_width(0)/2, ed->cam.surface->h/2 },
-		.onclick = set_to_true,
-		.onclickdata = &yesclicked,
-	};
-	struct Button nobtn = {
-		.text = "No, don't\ntouch it",
-		.scancodes = { SDL_SCANCODE_N, SDL_SCANCODE_ESCAPE },
-		.destsurf = ed->cam.surface,
-		.center = { ed->cam.surface->w/2 + button_width(0)/2, ed->cam.surface->h/2 },
-		.onclick = set_to_true,
-		.onclickdata = &noclicked,
-	};
-
-	button_show(&yesbtn);
-	button_show(&nobtn);
-	misc_blit_with_center(textsurf, ed->cam.surface, &(SDL_Point){ ed->cam.surface->w/2, ed->cam.surface->h/4 });
-
-	struct LoopTimer lt = {0};
-	while(!yesclicked && !noclicked) {
-		SDL_Event e;
-		while (SDL_PollEvent(&e)) {
-			if (e.type == SDL_QUIT) {
-				ed->state = MISC_STATE_QUIT;
-				goto out;
-			}
-			button_handle_event(&e, &yesbtn);
-			button_handle_event(&e, &nobtn);
-		}
-		SDL_assert(ed->wnd);
-		SDL_UpdateWindowSurface(ed->wnd);
-		looptimer_wait(&lt);
-	}
-
-	if (yesclicked) {
-		map_delete(ed->maps, ed->nmaps, ed->map - ed->maps);
-		ed->state = MISC_STATE_CHOOSER;
-	}
-
-out:
-	SDL_FreeSurface(textsurf);
-}
-
-struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop)
+struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 {
 	struct MapEditor *ed = malloc(sizeof(*ed));
 	if (!ed)
 		log_printf_abort("out of mem");
 
 	*ed = (struct MapEditor){
+		.zoom = zoom,
 		.cam = { .surface = surf, .screencentery = ytop, .angle = 0 },
 		.donebtn = {
 			.text = "Done",
@@ -889,16 +820,6 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop)
 			},
 			.scancodes = { SDL_SCANCODE_ESCAPE },
 			.onclick = on_done_clicked,
-			.onclickdata = ed,
-		},
-		.delmapbtn = {
-			.text = "Delete\nthis map",
-			.destsurf = surf,
-			.center = {
-				button_width(0)/2,
-				button_height(0)*3/2
-			},
-			.onclick = confirm_delete,
 			.onclickdata = ed,
 		},
 		.addenemybtn = {
@@ -930,22 +851,20 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop)
 	return ed;
 }
 
-void mapeditor_setmaps(struct MapEditor *ed, struct Map *maps, int *nmaps, int mapidx)
+void mapeditor_setmap(struct MapEditor *ed, struct Map *map)
 {
 	SDL_FillRect(ed->cam.surface, NULL, 0);
 
-	ed->map = &maps[mapidx];
-	ed->maps = maps;
-	ed->nmaps = nmaps;
+	ed->map = map;
 	ed->redraw = true;
 	ed->sel = (struct Selection){ .mode = SEL_NONE };
 	ed->state = MISC_STATE_MAPEDITOR;
 	ed->rotatedir = 0;
 
 	for (int p = 0; p < 2; p++)
-		ed->playeredits[p].loc = &maps[mapidx].playerlocs[p];
+		ed->playeredits[p].loc = &map->playerlocs[p];
 	for (int i = 0; i < MAX_ENEMIES; i++)
-		ed->enemyedits[i].loc = &maps[mapidx].enemylocs[i];
+		ed->enemyedits[i].loc = &map->enemylocs[i];
 }
 
 static void show_and_rotate_map_editor(struct MapEditor *ed, bool canedit)
@@ -962,7 +881,6 @@ static void show_and_rotate_map_editor(struct MapEditor *ed, bool canedit)
 		if (canedit) {
 			update_button_disableds(ed);
 			button_show(&ed->donebtn);
-			button_show(&ed->delmapbtn);
 			button_show(&ed->addenemybtn);
 		}
 	}

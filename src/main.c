@@ -9,6 +9,7 @@
 #include "chooser.h"
 #include "enemy.h"
 #include "guard.h"
+#include "listbox.h"
 #include "play.h"
 #include "gameover.h"
 #include "misc.h"
@@ -17,6 +18,7 @@
 #include "log.h"
 #include "map.h"
 #include "mapeditor.h"
+#include "deletemap.h"
 
 #ifdef _WIN32
 	#include <direct.h>
@@ -148,10 +150,10 @@ int main(int argc, char **argv)
 		case MISC_STATE_PLAY:
 			log_printf(
 				"playing the game begins with map from \"%s\"",
-				ch.mapch.maps[ch.mapch.mapidx].path);
+				ch.mapch.maps[ch.mapch.listbox.selectidx].path);
 			s = play_the_game(
 				wnd, ch.playerch[0].epic, ch.playerch[1].epic, &winner,
-				&ch.mapch.maps[ch.mapch.mapidx]);
+				&ch.mapch.maps[ch.mapch.listbox.selectidx]);
 			break;
 
 		case MISC_STATE_GAMEOVER:
@@ -161,11 +163,16 @@ int main(int argc, char **argv)
 
 		case MISC_STATE_MAPEDITOR:
 			log_printf("starting map editor");
-			struct MapEditor *ed = mapeditor_new(wndsurf, 0);
-			mapeditor_setmaps(ed, ch.mapch.maps, &ch.mapch.nmaps, ch.mapch.mapidx);
+			struct MapEditor *ed = mapeditor_new(wndsurf, 0, 1);
+			mapeditor_setmap(ed, &ch.mapch.maps[ch.mapch.listbox.selectidx]);
 			mapeditor_setplayers(ed, ch.playerch[0].epic, ch.playerch[1].epic);
 			s = mapeditor_run(ed, wnd);
 			free(ed);
+			break;
+
+		case MISC_STATE_DELETEMAP:
+			log_printf("starting delete map dialog");
+			s = deletemap_dialog(wnd, ch.mapch.maps, &ch.mapch.nmaps, ch.mapch.listbox.selectidx);
 			break;
 
 		case MISC_STATE_QUIT:

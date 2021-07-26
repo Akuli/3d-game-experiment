@@ -8,14 +8,15 @@ convert="convert +set date:create +set date:modify"
 
 # Create assets/buttons/big and assets/buttons/small from assets/buttons/huge
 cd assets/buttons
-rm -rvf medium small big
-mkdir -vp {medium,small,big}/{horizontal,vertical}
+rm -rvf tiny small medium big
+mkdir -vp {tiny,small,medium,big}/{horizontal,vertical}
 
 for file in $(cd huge/narrow && echo */*.png); do
     $convert huge/narrow/$file -resize 55x55 small/$file
 done
 
 for file in $(cd huge/wide && echo */*.png); do
+    $convert huge/wide/$file -resize 65x65   tiny/$file
     $convert huge/wide/$file -resize 150x150 medium/$file
     $convert huge/wide/$file -resize 300x300 big/$file
 done
@@ -27,9 +28,12 @@ for dir in {small,medium,big}/*; do
     fi
 done
 
-# Create all other arrows from huge-right.png
 cd ../arrows
 $convert huge-right.png -resize 30x30 right.png
 $convert huge-right.png -resize 30x30 -rotate 90 down.png
 $convert huge-right.png -resize 30x30 -rotate 180 left.png
 $convert huge-right.png -resize 30x30 -rotate 270 up.png
+
+cd ../listbox
+$convert huge/normal.png -scale '500x25!' normal.png
+$convert huge/selected.png -scale '500x25!' selected.png

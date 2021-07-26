@@ -9,6 +9,8 @@ struct MapCoords { int x, z; };
 
 struct Map {
 	char path[1024];
+	char name[30];   // Must fit in map chooser and map delete dialog
+	double sortkey;
 	bool custom;  // whether path starts with "custom_maps"
 	struct Wall walls[MAX_WALLS];
 	int nwalls;
@@ -39,7 +41,7 @@ void map_fix(struct Map *map);
 // for custom maps only
 void map_save(const struct Map *map);
 
-// May reallocate *maps, returns index into it, saves copied map
+// reallocates *maps, returns index into it, saves copied map
 int map_copy(struct Map **maps, int *nmaps, int srcidx);
 
 // Doesn't reallocate maps
