@@ -78,12 +78,12 @@ static SDL_Surface *get_image(enum ButtonFlags f)
 
 static int get_margin(enum ButtonFlags f) {
 	if (f & BUTTON_TINY)
-		return 5;
-	return 15;
+		return 2;
+	return 8;
 }
 
-int button_width(enum ButtonFlags f)  { return get_image(f)->w + get_margin(f); }
-int button_height(enum ButtonFlags f) { return get_image(f)->h + get_margin(f); }
+int button_width(enum ButtonFlags f)  { return get_image(f)->w + 2*get_margin(f); }
+int button_height(enum ButtonFlags f) { return get_image(f)->h + 2*get_margin(f); }
 
 void button_show(const struct Button *butt)
 {
