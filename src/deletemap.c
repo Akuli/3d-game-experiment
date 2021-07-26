@@ -18,10 +18,13 @@ enum MiscState deletemap_dialog(struct SDL_Window *wnd, struct Map *maps, int *n
 	if (!wndsurf)
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 
+	SDL_FillRect(wndsurf, NULL, 0);
+
 	char msg[200];
 	snprintf(msg, sizeof msg, "Do you really want to delete \"%s\"?", maps[mapidx].name);
-	SDL_FillRect(wndsurf, NULL, 0);
-	SDL_Surface *textsurf = misc_create_text_surface(msg, (SDL_Color){0xff,0xff,0xff}, 25);
+	SDL_Surface *tsurf = misc_create_text_surface(msg, (SDL_Color){0xff,0xff,0xff}, 25);
+	misc_blit_with_center(tsurf, wndsurf, &(SDL_Point){ wndsurf->w/2, wndsurf->h/4 });
+	SDL_FreeSurface(tsurf);
 
 	bool yesclicked = false;
 	bool noclicked = false;
@@ -41,20 +44,15 @@ enum MiscState deletemap_dialog(struct SDL_Window *wnd, struct Map *maps, int *n
 		.onclick = set_to_true,
 		.onclickdata = &noclicked,
 	};
-
 	button_show(&yesbtn);
 	button_show(&nobtn);
-	misc_blit_with_center(textsurf, wndsurf, &(SDL_Point){ wndsurf->w/2, wndsurf->h/4 });
 
 	struct LoopTimer lt = {0};
-	enum MiscState ret = MISC_STATE_CHOOSER;
 	while(!yesclicked && !noclicked) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
-			if (e.type == SDL_QUIT) {
-				ret = MISC_STATE_QUIT;
-				goto out;
-			}
+			if (e.type == SDL_QUIT)
+				return MISC_STATE_QUIT;
 			button_handle_event(&e, &yesbtn);
 			button_handle_event(&e, &nobtn);
 		}
@@ -64,8 +62,5 @@ enum MiscState deletemap_dialog(struct SDL_Window *wnd, struct Map *maps, int *n
 
 	if (yesclicked)
 		map_delete(maps, nmaps, mapidx);
-
-out:
-	SDL_FreeSurface(textsurf);
-	return ret;
+	return MISC_STATE_CHOOSER;
 }
