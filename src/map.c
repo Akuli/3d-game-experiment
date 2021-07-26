@@ -53,6 +53,38 @@ static bool read_line(char *line, size_t linesz, FILE *f)
 	return true;
 }
 
+static int peek_one_char(FILE *f)
+{
+	int c = fgetc(f);
+	if (c != EOF)
+		ungetc(c, f);
+	return c;
+}
+
+static void read_metadata(FILE *f, struct Map *map)
+{
+	// These should never be actually used
+	strcpy(map->name, "(no name)");
+	map->sortkey = NAN;
+
+	// Metadata section
+	while (peek_one_char(f) != ' ') {
+		char line[100];
+		if (!read_line(line, sizeof line, f))
+			log_printf_abort("unexpected EOF while reading metadata");
+
+		if (strstr(line, "Name=") == line)
+			snprintf(map->name, sizeof map->name, "%s", strstr(line, "=") + 1);
+		else if (strstr(line, "SortKey=") == line)
+			map->sortkey = (float)atof(strstr(line, "=") + 1);
+		else
+			log_printf_abort("bad metadata line: %s", line);
+	}
+
+	if (!isfinite(map->sortkey))
+		map->sortkey = map->name[0];  // a bit lol, but works for default maps
+}
+
 static const char *read_file_with_trailing_spaces_added(FILE *f, int *nlines)
 {
 	static char res[MAX_LINE_LEN*MAX_LINE_COUNT + 1];
@@ -68,16 +100,6 @@ static const char *read_file_with_trailing_spaces_added(FILE *f, int *nlines)
 
 	*nlines = n;
 	return res;
-}
-
-void map_addwall(struct Map *map, int x, int z, enum WallDirection dir)
-{
-	SDL_assert(map->nwalls < MAX_WALLS);
-	struct Wall *w = &map->walls[map->nwalls++];
-	w->startx = x;
-	w->startz = z;
-	w->dir = dir;
-	wall_init(w);
 }
 
 // returns whether there is a wall
@@ -127,52 +149,13 @@ static void parse_vertical_wall_string(const char *part, bool *leftwall, bool *r
 
 static const char *next_line(const char *s)
 {
-	char *nl = strchr(s, '\n');
+	const char *nl = strchr(s, '\n');
 	SDL_assert(nl);
 	return nl+1;
 }
 
-static int peek_one_char(FILE *f)
+static void read_walls_and_players_and_enemies(FILE *f, struct Map *map)
 {
-	int c = fgetc(f);
-	if (c != EOF)
-		ungetc(c, f);
-	return c;
-}
-
-static void read_map_from_file(struct Map *map, const char *path, bool custom)
-{
-	log_printf("Reading map from '%s'...", path);
-	SDL_assert(strlen(path) < sizeof map->path);
-	strcpy(map->path, path);
-	map->custom = custom;
-
-	FILE *f = fopen(path, "r");
-	if (!f)
-		log_printf_abort("opening \"%s\" failed: %s", path, strerror(errno));
-
-	// These should never be actually used
-	strcpy(map->name, "(no name)");
-	map->sortkey = NAN;
-
-	// Metadata section
-	while (peek_one_char(f) != ' ') {
-		char line[100];
-		if (!read_line(line, sizeof line, f))
-			log_printf_abort("unexpected EOF while reading metadata");
-
-		if (strstr(line, "Name=") == line)
-			snprintf(map->name, sizeof map->name, "%s", strstr(line, "=") + 1);
-		else if (strstr(line, "SortKey=") == line)
-			map->sortkey = (float)atof(strstr(line, "=") + 1);
-		else
-			log_printf_abort("bad metadata line: %s", line);
-	}
-
-	if (!isfinite(map->sortkey))
-		map->sortkey = map->name[0];  // a bit lol, but works for default maps
-
-	// The actual map
 	int nlines;
 	const char *fdata = read_file_with_trailing_spaces_added(f, &nlines);
 
@@ -241,6 +224,22 @@ static void read_map_from_file(struct Map *map, const char *path, bool custom)
 	}
 }
 
+static void read_map_from_file(struct Map *map, const char *path, bool custom)
+{
+	log_printf("Reading map from '%s'...", path);
+	SDL_assert(strlen(path) < sizeof map->path);
+	strcpy(map->path, path);
+	map->custom = custom;
+
+	FILE *f = fopen(path, "r");
+	if (!f)
+		log_printf_abort("opening \"%s\" failed: %s", path, strerror(errno));
+
+	read_metadata(f, map);
+	read_walls_and_players_and_enemies(f, map);
+	fclose(f);
+}
+
 static int compare_maps(const void *a, const void *b)
 {
 	const struct Map *ma = a, *mb = b;
@@ -269,6 +268,16 @@ struct Map *map_list(int *nmaps)
 	*nmaps = gl.gl_pathc;
 	qsort(maps, *nmaps, sizeof maps[0], compare_maps);
 	return maps;
+}
+
+void map_addwall(struct Map *map, int x, int z, enum WallDirection dir)
+{
+	SDL_assert(map->nwalls < MAX_WALLS);
+	struct Wall *w = &map->walls[map->nwalls++];
+	w->startx = x;
+	w->startz = z;
+	w->dir = dir;
+	wall_init(w);
 }
 
 void map_movecontent(struct Map *map, int dx, int dz)
