@@ -281,7 +281,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				CAMERA_SCREEN_HEIGHT - button_height(0)/2,
 			},
 			.onclick = on_play_clicked,
-			// onclickdata is set in chooser_run()
+			.onclickdata = &ch->state,
 		},
 		.mapch = {
 			.listbox = {
@@ -351,10 +351,8 @@ enum MiscState chooser_run(struct Chooser *ch)
 	show_player_chooser_in_beginning(&ch->playerch[1]);
 	show_title_text(ch->winsurf);
 
-	struct LoopTimer lt = {0};
-
 	ch->state = MISC_STATE_CHOOSER;
-	ch->playbtn.onclickdata = &ch->state;
+	struct LoopTimer lt = {0};
 
 	while(1) {
 		SDL_Event e;
