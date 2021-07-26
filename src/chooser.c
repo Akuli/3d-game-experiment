@@ -18,7 +18,6 @@
 #define FONT_SIZE 40
 
 #define PLAYER_CHOOSER_HEIGHT ( CAMERA_SCREEN_HEIGHT/2 )
-#define MAP_CHOOSER_HEIGHT (CAMERA_SCREEN_HEIGHT - PLAYER_CHOOSER_HEIGHT)
 
 #define ELLIPSOID_XZ_DISTANCE_FROM_ORIGIN 2.0f
 #define CAMERA_XZ_DISTANCE_FROM_ORIGIN 5.0f
@@ -291,7 +290,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 					.x = 0,
 					.y = PLAYER_CHOOSER_HEIGHT + MARGIN,
 					.w = LISTBOX_WIDTH,
-					.h = MAP_CHOOSER_HEIGHT - 2*MARGIN,
+					.h = CAMERA_SCREEN_HEIGHT - PLAYER_CHOOSER_HEIGHT - 2*MARGIN,
 #undef MARGIN
 				},
 				.upscancodes = { SDL_SCANCODE_W, SDL_SCANCODE_UP },
@@ -308,12 +307,12 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 	listbox_init(&ch->mapch.listbox);
 
 	ch->editorsurf = misc_create_cropped_surface(winsurf, (SDL_Rect){
-		LISTBOX_WIDTH,
-		MAP_CHOOSER_HEIGHT,
-		CAMERA_SCREEN_WIDTH - LISTBOX_WIDTH,
-		MAP_CHOOSER_HEIGHT - button_height(0)
+		.x = LISTBOX_WIDTH,
+		.y = PLAYER_CHOOSER_HEIGHT,
+		.w = CAMERA_SCREEN_WIDTH - LISTBOX_WIDTH,
+		.h = CAMERA_SCREEN_HEIGHT - PLAYER_CHOOSER_HEIGHT - button_height(0),
 	});
-	ch->editor = mapeditor_new(ch->editorsurf, -0.2f*CAMERA_SCREEN_HEIGHT, 0.6f);
+	ch->editor = mapeditor_new(ch->editorsurf, -0.22f*CAMERA_SCREEN_HEIGHT, 0.6f);
 	mapeditor_setmap(ch->editor, &ch->mapch.maps[ch->mapch.listbox.selectidx]);
 	mapeditor_setplayers(ch->editor, ch->playerch[0].epic, ch->playerch[1].epic);
 }
