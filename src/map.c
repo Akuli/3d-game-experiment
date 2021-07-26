@@ -522,6 +522,15 @@ void map_save(const struct Map *map)
 	free(data);
 }
 
+static bool name_is_in_use(const struct Map *maps, int nmaps, const char *name)
+{
+	for (int i = 0; i < nmaps; i++) {
+		if (strcmp(maps[i].name, name) == 0)
+			return true;
+	}
+	return false;
+}
+
 int map_copy(struct Map **maps, int *nmaps, int srcidx)
 {
 	log_printf("Copying map %d", srcidx);
@@ -540,9 +549,20 @@ int map_copy(struct Map **maps, int *nmaps, int srcidx)
 		}
 	}
 
+	const char *oldname = arr[srcidx].name;
+	// Permissive enough for "Copy: blah" and "Copy 12: blah"
+	if (strstr(oldname, "Copy") == oldname && strstr(oldname, ": ") != NULL)
+		oldname = strstr(oldname, ": ") + 2;
+
+	char name[sizeof(arr[0].name)];
+	snprintf(name, sizeof name, "Copy: %s", oldname);
+	int i = 1;
+	while (name_is_in_use(arr, n, name))
+		snprintf(name, sizeof name, "Copy %d: %s", ++i, oldname);
+
 	memmove(&arr[srcidx+1], &arr[srcidx], (n - srcidx)*sizeof(arr[0]));
 	sprintf(arr[srcidx+1].path, "custom_maps/%05d.txt", newnum);
-	snprintf(arr[srcidx+1].name, sizeof arr[srcidx+1].name, "Copy: %s", arr[srcidx].name);
+	strcpy(arr[srcidx+1].name, name);
 	arr[srcidx+1].custom = true;
 
 	if (srcidx+2 < *nmaps)
