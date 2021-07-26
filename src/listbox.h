@@ -36,7 +36,7 @@ struct Listbox {
 void listbox_init(struct Listbox *lb);
 void listbox_destroy(const struct Listbox *lb);
 
-// sets lb->redraw to false
+// sets lb->redraw to false, does nothing if already false
 void listbox_show(struct Listbox *lb);
 
 // Return text of clicked button, or NULL if nothing clicked
