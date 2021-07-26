@@ -1,10 +1,8 @@
 #include "listbox.h"
 #include <assert.h>
 #include <stdlib.h>
-#include "log.h"
 #include "misc.h"
 #include "mathstuff.h"
-#include "../stb/stb_image.h"
 
 void listbox_init(struct Listbox *lb)
 {
