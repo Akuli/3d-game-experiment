@@ -552,7 +552,7 @@ int map_copy(struct Map **maps, int *nmaps, int srcidx)
 	const char *oldname = arr[srcidx].name;
 	// Permissive enough for "Copy: blah" and "Copy 12: blah"
 	if (strstr(oldname, "Copy") == oldname && strstr(oldname, ": ") != NULL)
-		oldname = strstr(oldname, ": ") + 2;
+		oldname = strstr(oldname, ": ") + strlen(": ");
 
 	char name[sizeof(arr[0].name)];
 	snprintf(name, sizeof name, "Copy: %s", oldname);
