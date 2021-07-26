@@ -286,12 +286,12 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 			.listbox = {
 				.destsurf = winsurf,
 				.destrect = {
-#define MARGIN 5
+#define YMARGIN 5
 					.x = 0,
-					.y = PLAYER_CHOOSER_HEIGHT + MARGIN,
+					.y = PLAYER_CHOOSER_HEIGHT + YMARGIN,
 					.w = LISTBOX_WIDTH,
-					.h = CAMERA_SCREEN_HEIGHT - PLAYER_CHOOSER_HEIGHT - 2*MARGIN,
-#undef MARGIN
+					.h = CAMERA_SCREEN_HEIGHT - PLAYER_CHOOSER_HEIGHT - 2*YMARGIN,
+#undef YMARGIN
 				},
 				.upscancodes = { SDL_SCANCODE_W, SDL_SCANCODE_UP },
 				.downscancodes = { SDL_SCANCODE_S, SDL_SCANCODE_DOWN },

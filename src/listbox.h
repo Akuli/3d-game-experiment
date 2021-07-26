@@ -20,7 +20,7 @@ struct Listbox {
 	struct ListboxEntry *entries;
 	int nentries;
 	int selectidx;  // something always selected, no -1 or whatever
-	bool redraw;   // set to true after changing anything
+	bool redraw;   // set to true after changing anything, needed because redrawing is slow
 
 	// very similar to buttons
 	int upscancodes[2];
@@ -36,7 +36,7 @@ struct Listbox {
 void listbox_init(struct Listbox *lb);
 void listbox_destroy(const struct Listbox *lb);
 
-// sets lb->redraw to false
+// sets lb->redraw to false, does nothing if already false
 void listbox_show(struct Listbox *lb);
 
 // Return text of clicked button, or NULL if nothing clicked
