@@ -38,7 +38,6 @@ static const char *get_size_name(enum ButtonFlags f)
 
 static SDL_Surface *get_image(enum ButtonFlags f)
 {
-
 	static bool atexitdone = false;
 	if (!atexitdone) {
 		atexit(free_image_surfaces);
