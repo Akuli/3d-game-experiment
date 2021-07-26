@@ -1,5 +1,6 @@
 #include "map.h"
 #include <errno.h>
+#include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -522,13 +523,35 @@ void map_save(const struct Map *map)
 	free(data);
 }
 
-static bool name_is_in_use(const struct Map *maps, int nmaps, const char *name)
+// "Copy: Foo" --> 1, "Foo"
+// "Copy 3: Foo" --> 3, "Foo"
+// "Bar" --> 0, "Bar"
+static int parse_name(const char *name, const char **origname)
 {
-	for (int i = 0; i < nmaps; i++) {
-		if (strcmp(maps[i].name, name) == 0)
-			return true;
+	if (strstr(name, "Copy: ") == name) {
+		*origname = name + strlen("Copy: ");
+		return 1;
 	}
-	return false;
+
+	if (strstr(name, "Copy ") == name) {
+		char *afternum;
+		long num = strtol(name + strlen("Copy "), &afternum, 10);
+		if (0 < num && num < (long)INT_MAX && strstr(afternum, ": ") == afternum) {
+			*origname = afternum + strlen(": ");
+			return (int)num;
+		}
+	}
+
+	*origname = name;
+	return 0;
+}
+
+static void format_name(char *dst, size_t sizeofdst, int num, const char *origname)
+{
+	if (num == 1)
+		snprintf(dst, sizeofdst, "Copy: %s", origname);
+	else
+		snprintf(dst, sizeofdst, "Copy %d: %s", num, origname);
 }
 
 int map_copy(struct Map **maps, int *nmaps, int srcidx)
@@ -549,26 +572,27 @@ int map_copy(struct Map **maps, int *nmaps, int srcidx)
 		}
 	}
 
-	const char *oldname = arr[srcidx].name;
-	// Permissive enough for "Copy: blah" and "Copy 12: blah"
-	if (strstr(oldname, "Copy") == oldname && strstr(oldname, ": ") != NULL)
-		oldname = strstr(oldname, ": ") + 2;
+	const char *origname;
+	parse_name(arr[srcidx].name, &origname);
 
-	char name[sizeof(arr[0].name)];
-	snprintf(name, sizeof name, "Copy: %s", oldname);
-	int i = 1;
-	while (name_is_in_use(arr, n, name))
-		snprintf(name, sizeof name, "Copy %d: %s", ++i, oldname);
+	int num = 1;
+	for (int i = 0; i < n; i++) {
+		const char *tmporig;
+		int k = parse_name(arr[i].name, &tmporig);
+		if (strcmp(tmporig, origname) == 0)  // these are copies of the same original map
+			num = max(num, k+1);
+	}
 
-	memmove(&arr[srcidx+1], &arr[srcidx], (n - srcidx)*sizeof(arr[0]));
-	sprintf(arr[srcidx+1].path, "custom_maps/%05d.txt", newnum);
-	strcpy(arr[srcidx+1].name, name);
-	arr[srcidx+1].custom = true;
+	struct Map *dst = &arr[srcidx+1];
+	memmove(dst, &arr[srcidx], (n - srcidx)*sizeof(arr[0]));
+	sprintf(dst->path, "custom_maps/%05d.txt", newnum);
+	format_name(dst->name, sizeof dst->name, num, origname);
+	dst->custom = true;
 
-	if (srcidx+2 < *nmaps)
-		arr[srcidx+1].sortkey = (arr[srcidx].sortkey + arr[srcidx+2].sortkey)/2;
+	if (&dst[1] < arr + *nmaps)
+		dst->sortkey = (dst[-1].sortkey + dst[+1].sortkey)/2;  // average neighbor sortkeys
 	else
-		arr[srcidx+1].sortkey += 1;
+		dst->sortkey++;  // make sure it stays at the end
 
 	map_save(&arr[srcidx+1]);
 	*maps = arr;
