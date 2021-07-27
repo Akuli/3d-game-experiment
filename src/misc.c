@@ -21,16 +21,15 @@
 void misc_mkdir(const char *path)
 {
 #ifdef _WIN32
-	int ret = _mkdir(path);
+	int ret = _wmkdir(misc_utf8_to_windows(path));    // sets errno
 #else
 	// python uses 777 as default perms, see help(os.mkdir)
 	// It's ANDed with current umask
 	int ret = mkdir(path, 0777);
 #endif
 
-	// TODO: better windows error handling than errno
-	if (ret != 0)
-		log_printf("mkdir(\"%s\") failed: %s", path, strerror(errno));
+	if (ret != 0 && errno != EEXIST)
+		log_printf_abort("creating directory '%s' failed: %s", path, strerror(errno));
 }
 
 int misc_handle_scancode(int sc)
