@@ -56,7 +56,6 @@ typedef struct {
 } glob_t;
 
 // errfunc must be NULL
-// TODO: make sure results are sorted like in posix
 int glob(const char *pat, int flags, int (*errfunc)(const char *, int), glob_t *pglob);
 
 void globfree(glob_t *pglob);
