@@ -21,7 +21,7 @@
 void misc_mkdir(const char *path)
 {
 #ifdef _WIN32
-	int ret = _wmkdir(misc_windows_to_utf8(path));    // sets errno
+	int ret = _wmkdir(misc_utf8_to_windows(path));    // sets errno
 #else
 	// python uses 777 as default perms, see help(os.mkdir)
 	// It's ANDed with current umask
