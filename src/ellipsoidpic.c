@@ -90,25 +90,10 @@ static void read_image(struct EllipsoidPic *epic)
 {
 	const AngleArray *angles = get_angle_array();
 
-	/*
-	Currently there's no way to give a utf-8 filename to stbi_load(), unless you
-	use Microsoft's compiler. There's also a buffer overflow.
-	https://github.com/nothings/stb/issues/939
-	TODO: issue was closed, update stbi
-	*/
-#ifdef _WIN32
-	FILE *f = _wfopen(misc_utf8_to_windows(epic->path), L"rb");
-#else
-	FILE *f = fopen(epic->path, "rb");
-#endif
-	if (!f)
-		log_printf_abort("opening '%s' failed: %s", epic->path, strerror(errno));
-
 	int chansinfile, filew, fileh;
-	unsigned char *filedata = stbi_load_from_file(f, &filew, &fileh, &chansinfile, 4);
-	fclose(f);
+	unsigned char *filedata = stbi_load(epic->path, &filew, &fileh, &chansinfile, 4);
 	if (!filedata)
-		log_printf_abort("stbi_load failed for file opened from '%s': %s", epic->path, stbi_failure_reason());
+		log_printf_abort("stbi_load failed with path '%s': %s", epic->path, stbi_failure_reason());
 
 	replace_alpha_with_average(filedata, (size_t)filew*(size_t)fileh);
 
