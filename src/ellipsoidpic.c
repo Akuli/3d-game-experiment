@@ -1,9 +1,7 @@
 #include "ellipsoid.h"
-#include <errno.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <string.h>
 #include <math.h>
 #include <stdio.h>
 #include <SDL2/SDL.h>
@@ -11,10 +9,6 @@
 #include "log.h"
 #include "misc.h"
 #include "glob.h"
-
-#ifdef _WIN32
-#include <windows.h>
-#endif
 
 #define IS_TRANSPARENT(alpha) ((alpha) < 0x80)
 
