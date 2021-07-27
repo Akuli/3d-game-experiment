@@ -4,7 +4,6 @@
 #include <SDL2/SDL.h>
 
 enum ButtonFlags {
-	// TODO: size flags are getting out of hand, replace with enum
 	BUTTON_TINY = 0x01,
 	BUTTON_SMALL = 0x02,
 	BUTTON_BIG = 0x04,
