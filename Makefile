@@ -43,7 +43,7 @@ obj/%.o: %.c $(HEADERS)
 obj/stb_image.o: $(wildcard stb/*.h)
 	mkdir -p $(@D) && \
 	$(CC) -c -o $@ -x c \
-	-DSTB_IMAGE_IMPLEMENTATION stb/stb_image.h $(VENDOR_CFLAGS)
+	-DSTB_IMAGE_IMPLEMENTATION -DSTBI_WINDOWS_UTF8 stb/stb_image.h $(VENDOR_CFLAGS)
 
 $(EXEDIR)/game$(EXESUFFIX): $(OBJ) $(HEADERS) $(COPIED_FILES)
 	mkdir -p $(@D) && $(CC) $(CFLAGS) $(OBJ) -o $@ $(LDFLAGS) $(GUI_LDFLAGS)
