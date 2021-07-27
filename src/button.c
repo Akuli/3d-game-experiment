@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <SDL2/SDL.h>
 #include "misc.h"
+#include "log.h"
 
 /*
 This must be global because it's cleaned with atexit callback, and there's
@@ -20,21 +21,6 @@ static void free_image_surfaces(void)
 	}
 }
 
-static const char *get_size_name(enum ButtonFlags f)
-{
-	SDL_assert(!( (f & BUTTON_BIG) && (f & BUTTON_SMALL) ));
-	SDL_assert(!( (f & BUTTON_BIG) && (f & BUTTON_TINY) ));
-	SDL_assert(!( (f & BUTTON_SMALL) && (f & BUTTON_TINY) ));
-
-	if (f & BUTTON_TINY)
-		return "tiny";
-	if (f & BUTTON_SMALL)
-		return "small";
-	if (f & BUTTON_BIG)
-		return "big";
-	return "medium";
-}
-
 static SDL_Surface *get_image(enum ButtonFlags f)
 {
 	static bool atexitdone = false;
@@ -44,12 +30,29 @@ static SDL_Surface *get_image(enum ButtonFlags f)
 	}
 
 	if (!image_surfaces[f]) {
-		char path[100];
-		snprintf(path, sizeof path, "assets/buttons/%s/%s/%s.png",
-			get_size_name(f),
-			(f & BUTTON_VERTICAL) ? "vertical" : "horizontal",
-			(f & BUTTON_DISABLED) ? "disabled" : ((f & BUTTON_PRESSED) ? "pressed" : "normal")
-		);
+		char path[100] = "assets/buttons/";
+
+		switch((int)f & (BUTTON_TINY | BUTTON_SMALL | BUTTON_BIG)) {
+			case BUTTON_TINY: strcat(path, "tiny/"); break;
+			case BUTTON_SMALL: strcat(path, "small/"); break;
+			case BUTTON_BIG: strcat(path, "big/"); break;
+			case 0: strcat(path, "medium/"); break;
+			default: log_printf_abort("bad button size flags: %#x", f);
+		}
+
+		if (f & BUTTON_VERTICAL)
+			strcat(path, "vertical/");
+		else
+			strcat(path, "horizontal/");
+
+		// If it is pressed and disabled, just consider it disabled
+		if (f & BUTTON_DISABLED)
+			strcat(path, "disabled.png");
+		else if (f & BUTTON_PRESSED)
+			strcat(path, "pressed.png");
+		else
+			strcat(path, "normal.png");
+
 		image_surfaces[f] = misc_create_image_surface(path);
 	}
 	return image_surfaces[f];
