@@ -332,7 +332,7 @@ static void finish_resize(struct MapEditor *ed)
 			case WALL_DIR_XY:
 				map_movecontent(ed->map, 0, -ed->sel.data.resize.mainwall.startz);
 				ed->map->zsize -= ed->sel.data.resize.mainwall.startz;
-				ed->sel.data.resize.mainwall.startz = 0;
+				ed->sel.data.resize.mainwall.startz = 0;  // not handled by map_movecontent
 				break;
 			case WALL_DIR_ZY:
 				map_movecontent(ed->map, -ed->sel.data.resize.mainwall.startx, 0);
@@ -404,8 +404,9 @@ static void select_ellipsoid_between_walls_if_any(struct MapEditor *ed, const st
 	}
 }
 
-static void move_ellipsoid(const struct MapEditor *ed, int x, int z, struct MapCoords *loc)
+static void move_selected_ellipsoid(struct MapEditor *ed, int x, int z)
 {
+	SDL_assert(ed->sel.mode == SEL_MVELLIPSOID);
 	clamp(&x, 0, ed->map->xsize-1);
 	clamp(&z, 0, ed->map->zsize-1);
 
@@ -414,8 +415,8 @@ static void move_ellipsoid(const struct MapEditor *ed, int x, int z, struct MapC
 			return;
 	}
 
-	loc->x = x;
-	loc->z = z;
+	ed->sel.data.eledit->loc->x = x;
+	ed->sel.data.eledit->loc->z = z;
 	map_save(ed->map);
 }
 
@@ -473,8 +474,8 @@ static void on_arrow_key(struct MapEditor *ed, float angle, bool oppositespresse
 
 	case SEL_MVELLIPSOID:
 	{
-		struct MapCoords *loc = ed->sel.data.eledit->loc;
-		move_ellipsoid(ed, loc->x + dx, loc->z + dz, loc);
+		struct MapCoords old = *ed->sel.data.eledit->loc;
+		move_selected_ellipsoid(ed, old.x + dx, old.z + dz);
 		break;
 	}
 
@@ -528,10 +529,9 @@ static void begin_moving_or_resizing(struct MapEditor *ed)
 	case SEL_WALL:
 		if (is_at_edge(&ed->sel.data.wall, ed->map)) {
 			log_printf("Resize begins");
-			struct Wall w = ed->sel.data.wall;
 			ed->sel = (struct Selection) {
 				.mode = SEL_RESIZE,
-				.data = { .resize = begin_resize(&w, ed->map) },
+				.data = { .resize = begin_resize(&ed->sel.data.wall, ed->map) },
 			};
 		} else {
 			struct Wall *w = find_wall_from_map(&ed->sel.data.wall, ed->map);
@@ -564,6 +564,7 @@ static void end_moving_or_resizing(struct MapEditor *ed)
 		ed->sel = (struct Selection){ .mode = SEL_WALL, .data = {.wall = *ed->sel.data.mvwall} };
 		break;
 	case SEL_MVELLIPSOID:
+		log_printf("Moving ellipsoid ends");
 		ed->sel.mode = SEL_ELLIPSOID;
 		break;
 	default:
@@ -613,27 +614,35 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 		return true;
 
 	case SDL_MOUSEMOTION:
+	{
 		switch(ed->sel.mode) {
-			float xf, zf;
-			struct Wall w;
-
 		case SEL_MVELLIPSOID:
-			if (project_mouse_to_top_of_map(ed, e->button.x, e->button.y, &xf, &zf))
-				move_ellipsoid(ed, (int)floorf(xf), (int)floorf(zf), ed->sel.data.eledit->loc);
-			break;
 		case SEL_RESIZE:
-			if (project_mouse_to_top_of_map(ed, e->button.x, e->button.y, &xf, &zf))
-				do_resize(ed, (int)roundf(xf), (int)roundf(zf));
+		{
+			float xf, zf;
+			if (project_mouse_to_top_of_map(ed, e->button.x, e->button.y, &xf, &zf)) {
+				if (ed->sel.mode == SEL_MVELLIPSOID)
+					move_selected_ellipsoid(ed, (int)floorf(xf), (int)floorf(zf));
+				else if (ed->sel.mode == SEL_RESIZE)
+					do_resize(ed, (int)roundf(xf), (int)roundf(zf));
+				else
+					log_printf_abort("the impossible happened");
+			}
 			break;
+		}
 		case SEL_MVWALL:
+		{
+			struct Wall w;
 			if (mouse_location_to_wall(ed, &w, e->button.x, e->button.y))
 				set_location_of_moving_wall(ed, w);
 			break;
+		}
 		default:
 			select_by_mouse_coords(ed, e->button.x, e->button.y);
 			break;
 		}
 		return true;
+	}
 
 	case SDL_KEYDOWN:
 		switch(misc_handle_scancode(e->key.keysym.scancode)) {
@@ -799,6 +808,7 @@ static void add_enemy(void *editorptr)
 			hint = (struct MapCoords){ ed->sel.data.wall.startx, ed->sel.data.wall.startz };
 			break;
 		default:
+			// Do not add enemies e.g. while moving something
 			return;
 	}
 
