@@ -254,61 +254,6 @@ static bool mouse_location_to_wall(const struct MapEditor *ed, struct Wall *dst,
 	return false;
 }
 
-static void do_resize(struct MapEditor *ed, int x, int z)
-{
-	SDL_assert(ed->sel.mode == SEL_RESIZE);
-	ed->sel.data.resize.mainwall.startx = x;
-	ed->sel.data.resize.mainwall.startz = z;
-
-	keep_wall_within_map(ed, &ed->sel.data.resize.mainwall, true);
-	wall_init(&ed->sel.data.resize.mainwall);
-	for (struct Wall *const *w = ed->sel.data.resize.walls; w < &ed->sel.data.resize.walls[ed->sel.data.resize.nwalls]; w++)
-	{
-		switch(ed->sel.data.resize.mainwall.dir) {
-		case WALL_DIR_XY:
-			(*w)->startz = ed->sel.data.resize.mainwall.startz;
-			break;
-		case WALL_DIR_ZY:
-			(*w)->startx = ed->sel.data.resize.mainwall.startx;
-			break;
-		}
-		wall_init(*w);
-	}
-}
-
-static void move_wall(struct MapEditor *ed, struct Wall w)
-{
-	SDL_assert(ed->sel.mode == SEL_MVWALL);
-	keep_wall_within_map(ed, &w, false);
-	if (!find_wall_from_map(&w, ed->map)) {
-		// Not going on top of another wall, can move
-		*ed->sel.data.mvwall = w;
-		wall_init(ed->sel.data.mvwall);
-		map_save(ed->map);
-	}
-}
-
-static bool find_ellipsoid_by_coords(const struct MapEditor *ed, int x, int z)
-{
-	for (const struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit_const(ed, &ee); ) {
-		if (ee->loc->x == x && ee->loc->z == z)
-			return true;
-	}
-	return false;
-}
-
-static void move_ellipsoid(const struct MapEditor *ed, int x, int z, struct MapCoords *loc)
-{
-	clamp(&x, 0, ed->map->xsize-1);
-	clamp(&z, 0, ed->map->zsize-1);
-
-	if (!find_ellipsoid_by_coords(ed, x, z)) {
-		loc->x = x;
-		loc->z = z;
-		map_save(ed->map);
-	}
-}
-
 static void select_by_mouse_coords(struct MapEditor *ed, int mousex, int mousey)
 {
 	float smallestd = HUGE_VALF;
@@ -340,34 +285,138 @@ static void select_by_mouse_coords(struct MapEditor *ed, int mousex, int mousey)
 	}
 }
 
-static void move_wall_with_keyboard(struct MapEditor *ed, struct Wall *w, int dx, int dz, bool oppositespressed, bool selectellipsoid)
+static struct ResizeData begin_resize(const struct Wall *edgewall, struct Map *map)
 {
-	if (oppositespressed) {
-		w->dir = dz ? WALL_DIR_ZY : WALL_DIR_XY;
-		keep_wall_within_map(ed, w, false);
+	struct ResizeData rd = { .mainwall = *edgewall, .nwalls = 0 };
+	switch(edgewall->dir) {
+		case WALL_DIR_XY: rd.negative = (edgewall->startz == 0); break;
+		case WALL_DIR_ZY: rd.negative = (edgewall->startx == 0); break;
 	}
 
-	// Check if we are going towards an ellipsoid
-	if (selectellipsoid && (
-		(w->dir == WALL_DIR_ZY && dx) ||
-		(w->dir == WALL_DIR_XY && dz)))
+	for (struct Wall *w = map->walls; w < &map->walls[map->nwalls]; w++) {
+		if (wall_linedup(w, edgewall))
+			rd.walls[rd.nwalls++] = w;
+	}
+	SDL_assert(rd.nwalls == map->xsize || rd.nwalls == map->zsize);
+	return rd;
+}
+
+static void do_resize(struct MapEditor *ed, int x, int z)
+{
+	SDL_assert(ed->sel.mode == SEL_RESIZE);
+	ed->sel.data.resize.mainwall.startx = x;
+	ed->sel.data.resize.mainwall.startz = z;
+
+	keep_wall_within_map(ed, &ed->sel.data.resize.mainwall, true);
+	wall_init(&ed->sel.data.resize.mainwall);
+	for (struct Wall *const *w = ed->sel.data.resize.walls; w < &ed->sel.data.resize.walls[ed->sel.data.resize.nwalls]; w++)
 	{
-		int px = w->startx + min(0, dx);
-		int pz = w->startz + min(0, dz);
-		for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); ) {
-			if (ee->loc->x == px && ee->loc->z == pz) {
-				ed->sel = (struct Selection){
-					.mode = SEL_ELLIPSOID,
-					.data = { .eledit = ee },
-				};
-				return;
-			}
+		switch(ed->sel.data.resize.mainwall.dir) {
+		case WALL_DIR_XY:
+			(*w)->startz = ed->sel.data.resize.mainwall.startz;
+			break;
+		case WALL_DIR_ZY:
+			(*w)->startx = ed->sel.data.resize.mainwall.startx;
+			break;
+		}
+		wall_init(*w);
+	}
+}
+
+static void finish_resize(struct MapEditor *ed)
+{
+	SDL_assert(ed->sel.mode == SEL_RESIZE);
+
+	if (ed->sel.data.resize.negative) {
+		switch(ed->sel.data.resize.mainwall.dir) {
+			case WALL_DIR_XY:
+				map_movecontent(ed->map, 0, -ed->sel.data.resize.mainwall.startz);
+				ed->map->zsize -= ed->sel.data.resize.mainwall.startz;
+				ed->sel.data.resize.mainwall.startz = 0;
+				break;
+			case WALL_DIR_ZY:
+				map_movecontent(ed->map, -ed->sel.data.resize.mainwall.startx, 0);
+				ed->map->xsize -= ed->sel.data.resize.mainwall.startx;
+				ed->sel.data.resize.mainwall.startx = 0;
+				break;
+		}
+	} else {
+		switch(ed->sel.data.resize.mainwall.dir) {
+			case WALL_DIR_XY:
+				ed->map->zsize = ed->sel.data.resize.mainwall.startz;
+				break;
+			case WALL_DIR_ZY:
+				ed->map->xsize = ed->sel.data.resize.mainwall.startx;
+				break;
 		}
 	}
+
+	map_fix(ed->map);
+	map_save(ed->map);
+	ed->sel = (struct Selection){ .mode = SEL_WALL, .data = {.wall = ed->sel.data.resize.mainwall} };
+}
+
+static void set_location_of_moving_wall(struct MapEditor *ed, struct Wall w)
+{
+	SDL_assert(ed->sel.mode == SEL_MVWALL);
+	keep_wall_within_map(ed, &w, false);
+	if (!find_wall_from_map(&w, ed->map)) {
+		// Not going on top of another wall, can move
+		*ed->sel.data.mvwall = w;
+		wall_init(ed->sel.data.mvwall);
+		map_save(ed->map);
+	}
+}
+
+static void move_or_select_wall_with_keyboard(struct MapEditor *ed, struct Wall *w, int dx, int dz, bool oppositespressed)
+{
+	if (oppositespressed)
+		w->dir = dz ? WALL_DIR_ZY : WALL_DIR_XY;
 
 	w->startx += dx;
 	w->startz += dz;
 	keep_wall_within_map(ed, w, false);
+}
+
+static void select_ellipsoid_between_walls_if_any(struct MapEditor *ed, const struct Wall *w1, const struct Wall *w2)
+{
+	bool betweenxywalls = 
+		w1->dir == WALL_DIR_XY
+		&& w2->dir == WALL_DIR_XY
+		&& w1->startx == w2->startx
+		&& abs(w1->startz - w2->startz) == 1;
+	bool betweenzywalls = 
+		w1->dir == WALL_DIR_ZY
+		&& w2->dir == WALL_DIR_ZY
+		&& w1->startz == w2->startz
+		&& abs(w1->startx - w2->startx) == 1;
+
+	if (betweenxywalls || betweenzywalls) {
+		for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); ) {
+			if (ee->loc->x == min(w1->startx, w2->startx) && ee->loc->z == min(w1->startz, w2->startz)) {
+				ed->sel = (struct Selection){
+					.mode = SEL_ELLIPSOID,
+					.data = { .eledit = ee },
+				};
+				break;
+			}
+		}
+	}
+}
+
+static void move_ellipsoid(const struct MapEditor *ed, int x, int z, struct MapCoords *loc)
+{
+	clamp(&x, 0, ed->map->xsize-1);
+	clamp(&z, 0, ed->map->zsize-1);
+
+	for (const struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit_const(ed, &ee); ) {
+		if (ee->loc->x == x && ee->loc->z == z)
+			return;
+	}
+
+	loc->x = x;
+	loc->z = z;
+	map_save(ed->map);
 }
 
 static void on_arrow_key(struct MapEditor *ed, float angle, bool oppositespressed)
@@ -390,15 +439,18 @@ static void on_arrow_key(struct MapEditor *ed, float angle, bool oppositespresse
 		// fall through
 
 	case SEL_WALL:
-		move_wall_with_keyboard(ed, &ed->sel.data.wall, dx, dz, oppositespressed, true);
+	{
+		struct Wall old = ed->sel.data.wall;
+		move_or_select_wall_with_keyboard(ed, &ed->sel.data.wall, dx, dz, oppositespressed);
+		select_ellipsoid_between_walls_if_any(ed, &old, &ed->sel.data.wall);
 		break;
+	}
 
 	case SEL_MVWALL:
 	{
 		struct Wall w = *ed->sel.data.mvwall;
-		// TODO: function names suck
-		move_wall_with_keyboard(ed, &w, dx, dz, oppositespressed, false);
-		move_wall(ed, w);
+		move_or_select_wall_with_keyboard(ed, &w, dx, dz, oppositespressed);
+		set_location_of_moving_wall(ed, w);
 		break;
 	}
 
@@ -470,55 +522,6 @@ static void delete_selected(struct MapEditor *ed)
 	}
 }
 
-static struct ResizeData begin_resize(const struct Wall *edgewall, struct Map *map)
-{
-	struct ResizeData rd = { .mainwall = *edgewall, .nwalls = 0 };
-	switch(edgewall->dir) {
-		case WALL_DIR_XY: rd.negative = (edgewall->startz == 0); break;
-		case WALL_DIR_ZY: rd.negative = (edgewall->startx == 0); break;
-	}
-
-	for (struct Wall *w = map->walls; w < &map->walls[map->nwalls]; w++) {
-		if (wall_linedup(w, edgewall))
-			rd.walls[rd.nwalls++] = w;
-	}
-	SDL_assert(rd.nwalls == map->xsize || rd.nwalls == map->zsize);
-	return rd;
-}
-
-static void finish_resize(struct MapEditor *ed)
-{
-	SDL_assert(ed->sel.mode == SEL_RESIZE);
-
-	if (ed->sel.data.resize.negative) {
-		switch(ed->sel.data.resize.mainwall.dir) {
-			case WALL_DIR_XY:
-				map_movecontent(ed->map, 0, -ed->sel.data.resize.mainwall.startz);
-				ed->map->zsize -= ed->sel.data.resize.mainwall.startz;
-				ed->sel.data.resize.mainwall.startz = 0;
-				break;
-			case WALL_DIR_ZY:
-				map_movecontent(ed->map, -ed->sel.data.resize.mainwall.startx, 0);
-				ed->map->xsize -= ed->sel.data.resize.mainwall.startx;
-				ed->sel.data.resize.mainwall.startx = 0;
-				break;
-		}
-	} else {
-		switch(ed->sel.data.resize.mainwall.dir) {
-			case WALL_DIR_XY:
-				ed->map->zsize = ed->sel.data.resize.mainwall.startz;
-				break;
-			case WALL_DIR_ZY:
-				ed->map->xsize = ed->sel.data.resize.mainwall.startx;
-				break;
-		}
-	}
-
-	map_fix(ed->map);
-	map_save(ed->map);
-	ed->sel = (struct Selection){ .mode = SEL_WALL, .data = {.wall = ed->sel.data.resize.mainwall} };
-}
-
 static void begin_moving_or_resizing(struct MapEditor *ed)
 {
 	switch (ed->sel.mode) {
@@ -540,6 +543,7 @@ static void begin_moving_or_resizing(struct MapEditor *ed)
 		break;
 
 	case SEL_ELLIPSOID:
+		log_printf("Moving ellipsoid begins");
 		ed->sel.mode = SEL_MVELLIPSOID;
 		break;
 
@@ -623,7 +627,7 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 			break;
 		case SEL_MVWALL:
 			if (mouse_location_to_wall(ed, &w, e->button.x, e->button.y))
-				move_wall(ed, w);
+				set_location_of_moving_wall(ed, w);
 			break;
 		default:
 			select_by_mouse_coords(ed, e->button.x, e->button.y);
