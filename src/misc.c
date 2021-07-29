@@ -89,12 +89,12 @@ TTF_Font *misc_get_font(int fontsz)
 	if (loaded_fonts[fontsz])
 		return loaded_fonts[fontsz];
 
-	bool allnull = true;
+	bool allstillnull = true;
 	for (int i = 0; i < n; i++) {
 		if (loaded_fonts[i])
-			allnull = false;
+			allstillnull = false;
 	}
-	if (allnull)
+	if (allstillnull)
 		atexit(close_loaded_fonts);
 
 	loaded_fonts[fontsz] = TTF_OpenFont("assets/DejaVuSans.ttf", fontsz);
