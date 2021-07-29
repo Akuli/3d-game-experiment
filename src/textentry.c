@@ -213,10 +213,8 @@ void textentry_show(struct TextEntry *te)
 		memcpy(left, te->text, te->cursor - te->text);
 		left[te->cursor - te->text] = '\0';
 
-		int leftw, lefth;
-		int fullw, fullh;
-		if (TTF_SizeUTF8(te->font, left, &leftw, &lefth) < 0 || TTF_SizeUTF8(te->font, te->text, &fullw, &fullh) < 0)
-			log_printf_abort("TTF_SizeUTF8 failed: %s", TTF_GetError());
+		int leftw = text_width(te, left);
+		int fullw = text_width(te, te->text);
 		free(left);
 
 		int x = center.x - fullw/2 + leftw;
