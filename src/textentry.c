@@ -8,7 +8,7 @@
 static int text_width(const struct TextEntry *te, const char *s)
 {
 	int w, h;
-	if (TTF_SizeUTF8(te->font, s, &w, &h) < 0)
+	if (TTF_SizeUTF8(misc_get_font(te->fontsz), s, &w, &h) < 0)
 		log_printf_abort("TTF_SizeUTF8 failed: %s", TTF_GetError());
 	return w;
 }
@@ -178,14 +178,6 @@ void textentry_show(struct TextEntry *te)
 
 	SDL_FillRect(te->surf, &te->rect, 0);
 
-	// font not cached because this isn't perf critical
-	// TODO: same font loading code is in misc.c
-	if (!te->font) {
-		te->font = TTF_OpenFont("assets/DejaVuSans.ttf", te->fontsz);
-		if (!te->font)
-			log_printf_abort("TTF_OpenFont failed: %s", TTF_GetError());
-	}
-
 	SDL_Color white = {0xff,0xff,0xff,0xff};
 	uint32_t white2 = SDL_MapRGBA(te->surf->format, 0xff,0xff,0xff,0xff);
 
@@ -193,7 +185,7 @@ void textentry_show(struct TextEntry *te)
 
 	// it errors for empty text, lol
 	if (*te->text) {
-		SDL_Surface *s = TTF_RenderUTF8_Blended(te->font, te->text, white);
+		SDL_Surface *s = TTF_RenderUTF8_Blended(misc_get_font(te->fontsz), te->text, white);
 		if (!s)
 			log_printf_abort("TTF_RenderUTF8_Blended failed with text \"%s\": %s", te->text, TTF_GetError());
 
@@ -215,7 +207,7 @@ void textentry_show(struct TextEntry *te)
 
 		int leftw, lefth;
 		int fullw, fullh;
-		if (TTF_SizeUTF8(te->font, left, &leftw, &lefth) < 0 || TTF_SizeUTF8(te->font, te->text, &fullw, &fullh) < 0)
+		if (TTF_SizeUTF8(misc_get_font(te->fontsz), left, &leftw, &lefth) < 0 || TTF_SizeUTF8(misc_get_font(te->fontsz), te->text, &fullw, &fullh) < 0)
 			log_printf_abort("TTF_SizeUTF8 failed: %s", TTF_GetError());
 		free(left);
 

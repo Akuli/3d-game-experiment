@@ -21,7 +21,6 @@ struct TextEntry {
 	// Do not use the rest outside textentry.c
 	uint32_t lastredraw;
 	uint32_t blinkstart;
-	TTF_Font *font;  // FIXME: TTF_CloseFont
 };
 
 // call this FPS times per second
