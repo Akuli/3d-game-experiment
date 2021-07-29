@@ -580,6 +580,12 @@ static void end_moving_or_resizing(struct MapEditor *ed)
 // Returns whether redrawing needed
 static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 {
+	textentry_handle_event(&ed->nameentry, e);
+	if (ed->nameentry.cursor != NULL) {
+		ed->sel = (struct Selection){ .mode = SEL_NONE };
+		return true;
+	}
+
 	float pi = acosf(-1);
 
 	button_handle_event(e, &ed->donebtn);
@@ -589,12 +595,6 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 	// exists, we must avoid handling the click event again
 	if (ed->state != MISC_STATE_MAPEDITOR)
 		return false;
-
-	textentry_handle_event(&ed->nameentry, e);
-	if (ed->nameentry.cursor != NULL) {
-		ed->sel = (struct Selection){ .mode = SEL_NONE };
-		return true;
-	}
 
 	switch(e->type) {
 	case SDL_MOUSEBUTTONDOWN:
@@ -886,8 +886,8 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 				.w = surf->w - 2*button_width(0),
 				.h = button_height(0),
 			},
-			// text assigned later
-			.maxlen = sizeof(((struct Map){0}).name) - 1,
+			// text and change callback assigned later
+			.maxlen = sizeof(((struct Map *)NULL)->name) - 1,
 			.fontsz = 32,
 			.redraw = true,
 		},
@@ -909,6 +909,11 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 	return ed;
 }
 
+static void name_changed_callback(void *ptr)
+{
+	map_save(ptr);
+}
+
 void mapeditor_setmap(struct MapEditor *ed, struct Map *map)
 {
 	SDL_FillRect(ed->cam.surface, NULL, 0);
@@ -918,8 +923,11 @@ void mapeditor_setmap(struct MapEditor *ed, struct Map *map)
 	ed->sel = (struct Selection){ .mode = SEL_NONE };
 	ed->state = MISC_STATE_MAPEDITOR;
 	ed->rotatedir = 0;
+
 	ed->nameentry.text = map->name;
 	ed->nameentry.redraw = true;
+	ed->nameentry.changecb = name_changed_callback;
+	ed->nameentry.changecbdata = map;
 
 	for (int p = 0; p < 2; p++)
 		ed->playeredits[p].loc = &map->playerlocs[p];

@@ -15,6 +15,9 @@ struct TextEntry {
 	bool redraw;  // true after changing text, false after textentry_show()
 	char *cursor;  // pointer into text, NULL to not show
 
+	void (*changecb)(void *data);
+	void *changecbdata;
+
 	// Do not use the rest outside textentry.c
 	uint32_t lastredraw;
 	uint32_t blinkstart;

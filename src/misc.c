@@ -76,6 +76,10 @@ SDL_Surface *misc_create_text_surface(const char *text, SDL_Color col, int fonts
 	if (!font)
 		log_printf_abort("TTF_OpenFont failed: %s", TTF_GetError());
 
+	// It fails with zero length text, lol
+	if (!*text)
+		text = " ";
+
 	SDL_Surface *s = TTF_RenderUTF8_Blended(font, text, col);
 	TTF_CloseFont(font);
 	if (!s)

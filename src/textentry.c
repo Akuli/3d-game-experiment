@@ -38,42 +38,74 @@ static char *mouse_to_cursorpos(const struct TextEntry *te, int mousex)
 	return te->text + cur;
 }
 
-// FIXME: ääkköset
-static void utf8_prev(char **s) { --*s; }
-static void utf8_next(char **s) { ++*s; }
+// https://en.wikipedia.org/wiki/UTF-8#Encoding
+#define byte10xxxxxx(b) ((unsigned char)(b) >> 6 == 4-2)
+static void utf8_prev(char **s) {
+	do { --*s; } while (byte10xxxxxx(**s));
+}
+static void utf8_next(char **s) {
+	do { ++*s; } while (byte10xxxxxx(**s));
+}
 
 
 bool textentry_handle_event(struct TextEntry *te, const SDL_Event *e)
 {
-	if (e->type != SDL_MOUSEBUTTONDOWN && !te->cursor)
+	if ((
+		e->type == SDL_MOUSEBUTTONDOWN &&
+		SDL_PointInRect(&(SDL_Point){ e->button.x, e->button.y }, &te->rect)
+	) || (
+		e->type == SDL_KEYDOWN && e->key.keysym.scancode == SDL_SCANCODE_F2
+	))
+	{
+		te->cursor = mouse_to_cursorpos(te, e->button.x);
+		te->blinkstart = SDL_GetTicks();
+		textentry_show(te);
+		return false;
+	}
+
+	if (!te->cursor)
 		return false;
 
 	switch(e->type) {
 	case SDL_MOUSEBUTTONDOWN:
-		if (SDL_PointInRect(&(SDL_Point){ e->button.x, e->button.y }, &te->rect)) {
-			te->cursor = mouse_to_cursorpos(te, e->button.x);
-			te->blinkstart = SDL_GetTicks();
-		} else {
-			te->cursor = NULL;
-		}
+		te->cursor = NULL;
 		textentry_show(te);
 		return false;
 
 	case SDL_KEYDOWN:
+	{
+		bool changed = false;
+		bool lcontrol = SDL_GetKeyboardState(NULL)[SDL_SCANCODE_LCTRL];
+		bool rcontrol = SDL_GetKeyboardState(NULL)[SDL_SCANCODE_RCTRL];
+
 		switch(misc_handle_scancode(e->key.keysym.scancode)) {
 		case SDL_SCANCODE_LEFT:
+		{
 			if (te->cursor > te->text)
 				utf8_prev(&te->cursor);
+			if (lcontrol || rcontrol) {
+				// cursor[-1] works because utf8 continuation byte can't be ascii space
+				while (te->cursor > te->text && te->cursor[-1] != ' ')
+					utf8_prev(&te->cursor);
+			}
 			break;
+		}
 		case SDL_SCANCODE_RIGHT:
+		{
 			if (*te->cursor)
 				utf8_next(&te->cursor);
+			if (lcontrol || rcontrol) {
+				while (*te->cursor && te->cursor[-1] != ' ')
+					utf8_next(&te->cursor);
+			}
 			break;
+		}
 		case SDL_SCANCODE_BACKSPACE:
 			if (te->cursor > te->text) {
 				char *end = te->cursor;
 				utf8_prev(&te->cursor);
 				memmove(te->cursor, end, strlen(end)+1);
+				changed = true;
 			}
 			break;
 		case SDL_SCANCODE_DELETE:
@@ -81,6 +113,7 @@ bool textentry_handle_event(struct TextEntry *te, const SDL_Event *e)
 				char *end = te->cursor;
 				utf8_next(&end);
 				memmove(te->cursor, end, strlen(end)+1);
+				changed = true;
 			}
 			break;
 		case SDL_SCANCODE_HOME:
@@ -89,12 +122,20 @@ bool textentry_handle_event(struct TextEntry *te, const SDL_Event *e)
 		case SDL_SCANCODE_END:
 			te->cursor += strlen(te->cursor);
 			break;
+		case SDL_SCANCODE_RETURN:
+		case SDL_SCANCODE_ESCAPE:
+			te->cursor = NULL;
+			textentry_show(te);
+			return false;
 		default:
 			return false;
 		}
 
 		te->blinkstart = SDL_GetTicks();
+		if (changed)
+			te->changecb(te->changecbdata);
 		return true;
+	}
 
 	case SDL_TEXTINPUT:
 	{
@@ -115,6 +156,7 @@ bool textentry_handle_event(struct TextEntry *te, const SDL_Event *e)
 		memcpy(te->cursor, add, strlen(add));
 		te->cursor += strlen(add);
 		free(add);
+		te->changecb(te->changecbdata);
 		return true;
 	}
 
