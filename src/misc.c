@@ -105,7 +105,7 @@ TTF_Font *misc_get_font(int fontsz)
 SDL_Surface *misc_create_text_surface(const char *text, SDL_Color col, int fontsz)
 {
 	// It fails with zero length text, lol
-	if (!*text)
+	if (!text[0])
 		text = " ";
 
 	SDL_Surface *s = TTF_RenderUTF8_Blended(misc_get_font(fontsz), text, col);

@@ -2,7 +2,6 @@
 #define MISC_H
 
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
 #include <stdint.h>
 
 enum MiscState {

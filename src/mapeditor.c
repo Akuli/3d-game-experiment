@@ -889,7 +889,6 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 			// text and change callback assigned later
 			.maxlen = sizeof(((struct Map *)NULL)->name) - 1,
 			.fontsz = 32,
-			.redraw = true,
 		},
 	};
 
