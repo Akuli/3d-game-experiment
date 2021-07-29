@@ -28,6 +28,6 @@ struct TextEntry {
 void textentry_show(struct TextEntry *te);
 
 // returns whether text changed, shows as necessary
-bool textentry_handle_event(struct TextEntry *te, const SDL_Event *e);
+void textentry_handle_event(struct TextEntry *te, const SDL_Event *e);
 
 #endif  // TEXTENTRY_H

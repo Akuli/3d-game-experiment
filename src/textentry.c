@@ -48,7 +48,7 @@ static void utf8_next(char **s) {
 }
 
 
-bool textentry_handle_event(struct TextEntry *te, const SDL_Event *e)
+void textentry_handle_event(struct TextEntry *te, const SDL_Event *e)
 {
 	if ((
 		e->type == SDL_MOUSEBUTTONDOWN &&
@@ -60,17 +60,17 @@ bool textentry_handle_event(struct TextEntry *te, const SDL_Event *e)
 		te->cursor = mouse_to_cursorpos(te, e->button.x);
 		te->blinkstart = SDL_GetTicks();
 		textentry_show(te);
-		return false;
+		return;
 	}
 
 	if (!te->cursor)
-		return false;
+		return;
 
 	switch(e->type) {
 	case SDL_MOUSEBUTTONDOWN:
 		te->cursor = NULL;
 		textentry_show(te);
-		return false;
+		return;
 
 	case SDL_KEYDOWN:
 	{
@@ -126,15 +126,15 @@ bool textentry_handle_event(struct TextEntry *te, const SDL_Event *e)
 		case SDL_SCANCODE_ESCAPE:
 			te->cursor = NULL;
 			textentry_show(te);
-			return false;
+			return;
 		default:
-			return false;
+			return;
 		}
 
 		te->blinkstart = SDL_GetTicks();
 		if (changed)
 			te->changecb(te->changecbdata);
-		return true;
+		return;
 	}
 
 	case SDL_TEXTINPUT:
@@ -149,19 +149,19 @@ bool textentry_handle_event(struct TextEntry *te, const SDL_Event *e)
 		while ((p = strchr(add, 1)))
 			memmove(p, p+1, strlen(p+1)+1);
 
-		if (strlen(te->text) + strlen(add) > te->maxlen)
-			return false;
+		if (strlen(te->text) + strlen(add) <= te->maxlen) {
+			memmove(te->cursor + strlen(add), te->cursor, strlen(te->cursor) + 1);
+			memcpy(te->cursor, add, strlen(add));
+			te->cursor += strlen(add);
+			te->changecb(te->changecbdata);
+		}
 
-		memmove(te->cursor + strlen(add), te->cursor, strlen(te->cursor) + 1);
-		memcpy(te->cursor, add, strlen(add));
-		te->cursor += strlen(add);
 		free(add);
-		te->changecb(te->changecbdata);
-		return true;
+		return;
 	}
 
 	default:
-		return false;
+		return;
 	}
 }
 
