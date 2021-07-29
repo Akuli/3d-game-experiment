@@ -178,8 +178,6 @@ void textentry_show(struct TextEntry *te)
 
 	SDL_FillRect(te->surf, &te->rect, 0);
 
-	// font not cached because this isn't perf critical
-	// TODO: same font loading code is in misc.c
 	if (!te->font) {
 		te->font = TTF_OpenFont("assets/DejaVuSans.ttf", te->fontsz);
 		if (!te->font)
