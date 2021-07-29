@@ -172,7 +172,9 @@ int main(int argc, char **argv)
 
 		case MISC_STATE_DELETEMAP:
 			log_printf("starting delete map dialog");
-			s = deletemap_dialog(wnd, ch.mapch.maps, &ch.mapch.nmaps, ch.mapch.listbox.selectidx);
+			s = deletemap_dialog(
+				wnd, ch.mapch.maps, &ch.mapch.nmaps, ch.mapch.listbox.selectidx,
+				ch.playerch[0].epic, ch.playerch[1].epic);
 			break;
 
 		case MISC_STATE_QUIT:
