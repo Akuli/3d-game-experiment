@@ -1,6 +1,7 @@
 #include "deletemap.h"
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "button.h"
 #include "ellipsoid.h"
 #include "log.h"
