@@ -14,6 +14,7 @@
 #include "looptimer.h"
 #include "showall.h"
 #include "camera.h"
+#include "textentry.h"
 
 struct EllipsoidEdit {
 	struct Ellipsoid el;
@@ -50,6 +51,7 @@ struct MapEditor {
 	struct Button addenemybtn;
 	struct Selection sel;
 	bool up, down, left, right;   // are arrow keys pressed
+	struct TextEntry nameentry;
 	bool redraw;
 };
 
@@ -588,6 +590,12 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 	if (ed->state != MISC_STATE_MAPEDITOR)
 		return false;
 
+	textentry_handle_event(&ed->nameentry, e);
+	if (ed->nameentry.cursor != NULL) {
+		ed->sel = (struct Selection){ .mode = SEL_NONE };
+		return true;
+	}
+
 	switch(e->type) {
 	case SDL_MOUSEBUTTONDOWN:
 		switch(e->button.button) {
@@ -870,6 +878,19 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 			.onclick = add_enemy,
 			.onclickdata = ed,
 		},
+		.nameentry = {
+			.surf = surf,
+			.rect = {
+				.x = button_width(0),
+				.y = 0,
+				.w = surf->w - 2*button_width(0),
+				.h = button_height(0),
+			},
+			// text assigned later
+			.maxlen = sizeof(((struct Map){0}).name) - 1,
+			.fontsz = 32,
+			.redraw = true,
+		},
 	};
 
 	for (int p = 0; p < 2; p++) {
@@ -897,6 +918,8 @@ void mapeditor_setmap(struct MapEditor *ed, struct Map *map)
 	ed->sel = (struct Selection){ .mode = SEL_NONE };
 	ed->state = MISC_STATE_MAPEDITOR;
 	ed->rotatedir = 0;
+	ed->nameentry.text = map->name;
+	ed->nameentry.redraw = true;
 
 	for (int p = 0; p < 2; p++)
 		ed->playeredits[p].loc = &map->playerlocs[p];
@@ -919,9 +942,13 @@ static void show_and_rotate_map_editor(struct MapEditor *ed, bool canedit)
 			update_button_disableds(ed);
 			button_show(&ed->donebtn);
 			button_show(&ed->addenemybtn);
+			ed->nameentry.redraw = true;
 		}
 	}
 	ed->redraw = false;
+
+	if (canedit)
+		textentry_show(&ed->nameentry);
 }
 
 void mapeditor_displayonly_eachframe(struct MapEditor *ed)
