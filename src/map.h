@@ -9,7 +9,7 @@ struct MapCoords { int x, z; };
 
 struct Map {
 	char path[1024];
-	char name[30];   // Must fit in map chooser and map delete dialog
+	char name[25];   // Must fit in map chooser, map delete dialog and map name entry
 	double sortkey;
 	bool custom;  // whether path starts with "custom_maps"
 	struct Wall walls[MAX_WALLS];

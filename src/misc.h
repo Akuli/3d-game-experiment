@@ -2,6 +2,7 @@
 #define MISC_H
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 #include <stdint.h>
 
 enum MiscState {
@@ -28,6 +29,9 @@ Blit src onto dst so that center of src goes to *center. If center is NULL, then
 center of src goes to center of dst.
 */
 void misc_blit_with_center(SDL_Surface *src, SDL_Surface *dst, const SDL_Point *center);
+
+// do not free the returned font
+TTF_Font *misc_get_font(int fontsz);
 
 // Return a surface containing text on transparent background. Never returns NULL.
 SDL_Surface *misc_create_text_surface(const char *text, SDL_Color col, int fontsz);

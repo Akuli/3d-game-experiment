@@ -10,6 +10,8 @@
 
 #include "misc.h"
 #include <errno.h>
+#include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include "log.h"
@@ -69,15 +71,45 @@ void misc_blit_with_center(SDL_Surface *src, SDL_Surface *dst, const SDL_Point *
 	SDL_BlitSurface(src, NULL, dst, &r);
 }
 
+// indexed by font size
+TTF_Font *loaded_fonts[100] = {0};
+
+static void close_loaded_fonts(void)
+{
+	for (int i = 0; i < sizeof(loaded_fonts)/sizeof(loaded_fonts[0]); i++) {
+		if (loaded_fonts[i])
+			TTF_CloseFont(loaded_fonts[i]);
+	}
+}
+
+TTF_Font *misc_get_font(int fontsz)
+{
+	int n = sizeof(loaded_fonts)/sizeof(loaded_fonts[0]);
+	SDL_assert(0 < fontsz && fontsz < n);
+	if (loaded_fonts[fontsz])
+		return loaded_fonts[fontsz];
+
+	bool allstillnull = true;
+	for (int i = 0; i < n; i++) {
+		if (loaded_fonts[i])
+			allstillnull = false;
+	}
+	if (allstillnull)
+		atexit(close_loaded_fonts);
+
+	loaded_fonts[fontsz] = TTF_OpenFont("assets/DejaVuSans.ttf", fontsz);
+	if (!loaded_fonts[fontsz])
+		log_printf_abort("TTF_OpenFont failed: %s", TTF_GetError());
+	return loaded_fonts[fontsz];
+}
+
 SDL_Surface *misc_create_text_surface(const char *text, SDL_Color col, int fontsz)
 {
-	// font not cached because this isn't called in perf critical loops
-	TTF_Font *font = TTF_OpenFont("assets/DejaVuSans.ttf", fontsz);
-	if (!font)
-		log_printf_abort("TTF_OpenFont failed: %s", TTF_GetError());
+	// It fails with zero length text, lol
+	if (!text[0])
+		text = " ";
 
-	SDL_Surface *s = TTF_RenderUTF8_Blended(font, text, col);
-	TTF_CloseFont(font);
+	SDL_Surface *s = TTF_RenderUTF8_Blended(misc_get_font(fontsz), text, col);
 	if (!s)
 		log_printf_abort("TTF_RenderUTF8_Blended failed: %s", TTF_GetError());
 	return s;

@@ -47,6 +47,8 @@ Map editor:
 - Add enemy: E
 - Remove selected enemy or wall: Delete key or right-click
 - Move player, enemy or wall, or resize the place: drag and drop, or shift and arrow keys
+- Rename place: press F2 or click the name
+- Done renaming: press Enter, press Esc or click something else than the name
 - Done editing: Escape
 
 Map editor's delete confirming dialog:
