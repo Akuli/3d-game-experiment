@@ -39,7 +39,7 @@ static char *mouse_to_cursorpos(const struct TextEntry *te, int mousex)
 }
 
 // https://en.wikipedia.org/wiki/UTF-8#Encoding
-#define byte10xxxxxx(b) ((unsigned char)(b) >> 6 == 4-2)
+#define byte10xxxxxx(b) ((unsigned char)(b) >> 6 == 2)
 static void utf8_prev(char **s) {
 	do { --*s; } while (byte10xxxxxx(**s));
 }
