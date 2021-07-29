@@ -15,6 +15,7 @@
 	{ include: ["\"SDL_surface.h\"", "private", "<SDL2/SDL.h>", "public"] },
 	{ include: ["\"SDL_timer.h\"", "private", "<SDL2/SDL.h>", "public"] },
 	{ include: ["\"SDL_video.h\"", "private", "<SDL2/SDL.h>", "public"] },
+	{ include: ["\"SDL_stdinc.h\"", "private", "<SDL2/SDL.h>", "public"] },
 
 	# custom glob
 	{ include: ["<glob.h>", "private", "\"glob.h\"", "public"] },

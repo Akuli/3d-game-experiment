@@ -4,7 +4,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
 
 struct TextEntry {
 	SDL_Surface *surf;  // TODO: rename to wndsurf, must be window surface

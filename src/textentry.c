@@ -1,9 +1,11 @@
 #include "textentry.h"
 #include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
 #include <limits.h>
+#include <SDL2/SDL_ttf.h>
 #include "log.h"
 #include "misc.h"
-#include "mathstuff.h"
 
 static int text_width(const struct TextEntry *te, const char *s)
 {
@@ -199,14 +201,14 @@ void textentry_show(struct TextEntry *te)
 	}
 
 	if (te->cursor != NULL && newblink == 0) {
+		int fullw = text_width(te, te->text);
+
 		char *left = malloc(te->cursor - te->text + 1);
 		if (!left)
 			log_printf_abort("out of mem");
 		memcpy(left, te->text, te->cursor - te->text);
 		left[te->cursor - te->text] = '\0';
-
 		int leftw = text_width(te, left);
-		int fullw = text_width(te, te->text);
 		free(left);
 
 		int x = center.x - fullw/2 + leftw;
