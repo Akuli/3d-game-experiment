@@ -950,7 +950,7 @@ static void show_and_rotate_map_editor(struct MapEditor *ed, bool canedit)
 			update_button_disableds(ed);
 			button_show(&ed->donebtn);
 			button_show(&ed->addenemybtn);
-			ed->nameentry.redraw = true;
+			ed->nameentry.redraw = true;  // because entire surface was cleared above
 		}
 	}
 	ed->redraw = false;

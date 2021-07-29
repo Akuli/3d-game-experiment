@@ -27,7 +27,7 @@ struct TextEntry {
 // call this FPS times per second
 void textentry_show(struct TextEntry *te);
 
-// returns whether text changed, shows as necessary
+// returns whether text changed, sets te->redraw as needed
 void textentry_handle_event(struct TextEntry *te, const SDL_Event *e);
 
 #endif  // TEXTENTRY_H

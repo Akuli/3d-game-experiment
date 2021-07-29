@@ -59,7 +59,7 @@ void textentry_handle_event(struct TextEntry *te, const SDL_Event *e)
 	{
 		te->cursor = mouse_to_cursorpos(te, e->button.x);
 		te->blinkstart = SDL_GetTicks();
-		textentry_show(te);
+		te->redraw = true;
 		return;
 	}
 
@@ -69,7 +69,7 @@ void textentry_handle_event(struct TextEntry *te, const SDL_Event *e)
 	switch(e->type) {
 	case SDL_MOUSEBUTTONDOWN:
 		te->cursor = NULL;
-		textentry_show(te);
+		te->redraw = true;
 		return;
 
 	case SDL_KEYDOWN:
@@ -125,7 +125,7 @@ void textentry_handle_event(struct TextEntry *te, const SDL_Event *e)
 		case SDL_SCANCODE_RETURN:
 		case SDL_SCANCODE_ESCAPE:
 			te->cursor = NULL;
-			textentry_show(te);
+			te->redraw = true;
 			return;
 		default:
 			return;
