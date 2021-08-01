@@ -532,11 +532,12 @@ void map_save(const struct Map *map)
 	free(data);
 }
 
-static bool uses_custom_name(const struct Map *m)
+// returns false for non-custom places
+static bool has_default_copy_name(const struct Map *m)
 {
 	char defaultname[sizeof m->name];
 	snprintf(defaultname, sizeof defaultname, "Copy %d: %s", m->copycount, m->origname);
-	return (strcmp(m->name, defaultname) != 0);
+	return (strcmp(m->name, defaultname) == 0);
 }
 
 int map_copy(struct Map **maps, int *nmaps, int srcidx)
@@ -548,10 +549,10 @@ int map_copy(struct Map **maps, int *nmaps, int srcidx)
 		log_printf_abort("out of mem");
 
 	const char *origname;
-	if (uses_custom_name(&arr[srcidx]))
-		origname = arr[srcidx].name;
-	else
+	if (has_default_copy_name(&arr[srcidx]))
 		origname = arr[srcidx].origname;
+	else
+		origname = arr[srcidx].name;
 
 	int maxnamenum = 0;
 	int maxcopycount = 0;
@@ -577,7 +578,7 @@ int map_copy(struct Map **maps, int *nmaps, int srcidx)
 	ptr->copycount = maxcopycount+1;
 	snprintf(ptr->name, sizeof ptr->name, "Copy %d: %s", ptr->copycount, ptr->origname);
 
-	if (srcidx+2 < *nmaps)
+	if (&ptr[1] < &arr[*nmaps])
 		ptr->sortkey = (ptr[-1].sortkey + ptr[1].sortkey)/2;
 	else
 		ptr->sortkey += 1;
