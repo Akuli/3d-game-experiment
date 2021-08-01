@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 #include <SDL2/SDL.h>
 #include "button.h"
 #include "camera.h"
@@ -153,17 +154,11 @@ static void rotate_player_ellipsoids(struct Ellipsoid *els)
 	}
 }
 
-static float restrict_absolute_value(float val, float maxabs)
-{
-	SDL_assert(maxabs >= 0);
-	if (fabsf(val) > maxabs)
-		return copysignf(maxabs, val);
-	return val;
-}
-
 static void turn_camera(struct ChooserPlayerStuff *plrch)
 {
-	float turn = restrict_absolute_value(plrch->anglediff, 50.0f / (CAMERA_FPS * player_nepics));
+	float maxturn = 50.0f / (CAMERA_FPS * player_nepics);
+	float turn = plrch->anglediff;
+	clamp_float(&turn, -maxturn, +maxturn);
 	plrch->cam.angle += turn;
 	plrch->anglediff -= turn;
 
