@@ -17,14 +17,21 @@ struct Listbox {
 	SDL_Surface *destsurf;  // must be surface of whole window, for button click events
 	SDL_Rect destrect;
 
-	struct ListboxEntry *entries;
-	int nentries;
 	int selectidx;  // something always selected, no -1 or whatever
-	bool redraw;   // set to true after changing anything, needed because redrawing is slow
+	bool redraw;   // set to true after entries change, needed because redrawing is slow
 
 	// very similar to buttons
 	int upscancodes[2];
 	int downscancodes[2];
+
+	// return value can be e.g. statically allocated
+	// must return NULL for index out of range
+	const struct ListboxEntry *(*getentry)(void *getentrydata, int idx);
+	void *getentrydata;
+
+	// buttons have state, can't just be in on-the-fly generated entries
+	struct Button *visiblebuttons;
+	int nvisiblebuttons;
 
 	// don't use rest of this outside listbox.c
 	SDL_Surface *bgimg;
