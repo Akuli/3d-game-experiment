@@ -63,7 +63,7 @@ static int peek_one_char(FILE *f)
 
 static void read_metadata(FILE *f, struct Map *map)
 {
-	strcpy(map->name, "(no name)");
+	strcpy(map->name, "(no name)");  // should never be actually used
 	strcpy(map->origname, "");
 	map->copycount = 0;
 	map->sortkey = NAN;
