@@ -63,8 +63,9 @@ static int peek_one_char(FILE *f)
 
 static void read_metadata(FILE *f, struct Map *map)
 {
-	// These should never be actually used
 	strcpy(map->name, "(no name)");
+	strcpy(map->origname, "");
+	map->copycount = 0;
 	map->sortkey = NAN;
 
 	// Metadata section
@@ -75,6 +76,10 @@ static void read_metadata(FILE *f, struct Map *map)
 
 		if (strstr(line, "Name=") == line)
 			snprintf(map->name, sizeof map->name, "%s", strstr(line, "=") + 1);
+		else if (strstr(line, "OriginalName=") == line)
+			snprintf(map->origname, sizeof map->origname, "%s", strstr(line, "=") + 1);
+		else if (strstr(line, "CopyCount=") == line)
+			map->copycount = atoi(strstr(line, "=") + 1);
 		else if (strstr(line, "SortKey=") == line)
 			map->sortkey = atof(strstr(line, "=") + 1);
 		else
@@ -506,6 +511,8 @@ void map_save(const struct Map *map)
 	// Can get truncated if all data in one log message, maybe limitation in sdl2 logging
 	log_printf("Writing to \"%s\"", map->path);
 	log_printf("Name=%s", map->name);
+	log_printf("OriginalName=%s", map->origname);
+	log_printf("CopyCount=%d", map->copycount);
 	log_printf("SortKey=%.10f", map->sortkey);
 	for (int i = 0; i < nlines; i++)
 		log_printf("%.*s", linesz, data+(i*linesz));
@@ -515,44 +522,69 @@ void map_save(const struct Map *map)
 	if (!f)
 		log_printf_abort("opening \"%s\" failed: %s", map->path, strerror(errno));
 
-	if (fprintf(f, "Name=%s\nSortKey=%.10f\n%s", map->name, map->sortkey, data) < 0)
+	int ret = fprintf(
+		f, "Name=%s\nOriginalName=%s\nCopyCount=%d\nSortKey=%.10f\n%s",
+		map->name, map->origname, map->copycount, map->sortkey, data);
+	if (ret < 0)
 		log_printf_abort("writing to \"%s\" failed: %s", map->path, strerror(errno));
 
 	fclose(f);
 	free(data);
 }
 
+static bool uses_custom_name(const struct Map *m)
+{
+	char defaultname[sizeof m->name];
+	snprintf(defaultname, sizeof defaultname, "Copy %d: %s", m->copycount, m->origname);
+	return (strcmp(m->name, defaultname) != 0);
+}
+
 int map_copy(struct Map **maps, int *nmaps, int srcidx)
 {
-	log_printf("Copying map %d", srcidx);
+	log_printf("Copying map \"%s\" at index %d", (*maps)[srcidx].name, srcidx);
 	int n = (*nmaps)++;
 	struct Map *arr = realloc(*maps, sizeof(arr[0]) * (*nmaps));
 	if (!arr)
 		log_printf_abort("out of mem");
 
-	int newnum = 0;
+	const char *origname;
+	if (uses_custom_name(&arr[srcidx]))
+		origname = arr[srcidx].name;
+	else
+		origname = arr[srcidx].origname;
+
+	int maxnamenum = 0;
+	int maxcopycount = 0;
 	for (int i = 0; i < n; i++) {
 		if (arr[i].custom) {
 			// Parse custom_maps/12345.txt
 			char digits[10];
 			misc_basename_without_extension(arr[i].path, digits, sizeof digits);
-			newnum = max(newnum, atoi(digits)+1);
+			maxnamenum = max(maxnamenum, atoi(digits));
+
+			if (strcmp(arr[i].origname, origname) == 0)
+				maxcopycount = max(maxcopycount, arr[i].copycount);
 		}
 	}
 
 	memmove(&arr[srcidx+1], &arr[srcidx], (n - srcidx)*sizeof(arr[0]));
-	sprintf(arr[srcidx+1].path, "custom_maps/%05d.txt", newnum);
-	snprintf(arr[srcidx+1].name, sizeof arr[srcidx+1].name, "Copy: %s", arr[srcidx].name);
-	arr[srcidx+1].custom = true;
+	struct Map *ptr = &arr[srcidx+1];
+
+	ptr->custom = true;
+	sprintf(ptr->path, "custom_maps/%05d.txt", maxnamenum+1);
+
+	strcpy(ptr->origname, origname);
+	ptr->copycount = maxcopycount+1;
+	snprintf(ptr->name, sizeof ptr->name, "Copy %d: %s", ptr->copycount, ptr->origname);
 
 	if (srcidx+2 < *nmaps)
-		arr[srcidx+1].sortkey = (arr[srcidx].sortkey + arr[srcidx+2].sortkey)/2;
+		ptr->sortkey = (ptr[-1].sortkey + ptr[1].sortkey)/2;
 	else
-		arr[srcidx+1].sortkey += 1;
+		ptr->sortkey += 1;
 
-	map_save(&arr[srcidx+1]);
+	map_save(ptr);
 	*maps = arr;
-	return srcidx+1;
+	return ptr - arr;
 }
 
 void map_delete(struct Map *maps, int *nmaps, int delidx)

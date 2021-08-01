@@ -16,6 +16,10 @@ struct Map {
 	int nwalls;
 	int xsize, zsize;    // players and enemies must have 0 <= x <= xsize, 0 <= z <= zsize
 
+	// Map initially named "Copy 1: Zigzag" has copy count 1 and original name "Zigzag"
+	char origname[25];
+	int copycount;
+
 	struct MapCoords playerlocs[2];
 	struct MapCoords enemylocs[MAX_ENEMIES];
 	int nenemylocs;
