@@ -600,11 +600,7 @@ int map_copy(struct Map **maps, int *nmaps, int srcidx)
 	ptr->copycount = maxcopycount+1;
 	snprintf(ptr->name, sizeof ptr->name, "Copy %d: %s", ptr->copycount, ptr->origname);
 
-	if (&ptr[1] < &arr[*nmaps])
-		ptr->sortkey = (ptr[-1].sortkey + ptr[1].sortkey)/2;
-	else
-		ptr->sortkey += 1;
-
+	map_update_sortkey(arr, *nmaps, ptr - arr);
 	map_save(ptr);
 	*maps = arr;
 	return ptr - arr;
