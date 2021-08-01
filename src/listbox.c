@@ -16,7 +16,7 @@ void listbox_init(struct Listbox *lb)
 	SDL_assert(lb->selectimg->h == lb->bgimg->h);
 
 	int fit = lb->destrect.h / lb->bgimg->h;
-	lb->visiblebuttons = malloc(sizeof(((struct ListboxEntry *)NULL)->buttons) * fit);
+	lb->visiblebuttons = malloc(fit*sizeof( ((struct ListboxEntry *)NULL)->buttons ));
 	if (!lb->visiblebuttons)
 		log_printf_abort("out of mem");
 	lb->redraw = true;
