@@ -45,6 +45,10 @@ void map_fix(struct Map *map);
 // for custom maps only
 void map_save(const struct Map *map);
 
+// set maps[idx].sortkey so that it stays in current location when sorted
+// map must be custom, saves map
+void map_update_sortkey(struct Map *maps, int nmaps, int idx);
+
 // reallocates *maps, returns index into it, saves copied map
 int map_copy(struct Map **maps, int *nmaps, int srcidx);
 

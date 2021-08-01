@@ -11,25 +11,35 @@
 struct ListboxEntry {
 	const char *text;
 	struct Button buttons[3];
+	bool movable;
 };
 
 struct Listbox {
 	SDL_Surface *destsurf;  // must be surface of whole window, for button click events
 	SDL_Rect destrect;
 
-	struct ListboxEntry *entries;
-	int nentries;
 	int selectidx;  // something always selected, no -1 or whatever
-	bool redraw;   // set to true after changing anything, needed because redrawing is slow
+	bool redraw;   // set to true after entries change, needed because redrawing is slow
 
 	// very similar to buttons
 	int upscancodes[2];
 	int downscancodes[2];
 
+	void *cbdata;
+	// return NULL for index out of range, return value not used after next call
+	const struct ListboxEntry *(*getentry)(void *cbdata, int i);
+	// return true if actually moved, never called with from==to
+	void (*move)(void *cbdata, int from, int to);
+
+	// buttons have state, can't just be in on-the-fly generated entries
+	struct Button *visiblebuttons;
+	int nvisiblebuttons;
+
 	// don't use rest of this outside listbox.c
 	SDL_Surface *bgimg;
 	SDL_Surface *selectimg;
 	int firstvisible;  // scrolling
+	bool mousedragging;
 };
 
 // fill lb->destsurf, lb->entries etc before initing

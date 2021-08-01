@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 #include <SDL2/SDL.h>
 #include "button.h"
 #include "camera.h"
@@ -153,17 +154,11 @@ static void rotate_player_ellipsoids(struct Ellipsoid *els)
 	}
 }
 
-static float restrict_absolute_value(float val, float maxabs)
-{
-	SDL_assert(maxabs >= 0);
-	if (fabsf(val) > maxabs)
-		return copysignf(maxabs, val);
-	return val;
-}
-
 static void turn_camera(struct ChooserPlayerStuff *plrch)
 {
-	float turn = restrict_absolute_value(plrch->anglediff, 50.0f / (CAMERA_FPS * player_nepics));
+	float maxturn = 50.0f / (CAMERA_FPS * player_nepics);
+	float turn = plrch->anglediff;
+	clamp_float(&turn, -maxturn, +maxturn);
 	plrch->cam.angle += turn;
 	plrch->anglediff -= turn;
 
@@ -187,60 +182,67 @@ static void show_player_chooser_each_frame(const struct Chooser *ch, struct Choo
 	show_all(NULL, 0, false, ch->ellipsoids, player_nepics, &plrch->cam);
 }
 
-static void update_listbox_entries(struct Chooser *ch);
-
 static void on_copy_clicked(void *chptr)
 {
 	struct Chooser *ch = chptr;
 	ch->mapch.listbox.selectidx = map_copy(&ch->mapch.maps, &ch->mapch.nmaps, ch->mapch.listbox.selectidx);
 	mapeditor_setmap(ch->editor, &ch->mapch.maps[ch->mapch.listbox.selectidx]);
-	update_listbox_entries(ch);
+	ch->mapch.listbox.redraw = true;
 }
 static void on_edit_clicked(void *chptr) { ((struct Chooser *)chptr)->state = MISC_STATE_MAPEDITOR; }
 static void on_delete_clicked(void *chptr) { ((struct Chooser *)chptr)->state = MISC_STATE_DELETEMAP; }
 
-static void update_listbox_entries(struct Chooser *ch)
+static const struct ListboxEntry *get_listbox_entry(void *chptr, int i)
 {
-	size_t sz = ch->mapch.nmaps * sizeof(ch->mapch.listbox.entries[0]);
-	ch->mapch.listbox.entries = realloc(ch->mapch.listbox.entries, sz);
-	if (!ch->mapch.listbox.entries)
-		log_printf_abort("out of mem");
-	ch->mapch.listbox.nentries = ch->mapch.nmaps;
+	struct Chooser *ch = chptr;
+	if (i < 0 || i >= ch->mapch.nmaps)
+		return NULL;
 
-	struct ListboxEntry *e = &ch->mapch.listbox.entries[0];
-	struct Map *m = &ch->mapch.maps[0];
-	for ( ; e < &ch->mapch.listbox.entries[ch->mapch.nmaps]; (e++, m++)) {
-		*e = (struct ListboxEntry){
-			.text = m->name,
-			.buttons = {
-				{
-					.text = "Edit",
-					.scancodes = { SDL_SCANCODE_E },
-					.onclick = on_edit_clicked,
-					.onclickdata = ch,
-				},
-				{
-					.text = "Delete",
-					.scancodes = { SDL_SCANCODE_DELETE },
-					.onclick = on_delete_clicked,
-					.onclickdata = ch,
-				},
-				{
-					.text = "Copy",
-					.scancodes = { SDL_SCANCODE_C },
-					.onclick = on_copy_clicked,
-					.onclickdata = ch,
-				},
+	static struct ListboxEntry res;
+	res = (struct ListboxEntry){
+		.text = ch->mapch.maps[i].name,
+		.buttons = {
+			{
+				.text = ch->mapch.maps[i].custom ? "Edit" : NULL,  // disable for non-custom maps
+				.scancodes = { SDL_SCANCODE_E },
+				.onclick = on_edit_clicked,
+				.onclickdata = ch,
 			},
-		};
-		if (!m->custom) {
-			// hide editing buttons
-			e->buttons[0].text = NULL;
-			e->buttons[1].text = NULL;
-		}
-	}
+			{
+				.text = ch->mapch.maps[i].custom ? "Delete" : NULL,  // disable for non-custom maps
+				.scancodes = { SDL_SCANCODE_DELETE },
+				.onclick = on_delete_clicked,
+				.onclickdata = ch,
+			},
+			{
+				.text = "Copy",
+				.scancodes = { SDL_SCANCODE_C },
+				.onclick = on_copy_clicked,
+				.onclickdata = ch,
+			},
+		},
+		.movable = ch->mapch.maps[i].custom,
+	};
+	return &res;
+}
 
-	ch->mapch.listbox.redraw = true;
+static void move_map(void *chptr, int from, int to)
+{
+	const struct Chooser *ch = chptr;
+	SDL_assert(ch->mapch.maps[from].custom);
+	log_printf("Moving map \"%s\" from index %d to index %d", ch->mapch.maps[from].name, from, to);
+
+	static struct Map tmp;  // static to keep stack usage down
+	tmp = ch->mapch.maps[from];
+
+	SDL_assert(from != to);
+	if (from < to)
+		memmove(&ch->mapch.maps[from], &ch->mapch.maps[from+1], (to-from)*sizeof(ch->mapch.maps[0]));
+	else
+		memmove(&ch->mapch.maps[to+1], &ch->mapch.maps[to], (from-to)*sizeof(ch->mapch.maps[0]));
+
+	ch->mapch.maps[to] = tmp;
+	map_update_sortkey(ch->mapch.maps, ch->mapch.nmaps, to);
 }
 
 static void handle_event(const SDL_Event *evt, struct Chooser *ch)
@@ -295,6 +297,9 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				},
 				.upscancodes = { SDL_SCANCODE_W, SDL_SCANCODE_UP },
 				.downscancodes = { SDL_SCANCODE_S, SDL_SCANCODE_DOWN },
+				.getentry = get_listbox_entry,
+				.move = move_map,
+				.cbdata = ch,
 			},
 		},
 	};
@@ -319,7 +324,6 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 
 void chooser_destroy(const struct Chooser *ch)
 {
-	free(ch->mapch.listbox.entries);
 	listbox_destroy(&ch->mapch.listbox);
 	SDL_FreeSurface(ch->playerch[0].cam.surface);
 	SDL_FreeSurface(ch->playerch[1].cam.surface);
@@ -340,7 +344,7 @@ enum MiscState chooser_run(struct Chooser *ch)
 	// Maps can be deleted while chooser not running
 	clamp(&ch->mapch.listbox.selectidx, 0, ch->mapch.nmaps-1);
 	mapeditor_setmap(ch->editor, &ch->mapch.maps[ch->mapch.listbox.selectidx]);
-	update_listbox_entries(ch);
+	ch->mapch.listbox.redraw = true;
 
 	SDL_FillRect(ch->winsurf, NULL, 0);
 	button_show(&ch->playbtn);
