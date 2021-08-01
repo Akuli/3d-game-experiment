@@ -231,16 +231,16 @@ static const struct ListboxEntry *get_listbox_entry(void *chptr, int i)
 	return &res;
 }
 
-static bool move_map(void *chptr, int from, int to)
+static void move_map(void *chptr, int from, int to)
 {
 	const struct Chooser *ch = chptr;
-	if (!ch->mapch.maps[from].custom || from==to)
-		return false;
+	SDL_assert(ch->mapch.maps[from].custom);
 	log_printf("Moving map %d (\"%s\") to index %d", from, ch->mapch.maps[from].name, to);
 
 	static struct Map tmp;
 	tmp = ch->mapch.maps[from];
 
+	SDL_assert(from != to);
 	if (from < to)
 		memmove(&ch->mapch.maps[from], &ch->mapch.maps[from+1], (to-from)*sizeof(ch->mapch.maps[0]));
 	else
@@ -248,7 +248,6 @@ static bool move_map(void *chptr, int from, int to)
 
 	ch->mapch.maps[to] = tmp;
 	map_update_sortkey(ch->mapch.maps, ch->mapch.nmaps, to);
-	return true;
 }
 
 static void handle_event(const SDL_Event *evt, struct Chooser *ch)

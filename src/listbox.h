@@ -29,7 +29,7 @@ struct Listbox {
 	// return NULL for index out of range, return value not used after next call
 	const struct ListboxEntry *(*getentry)(void *cbdata, int i);
 	// return true if actually moved, never called with from==to
-	bool (*move)(void *cbdata, int from, int to);
+	void (*move)(void *cbdata, int from, int to);
 
 	// buttons have state, can't just be in on-the-fly generated entries
 	struct Button *visiblebuttons;
