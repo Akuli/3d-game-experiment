@@ -235,9 +235,9 @@ static void move_map(void *chptr, int from, int to)
 {
 	const struct Chooser *ch = chptr;
 	SDL_assert(ch->mapch.maps[from].custom);
-	log_printf("Moving map %d (\"%s\") to index %d", from, ch->mapch.maps[from].name, to);
+	log_printf("Moving map \"%s\" from index %d to index %d", ch->mapch.maps[from].name, from, to);
 
-	static struct Map tmp;
+	static struct Map tmp;  // static to keep stack usage down
 	tmp = ch->mapch.maps[from];
 
 	SDL_assert(from != to);
