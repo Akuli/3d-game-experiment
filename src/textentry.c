@@ -146,9 +146,10 @@ void textentry_handle_event(struct TextEntry *te, const SDL_Event *e)
 			log_printf_abort("out of mem");
 
 		// No idea why sdl2 adds many 1 bytes, deleting
+		// Also delete newlines just in case, not sure if they can occur
 		strcpy(add, e->text.text);
 		char *p;
-		while ((p = strchr(add, 1)))
+		while( (p = strchr(add, 1)) || (p = strchr(add, '\n')) )
 			memmove(p, p+1, strlen(p+1)+1);
 
 		if (strlen(te->text) + strlen(add) <= te->maxlen) {
