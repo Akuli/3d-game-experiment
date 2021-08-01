@@ -242,7 +242,7 @@ static bool move_map(void *chptr, int from, int to)
 		return false;
 	log_printf("Moving map \"%s\" from index %d to index %d", ch->mapch.maps[from].name, from, to);
 
-	static struct Map tmp;
+	static struct Map tmp;  // static to keep stack usage down
 	tmp = ch->mapch.maps[from];
 
 	if (from < to)
