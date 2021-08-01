@@ -240,7 +240,7 @@ static bool move_map(void *chptr, int from, int to)
 	const struct Chooser *ch = chptr;
 	if (!ch->mapch.maps[from].custom || from==to)
 		return false;
-	log_printf("Moving map %d (\"%s\") to index %d", from, ch->mapch.maps[from].name, to);
+	log_printf("Moving map \"%s\" from index %d to index %d", ch->mapch.maps[from].name, from, to);
 
 	static struct Map tmp;
 	tmp = ch->mapch.maps[from];
