@@ -109,7 +109,11 @@ static void select_index(struct Listbox *lb, int i)
 
 static void move_to_index(struct Listbox *lb, int i)
 {
-	if (i != lb->selectidx && lb->getentry(lb->cbdata, i) != NULL && lb->move(lb->cbdata, lb->selectidx, i)) {
+	if (i != lb->selectidx
+		&& lb->getentry(lb->cbdata, i)
+		&& lb->getentry(lb->cbdata, lb->selectidx)->movable
+		&& lb->move(lb->cbdata, lb->selectidx, i))
+	{
 		lb->selectidx = i;
 		lb->redraw = true;
 	}

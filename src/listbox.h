@@ -11,6 +11,7 @@
 struct ListboxEntry {
 	const char *text;
 	struct Button buttons[3];
+	bool movable;
 };
 
 struct Listbox {
