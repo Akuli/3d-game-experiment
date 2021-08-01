@@ -532,6 +532,28 @@ void map_save(const struct Map *map)
 	free(data);
 }
 
+void map_update_sortkey(struct Map *maps, int nmaps, int idx)
+{
+	SDL_assert(maps[idx].custom);
+	SDL_assert(0 <= idx && idx < nmaps);
+	if (nmaps < 2)
+		return;
+
+	if (idx == 0)
+		maps[idx].sortkey = maps[1].sortkey - 1;
+	else if (idx == nmaps-1)
+		maps[idx].sortkey = maps[nmaps-2].sortkey + 1;
+	else
+		maps[idx].sortkey = (maps[idx-1].sortkey + maps[idx+1].sortkey)/2;
+
+	for (int i = 0; i+1 < nmaps; i++){
+		// could reach equality if run out of precision
+		SDL_assert(maps[i].sortkey <= maps[i+1].sortkey);
+	}
+
+	map_save(&maps[idx]);
+}
+
 // returns false for non-custom places
 static bool has_default_copy_name(const struct Map *m)
 {

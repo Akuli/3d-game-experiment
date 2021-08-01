@@ -235,6 +235,26 @@ static const struct ListboxEntry *get_listbox_entry(void *chptr, int i)
 	return &res;
 }
 
+static bool move_map(void *chptr, int from, int to)
+{
+	const struct Chooser *ch = chptr;
+	if (!ch->mapch.maps[from].custom || from==to)
+		return false;
+	log_printf("Moving map %d (\"%s\") to index %d", from, ch->mapch.maps[from].name, to);
+
+	static struct Map tmp;
+	tmp = ch->mapch.maps[from];
+
+	if (from < to)
+		memmove(&ch->mapch.maps[from], &ch->mapch.maps[from+1], (to-from)*sizeof(ch->mapch.maps[0]));
+	else
+		memmove(&ch->mapch.maps[to+1], &ch->mapch.maps[to], (from-to)*sizeof(ch->mapch.maps[0]));
+
+	ch->mapch.maps[to] = tmp;
+	map_update_sortkey(ch->mapch.maps, ch->mapch.nmaps, to);
+	return true;
+}
+
 static void handle_event(const SDL_Event *evt, struct Chooser *ch)
 {
 	for (int i = 0; i < 2; i++) {
@@ -288,7 +308,8 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				.upscancodes = { SDL_SCANCODE_W, SDL_SCANCODE_UP },
 				.downscancodes = { SDL_SCANCODE_S, SDL_SCANCODE_DOWN },
 				.getentry = get_listbox_entry,
-				.getentrydata = ch,
+				.move = move_map,
+				.cbdata = ch,
 			},
 		},
 	};

@@ -41,7 +41,7 @@ void listbox_show(struct Listbox *lb)
 	lb->redraw = false;
 
 	int nentries = 0;
-	while (lb->getentry(lb->getentrydata, nentries))
+	while (lb->getentry(lb->cbdata, nentries))
 		nentries++;
 
 	int fit = lb->destrect.h / lb->bgimg->h;
@@ -60,7 +60,7 @@ void listbox_show(struct Listbox *lb)
 
 	// horribly slow, but doesn't run very often
 	for (int i = lb->firstvisible; i < min(lb->firstvisible + fit, nentries); i++) {
-		const struct ListboxEntry *e = lb->getentry(lb->getentrydata, i);
+		const struct ListboxEntry *e = lb->getentry(lb->cbdata, i);
 		SDL_Surface *img = (i == lb->selectidx) ? lb->selectimg : lb->bgimg;
 
 		SDL_Surface *t = misc_create_text_surface(e->text, (SDL_Color){0xff,0xff,0xff,0xff}, 20);
@@ -101,7 +101,15 @@ static int scancode_to_delta(const SDL_Event *evt, const struct Listbox *lb)
 
 static void select_index(struct Listbox *lb, int i)
 {
-	if (i != lb->selectidx && lb->getentry(lb->getentrydata, i) != NULL) {
+	if (i != lb->selectidx && lb->getentry(lb->cbdata, i) != NULL) {
+		lb->selectidx = i;
+		lb->redraw = true;
+	}
+}
+
+static void move_to_index(struct Listbox *lb, int i)
+{
+	if (i != lb->selectidx && lb->getentry(lb->cbdata, i) != NULL && lb->move(lb->cbdata, lb->selectidx, i)) {
 		lb->selectidx = i;
 		lb->redraw = true;
 	}
@@ -111,12 +119,30 @@ void listbox_handle_event(struct Listbox *lb, const SDL_Event *e)
 {
 	switch(e->type) {
 	case SDL_KEYDOWN:
-		select_index(lb, lb->selectidx + scancode_to_delta(e, lb));
+	{
+		bool lshift = SDL_GetKeyboardState(NULL)[SDL_SCANCODE_LSHIFT];
+		bool rshift = SDL_GetKeyboardState(NULL)[SDL_SCANCODE_RSHIFT];
+		if (lshift || rshift)
+			move_to_index(lb, lb->selectidx + scancode_to_delta(e, lb));
+		else
+			select_index(lb, lb->selectidx + scancode_to_delta(e, lb));
 		break;
+	}
 
 	case SDL_MOUSEBUTTONDOWN:
-		if (SDL_PointInRect(&(SDL_Point){e->button.x, e->button.y}, &lb->destrect))
+		if (SDL_PointInRect(&(SDL_Point){e->button.x, e->button.y}, &lb->destrect)) {
 			select_index(lb, (e->button.y - lb->destrect.y)/lb->selectimg->h);
+			lb->mousedragging = true;
+		}
+		break;
+
+	case SDL_MOUSEBUTTONUP:
+		lb->mousedragging = false;
+		break;
+
+	case SDL_MOUSEMOTION:
+		if (lb->mousedragging)
+			move_to_index(lb, (e->button.y - lb->destrect.y)/lb->selectimg->h);
 		break;
 
 	default:

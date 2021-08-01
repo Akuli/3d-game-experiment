@@ -35,6 +35,10 @@ In the game:
 In the player and map choosing screen, you can click the buttons or press these keys:
 - Player chooser: right player uses left and right arrow keys, left player users A and D.
 - Map chooser: up and down arrow keys, or W and S. The purpose is that both players can use the map chooser.
+    - Edit button: E
+    - Delete button: the Delete key
+    - Copy button: C
+    - Moving map (default maps can't be moved): Shift + arrow keys, Shift + W, Shift + S, drag and drop
 - Play button: enter or space.
 
 In the game over screen, you can again click buttons or press these keys:
