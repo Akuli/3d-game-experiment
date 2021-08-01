@@ -565,33 +565,32 @@ static bool has_default_copy_name(const struct Map *m)
 int map_copy(struct Map **maps, int *nmaps, int srcidx)
 {
 	log_printf("Copying map \"%s\" at index %d", (*maps)[srcidx].name, srcidx);
-	int n = (*nmaps)++;
-	struct Map *arr = realloc(*maps, sizeof(arr[0]) * (*nmaps));
-	if (!arr)
+	*maps = realloc(*maps, sizeof((*maps)[0]) * (*nmaps + 1));
+	if (!*maps)
 		log_printf_abort("out of mem");
+	struct Map *ptr = &(*maps)[srcidx+1];  // ptr[-1] is source map
 
 	const char *origname;
-	if (has_default_copy_name(&arr[srcidx]))
-		origname = arr[srcidx].origname;
+	if (has_default_copy_name(&ptr[-1]))
+		origname = ptr[-1].origname;
 	else
-		origname = arr[srcidx].name;
+		origname = ptr[-1].name;
 
 	int maxnamenum = 0;
 	int maxcopycount = 0;
-	for (int i = 0; i < n; i++) {
-		if (arr[i].custom) {
+	for (struct Map *m = *maps; m < *maps + *nmaps; m++) {
+		if (m->custom) {
 			// Parse custom_maps/12345.txt
 			char digits[10];
-			misc_basename_without_extension(arr[i].path, digits, sizeof digits);
+			misc_basename_without_extension(m->path, digits, sizeof digits);
 			maxnamenum = max(maxnamenum, atoi(digits));
 
-			if (strcmp(arr[i].origname, origname) == 0)
-				maxcopycount = max(maxcopycount, arr[i].copycount);
+			if (strcmp(m->origname, origname) == 0)
+				maxcopycount = max(maxcopycount, m->copycount);
 		}
 	}
 
-	memmove(&arr[srcidx+1], &arr[srcidx], (n - srcidx)*sizeof(arr[0]));
-	struct Map *ptr = &arr[srcidx+1];
+	memmove(ptr, ptr-1, ((*nmaps)++ - srcidx)*sizeof(*ptr));
 
 	ptr->custom = true;
 	sprintf(ptr->path, "custom_maps/%05d.txt", maxnamenum+1);
@@ -600,10 +599,9 @@ int map_copy(struct Map **maps, int *nmaps, int srcidx)
 	ptr->copycount = maxcopycount+1;
 	snprintf(ptr->name, sizeof ptr->name, "Copy %d: %s", ptr->copycount, ptr->origname);
 
-	map_update_sortkey(arr, *nmaps, ptr - arr);
+	map_update_sortkey(*maps, *nmaps, ptr - *maps);
 	map_save(ptr);
-	*maps = arr;
-	return ptr - arr;
+	return ptr - *maps;
 }
 
 void map_delete(struct Map *maps, int *nmaps, int delidx)
