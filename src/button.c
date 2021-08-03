@@ -70,9 +70,17 @@ int button_height(enum ButtonFlags f) { return get_image(f)->h + 2*get_margin(f)
 void button_show(const struct Button *butt)
 {
 	misc_blit_with_center(get_image(butt->flags), butt->destsurf, &butt->center);
+	int textx = butt->center.x, imgx = butt->center.x;
+
 	if (butt->imgpath) {
 		SDL_Surface *s = misc_create_image_surface(butt->imgpath);
-		misc_blit_with_center(s, butt->destsurf, &butt->center);
+		if (butt->text) {
+			imgx += button_width(butt->flags)/2;
+			imgx -= s->w/2;
+			imgx -= 20;  // try to keep inside button
+			textx -= s->w/2;
+		}
+		misc_blit_with_center(s, butt->destsurf, &(SDL_Point){ imgx, butt->center.y });
 		misc_free_image_surface(s);
 	}
 
@@ -97,9 +105,9 @@ void button_show(const struct Button *butt)
 			SDL_Surface *s2 = misc_create_text_surface(line2, black, fontsz);
 
 			misc_blit_with_center(
-				s1, butt->destsurf, &(SDL_Point){ butt->center.x, butt->center.y - s1->h/2 });
+				s1, butt->destsurf, &(SDL_Point){ textx, butt->center.y - s1->h/2 });
 			misc_blit_with_center(
-				s2, butt->destsurf, &(SDL_Point){ butt->center.x, butt->center.y + s2->h/2 });
+				s2, butt->destsurf, &(SDL_Point){ textx, butt->center.y + s2->h/2 });
 
 			SDL_FreeSurface(s1);
 			SDL_FreeSurface(s2);

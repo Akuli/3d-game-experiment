@@ -33,7 +33,7 @@ $convert huge-right.png -resize 30x30 right.png
 $convert huge-right.png -resize 30x30 -rotate 90 down.png
 $convert huge-right.png -resize 30x30 -rotate 180 left.png
 $convert huge-right.png -resize 30x30 -rotate 270 up.png
-$convert huge-enemy.png -resize 50x50 enemy.png
+$convert huge-enemy.png -resize 45x45 enemy.png
 
 cd ../listbox
 $convert huge/normal.png -scale '500x25!' normal.png
