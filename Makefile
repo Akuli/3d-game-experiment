@@ -27,6 +27,7 @@ TESTS_OBJ := $(TESTS_SRC:%.c=obj/%.o)
 # tests/test_ellipsoidbump.c includes src/ellipsoidbump.c, don't link both of them
 TESTS_LINK_OBJ := $(TESTS_OBJ) $(filter-out obj/src/main.o obj/src/ellipsoidbump.o, $(OBJ))
 
+RUN ?= true
 
 all: $(EXEDIR)/game$(EXESUFFIX) test checkassets
 
@@ -57,7 +58,7 @@ generated/run_tests.h: $(TESTS_OBJ)
 
 .PHONY: test
 test: $(EXEDIR)/testrunner$(EXESUFFIX)
-	$(RUN) ./$<
+	if [ $(RUN) = true ]; then ./$<; fi
 
 .PHONY: iwyu
 iwyu:

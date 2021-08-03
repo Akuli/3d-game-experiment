@@ -15,7 +15,7 @@ export GUI_LDFLAGS=-mwindows    # don't show cmd while playing game
 export EXEDIR=build
 export LDFLAGS=-Lbuild
 export EXESUFFIX=.exe
-export RUN=wine
+export RUN=false
 export FILES_TO_COPY=$(echo \
     assets \
     libs/SDL2-*/$ARCH-w64-mingw32/bin/SDL2.dll \
