@@ -10,6 +10,7 @@ void test_glob_success(void)
 	misc_mkdir("generated/testdata");
 	misc_mkdir("generated/testdata/subdir");
 
+	fclose(fopen("generated/testdata/x.py", "w"));
 	fclose(fopen("generated/testdata/a.txt", "w"));
 	fclose(fopen("generated/testdata/c.txt", "w"));
 	fclose(fopen("generated/testdata/b.txt", "w"));
@@ -21,10 +22,15 @@ void test_glob_success(void)
 	assert(glob("generated/testdata/*.txt", GLOB_APPEND, NULL, &gl) == 0);
 
 	const char *exp[] = {
+		// testdata/subdir/*
 		"generated/testdata/subdir/lol",
+		// testdata/*
 		"generated/testdata/a.txt",
 		"generated/testdata/b.txt",
 		"generated/testdata/c.txt",
+		"generated/testdata/subdir",
+		"generated/testdata/x.py",
+		// testdata/*.txt
 		"generated/testdata/a.txt",
 		"generated/testdata/b.txt",
 		"generated/testdata/c.txt",
