@@ -48,7 +48,7 @@ jobs:
         tar xf SDL2-*
         tar xf SDL2_mixer-*
         tar xf SDL2_ttf-*
-    - run: source winbuildenv && make -j2 build/game.exe
+    - run: source winbuildenv && make -j2 build/game.exe build/test.exe
     - uses: actions/upload-artifact@v2
       with:
         name: windows-build
@@ -62,3 +62,4 @@ jobs:
       with:
         name: windows-build
     - run: dir
+    - run: test.exe
