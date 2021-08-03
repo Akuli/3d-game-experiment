@@ -6,25 +6,38 @@
 
 void test_glob_success(void)
 {
-	// TODO: these generate warnings when dirs exist
 	misc_mkdir("generated");
 	misc_mkdir("generated/testdata");
+	misc_mkdir("generated/testdata/subdir");
 
-	fclose(fopen("generated/testdata/a", "w"));
-	fclose(fopen("generated/testdata/c", "w"));
-	fclose(fopen("generated/testdata/b", "w"));
+	fclose(fopen("generated/testdata/x.py", "w"));
+	fclose(fopen("generated/testdata/a.txt", "w"));
+	fclose(fopen("generated/testdata/c.txt", "w"));  // Messy order to ensure it gets sorted
+	fclose(fopen("generated/testdata/b.txt", "w"));
+	fclose(fopen("generated/testdata/subdir/lol", "w"));
 
 	glob_t gl;
-	assert(glob("README.*", 0, NULL, &gl) == 0);
+	assert(glob("generated/testdata/subdir/*", 0, NULL, &gl) == 0);
 	assert(glob("generated/testdata/*", GLOB_APPEND, NULL, &gl) == 0);
-	assert(glob("assets/sounds/farts/*5.wav", GLOB_APPEND, NULL, &gl) == 0);
+	assert(glob("generated/testdata/*.txt", GLOB_APPEND, NULL, &gl) == 0);
 
-	assert(gl.gl_pathc == 5);
-	assert(strcmp(gl.gl_pathv[0], "README.md") == 0);
-	assert(strcmp(gl.gl_pathv[1], "generated/testdata/a") == 0);
-	assert(strcmp(gl.gl_pathv[2], "generated/testdata/b") == 0);
-	assert(strcmp(gl.gl_pathv[3], "generated/testdata/c") == 0);
-	assert(strcmp(gl.gl_pathv[4], "assets/sounds/farts/fart5.wav") == 0);
+	const char *exp[] = {
+		// testdata/subdir/*
+		"generated/testdata/subdir/lol",
+		// testdata/*
+		"generated/testdata/a.txt",
+		"generated/testdata/b.txt",
+		"generated/testdata/c.txt",
+		"generated/testdata/subdir",
+		"generated/testdata/x.py",
+		// testdata/*.txt
+		"generated/testdata/a.txt",
+		"generated/testdata/b.txt",
+		"generated/testdata/c.txt",
+	};
+	assert(sizeof(exp)/sizeof(exp[0]) == gl.gl_pathc);
+	for (int i = 0; i < gl.gl_pathc; i++)
+		assert(strcmp(exp[i], gl.gl_pathv[i]) == 0);
 
 	globfree(&gl);
 }

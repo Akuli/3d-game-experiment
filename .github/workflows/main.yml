@@ -8,7 +8,7 @@ env:
   APT_PACKAGES: "gcc make libsdl2-dev libsdl2-mixer-dev libsdl2-ttf-dev"
 
 jobs:
-  compile-and-test:
+  linux-build-and-test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -34,7 +34,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: git submodule init && git submodule update
-    - run: sudo apt install make mingw-w64 wine   # TODO: don't use wine, github actions supports windows
+    - run: sudo apt install make mingw-w64
     # Download links used (choose mingw instead of visual studio):
     #  https://www.libsdl.org/download-2.0.php
     #  https://www.libsdl.org/projects/SDL_mixer/
@@ -53,3 +53,13 @@ jobs:
       with:
         name: windows-build
         path: build
+
+  windows-test:
+    runs-on: windows-latest
+    needs: windows-build
+    steps:
+    - uses: actions/download-artifact@v2
+      with:
+        name: windows-build
+    - run: dir
+    - run: .\testrunner.exe
