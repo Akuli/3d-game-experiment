@@ -34,7 +34,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: git submodule init && git submodule update
-    - run: sudo apt install make mingw-w64 wine   # TODO: don't use wine, github actions supports windows
+    - run: sudo apt install make mingw-w64
     # Download links used (choose mingw instead of visual studio):
     #  https://www.libsdl.org/download-2.0.php
     #  https://www.libsdl.org/projects/SDL_mixer/
@@ -48,8 +48,16 @@ jobs:
         tar xf SDL2-*
         tar xf SDL2_mixer-*
         tar xf SDL2_ttf-*
-    - run: source winbuildenv && make -j2
+    - run: source winbuildenv && make -j2 build/game.exe
     - uses: actions/upload-artifact@v2
       with:
         name: windows-build
         path: build
+
+  windows-test:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/download-artifact@v2
+      with:
+        name: windows-build
+    - run: dir
