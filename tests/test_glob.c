@@ -12,7 +12,7 @@ void test_glob_success(void)
 
 	fclose(fopen("generated/testdata/x.py", "w"));
 	fclose(fopen("generated/testdata/a.txt", "w"));
-	fclose(fopen("generated/testdata/c.txt", "w"));
+	fclose(fopen("generated/testdata/c.txt", "w"));  // Messy order to ensure it gets sorted
 	fclose(fopen("generated/testdata/b.txt", "w"));
 	fclose(fopen("generated/testdata/subdir/lol", "w"));
 
