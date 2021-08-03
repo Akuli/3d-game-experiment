@@ -62,4 +62,4 @@ jobs:
       with:
         name: windows-build
     - run: dir
-    - run: testrunner.exe
+    - run: .\testrunner.exe
