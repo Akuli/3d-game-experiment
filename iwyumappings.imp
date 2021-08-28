@@ -1,25 +1,4 @@
-# https://github.com/include-what-you-use/include-what-you-use/blob/master/docs/IWYUMappings.md
-# I don't understand what "private" and "public" do below
-
 [
-	# replace e.g. "SDL_events.h" with just <SDL2/SDL.h>
-	# but don't touch e.g. SDL_ttf.h, it's not exported in SDL2.h
-	{ include: ["\"SDL_assert.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL_error.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL_events.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL_keyboard.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL_log.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL_pixels.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL_rect.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL_scancode.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL_surface.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL_timer.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL_video.h\"", "private", "<SDL2/SDL.h>", "public"] },
-	{ include: ["\"SDL_stdinc.h\"", "private", "<SDL2/SDL.h>", "public"] },
-
-	# custom glob
-	{ include: ["<glob.h>", "private", "\"glob.h\"", "public"] },
-
 	# needed on github actions, idk why
 	{ include: ["<bits/types/struct_tm.h>", "private", "<time.h>", "public"] },
 
