@@ -70,20 +70,26 @@ static void read_metadata(FILE *f, struct Map *map)
 
 	// Metadata section
 	while (peek_one_char(f) != ' ') {
-		char line[100];
+		char line[100 + sizeof map->name];
 		if (!read_line(line, sizeof line, f))
 			log_printf_abort("unexpected EOF while reading metadata");
 
-		if (strstr(line, "Name=") == line)
-			snprintf(map->name, sizeof map->name, "%s", strstr(line, "=") + 1);
-		else if (strstr(line, "OriginalName=") == line)
-			snprintf(map->origname, sizeof map->origname, "%s", strstr(line, "=") + 1);
-		else if (strstr(line, "CopyCount=") == line)
-			map->copycount = atoi(strstr(line, "=") + 1);
-		else if (strstr(line, "SortKey=") == line)
-			map->sortkey = atof(strstr(line, "=") + 1);
-		else
+		char *eq = strchr(line, '=');
+		if (!eq)
 			log_printf_abort("bad metadata line: %s", line);
+		*eq = '\0';  // line is now the key of "key=value"
+		const char *val = eq+1;
+
+		if (strcmp(line, "Name") == 0)
+			snprintf(map->name, sizeof map->name, "%s", val);
+		else if (strcmp(line, "OriginalName") == 0)
+			snprintf(map->origname, sizeof map->origname, "%s", val);
+		else if (strcmp(line, "CopyCount") == 0)
+			map->copycount = atoi(val);
+		else if (strcmp(line, "SortKey") == 0)
+			map->sortkey = atof(val);
+		else
+			log_printf_abort("unknown metadata key: %s", line);
 	}
 
 	if (!isfinite(map->sortkey))
@@ -98,7 +104,11 @@ static const char *read_file_with_trailing_spaces_added(FILE *f, int *nlines)
 	char line[MAX_LINE_LEN + 1];
 	int n = 0;
 	while (read_line(line, sizeof line, f)) {
-		sprintf(res + strlen(res), "%-*s\n", (int)(MAX_LINE_LEN - strlen("\n")), line);
+		while (strlen(line) < MAX_LINE_LEN-1)
+			strcat(line, " ");
+		strcat(line, "\n");
+		strcat(res, line);
+
 		SDL_assert(n < MAX_LINE_COUNT);
 		n++;
 	}
@@ -479,17 +489,16 @@ static void set_char(char *data, int linesz, int nlines, int x, int z, char c, i
 void map_save(const struct Map *map)
 {
 	SDL_assert(map->custom);
-	int linesz = strlen("|--")*map->xsize + strlen("|\n");
+	int linesz = strlen("|--")*map->xsize + strlen("|") + 1;
 	int nlines = 2*map->zsize + 1;
 
-	char *data = malloc(linesz*nlines + 1);
+	char *data = malloc(linesz*nlines);
 	if (!data)
 		log_printf_abort("not enough memory");
 
-	data[linesz*nlines] = '\0';
 	memset(data, ' ', linesz*nlines);
 	for (int lineno = 0; lineno < nlines; lineno++)
-		data[lineno*linesz + (linesz-1)] = '\n';
+		data[lineno*linesz + (linesz-1)] = '\0';
 
 	for (const struct Wall *w = map->walls; w < &map->walls[map->nwalls]; w++) {
 		switch(w->dir) {
@@ -508,26 +517,28 @@ void map_save(const struct Map *map)
 	for (int i = 0; i < map->nenemylocs; i++)
 		set_char(data, linesz, nlines, map->enemylocs[i].x, map->enemylocs[i].z, 'e', 1);
 
-	// Can get truncated if all data in one log message, maybe limitation in sdl2 logging
 	log_printf("Writing to \"%s\"", map->path);
-	log_printf("Name=%s", map->name);
-	log_printf("OriginalName=%s", map->origname);
-	log_printf("CopyCount=%d", map->copycount);
-	log_printf("SortKey=%.10f", map->sortkey);
-	for (int i = 0; i < nlines; i++)
-		log_printf("%.*s", linesz, data+(i*linesz));
-
 	misc_mkdir("custom_maps");  // map->path is like "custom_maps/00006.txt"
 	FILE *f = fopen(map->path, "w");
 	if (!f)
 		log_printf_abort("opening \"%s\" failed: %s", map->path, strerror(errno));
 
-	int ret = fprintf(
-		f, "Name=%s\nOriginalName=%s\nCopyCount=%d\nSortKey=%.10f\n%s",
-		map->name, map->origname, map->copycount, map->sortkey, data);
-	if (ret < 0)
-		log_printf_abort("writing to \"%s\" failed: %s", map->path, strerror(errno));
+	#define write_and_log_line(...) do{ \
+		log_printf(__VA_ARGS__); \
+		if (fprintf(f, __VA_ARGS__) < 0 || fprintf(f, "\n") < 0) \
+			log_printf_abort("writing to \"%s\" failed: %s", map->path, strerror(errno)); \
+	} while(0)
 
+	write_and_log_line("Name=%s", map->name);
+	write_and_log_line("OriginalName=%s", map->origname);
+	write_and_log_line("CopyCount=%d", map->copycount);
+	write_and_log_line("SortKey=%.10f", map->sortkey);
+
+	// log get truncated if all data in one printf, maybe limitation in sdl2 logging
+	for (int i = 0; i < nlines; i++)
+		write_and_log_line("%s", data+(i*linesz));
+
+	#undef write_and_log_line
 	fclose(f);
 	free(data);
 }
