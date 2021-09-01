@@ -105,10 +105,5 @@ void ellipsoid_drawcolumn(
 	const struct Ellipsoid *el, const struct EllipsoidXCache *xcache,
 	int ymin, int ymax);
 
-bool ellipsoid_intersect(const struct Ellipsoid *el1, const struct Ellipsoid *el2);
-
-// Move ellipsoids so that they no longer intersect
-void ellipsoid_move_apart(struct Ellipsoid *el1, struct Ellipsoid *el2);
-
 
 #endif  // ELLIPSOID_H

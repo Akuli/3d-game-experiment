@@ -7,6 +7,7 @@
 #include "ellipsoid.h"
 #include "enemy.h"
 #include "guard.h"
+#include "intersect.h"
 #include "log.h"
 #include "looptimer.h"
 #include "max.h"
@@ -170,7 +171,7 @@ static void handle_players_bumping_enemies(struct GameState *gs)
 {
 	for (int p = 0; p < 2; p++) {
 		for (int e = gs->nenemies - 1; e >= 0; e--) {
-			if (ellipsoid_intersect(&gs->players[p].ellipsoid, &gs->enemies[e].ellipsoid)) {
+			if (intersect_check_el_el(&gs->players[p].ellipsoid, &gs->enemies[e].ellipsoid)) {
 				log_printf(
 					"enemy %d/%d hits player %d (%d guards)",
 					e, gs->nenemies,
@@ -193,7 +194,7 @@ static void handle_enemies_bumping_unpicked_guards(struct GameState *gs)
 {
 	for (int e = gs->nenemies - 1; e >= 0; e--) {
 		for (int u = gs->n_unpicked_guards - 1; u >= 0; u--) {
-			if (ellipsoid_intersect(&gs->enemies[e].ellipsoid, &gs->unpicked_guards[u])) {
+			if (intersect_check_el_el(&gs->enemies[e].ellipsoid, &gs->unpicked_guards[u])) {
 				log_printf("enemy %d/%d destroys unpicked guard %d/%d",
 					e, gs->nenemies, u, gs->n_unpicked_guards);
 				sound_play("farts/fart*.wav");
@@ -207,7 +208,7 @@ static void handle_players_bumping_unpicked_guards(struct GameState *gs)
 {
 	for (int p = 0; p < 2; p++) {
 		for (int u = gs->n_unpicked_guards - 1; u >= 0; u--) {
-			if (ellipsoid_intersect(&gs->players[p].ellipsoid, &gs->unpicked_guards[u])) {
+			if (intersect_check_el_el(&gs->players[p].ellipsoid, &gs->unpicked_guards[u])) {
 				log_printf(
 					"player %d (%d guards) picks unpicked guard %d/%d",
 					p, gs->players[p].nguards, u, gs->n_unpicked_guards);
@@ -315,7 +316,7 @@ enum MiscState play_the_game(
 		for (int i = 0; i < 2; i++)
 			player_eachframe(&gs.players[i], map);
 
-		ellipsoid_move_apart(&gs.players[0].ellipsoid, &gs.players[1].ellipsoid);
+		intersect_move_el_el(&gs.players[0].ellipsoid, &gs.players[1].ellipsoid);
 		handle_players_bumping_enemies(&gs);
 		handle_enemies_bumping_unpicked_guards(&gs);
 		handle_players_bumping_unpicked_guards(&gs);

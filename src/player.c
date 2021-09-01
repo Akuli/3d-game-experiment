@@ -3,6 +3,7 @@
 #include <SDL2/SDL.h>
 #include "ellipsoid.h"
 #include "guard.h"
+#include "intersect.h"
 #include "mathstuff.h"
 #include "map.h"
 #include "sound.h"
@@ -95,7 +96,7 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 	plr->ellipsoid.botcenter.y = y;
 
 	for (int i = 0; i < map->nwalls; i++)
-		wall_bumps_ellipsoid(&map->walls[i], &plr->ellipsoid);
+		intersect_move_el_wall(&plr->ellipsoid, &map->walls[i]);
 	keep_ellipsoid_inside_map(&plr->ellipsoid, map);
 
 	Vec3 diff = { 0, 0, CAMERA_BEHIND_PLAYER };

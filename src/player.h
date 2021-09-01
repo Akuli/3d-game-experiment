@@ -6,9 +6,10 @@
 #include "camera.h"
 #include "ellipsoid.h"
 #include "map.h"
+#include "wall.h"
 
 // smallest possible height of the player (then ellipsoid.height is half of this)
-#define PLAYER_HEIGHT_FLAT 0.1f
+#define PLAYER_HEIGHT_FLAT WALL_Y_MIN   // allow players to go under the wall
 
 /*
 If botradius is just a little bit more than 0.25, then two players can be squeezed
