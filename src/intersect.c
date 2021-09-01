@@ -48,7 +48,7 @@ static enum Intersect intersect_ellipsoids_in_2d(
 	}
 
 	/*
-	We also need a line (disk in 3D) from the same height in the lower ellipsoid.
+	We also need a line (circle in 3D) from the same height in the lower ellipsoid.
 	It is marked as dashes above. Its ends (x,y) satisfy:
 		((x - lcenter.x)/la)^2 + ((y - lcenter.y)/lb)^2 = 1
 		y = ucenter.y
