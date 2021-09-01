@@ -50,10 +50,10 @@ static float get_jump_height(int jumpframe)
 	return a*(time - 0)*(time - JUMP_DURATION_SEC);
 }
 
-static float get_y_radius(const struct Player *plr)
+static float get_height(const struct Player *plr)
 {
 	if (plr->flat)   // if flat and jumping, then do this
-		return PLAYER_HEIGHT_FLAT / 2;
+		return PLAYER_HEIGHT_FLAT;
 
 	return PLAYER_HEIGHT_NOFLAT + 0.3f*get_jump_height(plr->jumpframe);
 }
@@ -90,7 +90,7 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 	}
 
 	plr->ellipsoid.botradius = PLAYER_BOTRADIUS;
-	plr->ellipsoid.height = get_y_radius(plr);
+	plr->ellipsoid.height = get_height(plr);
 	ellipsoid_update_transforms(&plr->ellipsoid);
 
 	plr->ellipsoid.botcenter.y = y;
