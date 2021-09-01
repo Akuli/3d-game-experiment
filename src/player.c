@@ -92,7 +92,7 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 	plr->ellipsoid.yradius = get_y_radius(plr);
 	ellipsoid_update_transforms(&plr->ellipsoid);
 
-	plr->ellipsoid.center.y = y + plr->ellipsoid.yradius;
+	plr->ellipsoid.center.y = y;
 
 	for (int i = 0; i < map->nwalls; i++)
 		wall_bumps_ellipsoid(&map->walls[i], &plr->ellipsoid);
@@ -147,7 +147,7 @@ void player_drop_guard(struct Player *plr, struct Ellipsoid *arr, int *arrlen)
 		return;
 
 	// Adding the little 1e-5f helps to prevent picking up guard immediately
-	Vec3 dropdiff = { 0, -plr->ellipsoid.yradius, PLAYER_XZRADIUS + GUARD_XZRADIUS + 1e-5f };
+	Vec3 dropdiff = { 0, 0, PLAYER_XZRADIUS + GUARD_XZRADIUS + 1e-5f };
 	vec3_apply_matrix(&dropdiff, plr->cam.cam2world);
 	Vec3 loc = vec3_add(plr->ellipsoid.center, dropdiff);
 

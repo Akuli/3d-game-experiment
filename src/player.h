@@ -19,7 +19,7 @@ walls. If you set xzradius to >0.25, then check that this doesn't happen.
 #define PLAYER_XZRADIUS 0.4f
 
 // isn't correct when player is flat
-#define PLAYER_YRADIUS_NOFLAT 0.7f
+#define PLAYER_YRADIUS_NOFLAT 1.3f
 
 struct Player {
 	struct Ellipsoid ellipsoid;
