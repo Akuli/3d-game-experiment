@@ -45,10 +45,11 @@ An Ellipsoid is a stretched ball shifted by the center vector, as in
 
 So, we take the origin-centered unit ball x^2+y^2+z^2=1, stretch it in
 x and z directions by xzradius and in y direction by yradius, and move
-it to change the center.
+it to change the center. We also hide the lower half, i.e. the part
+with y < center.y.
 */
 struct Ellipsoid {
-	Vec3 center;
+	Vec3 center;  // TODO: rename to bottomcenter
 	const struct EllipsoidPic *epic;
 	bool highlighted;
 
@@ -103,22 +104,10 @@ void ellipsoid_drawcolumn(
 	const struct Ellipsoid *el, const struct EllipsoidXCache *xcache,
 	int ymin, int ymax);
 
-/*
-Returns how much ellipsoids should be moved apart from each other to make them not
-intersect. The moving should happen in xz plane direction (no moving vertically).
-Never returns negative. If this returns 0, then the ellipsoids don't intersect
-each other.
+bool ellipsoid_intersect(const struct Ellipsoid *el1, const struct Ellipsoid *el2);
 
-Currently this does not account for the fact that the lower half of an
-ellipsoid can be hidden.
-*/
-float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid *el2);
-
-/*
-Move each ellipsoid away from the other one by half of the given amount without
-changing y coordinate of location
-*/
-void ellipsoid_move_apart(struct Ellipsoid *el1, struct Ellipsoid *el2, float mv);
+// Move ellipsoids so that they no longer intersect
+void ellipsoid_move_apart(struct Ellipsoid *el1, struct Ellipsoid *el2);
 
 
 #endif  // ELLIPSOID_H

@@ -340,23 +340,3 @@ void ellipsoid_update_transforms(struct Ellipsoid *el)
 		mat3_rotation_xz(el->angle));
 	el->transform_inverse = mat3_inverse(el->transform);
 }
-
-void ellipsoid_move_apart(struct Ellipsoid *el1, struct Ellipsoid *el2, float mv)
-{
-	SDL_assert(mv >= 0);
-	Vec3 from1to2 = vec3_sub(el2->center, el1->center);
-	from1to2.y = 0;   // don't move in y direction
-	if (vec3_lengthSQUARED(from1to2) < 1e-5f) {
-		/*
-		I have never seen this actually happening, because this function prevents
-		going under another player. Players could be also lined up by jumping
-		over another player and having the luck to get it perfectly aligned...
-		*/
-		log_printf("ellipsoids line up in y direction, doing dumb thing to avoid divide by zero");
-		from1to2 = (Vec3){1,0,0};
-	}
-
-	from1to2 = vec3_withlength(from1to2, mv/2);
-	vec3_add_inplace(&el2->center, from1to2);
-	vec3_sub_inplace(&el1->center, from1to2);
-}
