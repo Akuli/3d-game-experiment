@@ -39,7 +39,7 @@ void ellipsoidpic_load(struct EllipsoidPic *epic, const char *path, const SDL_Pi
 struct EllipsoidPic *const *ellipsoidpic_loadmany(int *n, const char *globpat, const SDL_PixelFormat *fmt);
 
 /*
-An Ellipsoid is a stretched ball around the center vector, as in
+An Ellipsoid is a stretched ball around the center vector:
 
 	((x - center.x) / botradius)^2 + ((y - center.y) / height)^2 + ((z - center.z) / botradius)^2 = 1
 

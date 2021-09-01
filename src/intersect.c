@@ -47,18 +47,15 @@ static enum Intersect intersect_ellipsoids_in_2d(
 	}
 
 	/*
-	We also need a line (disk in 3D) from the same height in the lower ellipsoid.
+	We also need a line (circle in 3D) from the same height in the lower ellipsoid.
 	It is marked as dashes above. Its ends (x,y) satisfy:
 		((x - lcenter.x)/la)^2 + ((y - lcenter.y)/lb)^2 = 1
 		y = ucenter.y
 	*/
 	float halflinelen = la*sqrtf(1 - (botdiff*botdiff)/(lb*lb));
 
-	float overlap = (ua + halflinelen) - fabsf(ucenter.x - lcenter.x);
-	if (overlap < 0)
-		return I_NONE;
-	*olap = overlap;
-	return I_SIDE;
+	*olap = (ua + halflinelen) - fabsf(ucenter.x - lcenter.x);
+	return *olap<0 ? I_NONE : I_SIDE;
 }
 
 static enum Intersect intersect_upper_and_lower_ellipsoids(
@@ -182,8 +179,7 @@ void intersect_move_el_wall(struct Ellipsoid *el, const struct Wall *w)
 		<=	diam(w)/2       + |p - bottom_center(el)|    (because p is in wall)
 		<=	diam(w)/2       + max(botradius, height)     (because p is in ellipsoid)
 
-	If this is not the case, then we can't have any intersections. We use
-	this to optimize a common case.
+	If this is not the case, then we can't have any intersections.
 	*/
 	float diam = hypotf(WALL_Y_MAX - WALL_Y_MIN, 1);
 	float lenbound = diam/2 + max(el->botradius, el->height);
@@ -198,7 +194,7 @@ void intersect_move_el_wall(struct Ellipsoid *el, const struct Wall *w)
 		ensure_circle_not_hitting_wall(&el->botcenter, el->botradius, w);
 	} else {
 		/*
-		For the circle, use a slice of the ellipsoid at y=Y_MIN
+		Use a slice of the ellipsoid as the circle:
 		     ,.----..
 		   /          \
 		 /--------------\------- y=WALL_Y_MIN
