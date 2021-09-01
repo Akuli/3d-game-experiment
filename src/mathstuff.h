@@ -32,7 +32,6 @@ inline void vec3_add_inplace(Vec3 *v, Vec3 w) { v->x += w.x; v->y += w.y; v->z +
 inline void vec3_sub_inplace(Vec3 *v, Vec3 w) { v->x -= w.x; v->y -= w.y; v->z -= w.z; }
 inline Vec3 vec3_mul_float(Vec3 v, float f) { return (Vec3){ v.x*f, v.y*f, v.z*f }; }
 inline float vec3_dot(Vec3 v, Vec3 w) { return v.x*w.x + v.y*w.y + v.z*w.z; }
-inline float vec2_dot(Vec2 v, Vec2 w) { return v.x*w.x + v.y*w.y; }
 
 /*
 Returns |v|^2. Function name has SQUARED in capital letters to make sure you
