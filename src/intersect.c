@@ -55,11 +55,8 @@ static enum Intersect intersect_ellipsoids_in_2d(
 	*/
 	float halflinelen = la*sqrtf(1 - (botdiff*botdiff)/(lb*lb));
 
-	float overlap = (ua + halflinelen) - fabsf(ucenter.x - lcenter.x);
-	if (overlap < 0)
-		return I_NONE;
-	*olap = overlap;
-	return I_SIDE;
+	*olap = (ua + halflinelen) - fabsf(ucenter.x - lcenter.x);
+	return *olap<0 ? I_NONE : I_SIDE;
 }
 
 static enum Intersect intersect_upper_and_lower_ellipsoids(
