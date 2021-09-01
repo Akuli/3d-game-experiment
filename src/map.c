@@ -79,10 +79,9 @@ static void read_metadata(FILE *f, struct Map *map)
 		if (!read_line(line, sizeof line, f))
 			log_printf_abort("unexpected EOF while reading metadata");
 
-		const char *val = strchr(line, '=');
-		if (!val)
+		if (!strchr(line, '='))
 			log_printf_abort("bad metadata line: %s", line);
-		val++;
+		const char *val = strchr(line, '=') + 1;
 
 		if (starts_with(line, "Name="))
 			snprintf(map->name, sizeof map->name, "%s", val);
