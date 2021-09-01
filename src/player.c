@@ -3,6 +3,7 @@
 #include <SDL2/SDL.h>
 #include "ellipsoid.h"
 #include "guard.h"
+#include "intersect.h"
 #include "mathstuff.h"
 #include "map.h"
 #include "sound.h"
@@ -49,18 +50,18 @@ static float get_jump_height(int jumpframe)
 	return a*(time - 0)*(time - JUMP_DURATION_SEC);
 }
 
-static float get_y_radius(const struct Player *plr)
+static float get_height(const struct Player *plr)
 {
 	if (plr->flat)   // if flat and jumping, then do this
-		return PLAYER_HEIGHT_FLAT / 2;
+		return PLAYER_HEIGHT_FLAT;
 
-	return PLAYER_YRADIUS_NOFLAT + 0.3f*get_jump_height(plr->jumpframe);
+	return PLAYER_HEIGHT_NOFLAT + 0.3f*get_jump_height(plr->jumpframe);
 }
 
 static void keep_ellipsoid_inside_map(struct Ellipsoid *el, const struct Map *map)
 {
-	clamp_float(&el->center.x, el->xzradius, map->xsize - el->xzradius);
-	clamp_float(&el->center.z, el->xzradius, map->zsize - el->xzradius);
+	clamp_float(&el->botcenter.x, el->botradius, map->xsize - el->botradius);
+	clamp_float(&el->botcenter.z, el->botradius, map->zsize - el->botradius);
 }
 
 void player_eachframe(struct Player *plr, const struct Map *map)
@@ -74,7 +75,7 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 	if (plr->moving) {
 		float speed = plr->flat ? FLAT_SPEED : NORMAL_SPEED;
 		Vec3 diff = mat3_mul_vec3(plr->cam.cam2world, (Vec3){ 0, 0, -speed/CAMERA_FPS });
-		vec3_add_inplace(&plr->ellipsoid.center, diff);
+		vec3_add_inplace(&plr->ellipsoid.botcenter, diff);
 	}
 
 	float y = 0;
@@ -88,21 +89,21 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 		}
 	}
 
-	plr->ellipsoid.xzradius = PLAYER_XZRADIUS;
-	plr->ellipsoid.yradius = get_y_radius(plr);
+	plr->ellipsoid.botradius = PLAYER_BOTRADIUS;
+	plr->ellipsoid.height = get_height(plr);
 	ellipsoid_update_transforms(&plr->ellipsoid);
 
-	plr->ellipsoid.center.y = y + plr->ellipsoid.yradius;
+	plr->ellipsoid.botcenter.y = y;
 
 	for (int i = 0; i < map->nwalls; i++)
-		wall_bumps_ellipsoid(&map->walls[i], &plr->ellipsoid);
+		intersect_move_el_wall(&plr->ellipsoid, &map->walls[i]);
 	keep_ellipsoid_inside_map(&plr->ellipsoid, map);
 
 	Vec3 diff = { 0, 0, CAMERA_BEHIND_PLAYER };
 	vec3_apply_matrix(&diff, mat3_rotation_xz(plr->ellipsoid.angle));
 
 	plr->cam.angle = plr->ellipsoid.angle;
-	plr->cam.location = vec3_add(plr->ellipsoid.center, diff);
+	plr->cam.location = vec3_add(plr->ellipsoid.botcenter, diff);
 	plr->cam.location.y = CAMERA_HEIGHT;
 
 	camera_update_caches(&plr->cam);
@@ -147,9 +148,9 @@ void player_drop_guard(struct Player *plr, struct Ellipsoid *arr, int *arrlen)
 		return;
 
 	// Adding the little 1e-5f helps to prevent picking up guard immediately
-	Vec3 dropdiff = { 0, -plr->ellipsoid.yradius, PLAYER_XZRADIUS + GUARD_XZRADIUS + 1e-5f };
+	Vec3 dropdiff = { 0, 0, PLAYER_BOTRADIUS + GUARD_BOTRADIUS + 1e-5f };
 	vec3_apply_matrix(&dropdiff, plr->cam.cam2world);
-	Vec3 loc = vec3_add(plr->ellipsoid.center, dropdiff);
+	Vec3 loc = vec3_add(plr->ellipsoid.botcenter, dropdiff);
 
 	int n = guard_create_unpickeds_center(arr, arrlen, 1, loc);
 	plr->nguards -= n;
