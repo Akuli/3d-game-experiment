@@ -8,6 +8,7 @@
 #include "map.h"
 #include "wall.h"
 
+// Choose these so that it's not possible to hit an enemy through a wall
 #define PLAYER_HEIGHT_FLAT WALL_Y_MIN   // allow players to go under the wall
 #define PLAYER_BOTRADIUS 0.4f
 
