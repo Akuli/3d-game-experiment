@@ -8,7 +8,7 @@
 #include "map.h"
 #include "wall.h"
 
-// smallest possible height of the player (then ellipsoid.height is half of this)
+// smallest possible height of the player
 #define PLAYER_HEIGHT_FLAT WALL_Y_MIN   // allow players to go under the wall
 
 /*
