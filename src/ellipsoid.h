@@ -71,12 +71,12 @@ Information shared in multiple functions, specific to screen x coordinate
 */
 struct EllipsoidXCache {
 	int screenx;
-	float botcenterscreenx;    // where is ellipsoid->center on screen?
+	float botcenterscreenx;    // where is ellipsoid->botcenter on screen?
 	float xzr;
 	const struct Camera *cam;
 
 	// coordinates are in camera coordinates with Ellipsoid.transform_inverse applied
-	Vec3 ballcenter;        // ellipsoid->center, transformed as described above
+	Vec3 ballcenter;        // ellipsoid->botcenter, transformed as described above
 	struct Plane xplane;    // plane of points that are visible at given screen x
 	float dSQUARED;         // (distance between xplane and ballcenter)^2
 };
