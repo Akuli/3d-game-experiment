@@ -24,8 +24,7 @@ COPIED_FILES := $(addprefix $(EXEDIR)/,$(notdir $(FILES_TO_COPY)))
 OBJ := obj/stb_image.o $(SRC:%.c=obj/%.o)
 TESTS_OBJ := $(TESTS_SRC:%.c=obj/%.o)
 
-# tests/test_ellipsoidbump.c includes src/ellipsoidbump.c, don't link both of them
-TESTS_LINK_OBJ := $(TESTS_OBJ) $(filter-out obj/src/main.o obj/src/ellipsoidbump.o, $(OBJ))
+TESTS_LINK_OBJ := $(TESTS_OBJ) $(filter-out obj/src/main.o, $(OBJ))
 
 RUN ?= true
 
