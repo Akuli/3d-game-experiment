@@ -67,11 +67,6 @@ Map editor's delete confirming dialog:
   of the wall before the each-frame-running collision check. Current
   workaround is to not make the players go so fast that this would
   happen at 30fps. (Yes, I know that 30fps is really slow for any gamer)
-- Unpicked guards that are far above ground can be picked up again without
-  actually touching them. The reason is that guards are ellipsoids (stretched
-  balls) that also have a hidden lower half, but the collision checking isn't
-  aware of that lower half. Unpicked guards can be put high up by either dropping
-  many guards to exactly the same place or jumping and dropping.
 
 
 ## Feature Ideas
