@@ -162,7 +162,7 @@ static void fill_xcache(
 	}
 }
 
-static void calculate_yminmax_without_hidelowerhalf(const struct Ellipsoid *el, const struct EllipsoidXCache *xcache, int *ymin, int *ymax)
+static int calculate_ymin(const struct Ellipsoid *el, const struct EllipsoidXCache *xcache)
 {
 	// center and radiusSQUARED describe intersection of xplane and unit ball, which is a circle
 	float len = sqrtf(xcache->dSQUARED);
@@ -177,10 +177,8 @@ static void calculate_yminmax_without_hidelowerhalf(const struct Ellipsoid *el, 
 	Vec3 A, B;
 	tangent_line_intersections(xcache->xplane.normal, center, radiusSQUARED, &A, &B);
 
-	// Trial and error has been used to figure out which is bigger and which is smaller...
-	*ymax = (int)ceilf(camera_point_cam2screen(xcache->cam, mat3_mul_vec3(el->transform, A)).y);
-	*ymin = (int)      camera_point_cam2screen(xcache->cam, mat3_mul_vec3(el->transform, B)).y;
-	SDL_assert(*ymin <= *ymax);
+	// Trial and error has been used to figure out which of A and B gives the correct result
+	return (int) camera_point_cam2screen(xcache->cam, mat3_mul_vec3(el->transform, B)).y;
 }
 
 static int calculate_center_y(const struct Ellipsoid *el, const struct EllipsoidXCache *xcache)
@@ -223,9 +221,8 @@ void ellipsoid_yminmax(
 	int *ymin, int *ymax)
 {
 	fill_xcache(el, cam, x, xcache);
-	calculate_yminmax_without_hidelowerhalf(el, xcache, ymin, ymax);
-	if (el->epic->hidelowerhalf)
-		*ymax = calculate_center_y(el, xcache);
+	*ymin = calculate_ymin(el, xcache);
+	*ymax = calculate_center_y(el, xcache);
 
 	clamp(ymin, 0, xcache->cam->surface->h - 1);
 	clamp(ymax, 0, xcache->cam->surface->h - 1);
@@ -312,7 +309,7 @@ void ellipsoid_drawcolumn(
 
 	int ex[CAMERA_SCREEN_HEIGHT], ey[CAMERA_SCREEN_HEIGHT], ez[CAMERA_SCREEN_HEIGHT];
 	LOOP ex[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE, vecx[i]);
-	LOOP ey[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE, vecy[i]);
+	LOOP ey[i] = (int)linear_map(0,  1, 0, ELLIPSOIDPIC_SIDE, vecy[i]);
 	LOOP ez[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE, vecz[i]);
 
 	// just in case floats do something weird, e.g. division by zero

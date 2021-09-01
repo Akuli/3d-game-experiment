@@ -29,9 +29,6 @@ struct EllipsoidPic {
 	Here highlighted is usually 0, but can be 1 for different color.
 	*/
 	uint32_t cubepixels[2][ELLIPSOIDPIC_SIDE][ELLIPSOIDPIC_SIDE][ELLIPSOIDPIC_SIDE];
-
-	// if true, then only the upper half of the ellipsoid is visible
-	bool hidelowerhalf;
 };
 
 // epic lmao

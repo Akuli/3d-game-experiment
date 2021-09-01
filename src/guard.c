@@ -18,9 +18,7 @@ void guard_init_epic(const SDL_PixelFormat *fmt)
 	static bool ready = false;
 	SDL_assert(!ready);
 	ready = true;
-
 	ellipsoidpic_load(&guard_ellipsoidpic, "assets/guard.png", fmt);
-	guard_ellipsoidpic.hidelowerhalf = true;
 }
 
 // this function could be slow with many nonpicked guards
