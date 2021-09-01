@@ -5,8 +5,8 @@
 #include "ellipsoid.h"
 #include "map.h"
 
-#define ENEMY_XZRADIUS 0.45f
-#define ENEMY_YRADIUS  1.2f
+#define ENEMY_BOTRADIUS 0.45f
+#define ENEMY_HEIGHT  1.2f
 
 enum EnemyDir {
 	ENEMY_DIR_XPOS,

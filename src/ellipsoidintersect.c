@@ -65,7 +65,7 @@ static enum Intersect intersect_in_2d_with_amount_pointer(
 static enum Intersect intersect_upper_and_lower(
 	const struct Ellipsoid *upper, const struct Ellipsoid *lower, float *olap)
 {
-	Vec3 dir = vec3_sub(upper->center, lower->center);
+	Vec3 dir = vec3_sub(upper->botcenter, lower->botcenter);
 	dir.y = 0;
 	dir = vec3_withlength(dir, 1);
 	if (!isfinite(dir.x) || !isfinite(dir.y) || !isfinite(dir.z)) {
@@ -74,18 +74,18 @@ static enum Intersect intersect_upper_and_lower(
 	}
 
 	// Project everything onto a vertical 2D plane going through the centers of the ellipsoids
-	Vec2 ucenter = { vec3_dot(dir, upper->center), upper->center.y };
-	Vec2 lcenter = { vec3_dot(dir, lower->center), lower->center.y };
+	Vec2 ucenter = { vec3_dot(dir, upper->botcenter), upper->botcenter.y };
+	Vec2 lcenter = { vec3_dot(dir, lower->botcenter), lower->botcenter.y };
 	return intersect_in_2d_with_amount_pointer(
-		upper->xzradius, upper->yradius, ucenter,
-		lower->xzradius, lower->yradius, lcenter,
+		upper->botradius, upper->height, ucenter,
+		lower->botradius, lower->height, lcenter,
 		olap);
 }
 
 bool ellipsoid_intersect(const struct Ellipsoid *el1, const struct Ellipsoid *el2)
 {
 	const struct Ellipsoid *upper, *lower;
-	if (el1->center.y > el2->center.y) {
+	if (el1->botcenter.y > el2->botcenter.y) {
 		upper = el1;
 		lower = el2;
 	} else {
@@ -100,7 +100,7 @@ bool ellipsoid_intersect(const struct Ellipsoid *el1, const struct Ellipsoid *el
 void ellipsoid_move_apart(struct Ellipsoid *el1, struct Ellipsoid *el2)
 {
 	struct Ellipsoid *upper, *lower;
-	if (el1->center.y > el2->center.y) {
+	if (el1->botcenter.y > el2->botcenter.y) {
 		upper = el1;
 		lower = el2;
 	} else {
@@ -113,13 +113,13 @@ void ellipsoid_move_apart(struct Ellipsoid *el1, struct Ellipsoid *el2)
 		case I_NONE:
 			break;
 		case I_TOP:
-			upper->center.y += olap;
+			upper->botcenter.y += olap;
 			break;
 		case I_SIDE:
 		{
-			Vec3 low2up = vec3_sub(upper->center, lower->center);
+			Vec3 low2up = vec3_sub(upper->botcenter, lower->botcenter);
 			low2up.y = 0;
-			vec3_add_inplace(&upper->center, vec3_withlength(low2up, olap));
+			vec3_add_inplace(&upper->botcenter, vec3_withlength(low2up, olap));
 			break;
 		}
 	}

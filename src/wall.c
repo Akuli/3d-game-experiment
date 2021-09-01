@@ -72,18 +72,18 @@ void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el)
 		=	|center(w) - p  +  p - center(el)|         (because -p+p = zero vector)
 		<=	|center(w) - p| + |p - center(el)|         (by triangle inequality)
 		<=	diam(w)/2       + |p - center(el)|         (because p is in wall)
-		<=	diam(w)/2       + max(xzradius, yradius)   (because p is in ellipsoid)
+		<=	diam(w)/2       + max(botradius, height)   (because p is in ellipsoid)
 
 	If this is not the case, then we can't have any intersections. We use
 	this to optimize a common case.
 	*/
 	float diam = hypotf(Y_MAX - Y_MIN, 1);
-	float thing = diam/2 + max(el->xzradius, el->yradius);
-	if (vec3_lengthSQUARED(vec3_sub(el->center, wall_center(w))) > thing*thing)
+	float lenbound = diam/2 + max(el->botradius, el->height);
+	if (vec3_lengthSQUARED(vec3_sub(el->botcenter, wall_center(w))) > lenbound*lenbound)
 		return;
 
 	// Switch to coordinates where the ellipsoid is a ball with radius 1
-	Vec3 elcenter = mat3_mul_vec3(el->transform_inverse, el->center);
+	Vec3 elcenter = mat3_mul_vec3(el->transform_inverse, el->botcenter);
 
 	for (int xznum = 0; xznum < WALL_CP_COUNT; xznum++) {
 		for (int ynum = 0; ynum < WALL_CP_COUNT; ynum++) {
@@ -109,8 +109,8 @@ void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el)
 				}
 			}
 
-			vec3_add_inplace(&el->center, diff);
-			elcenter = mat3_mul_vec3(el->transform_inverse, el->center);   // cache invalidation
+			vec3_add_inplace(&el->botcenter, diff);
+			elcenter = mat3_mul_vec3(el->transform_inverse, el->botcenter);   // cache invalidation
 		}
 	}
 }

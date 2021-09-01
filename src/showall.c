@@ -99,7 +99,7 @@ static void setup_ellipsoid_wall_dependency(struct ShowingState *st, ID eid, ID 
 	float z1 = camera_point_world2cam(st->cam, w->top1).z;
 	float z2 = camera_point_world2cam(st->cam, w->top2).z;
 
-	float elcenterz = camera_point_world2cam(st->cam, el->center).z;
+	float elcenterz = camera_point_world2cam(st->cam, el->botcenter).z;
 
 	if (elcenterz < z1 && elcenterz < z2) {
 		// ellipsoid is behind every corner of the wall
@@ -107,7 +107,7 @@ static void setup_ellipsoid_wall_dependency(struct ShowingState *st, ID eid, ID 
 	} else if (elcenterz > z1 && elcenterz > z2) {
 		// in front of every corner of the wall
 		add_dependency(st, wid, eid);
-	} else if (wall_side(w, el->center) == wall_side(w, st->cam->location)) {
+	} else if (wall_side(w, el->botcenter) == wall_side(w, st->cam->location)) {
 		// lined up with wall and on same side of wall as camera
 		add_dependency(st, wid, eid);
 	} else {
@@ -123,8 +123,8 @@ static void setup_same_type_dependency(struct ShowingState *st, ID id1, ID id2)
 
 	switch(ID_TYPE(id1)) {
 		case ID_TYPE_ELLIPSOID:
-			center1 = st->els[ID_INDEX(id1)].center;
-			center2 = st->els[ID_INDEX(id2)].center;
+			center1 = st->els[ID_INDEX(id1)].botcenter;
+			center2 = st->els[ID_INDEX(id2)].botcenter;
 			break;
 
 		case ID_TYPE_WALL:

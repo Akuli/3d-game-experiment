@@ -7,19 +7,19 @@
 #include "ellipsoid.h"
 #include "map.h"
 
-// smallest possible height of the player (then ellipsoid.yradius is half of this)
+// smallest possible height of the player (then ellipsoid.height is half of this)
 #define PLAYER_HEIGHT_FLAT 0.1f
 
 /*
-If xzradius is just a little bit more than 0.25, then two players can be squeezed
+If botradius is just a little bit more than 0.25, then two players can be squeezed
 between walls that are distance 1 apart from each other. They end up going
 partially through the walls. That can happen so much that they hit enemies through
-walls. If you set xzradius to >0.25, then check that this doesn't happen.
+walls. If you set botradius to >0.25, then check that this doesn't happen.
 */
-#define PLAYER_XZRADIUS 0.4f
+#define PLAYER_BOTRADIUS 0.4f
 
 // isn't correct when player is flat
-#define PLAYER_YRADIUS_NOFLAT 1.3f
+#define PLAYER_HEIGHT_NOFLAT 1.3f
 
 struct Player {
 	struct Ellipsoid ellipsoid;

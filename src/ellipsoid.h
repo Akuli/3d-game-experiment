@@ -41,22 +41,23 @@ struct EllipsoidPic *const *ellipsoidpic_loadmany(int *n, const char *globpat, c
 /*
 An Ellipsoid is a stretched ball shifted by the center vector, as in
 
-	((x - center.x) / xzradius)^2 + ((y - center.y) / yradius)^2 + ((z - center.z) / xzradius)^2 = 1.
+	((x - center.x) / botradius)^2 + ((y - center.y) / height)^2 + ((z - center.z) / botradius)^2 = 1
 
-So, we take the origin-centered unit ball x^2+y^2+z^2=1, stretch it in
-x and z directions by xzradius and in y direction by yradius, and move
-it to change the center. We also hide the lower half, i.e. the part
-with y < center.y.
+	y >= center.y
+
+So, we take the origin-centered unit ball x^2+y^2+z^2=1, delete the lower
+half, stretch it in x and z directions by bottom radius and in y direction
+by height, and move it to change the center.
 */
 struct Ellipsoid {
-	Vec3 center;  // TODO: rename to bottomcenter
+	Vec3 botcenter;  // center of bottom circle
 	const struct EllipsoidPic *epic;
 	bool highlighted;
 
 	// call ellipsoid_update_transforms() after changing these
-	float angle;       // radians
-	float xzradius;    // positive
-	float yradius;     // positive
+	float angle;
+	float botradius;
+	float height;
 
 	/*
 	Applying transform to an origin-centered unit ball gives this ellipsoid
@@ -70,7 +71,7 @@ Information shared in multiple functions, specific to screen x coordinate
 */
 struct EllipsoidXCache {
 	int screenx;
-	float ballcenterscreenx;    // where is ellipsoid->center on screen?
+	float botcenterscreenx;    // where is ellipsoid->center on screen?
 	float xzr;
 	const struct Camera *cam;
 

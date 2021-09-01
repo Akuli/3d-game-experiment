@@ -265,7 +265,7 @@ enum MiscState play_the_game(
 				.ellipsoid = {
 					.angle = 0,
 					.epic = plr0pic,
-					.center = { map->playerlocs[0].x + 0.5f, 0, map->playerlocs[0].z + 0.5f },
+					.botcenter = { map->playerlocs[0].x + 0.5f, 0, map->playerlocs[0].z + 0.5f },
 				},
 				.cam = {
 					.screencentery = winsurf->h/4,
@@ -278,7 +278,7 @@ enum MiscState play_the_game(
 				.ellipsoid = {
 					.angle = 0,
 					.epic = plr1pic,
-					.center = { map->playerlocs[1].x + 0.5f, 0, map->playerlocs[1].z + 0.5f }
+					.botcenter = { map->playerlocs[1].x + 0.5f, 0, map->playerlocs[1].z + 0.5f }
 				},
 				.cam = {
 					.screencentery = winsurf->h/4,

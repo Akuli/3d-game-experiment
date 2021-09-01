@@ -11,7 +11,7 @@
 static bool ellipsoid_intersects_plane(const struct Ellipsoid *el, struct Plane pl)
 {
 	// Switch to coordinates where ellipsoid is unit ball (a ball with radius 1)
-	Vec3 center = mat3_mul_vec3(el->transform_inverse, el->center);
+	Vec3 center = mat3_mul_vec3(el->transform_inverse, el->botcenter);
 	plane_apply_mat3_INVERSE(&pl, el->transform);
 
 	return (plane_point_distanceSQUARED(pl, center) < 1);
@@ -91,7 +91,7 @@ bool ellipsoid_visible_xminmax(
 		- Camera is not inside ellipsoid
 		- x/z ratios of all points on ellipsoid surface in camera coords work
 	*/
-	if (!plane_whichside(cam->visplanes[CAMERA_CAMPLANE_IDX], el->center) ||
+	if (!plane_whichside(cam->visplanes[CAMERA_CAMPLANE_IDX], el->botcenter) ||
 		ellipsoid_intersects_plane(el, cam->visplanes[CAMERA_CAMPLANE_IDX]))
 	{
 		return false;
@@ -105,7 +105,7 @@ bool ellipsoid_visible_xminmax(
 		If center is on the wrong side, then it can touch the plane to
 		still be partially visible
 		*/
-		if (!plane_whichside(cam->visplanes[i], el->center) &&
+		if (!plane_whichside(cam->visplanes[i], el->botcenter) &&
 			!ellipsoid_intersects_plane(el, cam->visplanes[i]))
 		{
 			return false;
@@ -113,7 +113,7 @@ bool ellipsoid_visible_xminmax(
 	}
 
 	// switch to camera coordinates
-	Vec3 center = camera_point_world2cam(cam, el->center);
+	Vec3 center = camera_point_world2cam(cam, el->botcenter);
 
 	// A non-tilted plane (i.e. planenormal.x = 0) going through camera at (0,0,0) and center
 	struct Plane pl = { .normal = { 0, center.z, -center.y }, .constant = 0 };
@@ -151,9 +151,9 @@ static void fill_xcache(
 	xcache->xplane = (struct Plane) { .normal = { 1, 0, -xcache->xzr }, .constant = 0 };
 	plane_apply_mat3_INVERSE(&xcache->xplane, el->transform);
 
-	Vec3 ballcenter = camera_point_world2cam(cam, el->center);
+	Vec3 ballcenter = camera_point_world2cam(cam, el->botcenter);
 	xcache->ballcenter = mat3_mul_vec3(el->transform_inverse, ballcenter);
-	xcache->ballcenterscreenx = camera_point_cam2screen(xcache->cam, ballcenter).x;
+	xcache->botcenterscreenx = camera_point_cam2screen(xcache->cam, ballcenter).x;
 
 	xcache->dSQUARED = plane_point_distanceSQUARED(xcache->xplane, xcache->ballcenter);
 	if (xcache->dSQUARED >= 1) {
@@ -166,7 +166,7 @@ static int calculate_ymin(const struct Ellipsoid *el, const struct EllipsoidXCac
 {
 	// center and radiusSQUARED describe intersection of xplane and unit ball, which is a circle
 	float len = sqrtf(xcache->dSQUARED);
-	if (xcache->screenx < xcache->ballcenterscreenx) {
+	if (xcache->screenx < xcache->botcenterscreenx) {
 		// xplane normal vector points to right, but we need to go left instead
 		len = -len;
 	}
@@ -336,7 +336,7 @@ static Mat3 diag(float a, float b, float c)
 void ellipsoid_update_transforms(struct Ellipsoid *el)
 {
 	el->transform = mat3_mul_mat3(
-		diag(el->xzradius, el->yradius, el->xzradius),
+		diag(el->botradius, el->height, el->botradius),
 		mat3_rotation_xz(el->angle));
 	el->transform_inverse = mat3_inverse(el->transform);
 }
