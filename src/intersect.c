@@ -10,7 +10,8 @@ enum Intersect {
 	I_SIDE,  // bottom of one ellipsoid touches side of another
 };
 
-static enum Intersect intersect_ellipsoids_in_2d(
+// olap not meaningful when returns I_NONE
+static enum Intersect intersect_2d_ellipses(
 	float ua, float ub, Vec2 ucenter,
 	float la, float lb, Vec2 lcenter,
 	float *olap)
@@ -72,7 +73,7 @@ static enum Intersect intersect_upper_and_lower_ellipsoids(
 	// Project everything onto a vertical 2D plane going through the centers of the ellipsoids
 	Vec2 ucenter = { vec3_dot(dir, upper->botcenter), upper->botcenter.y };
 	Vec2 lcenter = { vec3_dot(dir, lower->botcenter), lower->botcenter.y };
-	return intersect_ellipsoids_in_2d(
+	return intersect_2d_ellipses(
 		upper->botradius, upper->height, ucenter,
 		lower->botradius, lower->height, lcenter,
 		olap);
