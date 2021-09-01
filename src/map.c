@@ -107,7 +107,11 @@ static const char *read_file_with_trailing_spaces_added(FILE *f, int *nlines)
 	char line[MAX_LINE_LEN + 1];
 	int n = 0;
 	while (read_line(line, sizeof line, f)) {
-		sprintf(res + strlen(res), "%-*s\n", (int)(MAX_LINE_LEN - strlen("\n")), line);
+		while (strlen(line) < MAX_LINE_LEN-1)
+			strcat(line, " ");
+		strcat(line, "\n");
+		strcat(res, line);
+
 		SDL_assert(n < MAX_LINE_COUNT);
 		n++;
 	}
