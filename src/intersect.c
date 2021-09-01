@@ -180,8 +180,7 @@ void intersect_move_el_wall(struct Ellipsoid *el, const struct Wall *w)
 		<=	diam(w)/2       + |p - bottom_center(el)|    (because p is in wall)
 		<=	diam(w)/2       + max(botradius, height)     (because p is in ellipsoid)
 
-	If this is not the case, then we can't have any intersections. We use
-	this to optimize a common case.
+	If this is not the case, then we can't have any intersections.
 	*/
 	float diam = hypotf(WALL_Y_MAX - WALL_Y_MIN, 1);
 	float lenbound = diam/2 + max(el->botradius, el->height);
