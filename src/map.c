@@ -489,7 +489,7 @@ static void set_char(char *data, int linesz, int nlines, int x, int z, char c, i
 void map_save(const struct Map *map)
 {
 	SDL_assert(map->custom);
-	int linesz = strlen("|--")*map->xsize + strlen("|") + sizeof("");
+	int linesz = strlen("|--")*map->xsize + strlen("|") + 1;
 	int nlines = 2*map->zsize + 1;
 
 	char *data = malloc(linesz*nlines);
