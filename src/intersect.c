@@ -2,7 +2,6 @@
 #include <math.h>
 #include <stdbool.h>
 #include <SDL2/SDL.h>
-#include "log.h"
 #include "mathstuff.h"
 
 enum Intersect {

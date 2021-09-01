@@ -5,7 +5,6 @@
 #include <SDL2/SDL.h>
 #include "camera.h"
 #include "mathstuff.h"
-#include "player.h"
 #include "misc.h"
 
 

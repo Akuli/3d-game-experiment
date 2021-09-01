@@ -1,6 +1,7 @@
 #ifndef INTERSECT_H
 #define INTERSECT_H
 
+#include <stdbool.h>
 #include "ellipsoid.h"
 #include "wall.h"
 
