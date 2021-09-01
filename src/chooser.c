@@ -114,7 +114,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 			.onclickdata = plrch,
 		},
 		.cam = {
-			.screencentery = -preview.h / 10,
+			.screencentery = 0,
 			.surface = misc_create_cropped_surface(ch->winsurf, preview),
 			.angle = -(2*pi)/player_nepics * idx,
 		},
