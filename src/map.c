@@ -61,6 +61,11 @@ static int peek_one_char(FILE *f)
 	return c;
 }
 
+static bool starts_with(const char *s, const char *pre)
+{
+	return strstr(s, pre) == s;
+}
+
 static void read_metadata(FILE *f, struct Map *map)
 {
 	strcpy(map->name, "(no name)");  // should never be actually used
@@ -70,18 +75,23 @@ static void read_metadata(FILE *f, struct Map *map)
 
 	// Metadata section
 	while (peek_one_char(f) != ' ') {
-		char line[100];
+		char line[100 + sizeof map->name];
 		if (!read_line(line, sizeof line, f))
 			log_printf_abort("unexpected EOF while reading metadata");
 
-		if (strstr(line, "Name=") == line)
-			snprintf(map->name, sizeof map->name, "%s", strstr(line, "=") + 1);
-		else if (strstr(line, "OriginalName=") == line)
-			snprintf(map->origname, sizeof map->origname, "%s", strstr(line, "=") + 1);
-		else if (strstr(line, "CopyCount=") == line)
-			map->copycount = atoi(strstr(line, "=") + 1);
-		else if (strstr(line, "SortKey=") == line)
-			map->sortkey = atof(strstr(line, "=") + 1);
+		const char *val = strchr(line, '=');
+		if (!val)
+			log_printf_abort("bad metadata line: %s", line);
+		val++;
+
+		if (starts_with(line, "Name="))
+			snprintf(map->name, sizeof map->name, "%s", val);
+		else if (starts_with(line, "OriginalName="))
+			snprintf(map->origname, sizeof map->origname, "%s", val);
+		else if (starts_with(line, "CopyCount="))
+			map->copycount = atoi(val);
+		else if (starts_with(line, "SortKey="))
+			map->sortkey = atof(val);
 		else
 			log_printf_abort("bad metadata line: %s", line);
 	}
