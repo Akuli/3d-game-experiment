@@ -61,11 +61,6 @@ static int peek_one_char(FILE *f)
 	return c;
 }
 
-static bool starts_with(const char *s, const char *pre)
-{
-	return strstr(s, pre) == s;
-}
-
 static void read_metadata(FILE *f, struct Map *map)
 {
 	strcpy(map->name, "(no name)");  // should never be actually used
@@ -79,20 +74,22 @@ static void read_metadata(FILE *f, struct Map *map)
 		if (!read_line(line, sizeof line, f))
 			log_printf_abort("unexpected EOF while reading metadata");
 
-		if (!strchr(line, '='))
+		char *eq = strchr(line, '=');
+		if (!eq)
 			log_printf_abort("bad metadata line: %s", line);
-		const char *val = strchr(line, '=') + 1;
+		*eq = '\0';  // line is now the key of "key=value"
+		const char *val = eq+1;
 
-		if (starts_with(line, "Name="))
+		if (strcmp(line, "Name") == 0)
 			snprintf(map->name, sizeof map->name, "%s", val);
-		else if (starts_with(line, "OriginalName="))
+		else if (strcmp(line, "OriginalName") == 0)
 			snprintf(map->origname, sizeof map->origname, "%s", val);
-		else if (starts_with(line, "CopyCount="))
+		else if (strcmp(line, "CopyCount") == 0)
 			map->copycount = atoi(val);
-		else if (starts_with(line, "SortKey="))
+		else if (strcmp(line, "SortKey") == 0)
 			map->sortkey = atof(val);
 		else
-			log_printf_abort("bad metadata line: %s", line);
+			log_printf_abort("unknown metadata key: %s", line);
 	}
 
 	if (!isfinite(map->sortkey))
