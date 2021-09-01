@@ -195,7 +195,7 @@ void intersect_move_el_wall(struct Ellipsoid *el, const struct Wall *w)
 		ensure_circle_not_hitting_wall(&el->botcenter, el->botradius, w);
 	} else {
 		/*
-		For the circle, use a slice of the ellipsoid at y=Y_MIN
+		Use a slice of the ellipsoid as the circle:
 		     ,.----..
 		   /          \
 		 /--------------\------- y=WALL_Y_MIN
