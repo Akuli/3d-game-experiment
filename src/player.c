@@ -45,7 +45,7 @@ static void keep_ellipsoid_inside_map(struct Ellipsoid *el, const struct Map *ma
 	clamp_float(&el->botcenter.z, el->botradius, map->zsize - el->botradius);
 }
 
-void player_eachframe(struct Player *plr, const struct Map *map)
+void player_eachframe(struct Player *plr, struct Player *other, const struct Map *map)
 {
 	// Don't turn while flat. See beginning of this file for explanation.
 	if (!plr->flat) {
@@ -67,13 +67,17 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 		plr->ellipsoid.botcenter.y = 0;
 	}
 
-	for (const struct Wall *w = &map->walls[0]; w < &map->walls[map->nwalls]; w++)
-		intersect_move_el_wall(&plr->ellipsoid, w);
-	keep_ellipsoid_inside_map(&plr->ellipsoid, map);
-
-	plr->ellipsoid.botradius = PLAYER_BOTRADIUS;  // TODO: don't set each frame?
 	plr->ellipsoid.height = plr->flat ? PLAYER_HEIGHT_FLAT : PLAYER_HEIGHT_NOFLAT;
 	ellipsoid_update_transforms(&plr->ellipsoid);
+
+	for (const struct Wall *w = &map->walls[0]; w < &map->walls[map->nwalls]; w++) {
+		if (intersect_move_el_wall(&plr->ellipsoid, w))
+			plr->yspeed = 0; // stop jumping
+	}
+	if (plr->ellipsoid.botcenter.y >= other->ellipsoid.botcenter.y)
+		if (intersect_move_el_el(&plr->ellipsoid, &other->ellipsoid))
+			plr->yspeed = 0;
+	keep_ellipsoid_inside_map(&plr->ellipsoid, map);
 
 	Vec3 diff = { 0, 0, CAMERA_BEHIND_PLAYER };
 	vec3_apply_matrix(&diff, mat3_rotation_xz(plr->ellipsoid.angle));

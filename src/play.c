@@ -267,6 +267,8 @@ enum MiscState play_the_game(
 					.angle = 0,
 					.epic = plr0pic,
 					.botcenter = { map->playerlocs[0].x + 0.5f, 0, map->playerlocs[0].z + 0.5f },
+					.botradius = PLAYER_BOTRADIUS,
+					.height = PLAYER_HEIGHT_NOFLAT,
 				},
 				.cam = {
 					.screencentery = winsurf->h/4,
@@ -279,7 +281,9 @@ enum MiscState play_the_game(
 				.ellipsoid = {
 					.angle = 0,
 					.epic = plr1pic,
-					.botcenter = { map->playerlocs[1].x + 0.5f, 0, map->playerlocs[1].z + 0.5f }
+					.botcenter = { map->playerlocs[1].x + 0.5f, 0, map->playerlocs[1].z + 0.5f },
+					.botradius = PLAYER_BOTRADIUS,
+					.height = PLAYER_HEIGHT_NOFLAT,
 				},
 				.cam = {
 					.screencentery = winsurf->h/4,
@@ -313,8 +317,8 @@ enum MiscState play_the_game(
 			enemy_eachframe(&gs.enemies[i]);
 		for (int i = 0; i < gs.n_unpicked_guards; i++)
 			guard_unpicked_eachframe(&gs.unpicked_guards[i]);
-		for (int i = 0; i < 2; i++)
-			player_eachframe(&gs.players[i], map);
+		player_eachframe(&gs.players[0], &gs.players[1], map);
+		player_eachframe(&gs.players[1], &gs.players[0], map);
 
 		intersect_move_el_el(&gs.players[0].ellipsoid, &gs.players[1].ellipsoid);
 		handle_players_bumping_enemies(&gs);
