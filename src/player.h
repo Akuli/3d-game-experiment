@@ -31,7 +31,7 @@ extern int player_nepics;
 void player_init_epics(const SDL_PixelFormat *fmt);
 
 // run before showing stuff to user
-void player_eachframe(struct Player *plr, struct Player *other, const struct Map *map);
+void player_eachframe(struct Player *plr, const struct Map *map);
 
 // key press callbacks. dir values: -1 for left, +1 for right
 void player_set_turning(struct Player *plr, int dir, bool turn);

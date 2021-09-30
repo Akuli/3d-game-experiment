@@ -6,17 +6,18 @@
 #include "wall.h"
 
 enum Intersect {
-	INTERSECT_NONE,  // no intersection
-	INTERSECT_TOP,   // bottom of one ellipsoid touches top of wall or another ellipsoid
-	INTERSECT_SIDE,  // anything else
+	INTERSECT_NONE,      // no intersection
+	INTERSECT_ELBOTTOM,  // bottom of first ellipsoid touches top of wall or second ellipsoid
+	INTERSECT_SIDE,      // anything else
 };
 
 // Check for intersections
-enum Intersect intersect_check_el_el(const struct Ellipsoid *el1, const struct Ellipsoid *el2);
-enum Intersect intersect_check_el_wall(const struct Ellipsoid *el1, const struct Wall *w);
+// If mv is not NULL, it is set to how much need move el1 to not intersect
+enum Intersect intersect_el_el(const struct Ellipsoid *el1, const struct Ellipsoid *el2, Vec3 *mv);
+enum Intersect intersect_el_wall(const struct Ellipsoid *el1, const struct Wall *w, Vec3 *mv);
 
-// If intersects, move ellipsoid so that no longer intersects and return true
-enum Intersect intersect_move_el_el(struct Ellipsoid *el, struct Ellipsoid *other);
-enum Intersect intersect_move_el_wall(struct Ellipsoid *el, const struct Wall *w);
+// convenience lol
+#define intersects_el_el(EL1, EL2) (intersect_el_el((EL1), (EL2), NULL) != INTERSECT_NONE)
+#define intersects_el_wall(EL, WALL) (intersect_el_wall((EL), (WALL), NULL) != INTERSECT_NONE)
 
 #endif
