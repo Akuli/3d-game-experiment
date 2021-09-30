@@ -71,12 +71,15 @@ void player_eachframe(struct Player *plr, struct Player *other, const struct Map
 	ellipsoid_update_transforms(&plr->ellipsoid);
 
 	for (const struct Wall *w = &map->walls[0]; w < &map->walls[map->nwalls]; w++) {
-		if (intersect_move_el_wall(&plr->ellipsoid, w))
+		if (intersect_check_el_wall(&plr->ellipsoid, w) == INTERSECT_TOP)
 			plr->yspeed = 0; // stop jumping
+		intersect_move_el_wall(&plr->ellipsoid, w);
 	}
+	/* TODO: this needed?
 	if (plr->ellipsoid.botcenter.y >= other->ellipsoid.botcenter.y)
-		if (intersect_move_el_el(&plr->ellipsoid, &other->ellipsoid))
+		if (intersect_check_el_el(&plr->ellipsoid, &other->ellipsoid) != INTERSECT_NONE)
 			plr->yspeed = 0;
+	*/
 	keep_ellipsoid_inside_map(&plr->ellipsoid, map);
 
 	Vec3 diff = { 0, 0, CAMERA_BEHIND_PLAYER };
