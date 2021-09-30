@@ -184,7 +184,7 @@ enum Intersect intersect_el_wall(const struct Ellipsoid *el, const struct Wall *
 
 	if (el->botcenter.y > WALL_Y_MIN) {
 		// Use bottom circle
-		// FIXME: how to decide INTERSECT_SIDE vs INTERSECT_ELBOTTOM
+		// FIXME: how to decide INTERSECT_SIDE vs INTERSECT_ELBOTTOM (#84)
 		if (intersect_circle_and_wall(el->botcenter, el->botradius, w, mv))
 			return INTERSECT_SIDE;
 		return INTERSECT_NONE;
