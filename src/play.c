@@ -10,13 +10,14 @@
 #include "intersect.h"
 #include "log.h"
 #include "looptimer.h"
+#include "map.h"
+#include "mathstuff.h"
 #include "max.h"
 #include "misc.h"
-#include "map.h"
 #include "player.h"
+#include "region.h"
 #include "showall.h"
 #include "sound.h"
-#include "region.h"
 
 // includes all the GameObjects that all players should see
 struct GameState {

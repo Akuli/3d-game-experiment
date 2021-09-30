@@ -4,7 +4,6 @@
 #include "ellipsoid.h"
 #include "guard.h"
 #include "intersect.h"
-#include "log.h"
 #include "mathstuff.h"
 #include "map.h"
 #include "sound.h"

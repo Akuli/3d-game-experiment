@@ -1,8 +1,9 @@
 #ifndef INTERSECT_H
 #define INTERSECT_H
 
-#include <stdbool.h>
+#include <stddef.h>
 #include "ellipsoid.h"
+#include "mathstuff.h"
 #include "wall.h"
 
 enum Intersect {
