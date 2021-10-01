@@ -101,6 +101,7 @@ enum IntersectElEl intersect_el_el(const struct Ellipsoid *el1, const struct Ell
 	if (el1->botcenter.y > el2->botcenter.y) {
 		return intersect_upper_and_lower_el(el1, el2, mv);
 	} else {
+		// swapped order, upper ellipsoid must go first
 		enum IntersectElEl res = intersect_upper_and_lower_el(el2, el1, mv);
 		if(mv)
 			*mv = vec3_mul_float(*mv, -1);
