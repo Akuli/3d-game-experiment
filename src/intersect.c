@@ -88,7 +88,8 @@ static enum IntersectElEl intersect_upper_and_lower_el(const struct Ellipsoid *u
 				*mv = vec3_withlength(low2up, olap);
 				break;
 			}
-			default:
+			case INTERSECT_EE_BOTTOM2_TIP1:
+			case INTERSECT_EE_BOTTOM2_SIDE1:
 				SDL_assert(0);
 		}
 	}
