@@ -247,22 +247,27 @@ static int get_all_ellipsoids(
 	return ptr - result;
 }
 
-static void handle_players_bumping_each_other(struct Ellipsoid *el1, struct Ellipsoid *el2)
+static void handle_players_bumping_each_other(struct Player *plr1, struct Player *plr2)
 {
 	Vec3 mv;
-	intersect_el_el(el1, el2, &mv);
-	if (mv.y == 0) {
-		// jumping into another player with not enough height moves both players
-		vec3_add_inplace(&el1->botcenter, vec3_mul_float(mv, 0.5f));
-		vec3_add_inplace(&el2->botcenter, vec3_mul_float(mv, -0.5f));
-		return;
+	switch(intersect_el_el(&plr1->ellipsoid, &plr2->ellipsoid, &mv)) {
+		case INTERSECT_EE_NONE:
+			break;
+		case INTERSECT_EE_BOTTOM1_TIP2:
+			plr1->yspeed = 0;
+			vec3_add_inplace(&plr1->ellipsoid.botcenter, mv);
+			break;
+		case INTERSECT_EE_BOTTOM2_TIP1:
+			plr2->yspeed = 0;
+			vec3_sub_inplace(&plr2->ellipsoid.botcenter, mv);
+			break;
+		case INTERSECT_EE_BOTTOM1_SIDE2:
+			vec3_add_inplace(&plr1->ellipsoid.botcenter, mv);
+			break;
+		case INTERSECT_EE_BOTTOM2_SIDE1:
+			vec3_sub_inplace(&plr2->ellipsoid.botcenter, mv);
+			break;
 	}
-
-	// move the ellipsoid above so it hopefully stays on top
-	if (el1->botcenter.y > el2->botcenter.y)
-		vec3_add_inplace(&el1->botcenter, mv);
-	else
-		vec3_sub_inplace(&el2->botcenter, mv);
 }
 
 enum MiscState play_the_game(
@@ -339,7 +344,7 @@ enum MiscState play_the_game(
 		player_eachframe(&gs.players[0], map);
 		player_eachframe(&gs.players[1], map);
 
-		handle_players_bumping_each_other(&gs.players[0].ellipsoid, &gs.players[1].ellipsoid);
+		handle_players_bumping_each_other(&gs.players[0], &gs.players[1]);
 
 		handle_players_bumping_enemies(&gs);
 		handle_enemies_bumping_unpicked_guards(&gs);

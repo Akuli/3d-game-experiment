@@ -5,7 +5,7 @@
 #include "mathstuff.h"
 
 // olap not meaningful when returns INTERSECT_NONE
-static enum Intersect intersect_2d_ellipses(
+static enum IntersectElEl intersect_2d_ellipses(
 	float ua, float ub, Vec2 ucenter,
 	float la, float lb, Vec2 lcenter,
 	float *olap)
@@ -17,7 +17,7 @@ static enum Intersect intersect_2d_ellipses(
 
 	float botdiff = ucenter.y - lcenter.y;
 	if (botdiff > lb)
-		return INTERSECT_NONE;
+		return INTERSECT_EE_NONE;
 
 	/*
 	Upper ellipsoid can be treated as a line, because the bottom disk looks like
@@ -38,7 +38,7 @@ static enum Intersect intersect_2d_ellipses(
 	if (uleft <= lcenter.x && lcenter.x <= uright) {
 		// They line up vertically
 		*olap = lb - botdiff;
-		return INTERSECT_ELBOTTOM;
+		return INTERSECT_EE_BOTTOM1_TIP2;
 	}
 
 	/*
@@ -50,10 +50,10 @@ static enum Intersect intersect_2d_ellipses(
 	float halflinelen = la*sqrtf(1 - (botdiff*botdiff)/(lb*lb));
 
 	*olap = (ua + halflinelen) - fabsf(ucenter.x - lcenter.x);
-	return *olap<0 ? INTERSECT_NONE : INTERSECT_SIDE;
+	return *olap<0 ? INTERSECT_EE_NONE : INTERSECT_EE_BOTTOM1_SIDE2;
 }
 
-static enum Intersect intersect_upper_and_lower_el(const struct Ellipsoid *upper, const struct Ellipsoid *lower, Vec3 *mv)
+static enum IntersectElEl intersect_upper_and_lower_el(const struct Ellipsoid *upper, const struct Ellipsoid *lower, Vec3 *mv)
 {
 	Vec3 dir = vec3_sub(upper->botcenter, lower->botcenter);
 	dir.y = 0;
@@ -67,7 +67,7 @@ static enum Intersect intersect_upper_and_lower_el(const struct Ellipsoid *upper
 	Vec2 ucenter = { vec3_dot(dir, upper->botcenter), upper->botcenter.y };
 	Vec2 lcenter = { vec3_dot(dir, lower->botcenter), lower->botcenter.y };
 	float olap;
-	enum Intersect res = intersect_2d_ellipses(
+	enum IntersectElEl res = intersect_2d_ellipses(
 		upper->botradius, upper->height, ucenter,
 		lower->botradius, lower->height, lcenter,
 		&olap);
@@ -75,33 +75,41 @@ static enum Intersect intersect_upper_and_lower_el(const struct Ellipsoid *upper
 	if (mv) {
 		// *mv = how to move upper
 		switch(res) {
-			case INTERSECT_NONE:
+			case INTERSECT_EE_NONE:
 				*mv = (Vec3){ 0, 0, 0 };
 				break;
-			case INTERSECT_ELBOTTOM:
+			case INTERSECT_EE_BOTTOM1_TIP2:
 				*mv = (Vec3){ 0, olap, 0 };
 				break;
-			case INTERSECT_SIDE:
+			case INTERSECT_EE_BOTTOM1_SIDE2:
 			{
 				Vec3 low2up = vec3_sub(upper->botcenter, lower->botcenter);
 				low2up.y = 0;
 				*mv = vec3_withlength(low2up, olap);
 				break;
 			}
+			case INTERSECT_EE_BOTTOM2_TIP1:
+			case INTERSECT_EE_BOTTOM2_SIDE1:
+				SDL_assert(0);
 		}
 	}
 	return res;
 }	
 
-enum Intersect intersect_el_el(const struct Ellipsoid *el1, const struct Ellipsoid *el2, Vec3 *mv)
+enum IntersectElEl intersect_el_el(const struct Ellipsoid *el1, const struct Ellipsoid *el2, Vec3 *mv)
 {
 	if (el1->botcenter.y > el2->botcenter.y) {
 		return intersect_upper_and_lower_el(el1, el2, mv);
 	} else {
-		enum Intersect res = intersect_upper_and_lower_el(el2, el1, mv);
+		// swapped order, upper ellipsoid must go first
+		enum IntersectElEl res = intersect_upper_and_lower_el(el2, el1, mv);
 		if(mv)
 			*mv = vec3_mul_float(*mv, -1);
-		return res;
+		switch(res) {
+			case INTERSECT_EE_BOTTOM1_SIDE2: return INTERSECT_EE_BOTTOM2_SIDE1;
+			case INTERSECT_EE_BOTTOM1_TIP2: return INTERSECT_EE_BOTTOM2_TIP1;
+			default: return res;
+		}
 	}
 }
 
@@ -157,7 +165,7 @@ static bool intersect_circle_and_wall(Vec3 center, float radius, const struct Wa
 	return false;
 }
 
-enum Intersect intersect_el_wall(const struct Ellipsoid *el, const struct Wall *w, Vec3 *mv)
+enum IntersectElWall intersect_el_wall(const struct Ellipsoid *el, const struct Wall *w, Vec3 *mv)
 {
 	/*
 	If the ellipsoid is very far away from wall, then it surely doesn't bump. We
@@ -177,17 +185,17 @@ enum Intersect intersect_el_wall(const struct Ellipsoid *el, const struct Wall *
 	float diam = hypotf(WALL_Y_MAX - WALL_Y_MIN, 1);
 	float lenbound = diam/2 + max(el->botradius, el->height);
 	if (vec3_lengthSQUARED(vec3_sub(el->botcenter, wall_center(w))) > lenbound*lenbound)
-		return INTERSECT_NONE;
+		return INTERSECT_EW_NONE;
 
 	if (el->botcenter.y + el->height < WALL_Y_MIN || el->botcenter.y > WALL_Y_MAX)
-		return INTERSECT_NONE;
+		return INTERSECT_EW_NONE;
 
 	if (el->botcenter.y > WALL_Y_MIN) {
 		// Use bottom circle
-		// FIXME: how to decide INTERSECT_SIDE vs INTERSECT_ELBOTTOM (#84)
+		// FIXME: how to decide INTERSECT_EW_ELSIDE vs INTERSECT_EW_ELBOTTOM (#84)
 		if (intersect_circle_and_wall(el->botcenter, el->botradius, w, mv))
-			return INTERSECT_SIDE;
-		return INTERSECT_NONE;
+			return INTERSECT_EW_ELSIDE;
+		return INTERSECT_EW_NONE;
 	} else {
 		/*
 		Use a slice of the ellipsoid as the circle:
@@ -212,7 +220,7 @@ enum Intersect intersect_el_wall(const struct Ellipsoid *el, const struct Wall *
 		float r = a * sqrtf(1 - (ydiff*ydiff)/(b*b));
 		Vec3 center = { el->botcenter.x, WALL_Y_MIN, el->botcenter.z };
 		if (intersect_circle_and_wall(center, r, w, mv))
-			return INTERSECT_SIDE;
-		return INTERSECT_NONE;
+			return INTERSECT_EW_ELSIDE;
+		return INTERSECT_EW_NONE;
 	}
 }
