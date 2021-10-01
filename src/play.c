@@ -254,7 +254,7 @@ static void handle_players_bumping_each_other(struct Player *plr1, struct Player
 		case INTERSECT_EE_NONE:
 			break;
 		case INTERSECT_EE_BOTTOM1_TIP2:
-			plr2->yspeed = 0;
+			plr1->yspeed = 0;
 			vec3_add_inplace(&plr1->ellipsoid.botcenter, mv);
 			break;
 		case INTERSECT_EE_BOTTOM2_TIP1:

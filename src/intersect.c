@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 #include "mathstuff.h"
-#include "log.h"
 
 // olap not meaningful when returns INTERSECT_NONE
 static enum IntersectElEl intersect_2d_ellipses(
