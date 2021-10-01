@@ -103,10 +103,16 @@ static void load_the_stuff(SDL_Window *wnd, SDL_Surface *wndsurf, bool sound)
 
 int main(int argc, char **argv)
 {
-	bool sound = !(argc == 2 && strcmp(argv[1], "--no-sound") == 0);
-	if (argc > 1 && sound) {
-		fprintf(stderr, "Usage: %s [--no-sound]\n", argv[0]);
-		return 2;
+	bool sound = true, fullscreen = false;
+	for (int i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "--no-sound"))
+			sound = false;
+		else if (!strcmp(argv[i], "--fullscreen"))
+			fullscreen = true;
+		else {
+			fprintf(stderr, "Usage: %s [--no-sound] [--fullscreen]\n", argv[0]);
+			return 2;
+		}
 	}
 
 	cd_where_everything_is();
@@ -116,6 +122,8 @@ int main(int argc, char **argv)
 		"3D game experiment", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, CAMERA_SCREEN_WIDTH, CAMERA_SCREEN_HEIGHT, 0);
 	if (!wnd)
 		log_printf_abort("SDL_CreateWindow failed: %s", SDL_GetError());
+	if (fullscreen)
+		SDL_SetWindowFullscreen(wnd, SDL_WINDOW_FULLSCREEN);
 
 	srand(time(NULL));
 	if (TTF_Init() == -1)
