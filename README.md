@@ -39,7 +39,8 @@ In the player and map choosing screen, you can click the buttons or press these 
     - Delete: click button or press the Delete key
     - Copy: click button or press C
     - Moving map (default maps can't be moved): Shift + arrow keys, Shift + W, Shift + S, drag and drop
-- Play button: enter or space.
+- Play button: enter or space
+- Quit button: Escape
 
 In the game over screen, you can again click buttons or press these keys:
 - Play again button: F5. This is for compatibility with games where you can play again by refreshing the browser window.
