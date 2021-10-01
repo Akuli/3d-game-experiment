@@ -252,6 +252,7 @@ static void handle_event(const SDL_Event *evt, struct Chooser *ch)
 		button_handle_event(evt, &ch->playerch[i].nextbtn);
 	}
 	button_handle_event(evt, &ch->playbtn);
+	button_handle_event(evt, &ch->quitbtn);
 
 	int oldidx = ch->mapch.listbox.selectidx;
 	listbox_handle_event(&ch->mapch.listbox, evt);
@@ -259,10 +260,8 @@ static void handle_event(const SDL_Event *evt, struct Chooser *ch)
 		mapeditor_setmap(ch->editor, &ch->mapch.maps[ch->mapch.listbox.selectidx]);
 }
 
-static void on_play_clicked(void *ptr)
-{
-	*(enum MiscState *)ptr = MISC_STATE_PLAY;
-}
+static void on_play_clicked(void *ptr) { *(enum MiscState *)ptr = MISC_STATE_PLAY; }
+static void on_quit_clicked(void *ptr) { *(enum MiscState *)ptr = MISC_STATE_QUIT; }
 
 void chooser_init(struct Chooser *ch, SDL_Window *win)
 {
@@ -282,6 +281,18 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 				CAMERA_SCREEN_HEIGHT - button_height(0)/2,
 			},
 			.onclick = on_play_clicked,
+			.onclickdata = &ch->state,
+		},
+		.quitbtn = {
+			.text = "Quit",
+			.flags = BUTTON_TINY,
+			.destsurf = winsurf,
+			.scancodes = { SDL_SCANCODE_ESCAPE },
+			.center = {
+				CAMERA_SCREEN_WIDTH - button_width(BUTTON_TINY)/2 - 10,
+				button_height(BUTTON_TINY)/2 + 10,
+			},
+			.onclick = on_quit_clicked,
 			.onclickdata = &ch->state,
 		},
 		.mapch = {
@@ -348,6 +359,7 @@ enum MiscState chooser_run(struct Chooser *ch)
 
 	SDL_FillRect(ch->winsurf, NULL, 0);
 	button_show(&ch->playbtn);
+	button_show(&ch->quitbtn);
 	show_player_chooser_in_beginning(&ch->playerch[0]);
 	show_player_chooser_in_beginning(&ch->playerch[1]);
 	show_title_text(ch->winsurf);
