@@ -61,20 +61,21 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 	plr->yspeed -= JUMP_GRAVITY / CAMERA_FPS;
 	plr->ellipsoid.botcenter.y += plr->yspeed / CAMERA_FPS;
 
+	plr->ellipsoid.height = plr->flat ? PLAYER_HEIGHT_FLAT : PLAYER_HEIGHT_NOFLAT;
+	ellipsoid_update_transforms(&plr->ellipsoid);
+
 	if (plr->ellipsoid.botcenter.y < 0) {
 		plr->yspeed = 0;
 		plr->ellipsoid.botcenter.y = 0;
 	}
-
-	plr->ellipsoid.height = plr->flat ? PLAYER_HEIGHT_FLAT : PLAYER_HEIGHT_NOFLAT;
-	ellipsoid_update_transforms(&plr->ellipsoid);
 
 	for (const struct Wall *w = &map->walls[0]; w < &map->walls[map->nwalls]; w++) {
 		Vec3 mv;
 		switch(intersect_el_wall(&plr->ellipsoid, w, &mv)) {
 			case INTERSECT_ELBOTTOM:
 				plr->yspeed = 0; // stop jumping
-				// fall through
+				vec3_add_inplace(&plr->ellipsoid.botcenter, mv);
+				break;
 			case INTERSECT_SIDE:
 				vec3_add_inplace(&plr->ellipsoid.botcenter, mv);
 				break;
