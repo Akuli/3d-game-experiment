@@ -179,7 +179,7 @@ static void show_player_chooser_each_frame(const struct Chooser *ch, struct Choo
 {
 	turn_camera(plrch);
 	SDL_FillRect(plrch->cam.surface, NULL, 0);
-	show_all(NULL, 0, false, ch->ellipsoids, player_nepics, &plrch->cam);
+	show_all(NULL, 0, (int[]){-1}, ch->ellipsoids, player_nepics, &plrch->cam);
 }
 
 static void on_copy_clicked(void *chptr)

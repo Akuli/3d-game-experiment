@@ -3,14 +3,13 @@
 #ifndef SHOWALL_H
 #define SHOWALL_H
 
-#include <stdbool.h>
 #include "camera.h"
 #include "ellipsoid.h"
 #include "wall.h"
 
 void show_all(
 	const struct Wall *walls, int nwalls,
-	bool highlightwalls,
+	const int *highlightwalls,  // -1 terminated list of indexes into walls
 	const struct Ellipsoid *els, int nels,
 	const struct Camera *cam
 );

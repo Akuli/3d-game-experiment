@@ -260,6 +260,7 @@ bool wall_visible_xminmax_fillcache(
 	*wc = (struct WallCache){
 		.wall = w,
 		.cam = cam,
+		.highlight = false,
 		.top1 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->top1)),
 		.top2 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->top2)),
 		.bot1 = camera_point_cam2screen(cam, camera_point_world2cam(cam, w->bot1)),
@@ -284,7 +285,7 @@ void wall_yminmax(const struct WallCache *wc, int x, int *ymin, int *ymax)
 	clamp(ymax, 0, wc->cam->surface->h - 1);
 }
 
-void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax, bool highlight)
+void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax)
 {
 	SDL_Surface *surf = wc->cam->surface;
 
@@ -299,7 +300,7 @@ void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax, bool
 	const SDL_PixelFormat *f = surf->format;
 	SDL_assert(f->Rmask == 0xff0000 && f->Gmask == 0x00ff00 && f->Bmask == 0x0000ff);
 
-	if (highlight) {
+	if (wc->highlight) {
 		for (uint32_t *ptr = start; ptr < end; ptr += mypitch)
 			*ptr = misc_rgb_average(*ptr, 0xff0000);
 	} else {

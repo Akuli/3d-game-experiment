@@ -85,6 +85,7 @@ void wall_drawborder(const struct Wall *w, const struct Camera *cam);
 
 // for non-border drawing functions
 struct WallCache {
+	bool highlight;  // meant to be set outside wall.c
 	const struct Wall *wall;
 	const struct Camera *cam;
 	Vec2 top1, top2, bot1, bot2;  // screen points
@@ -106,7 +107,7 @@ bool wall_visible_xminmax_fillcache(
 void wall_yminmax(const struct WallCache *wc, int x, int *ymin, int *ymax);
 
 // Draw all pixels of wall corresponding to range of y coordinates
-void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax, bool highlight);
+void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax);
 
 
 #endif    // WALL_H
