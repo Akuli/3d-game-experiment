@@ -1,5 +1,4 @@
 #include "pause.h"
-#include <string.h>
 #include <SDL2/SDL.h>
 #include "button.h"
 #include "log.h"
