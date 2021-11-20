@@ -340,6 +340,12 @@ enum MiscState play_the_game(
 		// horizontal line
 		SDL_FillRect(winsurf, &(SDL_Rect){ winsurf->w/2, 0, 1, winsurf->h }, SDL_MapRGB(winsurf->format, 0xff, 0xff, 0xff));
 
+		char s[100];
+		sprintf(s, "%d enemies, %d unpicked guards", gs.nenemies, gs.n_unpicked_guards);
+		SDL_Surface *surf = misc_create_text_surface(s, (SDL_Color){0xff,0xff,0xff}, 20);
+		SDL_BlitSurface(surf, NULL, winsurf, &(SDL_Rect){20,10});
+		SDL_FreeSurface(surf);
+
 		SDL_UpdateWindowSurface(wnd);
 		looptimer_wait(&lt);
 	}
