@@ -738,67 +738,45 @@ struct ToShow {
 
 static void show_editor(struct MapEditor *ed)
 {
-	// static to keep down stack usage
-	static struct ToShow behind, select, front;
-	behind.nwalls = behind.nels = 0;
-	select.nwalls = select.nels = 0;
-	front.nwalls = front.nels = 0;
-
 	for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); ) {
 		ee->el.highlighted =
 			(ed->sel.mode == SEL_ELLIPSOID || ed->sel.mode == SEL_MVELLIPSOID)
 			&& ed->sel.data.eledit == ee;
 	}
 
-	struct Wall *hlwall;  // to figure out what's in front or behind highlighted stuff
+	struct Wall *borderwall;
 	switch(ed->sel.mode) {
 	case SEL_MVWALL:
-		hlwall = ed->sel.data.mvwall;
+		borderwall = ed->sel.data.mvwall;
 		break;
 	case SEL_RESIZE:
-		hlwall = &ed->sel.data.resize.mainwall;
+		borderwall = &ed->sel.data.resize.mainwall;
 		break;
 	case SEL_WALL:
-		hlwall = &ed->sel.data.wall;
+		borderwall = &ed->sel.data.wall;
 		break;
 	default:
-		hlwall = NULL;
+		borderwall = NULL;
 		break;
 	}
-
-	if (hlwall) {
-		for (const struct Wall *w = ed->map->walls; w < ed->map->walls + ed->map->nwalls; w++) {
-			if (wall_should_be_highlighted(ed, w))
-				select.walls[select.nwalls++] = *w;
-			else if (hlwall && wall_side(hlwall, wall_center(w)) == wall_side(hlwall, ed->cam.location) && !wall_linedup(hlwall, w))
-				front.walls[front.nwalls++] = *w;
-			else
-				behind.walls[behind.nwalls++] = *w;
-		}
-
-		for (const struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit_const(ed, &ee); ) {
-			if (wall_side(hlwall, ee->el.center) == wall_side(hlwall, ed->cam.location))
-				front.els[front.nels++] = ee->el;
-			else
-				behind.els[behind.nels++] = ee->el;
-		}
-	} else {
-		// Everything is "behind", could also use front
-		behind.nwalls = ed->map->nwalls;
-		for (int i=0; i < behind.nwalls; i++)
-			behind.walls[i] = ed->map->walls[i];
-
-		for (const struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit_const(ed, &ee); )
-			behind.els[behind.nels++] = ee->el;
+	int highlight[MAX_WALLS + 1];
+	int highlightidx = 0;
+	for (int i = 0; i < ed->map->nwalls; i++) {
+		if (wall_should_be_highlighted(ed, &ed->map->walls[i]))
+			highlight[highlightidx++] = i;
 	}
+	highlight[highlightidx] = -1;
 
-	show_all(behind.walls, behind.nwalls, false, behind.els, behind.nels, &ed->cam);
-	show_all(select.walls, select.nwalls, true,  select.els, select.nels, &ed->cam);
-	if (hlwall) {
-		wall_init(hlwall);
-		wall_drawborder(hlwall, &ed->cam);
+	struct Ellipsoid els[2 + MAX_ENEMIES];
+	int nels = 0;
+	for (const struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit_const(ed, &ee); )
+		els[nels++] = ee->el;
+
+	show_all(ed->map->walls, ed->map->nwalls, highlight, els, nels, &ed->cam);
+	if (borderwall) {
+		wall_init(borderwall);
+		wall_drawborder(borderwall, &ed->cam);
 	}
-	show_all(front.walls,  front.nwalls,  false, front.els,  front.nels,  &ed->cam);
 }
 
 static void add_enemy(void *editorptr)
