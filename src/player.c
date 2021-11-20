@@ -72,14 +72,14 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 	for (const struct Wall *w = &map->walls[0]; w < &map->walls[map->nwalls]; w++) {
 		Vec3 mv;
 		switch(intersect_el_wall(&plr->ellipsoid, w, &mv)) {
-			case INTERSECT_EW_ELBOTTOM:
+			case INTERSECT_ELBOTTOM:
 				plr->yspeed = 0; // stop jumping
 				vec3_add_inplace(&plr->ellipsoid.botcenter, mv);
 				break;
-			case INTERSECT_EW_ELSIDE:
+			case INTERSECT_SIDE:
 				vec3_add_inplace(&plr->ellipsoid.botcenter, mv);
 				break;
-			case INTERSECT_EW_NONE:
+			case INTERSECT_NONE:
 				break;
 		}
 	}
