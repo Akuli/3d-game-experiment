@@ -759,6 +759,7 @@ static void show_editor(struct MapEditor *ed)
 		borderwall = NULL;
 		break;
 	}
+
 	int highlight[MAX_WALLS + 1];
 	int highlightidx = 0;
 	for (int i = 0; i < ed->map->nwalls; i++) {

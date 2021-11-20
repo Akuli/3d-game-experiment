@@ -3,7 +3,6 @@
 #ifndef SHOWALL_H
 #define SHOWALL_H
 
-#include <stdbool.h>
 #include "camera.h"
 #include "ellipsoid.h"
 #include "wall.h"
