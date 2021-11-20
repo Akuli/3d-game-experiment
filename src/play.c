@@ -10,14 +10,13 @@
 #include "intersect.h"
 #include "log.h"
 #include "looptimer.h"
-#include "map.h"
-#include "mathstuff.h"
 #include "max.h"
 #include "misc.h"
+#include "map.h"
 #include "player.h"
-#include "region.h"
 #include "showall.h"
 #include "sound.h"
+#include "region.h"
 
 // includes all the GameObjects that all players should see
 struct GameState {
@@ -172,7 +171,7 @@ static void handle_players_bumping_enemies(struct GameState *gs)
 {
 	for (int p = 0; p < 2; p++) {
 		for (int e = gs->nenemies - 1; e >= 0; e--) {
-			if (intersects_el_el(&gs->players[p].ellipsoid, &gs->enemies[e].ellipsoid)) {
+			if (intersect_check_el_el(&gs->players[p].ellipsoid, &gs->enemies[e].ellipsoid)) {
 				log_printf(
 					"enemy %d/%d hits player %d (%d guards)",
 					e, gs->nenemies,
@@ -195,7 +194,7 @@ static void handle_enemies_bumping_unpicked_guards(struct GameState *gs)
 {
 	for (int e = gs->nenemies - 1; e >= 0; e--) {
 		for (int u = gs->n_unpicked_guards - 1; u >= 0; u--) {
-			if (intersects_el_el(&gs->enemies[e].ellipsoid, &gs->unpicked_guards[u])) {
+			if (intersect_check_el_el(&gs->enemies[e].ellipsoid, &gs->unpicked_guards[u])) {
 				log_printf("enemy %d/%d destroys unpicked guard %d/%d",
 					e, gs->nenemies, u, gs->n_unpicked_guards);
 				sound_play("farts/fart*.wav");
@@ -209,7 +208,7 @@ static void handle_players_bumping_unpicked_guards(struct GameState *gs)
 {
 	for (int p = 0; p < 2; p++) {
 		for (int u = gs->n_unpicked_guards - 1; u >= 0; u--) {
-			if (intersects_el_el(&gs->players[p].ellipsoid, &gs->unpicked_guards[u])) {
+			if (intersect_check_el_el(&gs->players[p].ellipsoid, &gs->unpicked_guards[u])) {
 				log_printf(
 					"player %d (%d guards) picks unpicked guard %d/%d",
 					p, gs->players[p].nguards, u, gs->n_unpicked_guards);
@@ -247,24 +246,6 @@ static int get_all_ellipsoids(
 	return ptr - result;
 }
 
-static void handle_players_bumping_each_other(struct Ellipsoid *el1, struct Ellipsoid *el2)
-{
-	Vec3 mv;
-	intersect_el_el(el1, el2, &mv);
-	if (mv.y == 0) {
-		// jumping into another player with not enough height moves both players
-		vec3_add_inplace(&el1->botcenter, vec3_mul_float(mv, 0.5f));
-		vec3_add_inplace(&el2->botcenter, vec3_mul_float(mv, -0.5f));
-		return;
-	}
-
-	// move the ellipsoid above so it hopefully stays on top
-	if (el1->botcenter.y > el2->botcenter.y)
-		vec3_add_inplace(&el1->botcenter, mv);
-	else
-		vec3_sub_inplace(&el2->botcenter, mv);
-}
-
 enum MiscState play_the_game(
 	SDL_Window *wnd,
 	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic,
@@ -286,8 +267,6 @@ enum MiscState play_the_game(
 					.angle = 0,
 					.epic = plr0pic,
 					.botcenter = { map->playerlocs[0].x + 0.5f, 0, map->playerlocs[0].z + 0.5f },
-					.botradius = PLAYER_BOTRADIUS,
-					.height = PLAYER_HEIGHT_NOFLAT,
 				},
 				.cam = {
 					.screencentery = winsurf->h/4,
@@ -300,9 +279,7 @@ enum MiscState play_the_game(
 				.ellipsoid = {
 					.angle = 0,
 					.epic = plr1pic,
-					.botcenter = { map->playerlocs[1].x + 0.5f, 0, map->playerlocs[1].z + 0.5f },
-					.botradius = PLAYER_BOTRADIUS,
-					.height = PLAYER_HEIGHT_NOFLAT,
+					.botcenter = { map->playerlocs[1].x + 0.5f, 0, map->playerlocs[1].z + 0.5f }
 				},
 				.cam = {
 					.screencentery = winsurf->h/4,
@@ -336,11 +313,10 @@ enum MiscState play_the_game(
 			enemy_eachframe(&gs.enemies[i]);
 		for (int i = 0; i < gs.n_unpicked_guards; i++)
 			guard_unpicked_eachframe(&gs.unpicked_guards[i]);
-		player_eachframe(&gs.players[0], map);
-		player_eachframe(&gs.players[1], map);
+		for (int i = 0; i < 2; i++)
+			player_eachframe(&gs.players[i], map);
 
-		handle_players_bumping_each_other(&gs.players[0].ellipsoid, &gs.players[1].ellipsoid);
-
+		intersect_move_el_el(&gs.players[0].ellipsoid, &gs.players[1].ellipsoid);
 		handle_players_bumping_enemies(&gs);
 		handle_enemies_bumping_unpicked_guards(&gs);
 		handle_players_bumping_unpicked_guards(&gs);

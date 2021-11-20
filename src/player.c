@@ -25,8 +25,8 @@ issues with this. To avoid that, we limit things that flat players can do:
 #define CAMERA_BEHIND_PLAYER 4.0f
 #define CAMERA_HEIGHT 4.0f
 
-#define JUMP_GRAVITY 66
-#define JUMP_YSPEED 20.0f
+#define JUMP_MAX_HEIGHT 3.0f
+#define JUMP_DURATION_SEC 0.6f
 
 struct EllipsoidPic *const *player_epics = NULL;
 int player_nepics = -1;
@@ -38,6 +38,26 @@ void player_init_epics(const SDL_PixelFormat *fmt)
 	SDL_assert(player_epics != NULL);
 }
 
+static float get_jump_height(int jumpframe)
+{
+	float time = (float)jumpframe / (float)CAMERA_FPS;
+
+	/*
+	Parabola that intersects time axis at time=0 and time=JUMP_DURATION_SEC, having
+	max value of JUMP_MAX_HEIGHT
+	*/
+	float a = (-4*JUMP_MAX_HEIGHT)/(JUMP_DURATION_SEC*JUMP_DURATION_SEC);
+	return a*(time - 0)*(time - JUMP_DURATION_SEC);
+}
+
+static float get_height(const struct Player *plr)
+{
+	if (plr->flat)   // if flat and jumping, then do this
+		return PLAYER_HEIGHT_FLAT;
+
+	return PLAYER_HEIGHT_NOFLAT + 0.3f*get_jump_height(plr->jumpframe);
+}
+
 static void keep_ellipsoid_inside_map(struct Ellipsoid *el, const struct Map *map)
 {
 	clamp_float(&el->botcenter.x, el->botradius, map->xsize - el->botradius);
@@ -47,7 +67,7 @@ static void keep_ellipsoid_inside_map(struct Ellipsoid *el, const struct Map *ma
 void player_eachframe(struct Player *plr, const struct Map *map)
 {
 	// Don't turn while flat. See beginning of this file for explanation.
-	if (!plr->flat) {
+	if (plr->turning != 0 && !plr->flat) {
 		plr->ellipsoid.angle += (RADIANS_PER_SECOND / (float)CAMERA_FPS) * (float)plr->turning;
 		// ellipsoid_update_transforms() called below
 	}
@@ -58,31 +78,25 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 		vec3_add_inplace(&plr->ellipsoid.botcenter, diff);
 	}
 
-	plr->yspeed -= JUMP_GRAVITY / CAMERA_FPS;
-	plr->ellipsoid.botcenter.y += plr->yspeed / CAMERA_FPS;
-
-	plr->ellipsoid.height = plr->flat ? PLAYER_HEIGHT_FLAT : PLAYER_HEIGHT_NOFLAT;
-	ellipsoid_update_transforms(&plr->ellipsoid);
-
-	if (plr->ellipsoid.botcenter.y < 0) {
-		plr->yspeed = 0;
-		plr->ellipsoid.botcenter.y = 0;
-	}
-
-	for (const struct Wall *w = &map->walls[0]; w < &map->walls[map->nwalls]; w++) {
-		Vec3 mv;
-		switch(intersect_el_wall(&plr->ellipsoid, w, &mv)) {
-			case INTERSECT_ELBOTTOM:
-				plr->yspeed = 0; // stop jumping
-				vec3_add_inplace(&plr->ellipsoid.botcenter, mv);
-				break;
-			case INTERSECT_SIDE:
-				vec3_add_inplace(&plr->ellipsoid.botcenter, mv);
-				break;
-			case INTERSECT_NONE:
-				break;
+	float y = 0;
+	if (plr->jumpframe != 0) {
+		plr->jumpframe++;
+		y = get_jump_height(plr->jumpframe);
+		if (y < 0) {
+			// land
+			plr->jumpframe = 0;
+			y = 0;
 		}
 	}
+
+	plr->ellipsoid.botradius = PLAYER_BOTRADIUS;
+	plr->ellipsoid.height = get_height(plr);
+	ellipsoid_update_transforms(&plr->ellipsoid);
+
+	plr->ellipsoid.botcenter.y = y;
+
+	for (int i = 0; i < map->nwalls; i++)
+		intersect_move_el_wall(&plr->ellipsoid, &map->walls[i]);
 	keep_ellipsoid_inside_map(&plr->ellipsoid, map);
 
 	Vec3 diff = { 0, 0, CAMERA_BEHIND_PLAYER };
@@ -121,9 +135,9 @@ void player_set_flat(struct Player *plr, bool flat)
 		sound_play("lemonsqueeze.wav");
 	else {
 		sound_play("pop.wav");
-		if (plr->yspeed == 0) {
+		if (plr->jumpframe == 0) {
 			sound_play("boing.wav");
-			plr->yspeed = JUMP_YSPEED;
+			plr->jumpframe = 1;
 		}
 	}
 }

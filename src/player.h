@@ -22,8 +22,10 @@ struct Player {
 	int turning;   // see player_set_turning()
 	bool moving;
 	bool flat;
-	float yspeed;  // units per second, not per frame
-	int nguards;   // negative after game over
+	int jumpframe;   // how many frames since jump started, 0 for not jumping
+
+	// negative after game over
+	int nguards;
 };
 
 extern struct EllipsoidPic *const *player_epics;  // NULL terminated
