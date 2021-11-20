@@ -7,7 +7,6 @@
 #include "ellipsoid.h"
 #include "enemy.h"
 #include "guard.h"
-#include "intersect.h"
 #include "log.h"
 #include "looptimer.h"
 #include "max.h"
@@ -167,11 +166,20 @@ static void handle_event(SDL_Event event, struct GameState *gs)
 	}
 }
 
+static void handle_players_bumping_each_other(struct Player *plr0, struct Player *plr1)
+{
+	float bump = ellipsoid_bump_amount(&plr0->ellipsoid, &plr1->ellipsoid);
+	if (bump != 0) {
+		log_printf("players bump into each other");
+		ellipsoid_move_apart(&plr0->ellipsoid, &plr1->ellipsoid, bump);
+	}
+}
+
 static void handle_players_bumping_enemies(struct GameState *gs)
 {
 	for (int p = 0; p < 2; p++) {
 		for (int e = gs->nenemies - 1; e >= 0; e--) {
-			if (intersect_check_el_el(&gs->players[p].ellipsoid, &gs->enemies[e].ellipsoid)) {
+			if (ellipsoid_bump_amount(&gs->players[p].ellipsoid, &gs->enemies[e].ellipsoid) != 0) {
 				log_printf(
 					"enemy %d/%d hits player %d (%d guards)",
 					e, gs->nenemies,
@@ -194,7 +202,7 @@ static void handle_enemies_bumping_unpicked_guards(struct GameState *gs)
 {
 	for (int e = gs->nenemies - 1; e >= 0; e--) {
 		for (int u = gs->n_unpicked_guards - 1; u >= 0; u--) {
-			if (intersect_check_el_el(&gs->enemies[e].ellipsoid, &gs->unpicked_guards[u])) {
+			if (ellipsoid_bump_amount(&gs->enemies[e].ellipsoid, &gs->unpicked_guards[u]) != 0) {
 				log_printf("enemy %d/%d destroys unpicked guard %d/%d",
 					e, gs->nenemies, u, gs->n_unpicked_guards);
 				sound_play("farts/fart*.wav");
@@ -208,7 +216,7 @@ static void handle_players_bumping_unpicked_guards(struct GameState *gs)
 {
 	for (int p = 0; p < 2; p++) {
 		for (int u = gs->n_unpicked_guards - 1; u >= 0; u--) {
-			if (intersect_check_el_el(&gs->players[p].ellipsoid, &gs->unpicked_guards[u])) {
+			if (ellipsoid_bump_amount(&gs->players[p].ellipsoid, &gs->unpicked_guards[u]) != 0) {
 				log_printf(
 					"player %d (%d guards) picks unpicked guard %d/%d",
 					p, gs->players[p].nguards, u, gs->n_unpicked_guards);
@@ -266,7 +274,7 @@ enum MiscState play_the_game(
 				.ellipsoid = {
 					.angle = 0,
 					.epic = plr0pic,
-					.botcenter = { map->playerlocs[0].x + 0.5f, 0, map->playerlocs[0].z + 0.5f },
+					.center = { map->playerlocs[0].x + 0.5f, 0, map->playerlocs[0].z + 0.5f },
 				},
 				.cam = {
 					.screencentery = winsurf->h/4,
@@ -279,7 +287,7 @@ enum MiscState play_the_game(
 				.ellipsoid = {
 					.angle = 0,
 					.epic = plr1pic,
-					.botcenter = { map->playerlocs[1].x + 0.5f, 0, map->playerlocs[1].z + 0.5f }
+					.center = { map->playerlocs[1].x + 0.5f, 0, map->playerlocs[1].z + 0.5f }
 				},
 				.cam = {
 					.screencentery = winsurf->h/4,
@@ -316,7 +324,7 @@ enum MiscState play_the_game(
 		for (int i = 0; i < 2; i++)
 			player_eachframe(&gs.players[i], map);
 
-		intersect_move_el_el(&gs.players[0].ellipsoid, &gs.players[1].ellipsoid);
+		handle_players_bumping_each_other(&gs.players[0], &gs.players[1]);
 		handle_players_bumping_enemies(&gs);
 		handle_enemies_bumping_unpicked_guards(&gs);
 		handle_players_bumping_unpicked_guards(&gs);

@@ -29,6 +29,9 @@ struct EllipsoidPic {
 	Here highlighted is usually 0, but can be 1 for different color.
 	*/
 	uint32_t cubepixels[2][ELLIPSOIDPIC_SIDE][ELLIPSOIDPIC_SIDE][ELLIPSOIDPIC_SIDE];
+
+	// if true, then only the upper half of the ellipsoid is visible
+	bool hidelowerhalf;
 };
 
 // epic lmao
@@ -39,25 +42,23 @@ void ellipsoidpic_load(struct EllipsoidPic *epic, const char *path, const SDL_Pi
 struct EllipsoidPic *const *ellipsoidpic_loadmany(int *n, const char *globpat, const SDL_PixelFormat *fmt);
 
 /*
-An Ellipsoid is a stretched ball around the center vector:
+An Ellipsoid is a stretched ball shifted by the center vector, as in
 
-	((x - center.x) / botradius)^2 + ((y - center.y) / height)^2 + ((z - center.z) / botradius)^2 = 1
+	((x - center.x) / xzradius)^2 + ((y - center.y) / yradius)^2 + ((z - center.z) / xzradius)^2 = 1.
 
-	y >= center.y
-
-So, we take the origin-centered unit ball x^2+y^2+z^2=1, delete the lower
-half, stretch it in x and z directions by bottom radius and in y direction
-by height, and move it to change the center.
+So, we take the origin-centered unit ball x^2+y^2+z^2=1, stretch it in
+x and z directions by xzradius and in y direction by yradius, and move
+it to change the center.
 */
 struct Ellipsoid {
-	Vec3 botcenter;  // center of bottom circle
+	Vec3 center;
 	const struct EllipsoidPic *epic;
 	bool highlighted;
 
 	// call ellipsoid_update_transforms() after changing these
-	float angle;
-	float botradius;
-	float height;
+	float angle;       // radians
+	float xzradius;    // positive
+	float yradius;     // positive
 
 	/*
 	Applying transform to an origin-centered unit ball gives this ellipsoid
@@ -71,12 +72,12 @@ Information shared in multiple functions, specific to screen x coordinate
 */
 struct EllipsoidXCache {
 	int screenx;
-	float botcenterscreenx;    // where is ellipsoid->botcenter on screen?
+	float ballcenterscreenx;    // where is ellipsoid->center on screen?
 	float xzr;
 	const struct Camera *cam;
 
 	// coordinates are in camera coordinates with Ellipsoid.transform_inverse applied
-	Vec3 ballcenter;        // ellipsoid->botcenter, transformed as described above
+	Vec3 ballcenter;        // ellipsoid->center, transformed as described above
 	struct Plane xplane;    // plane of points that are visible at given screen x
 	float dSQUARED;         // (distance between xplane and ballcenter)^2
 };
@@ -104,6 +105,23 @@ called more than once with same xcache but different ymin and ymax.
 void ellipsoid_drawcolumn(
 	const struct Ellipsoid *el, const struct EllipsoidXCache *xcache,
 	int ymin, int ymax);
+
+/*
+Returns how much ellipsoids should be moved apart from each other to make them not
+intersect. The moving should happen in xz plane direction (no moving vertically).
+Never returns negative. If this returns 0, then the ellipsoids don't intersect
+each other.
+
+Currently this does not account for the fact that the lower half of an
+ellipsoid can be hidden.
+*/
+float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid *el2);
+
+/*
+Move each ellipsoid away from the other one by half of the given amount without
+changing y coordinate of location
+*/
+void ellipsoid_move_apart(struct Ellipsoid *el1, struct Ellipsoid *el2, float mv);
 
 
 #endif  // ELLIPSOID_H

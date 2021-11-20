@@ -5,8 +5,8 @@
 #include "ellipsoid.h"
 #include "map.h"
 
-#define ENEMY_BOTRADIUS 0.45f
-#define ENEMY_HEIGHT  1.2f
+#define ENEMY_XZRADIUS 0.45f
+#define ENEMY_YRADIUS  1.2f
 
 enum EnemyDir {
 	ENEMY_DIR_XPOS,
@@ -16,7 +16,7 @@ enum EnemyDir {
 };
 
 enum EnemyFlags {
-	ENEMY_STUCK = 0x01,     // can't move anywhere, so just spin without changing ellipsoid.botcenter
+	ENEMY_STUCK = 0x01,     // can't move anywhere, so just spin without changing ellipsoid.center
 	ENEMY_TURNING = 0x02,   // soon will be looking into enemy->dir direction
 };
 

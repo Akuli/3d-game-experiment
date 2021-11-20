@@ -202,7 +202,7 @@ static bool mouse_is_on_ellipsoid_with_no_walls_between(struct MapEditor *ed, co
 		return false;
 
 	for (const struct Wall *w = ed->map->walls; w < &ed->map->walls[ed->map->nwalls]; w++) {
-		if (wall_side(w, ed->cam.location) != wall_side(w, el->botcenter) && mouse_is_on_wall(&ed->cam, w, x, y))
+		if (wall_side(w, ed->cam.location) != wall_side(w, el->center) && mouse_is_on_wall(&ed->cam, w, x, y))
 			return false;
 	}
 	return true;
@@ -264,7 +264,7 @@ static void select_by_mouse_coords(struct MapEditor *ed, int mousex, int mousey)
 	// Find ellipsoid visible with no walls between having smallest distance to camera
 	for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); ) {
 		if (mouse_is_on_ellipsoid_with_no_walls_between(ed, &ee->el, mousex, mousey)) {
-			float d = vec3_lengthSQUARED(vec3_sub(ee->el.botcenter, ed->cam.location));
+			float d = vec3_lengthSQUARED(vec3_sub(ee->el.center, ed->cam.location));
 			if (d < smallestd) {
 				nearest = ee;
 				smallestd = d;
@@ -777,7 +777,7 @@ static void show_editor(struct MapEditor *ed)
 		}
 
 		for (const struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit_const(ed, &ee); ) {
-			if (wall_side(hlwall, ee->el.botcenter) == wall_side(hlwall, ed->cam.location))
+			if (wall_side(hlwall, ee->el.center) == wall_side(hlwall, ed->cam.location))
 				front.els[front.nels++] = ee->el;
 			else
 				behind.els[behind.nels++] = ee->el;
@@ -893,14 +893,15 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 	};
 
 	for (int p = 0; p < 2; p++) {
-		ed->playeredits[p].el.botradius = PLAYER_BOTRADIUS;
-		ed->playeredits[p].el.height = PLAYER_HEIGHT_NOFLAT;
+		ed->playeredits[p].el.xzradius = PLAYER_XZRADIUS;
+		ed->playeredits[p].el.yradius = PLAYER_YRADIUS_NOFLAT;
+		ed->playeredits[p].el.center.y = PLAYER_YRADIUS_NOFLAT;
 		ellipsoid_update_transforms(&ed->playeredits[p].el);
 	}
 	// Enemies go all the way to max, so don't need to do again if add enemies
 	for (int i = 0; i < MAX_ENEMIES; i++) {
-		ed->enemyedits[i].el.botradius = ENEMY_BOTRADIUS;
-		ed->enemyedits[i].el.height = ENEMY_HEIGHT,
+		ed->enemyedits[i].el.xzradius = ENEMY_XZRADIUS;
+		ed->enemyedits[i].el.yradius = ENEMY_YRADIUS,
 		ed->enemyedits[i].el.epic = enemy_getrandomepic();
 		ellipsoid_update_transforms(&ed->enemyedits[i].el);
 	}
@@ -937,8 +938,8 @@ static void show_and_rotate_map_editor(struct MapEditor *ed, bool canedit)
 {
 	if (ed->rotatedir != 0 || ed->redraw) {
 		for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); ) {
-			ee->el.botcenter.x = ee->loc->x + 0.5f;
-			ee->el.botcenter.z = ee->loc->z + 0.5f;
+			ee->el.center.x = ee->loc->x + 0.5f;
+			ee->el.center.z = ee->loc->z + 0.5f;
 		}
 		rotate_camera(ed, ed->rotatedir * (canedit ? 3.0f : 1.0f));
 

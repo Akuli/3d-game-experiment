@@ -8,7 +8,7 @@
 #include "max.h"
 #include "log.h"
 
-#define HEIGHT_BASIC 1.0f
+#define YRADIUS_BASIC 1.0f
 #define SPACING_BASIC 0.2f
 
 static struct EllipsoidPic guard_ellipsoidpic;
@@ -18,14 +18,16 @@ void guard_init_epic(const SDL_PixelFormat *fmt)
 	static bool ready = false;
 	SDL_assert(!ready);
 	ready = true;
+
 	ellipsoidpic_load(&guard_ellipsoidpic, "assets/guard.png", fmt);
+	guard_ellipsoidpic.hidelowerhalf = true;
 }
 
 // this function could be slow with many nonpicked guards
 static bool nonpicked_guard_center_in_use(Vec3 center, const struct Ellipsoid *others, int nothers)
 {
 	for (int i = 0; i < nothers; i++) {
-		if (vec3_lengthSQUARED(vec3_sub(center, others[i].botcenter)) < 0.001)
+		if (vec3_lengthSQUARED(vec3_sub(center, others[i].center)) < 0.001)
 			return true;
 	}
 	return false;
@@ -47,11 +49,11 @@ int guard_create_unpickeds_center(
 			center.y += SPACING_BASIC;
 
 		struct Ellipsoid el = {
-			.botcenter = center,
+			.center = center,
 			.epic = &guard_ellipsoidpic,
 			.angle = 0,
-			.botradius = GUARD_BOTRADIUS,
-			.height = HEIGHT_BASIC,
+			.xzradius = GUARD_XZRADIUS,
+			.yradius = YRADIUS_BASIC,
 		};
 		ellipsoid_update_transforms(&el);
 		guards[(*nguards)++] = el;
@@ -82,16 +84,20 @@ int guard_create_picked(struct Ellipsoid *arr, const struct Player *plr)
 	make guards flatten and stretch too.
 	Usually ratio is 1, but it's between 0 and 1 when flat, and >1 when stretchy.
 	*/
-	float ratio = plr->ellipsoid.height / PLAYER_HEIGHT_NOFLAT;
-	float height = ratio*HEIGHT_BASIC;
+	float ratio = plr->ellipsoid.yradius / PLAYER_YRADIUS_NOFLAT;
+	float yradius = ratio*YRADIUS_BASIC;
 	float spacing = ratio*SPACING_BASIC;
 
 	arr[0] = (struct Ellipsoid){
-		.botcenter = vec3_add(plr->ellipsoid.botcenter, (Vec3){ 0, plr->ellipsoid.height - height/5, 0 }),
+		.center = {
+			plr->ellipsoid.center.x,
+			plr->ellipsoid.center.y + plr->ellipsoid.yradius - yradius/5,
+			plr->ellipsoid.center.z,
+		},
 		.epic = &guard_ellipsoidpic,
 		.angle = plr->ellipsoid.angle,
-		.botradius = GUARD_BOTRADIUS,
-		.height = height,
+		.xzradius = GUARD_XZRADIUS,
+		.yradius = yradius,
 	};
 	ellipsoid_update_transforms(&arr[0]);
 
@@ -99,7 +105,7 @@ int guard_create_picked(struct Ellipsoid *arr, const struct Player *plr)
 	SDL_assert(n >= 0);
 	for (int i = 1; i < n; i++) {
 		arr[i] = arr[i-1];
-		arr[i].botcenter.y += spacing;
+		arr[i].center.y += spacing;
 		// no need to update transforms, they don't depend on center location at all
 	}
 	return n;

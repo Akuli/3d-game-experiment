@@ -7,7 +7,7 @@
 #include "map.h"
 #include "player.h"
 
-#define GUARD_BOTRADIUS 0.25f
+#define GUARD_XZRADIUS 0.25f
 
 // call this before any other guard functions
 void guard_init_epic(const SDL_PixelFormat *fmt);
