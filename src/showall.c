@@ -308,8 +308,7 @@ void show_all(
 		static struct Interval nonoverlap[INTERVAL_NON_OVERLAPPING_MAX(ArrayLen(intervals))];
 		int nnonoverlap = interval_non_overlapping(intervals, nintervals, nonoverlap);
 
-		for (int i = 0; i < nnonoverlap; i++) {
+		for (int i = 0; i < nnonoverlap; i++)
 			draw_column(&st, x, nonoverlap[i].id, nonoverlap[i].start, nonoverlap[i].end);
-		}
 	}
 }
