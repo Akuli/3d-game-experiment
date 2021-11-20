@@ -13,6 +13,7 @@
 #include "max.h"
 #include "misc.h"
 #include "map.h"
+#include "pause.h"
 #include "player.h"
 #include "showall.h"
 #include "sound.h"
@@ -131,11 +132,14 @@ static void add_guards_and_enemies_as_needed(struct GameState *gs)
 	}
 }
 
-static void handle_event(SDL_Event event, struct GameState *gs)
+static enum MiscState handle_event(SDL_Event event, struct GameState *gs, SDL_Window *wnd)
 {
 	bool down = (event.type == SDL_KEYDOWN);
 
 	switch(event.type) {
+	case SDL_QUIT:
+		return MISC_STATE_QUIT;
+
 	case SDL_KEYDOWN:
 	case SDL_KEYUP:
 		switch(misc_handle_scancode(event.key.keysym.scancode)) {
@@ -157,13 +161,15 @@ static void handle_event(SDL_Event event, struct GameState *gs)
 			case SDL_SCANCODE_UP: player_set_moving(&gs->players[1], down); break;
 			case SDL_SCANCODE_DOWN: player_set_flat(&gs->players[1], down); break;
 
+			case SDL_SCANCODE_ESCAPE: return show_pause_screen(wnd);
+
 			default:
 				log_printf("unknown key press/release scancode %d", event.key.keysym.scancode);
 		}
-		break;
+		return MISC_STATE_PLAY;
 
 	default:
-		break;
+		return MISC_STATE_PLAY;
 	}
 }
 
@@ -310,11 +316,9 @@ enum MiscState play_the_game(
 	while(gs.players[0].nguards >= 0 && gs.players[1].nguards >= 0) {
 		SDL_Event e;
 		while(SDL_PollEvent(&e)) {
-			if (e.type == SDL_QUIT) {
-				ret = MISC_STATE_QUIT;
+			ret = handle_event(e, &gs, wnd);
+			if (ret != MISC_STATE_PLAY)
 				goto out;
-			}
-			handle_event(e, &gs);
 		}
 
 		add_guards_and_enemies_as_needed(&gs);
