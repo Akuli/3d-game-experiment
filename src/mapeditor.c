@@ -729,13 +729,6 @@ static bool wall_should_be_highlighted(const struct MapEditor *ed, const struct 
 	}
 }
 
-struct ToShow {
-	struct Wall walls[MAX_WALLS];
-	int nwalls;
-	struct Ellipsoid els[2 + MAX_ENEMIES];
-	int nels;
-};
-
 static void show_editor(struct MapEditor *ed)
 {
 	for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); ) {
