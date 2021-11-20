@@ -7,17 +7,15 @@
 #include "ellipsoid.h"
 #include "enemy.h"
 #include "guard.h"
-#include "intersect.h"
 #include "log.h"
 #include "looptimer.h"
-#include "map.h"
-#include "mathstuff.h"
 #include "max.h"
 #include "misc.h"
+#include "map.h"
 #include "player.h"
-#include "region.h"
 #include "showall.h"
 #include "sound.h"
+#include "region.h"
 
 // includes all the GameObjects that all players should see
 struct GameState {
@@ -168,11 +166,20 @@ static void handle_event(SDL_Event event, struct GameState *gs)
 	}
 }
 
+static void handle_players_bumping_each_other(struct Player *plr0, struct Player *plr1)
+{
+	float bump = ellipsoid_bump_amount(&plr0->ellipsoid, &plr1->ellipsoid);
+	if (bump != 0) {
+		log_printf("players bump into each other");
+		ellipsoid_move_apart(&plr0->ellipsoid, &plr1->ellipsoid, bump);
+	}
+}
+
 static void handle_players_bumping_enemies(struct GameState *gs)
 {
 	for (int p = 0; p < 2; p++) {
 		for (int e = gs->nenemies - 1; e >= 0; e--) {
-			if (intersects_el_el(&gs->players[p].ellipsoid, &gs->enemies[e].ellipsoid)) {
+			if (ellipsoid_bump_amount(&gs->players[p].ellipsoid, &gs->enemies[e].ellipsoid) != 0) {
 				log_printf(
 					"enemy %d/%d hits player %d (%d guards)",
 					e, gs->nenemies,
@@ -195,7 +202,7 @@ static void handle_enemies_bumping_unpicked_guards(struct GameState *gs)
 {
 	for (int e = gs->nenemies - 1; e >= 0; e--) {
 		for (int u = gs->n_unpicked_guards - 1; u >= 0; u--) {
-			if (intersects_el_el(&gs->enemies[e].ellipsoid, &gs->unpicked_guards[u])) {
+			if (ellipsoid_bump_amount(&gs->enemies[e].ellipsoid, &gs->unpicked_guards[u]) != 0) {
 				log_printf("enemy %d/%d destroys unpicked guard %d/%d",
 					e, gs->nenemies, u, gs->n_unpicked_guards);
 				sound_play("farts/fart*.wav");
@@ -209,7 +216,7 @@ static void handle_players_bumping_unpicked_guards(struct GameState *gs)
 {
 	for (int p = 0; p < 2; p++) {
 		for (int u = gs->n_unpicked_guards - 1; u >= 0; u--) {
-			if (intersects_el_el(&gs->players[p].ellipsoid, &gs->unpicked_guards[u])) {
+			if (ellipsoid_bump_amount(&gs->players[p].ellipsoid, &gs->unpicked_guards[u]) != 0) {
 				log_printf(
 					"player %d (%d guards) picks unpicked guard %d/%d",
 					p, gs->players[p].nguards, u, gs->n_unpicked_guards);
@@ -247,29 +254,6 @@ static int get_all_ellipsoids(
 	return ptr - result;
 }
 
-static void handle_players_bumping_each_other(struct Player *plr1, struct Player *plr2)
-{
-	Vec3 mv;
-	switch(intersect_el_el(&plr1->ellipsoid, &plr2->ellipsoid, &mv)) {
-		case INTERSECT_EE_NONE:
-			break;
-		case INTERSECT_EE_BOTTOM1_TIP2:
-			plr1->yspeed = 0;
-			vec3_add_inplace(&plr1->ellipsoid.botcenter, mv);
-			break;
-		case INTERSECT_EE_BOTTOM2_TIP1:
-			plr2->yspeed = 0;
-			vec3_sub_inplace(&plr2->ellipsoid.botcenter, mv);
-			break;
-		case INTERSECT_EE_BOTTOM1_SIDE2:
-			vec3_add_inplace(&plr1->ellipsoid.botcenter, mv);
-			break;
-		case INTERSECT_EE_BOTTOM2_SIDE1:
-			vec3_sub_inplace(&plr2->ellipsoid.botcenter, mv);
-			break;
-	}
-}
-
 enum MiscState play_the_game(
 	SDL_Window *wnd,
 	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic,
@@ -290,9 +274,7 @@ enum MiscState play_the_game(
 				.ellipsoid = {
 					.angle = 0,
 					.epic = plr0pic,
-					.botcenter = { map->playerlocs[0].x + 0.5f, 0, map->playerlocs[0].z + 0.5f },
-					.botradius = PLAYER_BOTRADIUS,
-					.height = PLAYER_HEIGHT_NOFLAT,
+					.center = { map->playerlocs[0].x + 0.5f, 0, map->playerlocs[0].z + 0.5f },
 				},
 				.cam = {
 					.screencentery = winsurf->h/4,
@@ -305,9 +287,7 @@ enum MiscState play_the_game(
 				.ellipsoid = {
 					.angle = 0,
 					.epic = plr1pic,
-					.botcenter = { map->playerlocs[1].x + 0.5f, 0, map->playerlocs[1].z + 0.5f },
-					.botradius = PLAYER_BOTRADIUS,
-					.height = PLAYER_HEIGHT_NOFLAT,
+					.center = { map->playerlocs[1].x + 0.5f, 0, map->playerlocs[1].z + 0.5f }
 				},
 				.cam = {
 					.screencentery = winsurf->h/4,
@@ -341,11 +321,10 @@ enum MiscState play_the_game(
 			enemy_eachframe(&gs.enemies[i]);
 		for (int i = 0; i < gs.n_unpicked_guards; i++)
 			guard_unpicked_eachframe(&gs.unpicked_guards[i]);
-		player_eachframe(&gs.players[0], map);
-		player_eachframe(&gs.players[1], map);
+		for (int i = 0; i < 2; i++)
+			player_eachframe(&gs.players[i], map);
 
 		handle_players_bumping_each_other(&gs.players[0], &gs.players[1]);
-
 		handle_players_bumping_enemies(&gs);
 		handle_enemies_bumping_unpicked_guards(&gs);
 		handle_players_bumping_unpicked_guards(&gs);

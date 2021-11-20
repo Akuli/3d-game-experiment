@@ -2,17 +2,28 @@
 #define WALL_H
 
 #include <stdbool.h>
+#include "ellipsoid.h"
 #include "camera.h"
 #include "mathstuff.h"
-
-#define WALL_Y_MIN 0.1f
-#define WALL_Y_MAX 1.0f
 
 /*
 Walls always start and end in integer x and z coordinates and go 1 unit to
 x or z direction from there, as specified by this.
 */
 enum WallDirection { WALL_DIR_XY, WALL_DIR_ZY };
+
+/*
+I thought about doing collision checking by dividing it into these cases:
+- The ellipsoid could touch the corner points of the wall.
+- The ellipsoid could touch any edge of the wall so that it touches between the corners,
+  and doesn't touch the corners.
+- The ellipsoid could touch the "center part" of the wall without touching any edges or
+  corners.
+
+Handling all this would be a lot of code, so instead we just spread some points
+uniformly across the wall and see if those touch. I call these collision points.
+*/
+#define WALL_CP_COUNT 10
 
 struct Wall {
 	int startx;
@@ -41,6 +52,9 @@ struct Wall {
 	and bot2.
 	*/
 	Vec3 top1, top2, bot1, bot2;
+
+	// don't use outside wall.c
+	Vec3 collpoints[WALL_CP_COUNT][WALL_CP_COUNT];
 };
 
 // Call this after setting startx,startz,dir of a new wall
@@ -49,6 +63,9 @@ void wall_init(struct Wall *w);
 
 // does not require using wall_init()
 bool wall_match(const struct Wall *w1, const struct Wall *w2);
+
+// moves el so that it doesn't bump
+void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el);
 
 // center point of wall in world coordinates
 Vec3 wall_center(const struct Wall *w);

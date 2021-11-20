@@ -114,7 +114,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 			.onclickdata = plrch,
 		},
 		.cam = {
-			.screencentery = 0,
+			.screencentery = -preview.h / 10,
 			.surface = misc_create_cropped_surface(ch->winsurf, preview),
 			.angle = -(2*pi)/player_nepics * idx,
 		},
@@ -137,10 +137,10 @@ static void create_player_ellipsoids(struct Chooser *ch)
 
 		ch->ellipsoids[i] = (struct Ellipsoid){
 			.epic = player_epics[i],
-			.botcenter = mat3_mul_vec3(mat3_rotation_xz(angle), (Vec3){ ELLIPSOID_XZ_DISTANCE_FROM_ORIGIN, 0, 0 }),
+			.center = mat3_mul_vec3(mat3_rotation_xz(angle), (Vec3){ ELLIPSOID_XZ_DISTANCE_FROM_ORIGIN, 0, 0 }),
 			.angle = angle,
-			.botradius = PLAYER_BOTRADIUS,
-			.height = PLAYER_HEIGHT_NOFLAT,
+			.xzradius = PLAYER_XZRADIUS,
+			.yradius = PLAYER_YRADIUS_NOFLAT,
 		};
 		ellipsoid_update_transforms(&ch->ellipsoids[i]);
 	}

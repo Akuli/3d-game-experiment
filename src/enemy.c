@@ -21,6 +21,9 @@ void enemy_init_epics(const SDL_PixelFormat *fmt)
 	SDL_assert(ellipsoid_pics == NULL);
 	ellipsoid_pics = ellipsoidpic_loadmany(&n_ellipsoid_pics, "assets/enemies/*.png", fmt);
 	SDL_assert(ellipsoid_pics != NULL);
+
+	for (int i = 0; i < n_ellipsoid_pics; i++)
+		ellipsoid_pics[i]->hidelowerhalf = true;
 }
 
 const struct EllipsoidPic *enemy_getrandomepic(void)
@@ -32,11 +35,11 @@ struct Enemy enemy_new(const struct Map *map, struct MapCoords loc)
 {
 	struct Enemy res = {
 		.ellipsoid = {
-			.botcenter = { loc.x + 0.5f, 0, loc.z + 0.5f },
+			.center = { loc.x + 0.5f, 0, loc.z + 0.5f },
 			.epic = enemy_getrandomepic(),
 			.angle = 0,
-			.botradius = ENEMY_BOTRADIUS,
-			.height = ENEMY_HEIGHT,
+			.xzradius = ENEMY_XZRADIUS,
+			.yradius = ENEMY_YRADIUS,
 		},
 		.dir = ENEMY_DIR_XPOS,
 		.flags = 0,
@@ -87,8 +90,8 @@ static void begin_turning(struct Enemy *en)
 	V
 	z
 	*/
-	int x = (int) floorf(en->ellipsoid.botcenter.x);
-	int z = (int) floorf(en->ellipsoid.botcenter.z);
+	int x = (int) floorf(en->ellipsoid.center.x);
+	int z = (int) floorf(en->ellipsoid.center.z);
 
 	for (int i = 0; i < en->map->nwalls; i++) {
 		struct Wall w = en->map->walls[i];
@@ -169,10 +172,10 @@ static void move(struct Enemy *en, bool checkturn)
 
 	float amount = 2.5f / CAMERA_FPS;
 	switch(en->dir) {
-		case ENEMY_DIR_XPOS: move_coordinate(&en->ellipsoid.botcenter.x, +amount, en, checkturn); break;
-		case ENEMY_DIR_XNEG: move_coordinate(&en->ellipsoid.botcenter.x, -amount, en, checkturn); break;
-		case ENEMY_DIR_ZPOS: move_coordinate(&en->ellipsoid.botcenter.z, +amount, en, checkturn); break;
-		case ENEMY_DIR_ZNEG: move_coordinate(&en->ellipsoid.botcenter.z, -amount, en, checkturn); break;
+		case ENEMY_DIR_XPOS: move_coordinate(&en->ellipsoid.center.x, +amount, en, checkturn); break;
+		case ENEMY_DIR_XNEG: move_coordinate(&en->ellipsoid.center.x, -amount, en, checkturn); break;
+		case ENEMY_DIR_ZPOS: move_coordinate(&en->ellipsoid.center.z, +amount, en, checkturn); break;
+		case ENEMY_DIR_ZNEG: move_coordinate(&en->ellipsoid.center.z, -amount, en, checkturn); break;
 	}
 }
 

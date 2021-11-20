@@ -5,7 +5,11 @@
 #include <SDL2/SDL.h>
 #include "camera.h"
 #include "mathstuff.h"
+#include "player.h"
 #include "misc.h"
+
+#define Y_MIN PLAYER_HEIGHT_FLAT   // allow players to go under the wall
+#define Y_MAX 1.0f
 
 
 static float linear_map(float srcmin, float srcmax, float dstmin, float dstmax, float val)
@@ -16,8 +20,26 @@ static float linear_map(float srcmin, float srcmax, float dstmin, float dstmax, 
 
 void wall_init(struct Wall *w)
 {
-	w->top1 = w->top2 = (Vec3){ (float)w->startx, WALL_Y_MAX, (float)w->startz };
-	w->bot1 = w->bot2 = (Vec3){ (float)w->startx, WALL_Y_MIN, (float)w->startz };
+	for (int xznum = 0; xznum < WALL_CP_COUNT; xznum++) {
+		for (int ynum = 0; ynum < WALL_CP_COUNT; ynum++) {
+			Vec3 *ptr = &w->collpoints[xznum][ynum];
+			ptr->x = (float)w->startx;
+			ptr->y = linear_map(0, WALL_CP_COUNT-1, Y_MIN, Y_MAX, (float)ynum);
+			ptr->z = (float)w->startz;
+
+			switch(w->dir) {
+			case WALL_DIR_XY:
+				ptr->x += linear_map(0, WALL_CP_COUNT-1, 0, 1, (float)xznum);
+				break;
+			case WALL_DIR_ZY:
+				ptr->z += linear_map(0, WALL_CP_COUNT-1, 0, 1, (float)xznum);
+				break;
+			}
+		}
+	}
+
+	w->top1 = w->top2 = (Vec3){ (float)w->startx, Y_MAX, (float)w->startz };
+	w->bot1 = w->bot2 = (Vec3){ (float)w->startx, Y_MIN, (float)w->startz };
 
 	switch(w->dir) {
 		case WALL_DIR_XY:
@@ -36,6 +58,62 @@ bool wall_match(const struct Wall *w1, const struct Wall *w2)
 	return w1->dir == w2->dir && w1->startx == w2->startx && w1->startz == w2->startz;
 }
 
+
+void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el)
+{
+	/*
+	If the ellipsoid is very far away from wall, then it surely doesn't bump. We
+	use this idea to optimize the common case. But how much is "very far away"?
+
+	Suppose that the ellipsoid and wall intersect at some point p. Let
+	diam(w) denote the distance between opposite corners of a wall. Then
+
+			|center(w) - center(el)|
+		=	|center(w) - p  +  p - center(el)|         (because -p+p = zero vector)
+		<=	|center(w) - p| + |p - center(el)|         (by triangle inequality)
+		<=	diam(w)/2       + |p - center(el)|         (because p is in wall)
+		<=	diam(w)/2       + max(xzradius, yradius)   (because p is in ellipsoid)
+
+	If this is not the case, then we can't have any intersections. We use
+	this to optimize a common case.
+	*/
+	float diam = hypotf(Y_MAX - Y_MIN, 1);
+	float thing = diam/2 + max(el->xzradius, el->yradius);
+	if (vec3_lengthSQUARED(vec3_sub(el->center, wall_center(w))) > thing*thing)
+		return;
+
+	// Switch to coordinates where the ellipsoid is a ball with radius 1
+	Vec3 elcenter = mat3_mul_vec3(el->transform_inverse, el->center);
+
+	for (int xznum = 0; xznum < WALL_CP_COUNT; xznum++) {
+		for (int ynum = 0; ynum < WALL_CP_COUNT; ynum++) {
+			Vec3 collpoint = mat3_mul_vec3(el->transform_inverse, w->collpoints[xznum][ynum]);
+			Vec3 diff = vec3_sub(elcenter, collpoint);
+
+			float distSQUARED = vec3_lengthSQUARED(diff);
+			if (distSQUARED >= 1)   // doesn't bump
+				continue;
+
+			float dist = sqrtf(distSQUARED);
+
+			diff.y = 0;   // don't move up/down
+			diff = vec3_withlength(diff, 1 - dist);  // move just enough to not touch
+			vec3_apply_matrix(&diff, el->transform);
+
+			// if we're not bumping on the edge of the wall
+			if (xznum != 0 && xznum != WALL_CP_COUNT - 1) {
+				// then we should move only in direction opposite to wall
+				switch(w->dir) {
+					case WALL_DIR_XY: diff.x = 0; break;
+					case WALL_DIR_ZY: diff.z = 0; break;
+				}
+			}
+
+			vec3_add_inplace(&el->center, diff);
+			elcenter = mat3_mul_vec3(el->transform_inverse, el->center);   // cache invalidation
+		}
+	}
+}
 
 static bool wall_is_visible(const struct Wall *w, const struct Camera *cam)
 {
@@ -65,7 +143,7 @@ static bool wall_is_visible(const struct Wall *w, const struct Camera *cam)
 Vec3 wall_center(const struct Wall *w)
 {
 	float x = (float)w->startx;
-	float y = (WALL_Y_MIN + WALL_Y_MAX)/2;
+	float y = (Y_MIN + Y_MAX)/2;
 	float z = (float)w->startz;
 
 	switch(w->dir) {
