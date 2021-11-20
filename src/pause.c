@@ -7,7 +7,7 @@
 
 static const SDL_Color white_color = { 0xff, 0xff, 0xff, 0xff };
 
-static void on_continue_clicked     (void *state) { *(enum MiscState *)state = MISC_STATE_PLAY; }
+static void on_continue_clicked(void *state) { *(enum MiscState *)state = MISC_STATE_PLAY; }
 static void on_back_to_chooser_clicked(void *state) { *(enum MiscState *)state = MISC_STATE_CHOOSER; }
 
 enum MiscState show_pause_screen(struct SDL_Window *wnd)
