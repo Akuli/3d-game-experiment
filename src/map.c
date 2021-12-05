@@ -501,7 +501,7 @@ static void get_map_path(const struct Map *map, char *res)
 {
 	SDL_assert(map->num != -1);
 	sprintf(res, "custom_maps/%05d-", map->num);
-	char *p = res+strlen(res);
+	while(*res) res++;
 
 	// res won't be overflown, map names are short
 	static_assert(sizeof map->name < 50, "time to check for buffer overruns! yay...");
@@ -510,13 +510,13 @@ static void get_map_path(const struct Map *map, char *res)
 		if (('a' <= *src && *src <= 'z')
 				|| ('A' <= *src && *src <= 'Z')
 				|| ('0' <= *src && *src <= '9'))
-			*p++ = tolower(*src);
+			*res++ = tolower(*src);
 		// turn "ö" into just one "-" by skipping utf-8 continuation bytes
 		// https://en.wikipedia.org/wiki/UTF-8#Encoding
 		else if (((unsigned char)(*src)) >> 6 != 2)
-			*p++ = '-';
+			*res++ = '-';
 	}
-	strcpy(p, ".txt");
+	strcpy(res, ".txt");
 }
 
 static void rename_file_if_needed(struct Map *map)
