@@ -1,7 +1,6 @@
 #ifndef MAP_H
 #define MAP_H
 
-#include <stdbool.h>
 #include "max.h"
 #include "wall.h"
 
@@ -9,9 +8,9 @@ struct MapCoords { int x, z; };
 
 struct Map {
 	char path[1024];
+	int num;  // 12345 if path is "custom_maps/12345-foo-bar.txt", -1 for non-custom maps
 	char name[25];   // Must fit in map chooser, map delete dialog and map name entry
 	double sortkey;
-	bool custom;  // whether path starts with "custom_maps"
 	struct Wall walls[MAX_WALLS];
 	int nwalls;
 	int xsize, zsize;    // players and enemies must have 0 <= x <= xsize, 0 <= z <= zsize
@@ -43,7 +42,7 @@ void map_movecontent(struct Map *map, int dx, int dz);
 void map_fix(struct Map *map);
 
 // for custom maps only
-void map_save(const struct Map *map);
+void map_save(struct Map *map);
 
 // set maps[idx].sortkey so that it stays in current location when sorted
 // map must be custom, saves map

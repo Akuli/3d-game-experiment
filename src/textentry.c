@@ -15,15 +15,6 @@ static int text_width(const struct TextEntry *te, const char *s)
 	return w;
 }
 
-// https://en.wikipedia.org/wiki/UTF-8#Encoding
-#define is_utf8_continuation_byte(b) ((unsigned char)(b) >> 6 == 2)
-static void utf8_prev(char **s) {
-	do { --*s; } while (is_utf8_continuation_byte(**s));
-}
-static void utf8_next(char **s) {
-	do { ++*s; } while (is_utf8_continuation_byte(**s));
-}
-
 static char *mouse_to_cursorpos(const struct TextEntry *te, int mousex)
 {
 	mousex = mousex - te->rect.x - te->rect.w/2 + text_width(te, te->text)/2;

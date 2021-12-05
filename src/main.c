@@ -157,8 +157,8 @@ int main(int argc, char **argv)
 
 		case MISC_STATE_PLAY:
 			log_printf(
-				"playing the game begins with map from \"%s\"",
-				ch.mapch.maps[ch.mapch.listbox.selectidx].path);
+				"playing the game begins with map \"%s\"",
+				ch.mapch.maps[ch.mapch.listbox.selectidx].name);
 			s = play_the_game(
 				wnd, ch.playerch[0].epic, ch.playerch[1].epic, &winner,
 				&ch.mapch.maps[ch.mapch.listbox.selectidx]);

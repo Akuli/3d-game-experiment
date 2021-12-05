@@ -203,13 +203,13 @@ static const struct ListboxEntry *get_listbox_entry(void *chptr, int i)
 		.text = ch->mapch.maps[i].name,
 		.buttons = {
 			{
-				.text = ch->mapch.maps[i].custom ? "Edit" : NULL,  // disable for non-custom maps
+				.text = ch->mapch.maps[i].num==-1 ? NULL : "Edit",  // disable for non-custom maps
 				.scancodes = { SDL_SCANCODE_E },
 				.onclick = on_edit_clicked,
 				.onclickdata = ch,
 			},
 			{
-				.text = ch->mapch.maps[i].custom ? "Delete" : NULL,  // disable for non-custom maps
+				.text = ch->mapch.maps[i].num==-1 ? NULL : "Delete",  // disable for non-custom maps
 				.scancodes = { SDL_SCANCODE_DELETE },
 				.onclick = on_delete_clicked,
 				.onclickdata = ch,
@@ -221,7 +221,7 @@ static const struct ListboxEntry *get_listbox_entry(void *chptr, int i)
 				.onclickdata = ch,
 			},
 		},
-		.movable = ch->mapch.maps[i].custom,
+		.movable = ch->mapch.maps[i].num != -1,  // can move custom maps only
 	};
 	return &res;
 }
@@ -229,7 +229,7 @@ static const struct ListboxEntry *get_listbox_entry(void *chptr, int i)
 static void move_map(void *chptr, int from, int to)
 {
 	const struct Chooser *ch = chptr;
-	SDL_assert(ch->mapch.maps[from].custom);
+	SDL_assert(ch->mapch.maps[from].num != -1);  // custom map
 	log_printf("Moving map \"%s\" from index %d to index %d", ch->mapch.maps[from].name, from, to);
 
 	static struct Map tmp;  // static to keep stack usage down

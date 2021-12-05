@@ -1,4 +1,6 @@
 #include "map.h"
+#include <assert.h>
+#include <ctype.h>
 #include <errno.h>
 #include <math.h>
 #include <stdio.h>
@@ -244,7 +246,16 @@ static void read_map_from_file(struct Map *map, const char *path, bool custom)
 	log_printf("Reading map from '%s'...", path);
 	SDL_assert(strlen(path) < sizeof map->path);
 	strcpy(map->path, path);
-	map->custom = custom;
+
+	if (custom) {
+		// Find 12345 from custom_maps/12345-foo-bar.txt
+		char digits[10];
+		misc_basename_without_extension(map->path, digits, sizeof digits);
+		int n = atoi(digits);
+		SDL_assert(n >= 0);
+		map->num = n;
+	} else
+		map->num = -1;
 
 	FILE *f = fopen(path, "r");
 	if (!f)
@@ -486,9 +497,42 @@ static void set_char(char *data, int linesz, int nlines, int x, int z, char c, i
 	data[idx] = c;
 }
 
-void map_save(const struct Map *map)
+static void get_map_path(const struct Map *map, char *res)
 {
-	SDL_assert(map->custom);
+	SDL_assert(map->num != -1);
+	sprintf(res, "custom_maps/%05d-", map->num);
+	while(*res) res++;
+
+	// res won't be overflown, map names are short
+	static_assert(sizeof map->name < 50, "time to check for buffer overruns! yay...");
+	for (const char *src = map->name; *src; utf8_next_const(&src))
+	{
+		if (('a' <= *src && *src <= 'z')
+				|| ('A' <= *src && *src <= 'Z')
+				|| ('0' <= *src && *src <= '9'))
+			*res++ = tolower(*src);
+		else
+			*res++ = '-';
+	}
+	strcpy(res, ".txt");
+}
+
+static void rename_file_if_needed(struct Map *map)
+{
+	char newpath[sizeof map->path];
+	get_map_path(map, newpath);
+	if (!strcmp(map->path, newpath))
+		return;
+
+	if (rename(map->path, newpath) == 0) {
+		log_printf("Renamed: \"%s\" --> \"%s\"", map->path, newpath);
+		strcpy(map->path, newpath);
+	} else
+		log_printf("Rename fail: \"%s\" --> \"%s\" (%s)", map->path, newpath, strerror(errno));
+}
+
+void map_save(struct Map *map)
+{
 	int linesz = strlen("|--")*map->xsize + strlen("|") + 1;
 	int nlines = 2*map->zsize + 1;
 
@@ -518,7 +562,8 @@ void map_save(const struct Map *map)
 		set_char(data, linesz, nlines, map->enemylocs[i].x, map->enemylocs[i].z, 'e', 1);
 
 	log_printf("Writing to \"%s\"", map->path);
-	misc_mkdir("custom_maps");  // map->path is like "custom_maps/00006.txt"
+	SDL_assert(strstr(map->path, "custom_maps") == map->path);  // map->path is like "custom_maps/00006-foo-bar.txt"
+	misc_mkdir("custom_maps");
 	FILE *f = fopen(map->path, "w");
 	if (!f)
 		log_printf_abort("opening \"%s\" failed: %s", map->path, strerror(errno));
@@ -541,11 +586,12 @@ void map_save(const struct Map *map)
 	#undef write_and_log_line
 	fclose(f);
 	free(data);
+	rename_file_if_needed(map);
 }
 
 void map_update_sortkey(struct Map *maps, int nmaps, int idx)
 {
-	SDL_assert(maps[idx].custom);
+	SDL_assert(maps[idx].num != -1);  // must be custom map
 	SDL_assert(0 <= idx && idx < nmaps);
 	if (nmaps < 2)
 		return;
@@ -587,15 +633,11 @@ int map_copy(struct Map **maps, int *nmaps, int srcidx)
 	else
 		origname = ptr[-1].name;
 
-	int maxnamenum = 0;
+	int maxnum = 0;
 	int maxcopycount = 0;
 	for (struct Map *m = *maps; m < *maps + *nmaps; m++) {
-		if (m->custom) {
-			// Parse custom_maps/12345.txt
-			char digits[10];
-			misc_basename_without_extension(m->path, digits, sizeof digits);
-			maxnamenum = max(maxnamenum, atoi(digits));
-
+		if (m->num != -1) {  // custom map
+			maxnum = max(maxnum, m->num);
 			if (strcmp(m->origname, origname) == 0)
 				maxcopycount = max(maxcopycount, m->copycount);
 		}
@@ -603,8 +645,8 @@ int map_copy(struct Map **maps, int *nmaps, int srcidx)
 
 	memmove(ptr, ptr-1, ((*nmaps)++ - srcidx)*sizeof(*ptr));
 
-	ptr->custom = true;
-	sprintf(ptr->path, "custom_maps/%05d.txt", maxnamenum+1);
+	ptr->num = maxnum+1;
+	get_map_path(ptr, ptr->path);
 
 	strcpy(ptr->origname, origname);
 	ptr->copycount = maxcopycount+1;
