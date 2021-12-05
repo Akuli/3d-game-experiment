@@ -528,7 +528,7 @@ static void rename_file_if_needed(struct Map *map)
 		log_printf("Renamed: \"%s\" --> \"%s\"", map->path, newpath);
 		strcpy(map->path, newpath);
 	} else
-		log_printf("Rename fail: \"%s\" --> \"%s\" (%s)", map->path, newpath, strerror(errno));
+		log_printf("Rename failed: \"%s\" --> \"%s\" (%s)", map->path, newpath, strerror(errno));
 }
 
 void map_save(struct Map *map)
