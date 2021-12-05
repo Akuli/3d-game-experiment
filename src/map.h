@@ -1,7 +1,6 @@
 #ifndef MAP_H
 #define MAP_H
 
-#include <stdbool.h>
 #include "max.h"
 #include "wall.h"
 

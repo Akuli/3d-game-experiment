@@ -1,5 +1,6 @@
 #include "map.h"
 #include <assert.h>
+#include <ctype.h>
 #include <errno.h>
 #include <math.h>
 #include <stdio.h>
