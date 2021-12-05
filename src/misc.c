@@ -198,3 +198,8 @@ const wchar_t *misc_utf8_to_windows(const char *utf8)
 	return winstr;
 }
 #endif
+
+void utf8_prev(char **s) { do { --*s; } while (is_utf8_continuation_byte(**s)); }
+void utf8_next(char **s) { do { ++*s; } while (is_utf8_continuation_byte(**s)); }
+void utf8_prev_const(const char **s) { do { --*s; } while (is_utf8_continuation_byte(**s)); }
+void utf8_next_const(const char **s) { do { ++*s; } while (is_utf8_continuation_byte(**s)); }

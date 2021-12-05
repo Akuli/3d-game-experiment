@@ -67,5 +67,11 @@ const char *misc_windows_to_utf8(const wchar_t *winstr);
 const wchar_t *misc_utf8_to_windows(const char *utf8);
 #endif
 
+// https://en.wikipedia.org/wiki/UTF-8#Encoding
+#define is_utf8_continuation_byte(b) ((unsigned char)(b) >> 6 == 2)
+void utf8_prev(char **s);  // Be careful with beginning of string
+void utf8_next(char **s);
+void utf8_prev_const(const char **s);  // Be careful with beginning of string
+void utf8_next_const(const char **s);
 
 #endif    // MISC_H
