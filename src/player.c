@@ -60,17 +60,21 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 	}
 
 	if (plr->moving) {
-		float speed = plr->flat ? FLAT_SPEED : NORMAL_SPEED;
-		Vec3 diff = mat3_mul_vec3(plr->cam.cam2world, (Vec3){ 0, 0, -speed/CAMERA_FPS });
-		vec3_add_inplace(&plr->ellipsoid.center, diff);
+		Vec3 v = mat3_mul_vec3(plr->cam.cam2world, (Vec3){ 0, 0, -(plr->flat ? FLAT_SPEED : NORMAL_SPEED) });
+		plr->speed.x = v.x;
+		plr->speed.z = v.z;
+	} else {
+		plr->speed.x = 0;
+		plr->speed.z = 0;
 	}
 
-	plr->ellipsoid.center.y += plr->yspeed / CAMERA_FPS;
+	vec3_add_inplace(&plr->ellipsoid.center, vec3_mul_float(plr->speed, 1.0f/CAMERA_FPS));
+
 	if (plr->ellipsoid.center.y < plr->ellipsoid.yradius) {
-		plr->yspeed = 0;
+		plr->speed.y = 0;
 		plr->ellipsoid.center.y = plr->ellipsoid.yradius;
 	}
-	plr->yspeed -= GRAVITY/CAMERA_FPS;
+	plr->speed.y -= GRAVITY/CAMERA_FPS;
 
 	plr->ellipsoid.xzradius = PLAYER_XZRADIUS;
 	plr->ellipsoid.yradius = get_y_radius(plr);
@@ -119,7 +123,7 @@ void player_set_flat(struct Player *plr, bool flat)
 		if (plr->ellipsoid.center.y <= PLAYER_YRADIUS_NOFLAT) {
 			log_printf("jump start");
 			sound_play("boing.wav");
-			plr->yspeed = JUMP_INITIAL_Y_SPEED;
+			plr->speed.y = JUMP_INITIAL_Y_SPEED;
 		} else {
 			log_printf("user attempted to jump, but player not low enough");
 		}

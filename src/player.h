@@ -28,7 +28,7 @@ struct Player {
 	int turning;   // see player_set_turning()
 	bool moving;
 	bool flat;
-	float yspeed;
+	Vec3 speed;
 
 	// negative after game over
 	int nguards;
