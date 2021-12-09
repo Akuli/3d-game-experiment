@@ -28,7 +28,7 @@ struct Player {
 	int turning;   // see player_set_turning()
 	bool moving;
 	bool flat;
-	int jumpframe;   // how many frames since jump started, 0 for not jumping
+	float yspeed;
 
 	// negative after game over
 	int nguards;
