@@ -6,6 +6,7 @@
 #include "camera.h"
 #include "ellipsoid.h"
 #include "map.h"
+#include "mathstuff.h"
 
 // smallest possible height of the player (then ellipsoid.yradius is half of this)
 #define PLAYER_HEIGHT_FLAT 0.1f
@@ -28,7 +29,7 @@ struct Player {
 	int turning;   // see player_set_turning()
 	bool moving;
 	bool flat;
-	int jumpframe;   // how many frames since jump started, 0 for not jumping
+	Vec3 speed;
 
 	// negative after game over
 	int nguards;
