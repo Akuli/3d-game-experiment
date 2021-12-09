@@ -25,11 +25,8 @@ issues with this. To avoid that, we limit things that flat players can do:
 #define CAMERA_BEHIND_PLAYER 4.0f
 #define CAMERA_HEIGHT 4.0f
 
-#define JUMP_MAX_HEIGHT 3.0f
-#define JUMP_DURATION_SEC 0.6f
-
-#define GRAVITY ((8*JUMP_MAX_HEIGHT)/(JUMP_DURATION_SEC*JUMP_DURATION_SEC))
-#define JUMP_INITIAL_Y_SPEED (4*JUMP_MAX_HEIGHT/JUMP_DURATION_SEC)
+#define GRAVITY 66.0f
+#define JUMP_INITIAL_Y_SPEED 20.0f
 
 struct EllipsoidPic *const *player_epics = NULL;
 int player_nepics = -1;
