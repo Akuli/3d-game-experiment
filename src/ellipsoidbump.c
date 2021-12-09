@@ -88,7 +88,8 @@ static float solve_the_equation(float A, float B, float C, float D, float E)
 			return xguess;
 		}
 		if (fabsf(x) > 1) {
-			LOG("x value not between -1 and 1");
+			if (fabsf(x) > 1.01)
+				LOG("x value not between -1 and 1");
 			return xguess;
 		}
 
