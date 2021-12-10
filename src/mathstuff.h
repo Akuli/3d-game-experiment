@@ -122,4 +122,17 @@ void plane_move(struct Plane *pl, Vec3 mv);
 float plane_point_distanceSQUARED(struct Plane pl, Vec3 pt);
 
 
+struct Line {
+	Vec3 point;       // any point on the line
+	Vec3 dir;         // nonzero vector going in direction of the line
+};
+
+// distance between line and point, ^2 to avoid slow sqrt
+float line_point_distanceSQUARED(struct Line ln, Vec3 pt);
+
+// Check if line segments intersect. If they do, store an intersection point in *res.
+// There can be multiple intersections, if lines go in same direction and overlap.
+bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, Vec2 *res);
+
+
 #endif   // MATHSTUFF_H
