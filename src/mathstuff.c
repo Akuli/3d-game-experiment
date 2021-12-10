@@ -202,9 +202,12 @@ static inline Vec2 mat2_mul_vec2(Mat2 M, Vec2 v) { return (Vec2){
 	v.x*M.rows[0][0] + v.y*M.rows[0][1],
 	v.x*M.rows[1][0] + v.y*M.rows[1][1],
 };}
+static inline float mat2_det(Mat2 M) {
+	return M.rows[0][0]*M.rows[1][1] - M.rows[0][1]*M.rows[1][0];
+}
 
 static inline Mat2 mat2_inverse(Mat2 M) {
-	float det = M.rows[0][0]*M.rows[1][1] - M.rows[0][1]*M.rows[1][0];
+	float det = mat2_det(M);
 	return (Mat2){ .rows = {
 		{ M.rows[1][1] / det, -M.rows[0][1] / det },
 		{ -M.rows[1][0] / det, M.rows[0][0] / det },
@@ -265,15 +268,25 @@ bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, Vec
 bool triangle_contains_point(Vec2 A, Vec2 B, Vec2 C, Vec2 point)
 {
 	/*
-	A triangle is the convex combination of its points:
+	A triangle consists of the convex combination of its corners:
 
-		point = tA + uB + (1-t-u)C,  where t,u in [0,1], t+u <= 1
+		point = tA + uB + (1-t-u)C,  where t,u >= 0 and t+u <= 1
 
 	Solving t and u gives a linear equation:
 		 _                _   _ _
 		| A.x-C.x  B.x-C.x | | t |
-		|                  | |   |  = P-C
+		|                  | |   |  = point-C
 		|_A.y-C.y  B.x-C.y_| |_u_|
 	*/
-	
+	Mat2 M = { .rows = {
+		{ A.x-C.x, B.x-C.x },
+		{ A.y-C.y, B.y-C.y },
+	}};
+	if (fabsf(mat2_det(M)) < 1e-5f)
+		return false;   // flat triangle contains nothing, lol
+
+	Vec2 tu = mat2_mul_vec2(mat2_inverse(M), vec2_sub(point, C));
+	float t = tu.x;
+	float u = tu.y;
+	return t >= 0 && u >= 0 && t+u <= 1;
 }

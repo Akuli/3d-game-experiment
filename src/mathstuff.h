@@ -134,5 +134,6 @@ float line_point_distanceSQUARED(struct Line ln, Vec3 pt);
 // There can be multiple intersections, if lines go in same direction and overlap.
 bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, Vec2 *res);
 
+bool triangle_contains_point(Vec2 A, Vec2 B, Vec2 C, Vec2 point);
 
 #endif   // MATHSTUFF_H

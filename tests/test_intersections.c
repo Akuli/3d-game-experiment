@@ -44,3 +44,25 @@ void test_intersecting_lines(void)
 	assert(checked_intersect_line_segments((Vec2){0,0}, (Vec2){1,2}, (Vec2){1,1}, (Vec2){0,1}, &p));
 	assert(p.x == 0.5f && p.y == 1.0f);
 }
+
+void test_triangle_contains_point(void)
+{
+	Vec2 A = {5,1}, B = {1,3}, C = {4,5};
+	for (int x = -20; x <= 20; x++) {
+		if (x == 3 || x == 4) {
+			assert(triangle_contains_point(A, B, C, (Vec2){x,4}));
+			assert(triangle_contains_point(A, C, B, (Vec2){x,4}));
+			assert(triangle_contains_point(B, A, C, (Vec2){x,4}));
+			assert(triangle_contains_point(B, C, A, (Vec2){x,4}));
+			assert(triangle_contains_point(C, A, B, (Vec2){x,4}));
+			assert(triangle_contains_point(C, B, A, (Vec2){x,4}));
+		} else {
+			assert(!triangle_contains_point(A, B, C, (Vec2){x,4}));
+			assert(!triangle_contains_point(A, C, B, (Vec2){x,4}));
+			assert(!triangle_contains_point(B, A, C, (Vec2){x,4}));
+			assert(!triangle_contains_point(B, C, A, (Vec2){x,4}));
+			assert(!triangle_contains_point(C, A, B, (Vec2){x,4}));
+			assert(!triangle_contains_point(C, B, A, (Vec2){x,4}));
+		}
+	}
+}
