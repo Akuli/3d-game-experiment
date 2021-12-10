@@ -247,7 +247,7 @@ bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, Vec
 		 _               _   _ _
 		| dir1.x  -dir2.x | | t |
 		|                 | |   | = start2 - start1
-		|_dir1.y  -dir2.x_| |_u_|
+		|_dir1.y  -dir2.y_| |_u_|
 	*/
 	Mat2 M = { .rows = {
 		{ dir1.x, -dir2.x },
@@ -260,4 +260,20 @@ bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, Vec
 		return false;
 	*res = vec2_add(start1, vec2_mul_float(dir1, t));
 	return true;
+}
+
+bool triangle_contains_point(Vec2 A, Vec2 B, Vec2 C, Vec2 point)
+{
+	/*
+	A triangle is the convex combination of its points:
+
+		point = tA + uB + (1-t-u)C,  where t,u in [0,1], t+u <= 1
+
+	Solving t and u gives a linear equation:
+		 _                _   _ _
+		| A.x-C.x  B.x-C.x | | t |
+		|                  | |   |  = P-C
+		|_A.y-C.y  B.x-C.y_| |_u_|
+	*/
+	
 }
