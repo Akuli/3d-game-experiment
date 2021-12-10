@@ -280,6 +280,7 @@ static bool ngon_contains_point(const Vec2 *corners, int n, const Vec2 point)
 	for (int i = 0; i < n; i++) {
 		Vec2 start = corners[(i+1) % n];
 		Vec2 end = corners[(i+2) % n];
+		// TODO: assuming convexity, which_side_of_line(start, end, corners[i]) is always the same boolean
 		if (which_side_of_line(start, end, point) != which_side_of_line(start, end, corners[i]))
 			return false;
 	}
