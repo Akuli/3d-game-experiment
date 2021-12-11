@@ -174,8 +174,8 @@ void rect_drawrow(const struct RectCache *cache, int y, int xmin, int xmax)
 
 		int picx = (int)(a*width);
 		int picy = (int)(b*height);
-		SDL_assert(0 <= picx && picx < width);
-		SDL_assert(0 <= picy && picy < height);
+		clamp(&picx, 0, width-1);
+		clamp(&picy, 0, height-1);
 
 		uint32_t px = pxsrc[width*picy + picx];
 		if (px != ~(uint32_t)0)
