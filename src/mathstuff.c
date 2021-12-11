@@ -48,7 +48,7 @@ static Mat3 multiply_matrix_by_float(Mat3 M, float f)
 	return M;
 }
 
-static float determinant(Mat3 M)
+float mat3_det(Mat3 M)
 {
 	Vec3 row1 = { M.rows[0][0], M.rows[0][1], M.rows[0][2] };
 	Vec3 row2 = { M.rows[1][0], M.rows[1][1], M.rows[1][2] };
@@ -70,7 +70,7 @@ Mat3 mat3_inverse(Mat3 M)
 			{ f*g-d*i, a*i-c*g, c*d-a*f },
 			{ d*h-e*g, b*g-a*h, a*e-b*d },
 		}},
-		1.0f/determinant(M)
+		1.0f/mat3_det(M)
 	);
 }
 
@@ -214,7 +214,7 @@ static inline Mat2 mat2_inverse(Mat2 M) {
 	}};
 }
 
-bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, Vec2 *res)
+bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, bool infinite2, Vec2 *res)
 {
 	Vec2 dir1 = vec2_sub(end1, start1);
 	Vec2 dir2 = vec2_sub(end2, start2);
@@ -232,6 +232,8 @@ bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, Vec
 		Vec2 perpdir = { dir1.y, -dir1.x };
 		if (fabsf(vec2_dot(perpdir, start1) - vec2_dot(perpdir, start2)) > 1e-5f)
 			return false;  // far apart
+		if (infinite2)
+			return true;
 
 		// proj(v) = (projection of v onto dir1)*length(dir1). Length doesn't affect anything.
 		#define proj(v) vec2_dot(dir1, (v))  
@@ -259,7 +261,9 @@ bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, Vec
 	Vec2 tu = mat2_mul_vec2(mat2_inverse(M), vec2_sub(start2,start1));
 	float t = tu.x;
 	float u = tu.y;
-	if (!(0 <= t && t <= 1 && 0 <= u && u <= 1))
+	if (!(0 <= t && t <= 1))
+		return false;
+	if (!infinite2 && !(0 <= u && u <= 1))
 		return false;
 	*res = vec2_add(start1, vec2_mul_float(dir1, t));
 	return true;
@@ -305,7 +309,7 @@ bool intersect_tetragons(const Vec2 *tetra1, const Vec2 *tetra2, Vec2 *ipoint)
 {
 	for (int i = 0; i < 4; i++)
 		for (int k = 0; k < 4; k++)
-			if (intersect_line_segments(tetra1[i], tetra1[(i+1)%4], tetra2[k], tetra2[(k+1)%4], ipoint))
+			if (intersect_line_segments(tetra1[i], tetra1[(i+1)%4], tetra2[k], tetra2[(k+1)%4], false, ipoint))
 				return true;
 
 	// one tetragon can be nested inside the other

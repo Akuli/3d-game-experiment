@@ -7,14 +7,14 @@ static bool checked_intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2,
 {
 	Vec2 resultvecs[8] = {0};
 	bool resultrets[8] = {
-		intersect_line_segments(start1, end1, start2, end2, &resultvecs[0]),
-		intersect_line_segments(end1, start1, start2, end2, &resultvecs[1]),
-		intersect_line_segments(start1, end1, end2, start2, &resultvecs[2]),
-		intersect_line_segments(end1, start1, end2, start2, &resultvecs[3]),
-		intersect_line_segments(start2, end2, start1, end1, &resultvecs[4]),
-		intersect_line_segments(end2, start2, start1, end1, &resultvecs[5]),
-		intersect_line_segments(start2, end2, end1, start1, &resultvecs[6]),
-		intersect_line_segments(end2, start2, end1, start1, &resultvecs[7]),
+		intersect_line_segments(start1, end1, start2, end2, false, &resultvecs[0]),
+		intersect_line_segments(end1, start1, start2, end2, false, &resultvecs[1]),
+		intersect_line_segments(start1, end1, end2, start2, false, &resultvecs[2]),
+		intersect_line_segments(end1, start1, end2, start2, false, &resultvecs[3]),
+		intersect_line_segments(start2, end2, start1, end1, false, &resultvecs[4]),
+		intersect_line_segments(end2, start2, start1, end1, false, &resultvecs[5]),
+		intersect_line_segments(start2, end2, end1, start1, false, &resultvecs[6]),
+		intersect_line_segments(end2, start2, end1, start1, false, &resultvecs[7]),
 	};
 
 	for (int i=0; i<8; i++) {

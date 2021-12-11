@@ -79,6 +79,7 @@ inline void vec3_apply_matrix(Vec3 *v, Mat3 M) { *v = mat3_mul_vec3(M, *v); }
 // these are not inline because typically you don't put these to tight loop:
 Mat3 mat3_mul_mat3(Mat3 A, Mat3 B);
 Mat3 mat3_inverse(Mat3 M);
+float mat3_det(Mat3 M);
 
 /*
 Slow-ish to compute because uses trig funcs, so don't call this in a loop.
@@ -132,7 +133,8 @@ float line_point_distanceSQUARED(struct Line ln, Vec3 pt);
 
 // Check if line segments intersect. If they do, store an intersection point in *res.
 // There can be multiple intersections, if lines go in same direction and overlap.
-bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, Vec2 *res);
+// If infinite2 is true, treat line 2 as infinitely long in both directions, not a line segment.
+bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, bool infinite2, Vec2 *res);
 
 bool triangle_contains_point(Vec2 A, Vec2 B, Vec2 C, Vec2 point);
 
