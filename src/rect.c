@@ -99,8 +99,6 @@ bool rect_xminmax(const struct RectCache *cache, int y, int *xmin, int *xmax)
 void rect_drawrow(const struct RectCache *cache, int y, int xmin, int xmax)
 {
 	const struct Camera *cam = cache->cam;
-	SDL_assert(cam->surface->pitch % sizeof(uint32_t) == 0);
-	int mypitch = cam->surface->pitch / sizeof(uint32_t);
 
 	SDL_assert(cache->rect->img);
 	Vec3 A = camera_point_world2cam(cam, cache->rect->corners[0]);
@@ -174,21 +172,27 @@ void rect_drawrow(const struct RectCache *cache, int y, int xmin, int xmax)
 	int width = cache->rect->img->width;
 	int height = cache->rect->img->height;
 	const uint32_t *pxsrc = cache->rect->img->data;
-	uint32_t *pxdst = (uint32_t *)cam->surface->pixels;
 
-	for (int x = xmin; x < xmax; x++) {
-		float xzr = camera_screenx_to_xzr(cache->cam, x);
-		float detM = xzr*detM_xzrcoeff + detM_noxzr;
-		float a = (xzr*detMa_xzrcoeff + detMa_noxzr)/detM;
-		float b = (xzr*detMb_xzrcoeff + detMb_noxzr)/detM;
+	SDL_assert(cam->surface->pitch % sizeof(uint32_t) == 0);
+	int mypitch = cam->surface->pitch / sizeof(uint32_t);
+	uint32_t *pxdst = (uint32_t *)cam->surface->pixels + mypitch*y + xmin;
 
-		int picx = (int)(a*width);
-		int picy = (int)(b*height);
-		clamp(&picx, 0, width-1);
-		clamp(&picy, 0, height-1);
+	int xdiff = xmax-xmin;
 
-		uint32_t px = pxsrc[width*picy + picx];
-		if (px != ~(uint32_t)0)
-			pxdst[mypitch*y + x] = px;
-	}
+	// Ugly code, but vectorization friendly. Measurable perf improvement.
+#define LOOP for (int i = 0; i < xdiff; i++)
+#define ARRAY(T, Name) T Name[CAMERA_SCREEN_WIDTH]; LOOP Name[i]
+	ARRAY(float, xzr) = camera_screenx_to_xzr(cache->cam, xmin+i);
+	ARRAY(float, detM) = xzr[i]*detM_xzrcoeff + detM_noxzr;
+	ARRAY(float, a) = (xzr[i]*detMa_xzrcoeff + detMa_noxzr)/detM[i];
+	ARRAY(float, b) = (xzr[i]*detMb_xzrcoeff + detMb_noxzr)/detM[i];
+	ARRAY(int, picx) = (int)(a[i]*width);
+	ARRAY(int, picy) = (int)(b[i]*height);
+	LOOP clamp(&picx[i], 0, width-1);
+	LOOP clamp(&picy[i], 0, height-1);
+	ARRAY(int, idx) = width*picy[i] + picx[i];
+	ARRAY(uint32_t, px) = pxsrc[idx[i]];
+	LOOP if (px[i] != ~(uint32_t)0) pxdst[i] = px[i];
+#undef LOOP
+#undef ARRAY
 }
