@@ -1,8 +1,9 @@
+#include <SDL2/SDL.h>
+#include <limits.h>
 #include "../stb/stb_image.h"
 #include "camera.h"
 #include "log.h"
 #include "rect.h"
-#include <SDL2/SDL.h>
 
 struct RectImage *rect_load_image(const char *path, const SDL_PixelFormat *pixfmt)
 {
@@ -56,12 +57,21 @@ bool rect_visible_fillcache(const struct Rect *r, const struct Camera *cam, stru
 	cache->cam = cam;
 	for (int c = 0; c < 4; c++)
 		cache->screencorners[c] = camera_point_cam2screen(cam, camera_point_world2cam(cam, r->corners[c]));
+
+	cache->ymin = INT_MAX;
+	cache->ymax = INT_MIN;
+	for (int c = 0; c < 4; c++) {
+		cache->ymin = min(cache->ymin, (int)cache->screencorners[c].y);
+		cache->ymax = max(cache->ymax, (int)cache->screencorners[c].y);
+	}
+
 	return true;
 }
 
 bool rect_xminmax(const struct RectCache *cache, int y, int *xmin, int *xmax)
 {
-	// TODO: add optimization with bounding box?
+	if (y < cache->ymin || y > cache->ymax)
+		return false;
 
 	int n = 0;
 	Vec2 inters[4];
