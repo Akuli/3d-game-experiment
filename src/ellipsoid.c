@@ -17,6 +17,79 @@ static bool ellipsoid_intersects_plane(const struct Ellipsoid *el, struct Plane 
 	return (plane_point_distanceSQUARED(pl, center) < 1);
 }
 
+static bool ellipsoid_yminmax_new(const struct Ellipsoid *el, const struct Camera *cam, int *ymin, int *ymax)
+{
+	/*
+	Ensure that it's in front of camera and not even touching the
+	camera plane. This allows us to make nice assumptions:
+		- Camera is not inside ellipsoid
+		- x/z ratios of all points on ellipsoid surface in camera coords work
+	*/
+	if (!plane_whichside(cam->visplanes[CAMERA_CAMPLANE_IDX], el->center) ||
+		ellipsoid_intersects_plane(el, cam->visplanes[CAMERA_CAMPLANE_IDX]))
+	{
+		return false;
+	}
+
+	for (int i = 0; i < sizeof(cam->visplanes)/sizeof(cam->visplanes[0]); i++) {
+		if (i == CAMERA_CAMPLANE_IDX)
+			continue;
+
+		/*
+		If center is on the wrong side, then it can touch the plane to
+		still be partially visible
+		*/
+		if (!plane_whichside(cam->visplanes[i], el->center) &&
+			!ellipsoid_intersects_plane(el, cam->visplanes[i]))
+		{
+			return false;
+		}
+	}
+
+	/*
+	Each y coordinate on screen corresponds with a plane y/z = yzr, where yzr is a constant.
+	To find them, we switch to coordinates where the ellipsoid is simply x^2+y^2+z^2=1.
+	Let's call these "unit ball coordinates".
+	*/
+	Mat3 uball2cam = mat3_mul_mat3(cam->cam2world, el->transform);
+	Vec3 mid = { uball2cam.rows[1][0], uball2cam.rows[1][1], uball2cam.rows[1][2] };
+	Vec3 bot = { uball2cam.rows[2][0], uball2cam.rows[2][1], uball2cam.rows[2][2] };
+	float midmid = vec3_dot(mid, mid);
+	float midbot = vec3_dot(mid, bot);
+	float botbot = vec3_dot(bot, bot);
+
+	/*
+	At min and max y values, the distance between the plane and (0,0,0) is 1.
+	Solving yzr leads to a quadratic.
+	The variant of the quadratic formula used:
+
+		x^2 - 2bx + c = 0  <=>  x = b +- sqrt(b^2 - c)
+	*/
+	Vec3 center = camera_point_world2cam(cam, el->center);
+	float b = (midbot - center.y*center.z)/(botbot - center.z*center.z);
+	float c = (midmid - center.y*center.y)/(botbot - center.z*center.z);
+
+	// Discriminant doesn't seem to ever be negative
+	SDL_assert(b*b-c >= 0);
+	float offset = sqrtf(b*b-c);
+
+	*ymin = (int)camera_yzr_to_screeny(cam, b-offset);
+	*ymax = (int)camera_yzr_to_screeny(cam, b+offset);
+	clamp(ymin, 10, cam->surface->h-10);
+	clamp(ymax, 10, cam->surface->h-10);
+	return true;
+}
+
+void ellipsoid_debug_shit(const struct Ellipsoid *el, const struct Camera *cam)
+{
+	int ymin, ymax;
+	if (ellipsoid_yminmax_new(el, cam, &ymin, &ymax)) {
+		SDL_FillRect(cam->surface, &(SDL_Rect){0, ymin, cam->surface->w, 1}, (uint32_t)0x00ff0000ULL);
+		SDL_FillRect(cam->surface, &(SDL_Rect){0, ymax, cam->surface->w, 1}, (uint32_t)0x0000ff00ULL);
+	}
+}
+
+
 /*
 Given a circle on a plane going through (0,0,0), find the points A and B where
 tangent lines of circle going through (0,0,0) intersect the circle

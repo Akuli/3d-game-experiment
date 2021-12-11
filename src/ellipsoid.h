@@ -106,6 +106,8 @@ void ellipsoid_drawcolumn(
 	const struct Ellipsoid *el, const struct EllipsoidXCache *xcache,
 	int ymin, int ymax);
 
+void ellipsoid_debug_shit(const struct Ellipsoid *el, const struct Camera *cam);
+
 /*
 Returns how much ellipsoids should be moved apart from each other to make them not
 intersect. The moving should happen in xz plane direction (no moving vertically).
