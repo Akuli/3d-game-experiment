@@ -2,8 +2,9 @@
 #include "camera.h"
 #include "log.h"
 #include "rect.h"
+#include <SDL2/SDL.h>
 
-struct RectImage *rect_load_image(const char *path, SDL_PixelFormat *pixfmt)
+struct RectImage *rect_load_image(const char *path, const SDL_PixelFormat *pixfmt)
 {
 	int chansinfile;
 	int w, h;
@@ -60,6 +61,8 @@ bool rect_visible_fillcache(const struct Rect *r, const struct Camera *cam, stru
 
 bool rect_xminmax(const struct RectCache *cache, int y, int *xmin, int *xmax)
 {
+	// TODO: add optimization with bounding box?
+
 	int n = 0;
 	Vec2 inters[4];
 
@@ -78,6 +81,8 @@ bool rect_xminmax(const struct RectCache *cache, int y, int *xmin, int *xmax)
 		return false;
 	*xmin = (int)ceilf(min(inters[0].x, inters[1].x));
 	*xmax = (int)      max(inters[0].x, inters[1].x);
+	clamp(xmin, 0, cache->cam->surface->w);
+	clamp(xmax, 0, cache->cam->surface->w);
 	return (*xmin <= *xmax);
 }
 
@@ -89,10 +94,10 @@ void rect_drawrow(const struct RectCache *cache, int y, int xmin, int xmax)
 
 	SDL_assert(cache->rect->img);
 	Vec3 A = camera_point_world2cam(cam, cache->rect->corners[0]);
-	Vec3 B = camera_point_world2cam(cam, cache->rect->corners[1]);
-	Vec3 C = camera_point_world2cam(cam, cache->rect->corners[2]);
-	Vec3 v = vec3_sub(C, A);
-	Vec3 w = vec3_sub(C, B);
+	Vec3 B = camera_point_world2cam(cam, cache->rect->corners[2]);
+	Vec3 C = camera_point_world2cam(cam, cache->rect->corners[1]);
+	Vec3 v = vec3_sub(A, C);
+	Vec3 w = vec3_sub(B, C);
 
 	float yzr = camera_screeny_to_yzr(cache->cam, y);
 
@@ -169,12 +174,11 @@ void rect_drawrow(const struct RectCache *cache, int y, int xmin, int xmax)
 
 		int picx = (int)(a*width);
 		int picy = (int)(b*height);
-		// TODO: replace with clamp?
 		SDL_assert(0 <= picx && picx < width);
 		SDL_assert(0 <= picy && picy < height);
 
 		uint32_t px = pxsrc[width*picy + picx];
 		if (px != ~(uint32_t)0)
-			pxdst[y*mypitch + x] = px;
+			pxdst[mypitch*y + x] = px;
 	}
 }

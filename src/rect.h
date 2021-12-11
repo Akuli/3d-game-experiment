@@ -33,9 +33,10 @@ struct Rect {
 };
 
 // use free()
-struct RectImage *rect_load_image(const char *path, SDL_PixelFormat *pixfmt);
+struct RectImage *rect_load_image(const char *path, const SDL_PixelFormat *pixfmt);
 
-void rect_drawborder(const struct Rect3 *r, const struct Camera *cam);
+// TODO: not implemented yet
+void rect_drawborder(const struct Rect *r, const struct Camera *cam);
 
 struct RectCache {
 	const struct Rect *rect;
