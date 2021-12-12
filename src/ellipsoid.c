@@ -17,7 +17,7 @@ static bool ellipsoid_intersects_plane(const struct Ellipsoid *el, struct Plane 
 	return (plane_point_distanceSQUARED(pl, center) < 1);
 }
 
-static bool ellipsoid_yminmax_new(const struct Ellipsoid *el, const struct Camera *cam, int *ymin, int *ymax)
+bool ellipsoid_yminmax_new(const struct Ellipsoid *el, const struct Camera *cam, int *ymin, int *ymax)
 {
 	/*
 	Ensure that it's in front of camera and not even touching the
@@ -85,7 +85,7 @@ static bool ellipsoid_yminmax_new(const struct Ellipsoid *el, const struct Camer
 	return true;
 }
 
-static bool ellipsoid_xminmax_new(const struct Ellipsoid *el, const struct Camera *cam, int y, int *xmin, int *xmax)
+bool ellipsoid_xminmax_new(const struct Ellipsoid *el, const struct Camera *cam, int y, int *xmin, int *xmax)
 {
 	/*
 	Consider the line that is t*(xzr,yzr,1) in camera coordinates.
@@ -97,7 +97,6 @@ static bool ellipsoid_xminmax_new(const struct Ellipsoid *el, const struct Camer
 	*/
 	Mat3 world2uball = el->transform_inverse;
 	Mat3 cam2uball = mat3_mul_mat3(world2uball, cam->cam2world);
-	Mat3 uball2cam = mat3_mul_mat3(cam->world2cam, el->transform);
 	Vec3 v = mat3_mul_vec3(cam2uball, (Vec3){1,0,0});
 	Vec3 w = mat3_mul_vec3(cam2uball, (Vec3){0,camera_screeny_to_yzr(cam, y),1});
 	Vec3 p = mat3_mul_vec3(world2uball, vec3_sub(cam->location, el->center));
@@ -459,6 +458,94 @@ void ellipsoid_drawcolumn(
 	LOOP px[i] = el->epic->cubepixels[hl][ex[i]][ey[i]][ez[i]];
 	LOOP set_pixel(xcache->cam->surface, xcache->screenx, ymin + i, px[i]);
 #undef LOOP
+}
+
+void ellipsoid_drawrow(
+	const struct Ellipsoid *el, const struct Camera *cam,
+	int y, int xmin, int xmax)
+{
+	int xdiff = xmax - xmin;
+	if (xdiff <= 0)
+		return;
+	SDL_assert(0 <= xmin && xmin+xdiff <= cam->surface->w);
+	SDL_assert(xdiff <= CAMERA_SCREEN_WIDTH);
+
+	SDL_assert(cam->surface->pitch % sizeof(uint32_t) == 0);
+	int mypitch = cam->surface->pitch / sizeof(uint32_t);
+
+	/*
+	Code is ugly but gcc vectorizes it to make it very fast. This code was the
+	bottleneck of the game before making it more vectorizable, and it still is
+	at the time of writing this comment.
+	*/
+
+#define LOOP for(int i = 0; i < xdiff; i++)
+
+	float xzr[CAMERA_SCREEN_WIDTH];
+	LOOP xzr[i] = camera_screenx_to_xzr(cam, (float)(xmin + i));
+
+	/*
+	line equation in camera coordinates:
+
+		x = xzr*z, y = yzr*z aka (x,y,z) = z*(xzr,yzr,1)
+
+	Note that this has z coordinate 1 in camera coordinates, i.e. pointing toward camera.
+	*/
+	float yzr = camera_screeny_to_yzr(cam, y);
+	float linedirx[CAMERA_SCREEN_WIDTH], linediry[CAMERA_SCREEN_WIDTH], linedirz[CAMERA_SCREEN_WIDTH];
+	LOOP linedirx[i] = mat3_mul_vec3(el->transform_inverse, (Vec3){xzr[i],yzr,1}).x;
+	LOOP linediry[i] = mat3_mul_vec3(el->transform_inverse, (Vec3){xzr[i],yzr,1}).y;
+	LOOP linedirz[i] = mat3_mul_vec3(el->transform_inverse, (Vec3){xzr[i],yzr,1}).z;
+#define LineDir(i) ( (Vec3){ linedirx[i], linediry[i], linedirz[i] } )
+
+	/*
+	Intersecting the ball
+
+		((x,y,z) - ballcenter) dot ((x,y,z) - ballcenter) = 1
+
+	with the line
+
+		(x,y,z) = t*linedir
+
+	creates a quadratic equation in t. We want the solution with bigger t,
+	because the direction vector is pointing towards the camera.
+	*/
+	Vec3 ballcenter = mat3_mul_vec3(el->transform_inverse, camera_point_world2cam(cam, el->center));
+	float cc = vec3_dot(ballcenter, ballcenter);
+	float dd[CAMERA_SCREEN_WIDTH];
+	float cd[CAMERA_SCREEN_WIDTH];
+	LOOP dd[i] = vec3_dot(LineDir(i), LineDir(i));
+	LOOP cd[i] = vec3_dot(ballcenter, LineDir(i));
+
+	float t[CAMERA_SCREEN_WIDTH];
+	LOOP t[i] = cd[i]*cd[i] - dd[i]*(cc-1);
+	LOOP t[i] = max(0, t[i]);   // no negative under sqrt plz. Don't know why t[i] can be more than just a little bit negative...
+	LOOP t[i] = (cd[i] + sqrtf(t[i]))/dd[i];
+
+	float vecx[CAMERA_SCREEN_WIDTH], vecy[CAMERA_SCREEN_WIDTH], vecz[CAMERA_SCREEN_WIDTH];
+	LOOP vecx[i] = mat3_mul_vec3(cam->cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), ballcenter)).x;
+	LOOP vecy[i] = mat3_mul_vec3(cam->cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), ballcenter)).y;
+	LOOP vecz[i] = mat3_mul_vec3(cam->cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), ballcenter)).z;
+#undef LineDir
+
+	int ex[CAMERA_SCREEN_WIDTH], ey[CAMERA_SCREEN_WIDTH], ez[CAMERA_SCREEN_WIDTH];
+	LOOP ex[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE, vecx[i]);
+	LOOP ey[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE, vecy[i]);
+	LOOP ez[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE, vecz[i]);
+
+	// just in case floats do something weird, e.g. division by zero
+	LOOP clamp(&ex[i], 0, ELLIPSOIDPIC_SIDE-1);
+	LOOP clamp(&ey[i], 0, ELLIPSOIDPIC_SIDE-1);
+	LOOP clamp(&ez[i], 0, ELLIPSOIDPIC_SIDE-1);
+
+	uint32_t px[CAMERA_SCREEN_WIDTH];
+	bool hl = el->highlighted;
+	LOOP px[i] = el->epic->cubepixels[hl][ex[i]][ey[i]][ez[i]];
+#undef LOOP
+
+	// TODO: faster with or without memcpy?
+	uint32_t *pixdst = (uint32_t *)cam->surface->pixels + mypitch*y + xmin;
+	memcpy(pixdst, px, sizeof(uint32_t)*xdiff);
 }
 
 static Mat3 diag(float a, float b, float c)

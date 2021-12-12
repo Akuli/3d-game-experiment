@@ -53,6 +53,21 @@ void wall_init(struct Wall *w)
 	}
 }
 
+struct Rect wall_to_rect(const struct Wall *w)
+{
+	int dx = (w->dir == WALL_DIR_XY);
+	int dz = (w->dir == WALL_DIR_ZY);
+	return (struct Rect){
+		.corners = {
+			{ w->startx, Y_MIN, w->startz },
+			{ w->startx+dx, Y_MIN, w->startz+dz },
+			{ w->startx+dx, Y_MAX, w->startz+dz },
+			{ w->startx, Y_MAX, w->startz },
+		},
+		.img = NULL,
+	};
+}
+
 bool wall_match(const struct Wall *w1, const struct Wall *w2)
 {
 	return w1->dir == w2->dir && w1->startx == w2->startx && w1->startz == w2->startz;

@@ -28,15 +28,14 @@ struct Info {
 	ID deps[MAX_WALLS + MAX_ELLIPSOIDS];
 	int ndeps;
 
-	// which range of x coordinates will be showing this ellipsoid or wall?
-	int xmin, xmax;
+	// which range of y coordinates will be showing this ellipsoid or wall?
+	int ymin, ymax;
 
 	bool insortedarray;  // for sorting infos to display them in correct order
 
-	union {
-		struct WallCache wallc;
-		struct EllipsoidXCache ellipsoidc;
-	} cache;
+	// only for walls
+	struct Rect rect;
+	struct RectCache rcache;
 };
 
 struct ShowingState {
@@ -51,29 +50,30 @@ struct ShowingState {
 
 static void add_ellipsoid_if_visible(struct ShowingState *st, int idx)
 {
-	int xmin, xmax;
-	if (ellipsoid_visible_xminmax(&st->els[idx], st->cam, &xmin, &xmax)) {
+	int ymin, ymax;
+	if (ellipsoid_yminmax_new(&st->els[idx], st->cam, &ymin, &ymax)) {
 		ID id = ID_NEW(ID_TYPE_ELLIPSOID, idx);
 		st->visible[st->nvisible++] = id;
 		st->infos[id].ndeps = 0;
-		st->infos[id].xmin = xmin;
-		st->infos[id].xmax = xmax;
+		st->infos[id].ymin = ymin;
+		st->infos[id].ymax = ymax;
 		st->infos[id].insortedarray = false;
 	}
 }
 
 static void add_wall_if_visible(struct ShowingState *st, int idx)
 {
-	int xmin, xmax;
-	struct WallCache wc;
-	if (wall_visible_xminmax_fillcache(&st->walls[idx], st->cam, &xmin, &xmax, &wc)) {
+	struct Rect r = wall_to_rect(&st->walls[idx]);
+	struct RectCache rcache;
+	if (rect_visible_fillcache(&r, st->cam, &rcache)) {
 		ID id = ID_NEW(ID_TYPE_WALL, idx);
 		st->visible[st->nvisible++] = id;
 		st->infos[id].ndeps = 0;
-		st->infos[id].xmin = xmin;
-		st->infos[id].xmax = xmax;
+		st->infos[id].ymin = rcache.ymin;
+		st->infos[id].ymax = rcache.ymax;
 		st->infos[id].insortedarray = false;
-		st->infos[id].cache.wallc = wc;
+		st->infos[id].rect = r;
+		st->infos[id].rcache = rcache;
 	}
 }
 
@@ -160,6 +160,7 @@ static void setup_same_type_dependency(struct ShowingState *st, ID id1, ID id2)
 		add_dependency(st, id2, id1);
 }
 
+// FIXME: determining dependencies probably needs a complete rewrite
 static void setup_dependencies(struct ShowingState *st)
 {
 	for (int i = 0  ; i < st->nvisible; i++) {
@@ -168,18 +169,16 @@ static void setup_dependencies(struct ShowingState *st)
 			ID id2 = st->visible[k];
 
 			if (!interval_overlap(
-					st->infos[id1].xmin, st->infos[id1].xmax,
-					st->infos[id2].xmin, st->infos[id2].xmax))
+					st->infos[id1].ymin, st->infos[id1].ymax,
+					st->infos[id2].ymin, st->infos[id2].ymax))
 			{
-				continue;
+				if (ID_TYPE(id1) == ID_TYPE_ELLIPSOID && ID_TYPE(id2) == ID_TYPE_WALL)
+					setup_ellipsoid_wall_dependency(st, id1, id2);
+				else if (ID_TYPE(id1) == ID_TYPE_WALL && ID_TYPE(id2) == ID_TYPE_ELLIPSOID)
+					setup_ellipsoid_wall_dependency(st, id2, id1);
+				else
+					setup_same_type_dependency(st, id1, id2);
 			}
-
-			if (ID_TYPE(id1) == ID_TYPE_ELLIPSOID && ID_TYPE(id2) == ID_TYPE_WALL)
-				setup_ellipsoid_wall_dependency(st, id1, id2);
-			else if (ID_TYPE(id1) == ID_TYPE_WALL && ID_TYPE(id2) == ID_TYPE_ELLIPSOID)
-				setup_ellipsoid_wall_dependency(st, id2, id1);
-			else
-				setup_same_type_dependency(st, id1, id2);
 		}
 	}
 }
@@ -230,26 +229,27 @@ static void create_sorted_array(struct ShowingState *st, ID *sorted)
 	SDL_assert(sorted + st->nvisible == ptr);
 }
 
-static void get_yminmax(struct ShowingState *st, ID id, int x, int *ymin, int *ymax)
+static bool get_xminmax(struct ShowingState *st, ID id, int y, int *xmin, int *xmax)
 {
 	switch(ID_TYPE(id)) {
 		case ID_TYPE_ELLIPSOID:
-			ellipsoid_yminmax(&st->els[ID_INDEX(id)], st->cam, x, &st->infos[id].cache.ellipsoidc, ymin, ymax);
+			return ellipsoid_xminmax_new(&st->els[ID_INDEX(id)], st->cam, y, xmin, xmax);
 			break;
 		case ID_TYPE_WALL:
-			wall_yminmax(&st->infos[id].cache.wallc, x, ymin, ymax);
+			return rect_xminmax(&st->infos[id].rcache, y, xmin, xmax);
 			break;
 	}
+	return false;  // compiler = happy
 }
 
-static void draw_column(const struct ShowingState *st, int x, ID id, int ymin, int ymax)
+static void draw_row(const struct ShowingState *st, int y, ID id, int xmin, int xmax)
 {
 	switch(ID_TYPE(id)) {
 	case ID_TYPE_ELLIPSOID:
-		ellipsoid_drawcolumn(&st->els[ID_INDEX(id)], &st->infos[id].cache.ellipsoidc, ymin, ymax);
+		ellipsoid_drawrow(&st->els[ID_INDEX(id)], st->cam, y, xmin, xmax);
 		break;
 	case ID_TYPE_WALL:
-		wall_drawcolumn(&st->infos[id].cache.wallc, x, ymin, ymax);
+		rect_drawrow(&st->infos[id].rcache, y, xmin, xmax);
 		break;
 	}
 }
@@ -276,29 +276,32 @@ void show_all(
 		add_ellipsoid_if_visible(&st, i);
 	for (int i = 0; i < nwalls; i++)
 		add_wall_if_visible(&st, i);
+	// FIXME: highlightwalls
+	/*
 	for (const int *i = highlightwalls; *i != -1; i++)
 		st.infos[ID_NEW(ID_TYPE_WALL, *i)].cache.wallc.highlight = true;
+	*/
 
 	setup_dependencies(&st);
 
 	static ID sorted[ArrayLen(st.visible)];
 	create_sorted_array(&st, sorted);
 
-	for (int x = 0; x < cam->surface->w; x++) {
+	for (int y = 0; y < cam->surface->h; y++) {
 		static struct Interval intervals[ArrayLen(sorted)];
 		int nintervals = 0;
 
 		for (int i = 0; i < st.nvisible; i++) {
 			ID id = sorted[i];
-			if (!( st.infos[id].xmin <= x && x <= st.infos[id].xmax ))
+			if (!( st.infos[id].ymin <= y && y <= st.infos[id].ymax ))
 				continue;
 
-			int ymin, ymax;
-			get_yminmax(&st, id, x, &ymin, &ymax);
-			if (ymin < ymax) {
+			int xmin, xmax;
+			if (get_xminmax(&st, id, y, &xmin, &xmax)) {
+				SDL_assert(xmin < xmax);
 				intervals[nintervals++] = (struct Interval){
-					.start = ymin,
-					.end = ymax,
+					.start = xmin,
+					.end = xmax,
 					.id = id,
 					.allowoverlap = (ID_TYPE(id) == ID_TYPE_WALL),
 				};
@@ -309,6 +312,6 @@ void show_all(
 		int nnonoverlap = interval_non_overlapping(intervals, nintervals, nonoverlap);
 
 		for (int i = 0; i < nnonoverlap; i++)
-			draw_column(&st, x, nonoverlap[i].id, nonoverlap[i].start, nonoverlap[i].end);
+			draw_row(&st, y, nonoverlap[i].id, nonoverlap[i].start, nonoverlap[i].end);
 	}
 }

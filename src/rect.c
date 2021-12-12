@@ -86,21 +86,27 @@ bool rect_xminmax(const struct RectCache *cache, int y, int *xmin, int *xmax)
 		}
 	}
 
-	SDL_assert(n <= 2);
+	// TODO: fails sometimes
+	//SDL_assert(n <= 2);
 	if (n != 2)
 		return false;
 	*xmin = (int)ceilf(min(inters[0].x, inters[1].x));
 	*xmax = (int)      max(inters[0].x, inters[1].x);
 	clamp(xmin, 0, cache->cam->surface->w);
 	clamp(xmax, 0, cache->cam->surface->w);
-	return (*xmin <= *xmax);
+	return (*xmin < *xmax);
 }
 
 void rect_drawrow(const struct RectCache *cache, int y, int xmin, int xmax)
 {
 	const struct Camera *cam = cache->cam;
 
-	SDL_assert(cache->rect->img);
+	if (!cache->rect->img) {
+		// FIXME: transparency
+		SDL_FillRect(cam->surface, &(SDL_Rect){xmin,y,xmax-xmin,1}, (uint32_t)0x0000ffffUL);
+		return;
+	}
+
 	Vec3 A = camera_point_world2cam(cam, cache->rect->corners[0]);
 	Vec3 B = camera_point_world2cam(cam, cache->rect->corners[2]);
 	Vec3 C = camera_point_world2cam(cam, cache->rect->corners[1]);

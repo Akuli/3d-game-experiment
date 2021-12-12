@@ -5,6 +5,7 @@
 #include "ellipsoid.h"
 #include "camera.h"
 #include "mathstuff.h"
+#include "rect.h"
 
 /*
 Walls always start and end in integer x and z coordinates and go 1 unit to
@@ -60,6 +61,8 @@ struct Wall {
 // Call this after setting startx,startz,dir of a new wall
 // Can be called multiple times
 void wall_init(struct Wall *w);
+
+struct Rect wall_to_rect(const struct Wall *w);
 
 // does not require using wall_init()
 bool wall_match(const struct Wall *w1, const struct Wall *w2);

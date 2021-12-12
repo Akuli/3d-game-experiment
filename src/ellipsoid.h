@@ -92,11 +92,20 @@ x coordinates to xmin and xmax.
 bool ellipsoid_visible_xminmax(
 	const struct Ellipsoid *el, const struct Camera *cam, int *xmin, int *xmax);
 
+/*
+Is the ellipsoid visible anywhere on screen? If it is, put range of visible screen
+y coordinates to ymin and ymax.
+*/
+bool ellipsoid_yminmax_new(const struct Ellipsoid *el, const struct Camera *cam, int *ymin, int *ymax);
+
 // Which range of screen y coordinates is showing the ellipsoid? Also fill in xcache.
 void ellipsoid_yminmax(
 	const struct Ellipsoid *el, const struct Camera *cam,
 	int x, struct EllipsoidXCache *xcache,
 	int *ymin, int *ymax);
+
+// Which range of screen x coordinates is showing the ellipsoid?
+bool ellipsoid_xminmax_new(const struct Ellipsoid *el, const struct Camera *cam, int y, int *xmin, int *xmax);
 
 /*
 Draw all pixels of ellipsoid corresponding to range of y coordinates. May be
@@ -105,6 +114,11 @@ called more than once with same xcache but different ymin and ymax.
 void ellipsoid_drawcolumn(
 	const struct Ellipsoid *el, const struct EllipsoidXCache *xcache,
 	int ymin, int ymax);
+
+// Draw all pixels of ellipsoid corresponding to range of x coordinates
+void ellipsoid_drawrow(
+	const struct Ellipsoid *el, const struct Camera *cam,
+	int y, int xmin, int xmax);
 
 void ellipsoid_debug_shit(const struct Ellipsoid *el, const struct Camera *cam);
 
