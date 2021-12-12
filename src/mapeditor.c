@@ -174,9 +174,12 @@ static void keep_wall_within_map(const struct MapEditor *ed, struct Wall *w, boo
 
 static bool mouse_is_on_ellipsoid(const struct Camera *cam, const struct Ellipsoid *el, int x, int y)
 {
-	int xmin,xmax,ymin,ymax;
-	return ellipsoid_yminmax(el, cam, &ymin, &ymax)
-		&& ymin <= y && y <= ymax
+	if (!ellipsoid_is_visible(el, cam))
+		return false;
+
+	int xmin, xmax;
+	SDL_Rect bbox = ellipsoid_bounding_box(el, cam);
+	return SDL_PointInRect(&(SDL_Point){x,y}, &bbox)
 		&& ellipsoid_xminmax(el, cam, y, &xmin, &xmax)
 		&& xmin <= x && x <= xmax;
 }

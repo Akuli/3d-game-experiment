@@ -28,9 +28,7 @@ struct Info {
 	ID deps[MAX_WALLS + MAX_ELLIPSOIDS];
 	int ndeps;
 
-	// which range of y coordinates will be showing this ellipsoid or wall?
-	int ymin, ymax;
-
+	SDL_Rect bbox;       // bounding box
 	bool insortedarray;  // for sorting infos to display them in correct order
 
 	// only for walls
@@ -51,13 +49,11 @@ struct ShowingState {
 
 static void add_ellipsoid_if_visible(struct ShowingState *st, int idx)
 {
-	int ymin, ymax;
-	if (ellipsoid_yminmax(&st->els[idx], st->cam, &ymin, &ymax)) {
+	if (ellipsoid_is_visible(&st->els[idx], st->cam)) {
 		ID id = ID_NEW(ID_TYPE_ELLIPSOID, idx);
 		st->visible[st->nvisible++] = id;
 		st->infos[id].ndeps = 0;
-		st->infos[id].ymin = ymin;
-		st->infos[id].ymax = ymax;
+		st->infos[id].bbox = ellipsoid_bounding_box(&st->els[idx], st->cam);
 		st->infos[id].insortedarray = false;
 	}
 }
@@ -70,8 +66,7 @@ static void add_wall_if_visible(struct ShowingState *st, int idx)
 		ID id = ID_NEW(ID_TYPE_WALL, idx);
 		st->visible[st->nvisible++] = id;
 		st->infos[id].ndeps = 0;
-		st->infos[id].ymin = rcache.ymin;
-		st->infos[id].ymax = rcache.ymax;
+		st->infos[id].bbox = rcache.bbox;
 		st->infos[id].insortedarray = false;
 		st->infos[id].rect = r;
 		st->infos[id].rcache = rcache;
@@ -165,15 +160,12 @@ static void setup_same_type_dependency(struct ShowingState *st, ID id1, ID id2)
 // FIXME: determining dependencies probably needs a complete rewrite
 static void setup_dependencies(struct ShowingState *st)
 {
-	for (int i = 0  ; i < st->nvisible; i++) {
-		for (int k = i+1; k < st->nvisible; k++) {
+	for (int i = 0; i < st->nvisible; i++) {
+		for (int k = 0; k < i; k++) {
 			ID id1 = st->visible[i];
 			ID id2 = st->visible[k];
 
-			if (!interval_overlap(
-					st->infos[id1].ymin, st->infos[id1].ymax,
-					st->infos[id2].ymin, st->infos[id2].ymax))
-			{
+			if (SDL_HasIntersection(&st->infos[id1].bbox, &st->infos[id2].bbox)) {
 				if (ID_TYPE(id1) == ID_TYPE_ELLIPSOID && ID_TYPE(id2) == ID_TYPE_WALL)
 					setup_ellipsoid_wall_dependency(st, id1, id2);
 				else if (ID_TYPE(id1) == ID_TYPE_WALL && ID_TYPE(id2) == ID_TYPE_ELLIPSOID)
@@ -292,7 +284,7 @@ void show_all(
 
 		for (int i = 0; i < st.nvisible; i++) {
 			ID id = sorted[i];
-			if (!( st.infos[id].ymin <= y && y <= st.infos[id].ymax ))
+			if (!( st.infos[id].bbox.y <= y && y <= st.infos[id].bbox.y + st.infos[id].bbox.h ))
 				continue;
 
 			int xmin, xmax;

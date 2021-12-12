@@ -32,19 +32,24 @@ bool rect_visible_fillcache(const struct Rect *r, const struct Camera *cam, stru
 	for (int c = 0; c < 4; c++)
 		cache->screencorners[c] = camera_point_cam2screen(cam, camera_point_world2cam(cam, r->corners[c]));
 
-	cache->ymin = INT_MAX;
-	cache->ymax = INT_MIN;
-	for (int c = 0; c < 4; c++) {
-		cache->ymin = min(cache->ymin, (int)cache->screencorners[c].y);
-		cache->ymax = max(cache->ymax, (int)cache->screencorners[c].y);
-	}
-
-	return true;
+	// clip argument of SDL_EnclosePoints doesn't work like i want
+	SDL_Rect tmp;
+	return SDL_EnclosePoints(
+		(SDL_Point[]){
+			{ (int)cache->screencorners[0].x, (int)cache->screencorners[0].y },
+			{ (int)cache->screencorners[1].x, (int)cache->screencorners[1].y },
+			{ (int)cache->screencorners[2].x, (int)cache->screencorners[2].y },
+			{ (int)cache->screencorners[3].x, (int)cache->screencorners[3].y },
+		},
+		4, NULL, &tmp
+	) && SDL_IntersectRect(
+		&tmp, &(SDL_Rect){ 0, 0, cam->surface->w, cam->surface->h }, &cache->bbox
+	);
 }
 
 bool rect_xminmax(const struct RectCache *cache, int y, int *xmin, int *xmax)
 {
-	if (y < cache->ymin || y > cache->ymax)
+	if (y < cache->bbox.y || y >= cache->bbox.y+cache->bbox.h)
 		return false;
 
 	int n = 0;

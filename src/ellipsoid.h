@@ -70,13 +70,13 @@ struct Ellipsoid {
 // calculate el->transform and el->transform_inverse
 void ellipsoid_update_transforms(struct Ellipsoid *el);
 
-/*
-Is the ellipsoid visible anywhere on screen? If it is, put range of visible screen
-y coordinates to ymin and ymax.
-*/
-bool ellipsoid_yminmax(const struct Ellipsoid *el, const struct Camera *cam, int *ymin, int *ymax);
+// Is the ellipsoid visible anywhere on screen?
+bool ellipsoid_is_visible(const struct Ellipsoid *el, const struct Camera *cam);
 
-// Which range of screen x coordinates is showing the ellipsoid?
+// Assumes that ellipsoid_is_visible() has returned true.
+SDL_Rect ellipsoid_bounding_box(const struct Ellipsoid *el, const struct Camera *cam);
+
+// returns false if nothing visible for given y
 bool ellipsoid_xminmax(const struct Ellipsoid *el, const struct Camera *cam, int y, int *xmin, int *xmax);
 
 // Draw all pixels of ellipsoid corresponding to range of x coordinates

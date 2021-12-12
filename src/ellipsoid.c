@@ -17,7 +17,7 @@ static bool ellipsoid_intersects_plane(const struct Ellipsoid *el, struct Plane 
 	return (plane_point_distanceSQUARED(pl, center) < 1);
 }
 
-bool ellipsoid_yminmax(const struct Ellipsoid *el, const struct Camera *cam, int *ymin, int *ymax)
+bool ellipsoid_is_visible(const struct Ellipsoid *el, const struct Camera *cam)
 {
 	/*
 	Ensure that it's in front of camera and not even touching the
@@ -45,7 +45,11 @@ bool ellipsoid_yminmax(const struct Ellipsoid *el, const struct Camera *cam, int
 			return false;
 		}
 	}
+	return true;
+}
 
+SDL_Rect ellipsoid_bounding_box(const struct Ellipsoid *el, const struct Camera *cam)
+{
 	/*
 	Each y coordinate on screen corresponds with a plane y/z = yzr, where yzr is a constant.
 	To find them, we switch to coordinates where the ellipsoid is simply x^2+y^2+z^2=1.
@@ -54,7 +58,7 @@ bool ellipsoid_yminmax(const struct Ellipsoid *el, const struct Camera *cam, int
 	Mat3 uball2cam = mat3_mul_mat3(cam->world2cam, el->transform);
 
 	/*
-	At min and max y values, the distance between the plane and (0,0,0) is 1.
+	At min and max screen y values, the distance between the plane and (0,0,0) is 1.
 	If the plane is ax+by+cz+d=0, this gives
 
 		|d| / sqrt(a^2 + b^2 + c^2) = 1.
@@ -63,26 +67,50 @@ bool ellipsoid_yminmax(const struct Ellipsoid *el, const struct Camera *cam, int
 	The variant of the quadratic formula used:
 
 		x^2 - 2bx + c = 0  <=>  x = b +- sqrt(b^2 - c)
+
+	The same calculation works with x coordinates instead of y coordinates.
 	*/
+	Vec3 top = { uball2cam.rows[0][0], uball2cam.rows[0][1], uball2cam.rows[0][2] };
 	Vec3 mid = { uball2cam.rows[1][0], uball2cam.rows[1][1], uball2cam.rows[1][2] };
 	Vec3 bot = { uball2cam.rows[2][0], uball2cam.rows[2][1], uball2cam.rows[2][2] };
+	float toptop = vec3_dot(top, top);
 	float midmid = vec3_dot(mid, mid);
-	float midbot = vec3_dot(mid, bot);
 	float botbot = vec3_dot(bot, bot);
+	float topmid = vec3_dot(top, mid);
+	float topbot = vec3_dot(top, bot);
+	float midbot = vec3_dot(mid, bot);
 	Vec3 center = camera_point_world2cam(cam, el->center);
-	float a = botbot - center.z*center.z;
-	float b = midbot - center.y*center.z;
-	float c = midmid - center.y*center.y;
-	b /= a;
-	c /= a;
-	SDL_assert(b*b-c >= 0);  // doesn't seem to ever be sqrt(negative)
-	float offset = sqrtf(b*b-c);
 
-	*ymin = (int)camera_yzr_to_screeny(cam, b-offset);
-	*ymax = (int)camera_yzr_to_screeny(cam, b+offset);
-	clamp(ymin, 0, cam->surface->h-1);
-	clamp(ymax, 0, cam->surface->h-1);
-	return true;
+	int xmin, xmax, ymin, ymax;
+	{
+		float a = botbot - center.z*center.z;
+		float b = midbot - center.y*center.z;
+		float c = midmid - center.y*center.y;
+		b /= a;
+		c /= a;
+		SDL_assert(b*b-c >= 0);  // doesn't seem to ever be sqrt(negative)
+		float offset = sqrtf(b*b-c);
+		ymin = (int)camera_yzr_to_screeny(cam, b-offset);
+		ymax = (int)camera_yzr_to_screeny(cam, b+offset);
+	}
+	{
+		float a = botbot - center.z*center.z;
+		float b = topbot - center.x*center.z;
+		float c = toptop - center.x*center.x;
+		b /= a;
+		c /= a;
+		SDL_assert(b*b-c >= 0);  // doesn't seem to ever be sqrt(negative)
+		float offset = sqrtf(b*b-c);
+		xmin = (int)camera_xzr_to_screenx(cam, b+offset);
+		xmax = (int)camera_xzr_to_screenx(cam, b-offset);
+	}
+
+	SDL_Rect res;
+	SDL_IntersectRect(
+		&(SDL_Rect){ 0, 0, cam->surface->w, cam->surface->h },
+		&(SDL_Rect){ xmin, ymin, xmax-xmin, ymax-ymin },
+		&res);
+	return res;
 }
 
 bool ellipsoid_xminmax(const struct Ellipsoid *el, const struct Camera *cam, int y, int *xmin, int *xmax)
