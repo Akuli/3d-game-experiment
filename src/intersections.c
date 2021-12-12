@@ -52,14 +52,6 @@ bool intersect_tetragons(const Vec2 *tetra1, const Vec2 *tetra2, Vec2 *ipoint)
 }
 
 
-static inline Mat2 mat2_inverse(Mat2 M) {
-	float det = mat2_det(M);
-	return (Mat2){ .rows = {
-		{ M.rows[1][1] / det, -M.rows[0][1] / det },
-		{ -M.rows[1][0] / det, M.rows[0][0] / det },
-	}};
-}
-
 bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, bool infinite2, Vec2 *res)
 {
 	Vec2 dir1 = vec2_sub(end1, start1);
@@ -100,13 +92,9 @@ bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, boo
 		|                 | |   | = start2 - start1
 		|_dir1.y  -dir2.y_| |_u_|
 	*/
-	Mat2 M = { .rows = {
-		{ dir1.x, -dir2.x },
-		{ dir1.y, -dir2.y },
-	}};
-	Vec2 tu = mat2_mul_vec2(mat2_inverse(M), vec2_sub(start2,start1));
-	float t = tu.x;
-	float u = tu.y;
+	Vec2 rhs = vec2_sub(start2, start1);
+	float t = (dir2.x*rhs.y - dir2.y*rhs.x) / -dirdet;
+	float u = (dir1.x*rhs.y - dir1.y*rhs.x) / -dirdet;
 	if (!(0 <= t && t <= 1))
 		return false;
 	if (!infinite2 && !(0 <= u && u <= 1))

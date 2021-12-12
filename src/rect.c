@@ -49,7 +49,7 @@ bool rect_visible_fillcache(const struct Rect *r, const struct Camera *cam, stru
 
 bool rect_xminmax(const struct RectCache *cache, int y, int *xmin, int *xmax)
 {
-	if (y < cache->bbox.y || y >= cache->bbox.y+cache->bbox.h)
+	if (!(cache->bbox.y <= y && y < cache->bbox.y+cache->bbox.h))
 		return false;
 
 	int n = 0;
