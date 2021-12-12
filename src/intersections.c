@@ -82,7 +82,7 @@ bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, boo
 			return true;
 
 		// proj(v) = (projection of v onto dir1)*length(dir1). Length doesn't affect anything.
-		#define proj(v) vec2_dot(dir1, (v))  
+		#define proj(v) vec2_dot(dir1, (v))
 		Vec2 olapstart = (proj(start1) < proj(start2)) ? start2 : start1;
 		Vec2 olapend = (proj(end1) < proj(end2)) ? end1 : end2;
 		if (proj(olapstart) >= proj(olapend))
