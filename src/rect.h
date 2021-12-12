@@ -41,6 +41,6 @@ bool rect_visible_fillcache(const struct Rect *r, const struct Camera *cam, stru
 // Before drawing, xmin and xmax can be replaced with a subinterval.
 // If not visible at all for given y, xminmax will return false.
 bool rect_xminmax(const struct RectCache *cache, int y, int *xmin, int *xmax);
-void rect_drawrow(const struct RectCache *cache, int y, int xmin, int xmax);
+void rect_drawrow(const struct RectCache *cache, int y, int xmin, int xmax, bool highlight);
 
 #endif   // RECT_H

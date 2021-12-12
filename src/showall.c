@@ -36,6 +36,7 @@ struct Info {
 	// only for walls
 	struct Rect rect;
 	struct RectCache rcache;
+	bool highlight;
 };
 
 struct ShowingState {
@@ -249,7 +250,7 @@ static void draw_row(const struct ShowingState *st, int y, ID id, int xmin, int 
 		ellipsoid_drawrow(&st->els[ID_INDEX(id)], st->cam, y, xmin, xmax);
 		break;
 	case ID_TYPE_WALL:
-		rect_drawrow(&st->infos[id].rcache, y, xmin, xmax);
+		rect_drawrow(&st->infos[id].rcache, y, xmin, xmax, st->infos[id].highlight);
 		break;
 	}
 }
@@ -276,11 +277,8 @@ void show_all(
 		add_ellipsoid_if_visible(&st, i);
 	for (int i = 0; i < nwalls; i++)
 		add_wall_if_visible(&st, i);
-	// FIXME: highlightwalls
-	/*
 	for (const int *i = highlightwalls; *i != -1; i++)
-		st.infos[ID_NEW(ID_TYPE_WALL, *i)].cache.wallc.highlight = true;
-	*/
+		st.infos[ID_NEW(ID_TYPE_WALL, *i)].highlight = true;
 
 	setup_dependencies(&st);
 

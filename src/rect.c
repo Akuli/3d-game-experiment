@@ -3,6 +3,7 @@
 #include "../stb/stb_image.h"
 #include "camera.h"
 #include "log.h"
+#include "misc.h"
 #include "rect.h"
 
 bool rect_visible_fillcache(const struct Rect *r, const struct Camera *cam, struct RectCache *cache)
@@ -69,10 +70,23 @@ bool rect_xminmax(const struct RectCache *cache, int y, int *xmin, int *xmax)
 	return (*xmin < *xmax);
 }
 
-void rect_drawrow(const struct RectCache *cache, int y, int xmin, int xmax)
+void rect_drawrow(const struct RectCache *cache, int y, int xmin, int xmax, bool highlight)
 {
-	// FIXME: transparency
-	const struct Camera *cam = cache->cam;
-	SDL_FillRect(cam->surface, &(SDL_Rect){xmin,y,xmax-xmin,1}, (uint32_t)0x0000ffffUL);
-	return;
+	SDL_Surface *surf = cache->cam->surface;
+	SDL_assert(surf->pitch % sizeof(uint32_t) == 0);
+	int mypitch = surf->pitch / sizeof(uint32_t);
+	uint32_t *start = (uint32_t *)surf->pixels + y*mypitch + xmin;
+	uint32_t *end   = (uint32_t *)surf->pixels + y*mypitch + xmax;
+
+	// rgb_average seems to perform better when one argument is compile-time known
+	const SDL_PixelFormat *f = surf->format;
+	SDL_assert(f->Rmask == 0xff0000 && f->Gmask == 0x00ff00 && f->Bmask == 0x0000ff);
+
+	if (highlight) {
+		for (uint32_t *ptr = start; ptr < end; ptr++)
+			*ptr = misc_rgb_average(*ptr, 0xff0000);
+	} else {
+		for (uint32_t *ptr = start; ptr < end; ptr++)
+			*ptr = misc_rgb_average(*ptr, 0x00ffff);
+	}
 }
