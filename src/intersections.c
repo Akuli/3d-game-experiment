@@ -56,17 +56,18 @@ bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, boo
 {
 	Vec2 dir1 = vec2_sub(end1, start1);
 	Vec2 dir2 = vec2_sub(end2, start2);
-	if (vec2_dot(dir1, dir2) < 0) {
-		dir2.x *= -1;
-		dir2.y *= -1;
-		Vec2 tmp = start2;
-		start2 = end2;
-		end2 = tmp;
-	}
 
 	float dirdet = dir1.x*dir2.y - dir2.x*dir1.y;
 	if (fabsf(dirdet) < 1e-5) {
 		// same direction
+		if (vec2_dot(dir1, dir2) < 0) {
+			dir2.x *= -1;
+			dir2.y *= -1;
+			Vec2 tmp = start2;
+			start2 = end2;
+			end2 = tmp;
+		}
+
 		Vec2 perpdir = { dir1.y, -dir1.x };
 		if (fabsf(vec2_dot(perpdir, start1) - vec2_dot(perpdir, start2)) > 1e-5f)
 			return false;  // far apart
@@ -94,11 +95,13 @@ bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, boo
 	*/
 	Vec2 rhs = vec2_sub(start2, start1);
 	float t = (dir2.x*rhs.y - dir2.y*rhs.x) / -dirdet;
-	float u = (dir1.x*rhs.y - dir1.y*rhs.x) / -dirdet;
 	if (!(0 <= t && t <= 1))
 		return false;
-	if (!infinite2 && !(0 <= u && u <= 1))
-		return false;
+	if (!infinite2) {
+		float u = (dir1.x*rhs.y - dir1.y*rhs.x) / -dirdet;
+		if (!(0 <= u && u <= 1))
+			return false;
+	}
 	*res = vec2_add(start1, vec2_mul_float(dir1, t));
 	return true;
 }
