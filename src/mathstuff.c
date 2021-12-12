@@ -6,20 +6,36 @@
 Non-static inline functions are weird in c. You need to put definition to h file
 and declaration to c file.
 */
+
 extern inline void clamp(int *val, int lo, int hi);
 extern inline void clamp_float(float *val, float lo, float hi);
+
 extern inline Vec3 vec3_add(Vec3 v, Vec3 w);
 extern inline Vec3 vec3_sub(Vec3 v, Vec3 w);
 extern inline void vec3_add_inplace(Vec3 *v, Vec3 w);
 extern inline void vec3_sub_inplace(Vec3 *v, Vec3 w);
 extern inline Vec3 vec3_mul_float(Vec3 v, float f);
 extern inline float vec3_dot(Vec3 v, Vec3 w);
+
+extern inline Vec2 vec2_add(Vec2 v, Vec2 w);
+extern inline Vec2 vec2_sub(Vec2 v, Vec2 w);
+extern inline Vec2 vec2_mul_float(Vec2 v, float f);
+extern inline float vec2_dot(Vec2 v, Vec2 w);
+
 extern inline float vec3_lengthSQUARED(Vec3 v);
 extern inline Vec3 vec3_withlength(Vec3 v, float len);
 extern inline Vec3 vec3_cross(Vec3 v, Vec3 w);
 extern inline Vec3 mat3_mul_vec3(Mat3 M, Vec3 v);
 extern inline void vec3_apply_matrix(Vec3 *v, Mat3 M);
 extern inline bool plane_whichside(struct Plane pl, Vec3 pt);
+
+extern inline Vec2 mat2_mul_vec2(Mat2 M, Vec2 v);
+extern inline Vec3 mat3_mul_vec3(Mat3 M, Vec3 v);
+extern inline void vec3_apply_matrix(Vec3 *v, Mat3 M);
+
+extern inline float mat2_det(Mat2 M);
+extern inline float mat3_det(Mat3 M);
+
 
 Mat3 mat3_mul_mat3(Mat3 A, Mat3 B)
 {
@@ -46,14 +62,6 @@ static Mat3 multiply_matrix_by_float(Mat3 M, float f)
 			M.rows[i][j] *= f;   // pass-by-value
 
 	return M;
-}
-
-float mat3_det(Mat3 M)
-{
-	Vec3 row1 = { M.rows[0][0], M.rows[0][1], M.rows[0][2] };
-	Vec3 row2 = { M.rows[1][0], M.rows[1][1], M.rows[1][2] };
-	Vec3 row3 = { M.rows[2][0], M.rows[2][1], M.rows[2][2] };
-	return vec3_dot(row1, vec3_cross(row2, row3));
 }
 
 Mat3 mat3_inverse(Mat3 M)
@@ -191,20 +199,7 @@ float line_point_distanceSQUARED(struct Line ln, Vec3 pt)
 	return areaSQUARED / vec3_lengthSQUARED(ln.dir);
 }
 
-static inline Vec2 vec2_add(Vec2 a, Vec2 b) { return (Vec2){ a.x+b.x, a.y+b.y }; }
-static inline Vec2 vec2_sub(Vec2 a, Vec2 b) { return (Vec2){ a.x-b.x, a.y-b.y }; }
-static inline Vec2 vec2_mul_float(Vec2 a, float f) { return (Vec2){ a.x*f, a.y*f }; }
-static inline float vec2_dot(Vec2 a, Vec2 b) { return a.x*b.x + a.y*b.y; }
 
-typedef struct { float rows[2][2]; } Mat2;
-
-static inline Vec2 mat2_mul_vec2(Mat2 M, Vec2 v) { return (Vec2){
-	v.x*M.rows[0][0] + v.y*M.rows[0][1],
-	v.x*M.rows[1][0] + v.y*M.rows[1][1],
-};}
-static inline float mat2_det(Mat2 M) {
-	return M.rows[0][0]*M.rows[1][1] - M.rows[0][1]*M.rows[1][0];
-}
 
 static inline Mat2 mat2_inverse(Mat2 M) {
 	float det = mat2_det(M);
@@ -269,57 +264,3 @@ bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, boo
 	return true;
 }
 
-static bool which_side_of_line(Vec2 start, Vec2 end, Vec2 point)
-{
-	Vec2 diff = vec2_sub(end, start);
-	Vec2 v = vec2_sub(point, start);
-	return mat2_det((Mat2){ .rows={
-		{ diff.x, v.x },
-		{ diff.y, v.y },
-	}}) >= 0;
-}
-
-static bool ngon_contains_point(const Vec2 *corners, int n, const Vec2 point)
-{
-	for (int i = 0; i < n; i++) {
-		Vec2 start = corners[(i+1) % n];
-		Vec2 end = corners[(i+2) % n];
-		// TODO: assuming convexity, which_side_of_line(start, end, corners[i]) is always the same boolean
-		if (which_side_of_line(start, end, point) != which_side_of_line(start, end, corners[i]))
-			return false;
-	}
-	return true;
-}
-
-// assumes convexity of outer n-gon
-static bool ngon_contains_ngon(const Vec2 *outer, const Vec2 *inner, int n)
-{
-	for (int i = 0; i < n; i++)
-		if (!ngon_contains_point(outer, n, inner[i]))
-			return false;
-	return true;
-}
-
-bool triangle_contains_point(Vec2 A, Vec2 B, Vec2 C, Vec2 point)
-{
-	return ngon_contains_point((Vec2[]){A,B,C}, 3, point);
-}
-
-bool intersect_tetragons(const Vec2 *tetra1, const Vec2 *tetra2, Vec2 *ipoint)
-{
-	for (int i = 0; i < 4; i++)
-		for (int k = 0; k < 4; k++)
-			if (intersect_line_segments(tetra1[i], tetra1[(i+1)%4], tetra2[k], tetra2[(k+1)%4], false, ipoint))
-				return true;
-
-	// one tetragon can be nested inside the other
-	if (ngon_contains_ngon(tetra1, tetra2, 4)) {
-		*ipoint = tetra2[0];
-		return true;
-	}
-	if (ngon_contains_ngon(tetra2, tetra1, 4)) {
-		*ipoint = tetra1[0];
-		return true;
-	}
-	return false;
-}

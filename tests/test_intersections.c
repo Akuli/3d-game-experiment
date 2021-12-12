@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
-#include "../src/mathstuff.h"
+#include "../src/intersections.h"
 
 
 static bool checked_intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, Vec2 *p)
@@ -45,24 +45,26 @@ void test_intersecting_lines(void)
 	assert(p.x == 0.5f && p.y == 1.0f);
 }
 
-void test_triangle_contains_point(void)
+void test_ngon_contains_point(void)
 {
+	bool ngon_contains_point(const Vec2 *corners, int n, const Vec2 point);
+
 	Vec2 A = {5,1}, B = {1,3}, C = {4,5};
 	for (int x = -20; x <= 20; x++) {
 		if (x == 3 || x == 4) {
-			assert(triangle_contains_point(A, B, C, (Vec2){x,4}));
-			assert(triangle_contains_point(A, C, B, (Vec2){x,4}));
-			assert(triangle_contains_point(B, A, C, (Vec2){x,4}));
-			assert(triangle_contains_point(B, C, A, (Vec2){x,4}));
-			assert(triangle_contains_point(C, A, B, (Vec2){x,4}));
-			assert(triangle_contains_point(C, B, A, (Vec2){x,4}));
+			assert(ngon_contains_point((Vec2[]){A, B, C}, 3, (Vec2){x,4}));
+			assert(ngon_contains_point((Vec2[]){A, C, B}, 3, (Vec2){x,4}));
+			assert(ngon_contains_point((Vec2[]){B, A, C}, 3, (Vec2){x,4}));
+			assert(ngon_contains_point((Vec2[]){B, C, A}, 3, (Vec2){x,4}));
+			assert(ngon_contains_point((Vec2[]){C, A, B}, 3, (Vec2){x,4}));
+			assert(ngon_contains_point((Vec2[]){C, B, A}, 3, (Vec2){x,4}));
 		} else {
-			assert(!triangle_contains_point(A, B, C, (Vec2){x,4}));
-			assert(!triangle_contains_point(A, C, B, (Vec2){x,4}));
-			assert(!triangle_contains_point(B, A, C, (Vec2){x,4}));
-			assert(!triangle_contains_point(B, C, A, (Vec2){x,4}));
-			assert(!triangle_contains_point(C, A, B, (Vec2){x,4}));
-			assert(!triangle_contains_point(C, B, A, (Vec2){x,4}));
+			assert(!ngon_contains_point((Vec2[]){A, B, C}, 3, (Vec2){x,4}));
+			assert(!ngon_contains_point((Vec2[]){A, C, B}, 3, (Vec2){x,4}));
+			assert(!ngon_contains_point((Vec2[]){B, A, C}, 3, (Vec2){x,4}));
+			assert(!ngon_contains_point((Vec2[]){B, C, A}, 3, (Vec2){x,4}));
+			assert(!ngon_contains_point((Vec2[]){C, A, B}, 3, (Vec2){x,4}));
+			assert(!ngon_contains_point((Vec2[]){C, B, A}, 3, (Vec2){x,4}));
 		}
 	}
 }

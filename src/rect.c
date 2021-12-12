@@ -1,10 +1,11 @@
+#include "rect.h"
 #include <SDL2/SDL.h>
 #include <limits.h>
 #include "../stb/stb_image.h"
 #include "camera.h"
+#include "intersections.h"
 #include "log.h"
 #include "misc.h"
-#include "rect.h"
 
 bool rect_visible_fillcache(const struct Rect *r, const struct Camera *cam, struct RectCache *cache)
 {

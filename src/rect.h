@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <SDL2/SDL.h>
 #include "mathstuff.h"
+#include "camera.h"
 
 struct Rect {
 	/*

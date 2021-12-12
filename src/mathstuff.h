@@ -22,6 +22,7 @@ inline void clamp_float(float *val, float lo, float hi) {
 // matrices are structs because that way it's easier to return them and stuff
 typedef struct { float x,y; } Vec2;
 typedef struct { float x,y,z; } Vec3;
+typedef struct { float rows[2][2]; } Mat2;
 typedef struct { float rows[3][3]; } Mat3;
 
 // Inlined stuff typically goes to tight loops
@@ -32,6 +33,11 @@ inline void vec3_add_inplace(Vec3 *v, Vec3 w) { v->x += w.x; v->y += w.y; v->z +
 inline void vec3_sub_inplace(Vec3 *v, Vec3 w) { v->x -= w.x; v->y -= w.y; v->z -= w.z; }
 inline Vec3 vec3_mul_float(Vec3 v, float f) { return (Vec3){ v.x*f, v.y*f, v.z*f }; }
 inline float vec3_dot(Vec3 v, Vec3 w) { return v.x*w.x + v.y*w.y + v.z*w.z; }
+
+inline Vec2 vec2_add(Vec2 v, Vec2 w) { return (Vec2){ v.x+w.x, v.y+w.y }; }
+inline Vec2 vec2_sub(Vec2 v, Vec2 w) { return (Vec2){ v.x-w.x, v.y-w.y }; }
+inline Vec2 vec2_mul_float(Vec2 v, float f) { return (Vec2){ v.x*f, v.y*f }; }
+inline float vec2_dot(Vec2 v, Vec2 w) { return v.x*w.x + v.y*w.y; }
 
 /*
 Returns |v|^2. Function name has SQUARED in capital letters to make sure you
@@ -68,6 +74,10 @@ inline Vec3 vec3_cross(Vec3 v, Vec3 w)
 }
 
 // matrix * vector
+inline Vec2 mat2_mul_vec2(Mat2 M, Vec2 v) { return (Vec2){
+	v.x*M.rows[0][0] + v.y*M.rows[0][1],
+	v.x*M.rows[1][0] + v.y*M.rows[1][1],
+};}
 inline Vec3 mat3_mul_vec3(Mat3 M, Vec3 v) { return (Vec3){
 	v.x*M.rows[0][0] + v.y*M.rows[0][1] + v.z*M.rows[0][2],
 	v.x*M.rows[1][0] + v.y*M.rows[1][1] + v.z*M.rows[1][2],
@@ -76,10 +86,24 @@ inline Vec3 mat3_mul_vec3(Mat3 M, Vec3 v) { return (Vec3){
 
 inline void vec3_apply_matrix(Vec3 *v, Mat3 M) { *v = mat3_mul_vec3(M, *v); }
 
+inline float mat2_det(Mat2 M)
+{
+	return M.rows[0][0]*M.rows[1][1]
+		- M.rows[0][1]*M.rows[1][0];
+}
+inline float mat3_det(Mat3 M)
+{
+	return M.rows[0][0]*M.rows[1][1]*M.rows[2][2]
+		- M.rows[0][0]*M.rows[1][2]*M.rows[2][1]
+		- M.rows[0][1]*M.rows[1][0]*M.rows[2][2]
+		+ M.rows[0][1]*M.rows[1][2]*M.rows[2][0]
+		+ M.rows[0][2]*M.rows[1][0]*M.rows[2][1]
+		- M.rows[0][2]*M.rows[1][1]*M.rows[2][0];
+}
+
 // these are not inline because typically you don't put these to tight loop:
 Mat3 mat3_mul_mat3(Mat3 A, Mat3 B);
 Mat3 mat3_inverse(Mat3 M);
-float mat3_det(Mat3 M);
 
 /*
 Slow-ish to compute because uses trig funcs, so don't call this in a loop.
@@ -130,18 +154,5 @@ struct Line {
 
 // distance between line and point, ^2 to avoid slow sqrt
 float line_point_distanceSQUARED(struct Line ln, Vec3 pt);
-
-// Check if line segments intersect. If they do, store an intersection point in *res.
-// There can be multiple intersections, if lines go in same direction and overlap.
-// If infinite2 is true, treat line 2 as infinitely long in both directions, not a line segment.
-bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, bool infinite2, Vec2 *res);
-
-bool triangle_contains_point(Vec2 A, Vec2 B, Vec2 C, Vec2 point);
-
-// Both tetragons (polygon with 4 corners) should be arrays of 4 elements.
-// If returns true, sets ipoint to an example intersection point.
-// It can be, and in fact always is, on the boundary of at least one of the two tetragons.
-// Assumes convexity.
-bool intersect_tetragons(const Vec2 *tetra1, const Vec2 *tetra2, Vec2 *ipoint);
 
 #endif   // MATHSTUFF_H
