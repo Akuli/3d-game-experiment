@@ -51,26 +51,31 @@ static bool ellipsoid_yminmax_new(const struct Ellipsoid *el, const struct Camer
 	To find them, we switch to coordinates where the ellipsoid is simply x^2+y^2+z^2=1.
 	Let's call these "unit ball coordinates".
 	*/
-	Mat3 uball2cam = mat3_mul_mat3(cam->cam2world, el->transform);
-	Vec3 mid = { uball2cam.rows[1][0], uball2cam.rows[1][1], uball2cam.rows[1][2] };
-	Vec3 bot = { uball2cam.rows[2][0], uball2cam.rows[2][1], uball2cam.rows[2][2] };
-	float midmid = vec3_dot(mid, mid);
-	float midbot = vec3_dot(mid, bot);
-	float botbot = vec3_dot(bot, bot);
+	Mat3 uball2cam = mat3_mul_mat3(cam->world2cam, el->transform);
 
 	/*
 	At min and max y values, the distance between the plane and (0,0,0) is 1.
+	If the plane is ax+by+cz+d=0, this gives
+
+		|d| / sqrt(a^2 + b^2 + c^2) = 1.
+
 	Solving yzr leads to a quadratic.
 	The variant of the quadratic formula used:
 
 		x^2 - 2bx + c = 0  <=>  x = b +- sqrt(b^2 - c)
 	*/
+	Vec3 mid = { uball2cam.rows[1][0], uball2cam.rows[1][1], uball2cam.rows[1][2] };
+	Vec3 bot = { uball2cam.rows[2][0], uball2cam.rows[2][1], uball2cam.rows[2][2] };
+	float midmid = vec3_dot(mid, mid);
+	float midbot = vec3_dot(mid, bot);
+	float botbot = vec3_dot(bot, bot);
 	Vec3 center = camera_point_world2cam(cam, el->center);
-	float b = (midbot - center.y*center.z)/(botbot - center.z*center.z);
-	float c = (midmid - center.y*center.y)/(botbot - center.z*center.z);
-
-	// Discriminant doesn't seem to ever be negative
-	SDL_assert(b*b-c >= 0);
+	float a = botbot - center.z*center.z;
+	float b = midbot - center.y*center.z;
+	float c = midmid - center.y*center.y;
+	b /= a;
+	c /= a;
+	SDL_assert(b*b-c >= 0);  // doesn't seem to ever be sqrt(negative)
 	float offset = sqrtf(b*b-c);
 
 	*ymin = (int)camera_yzr_to_screeny(cam, b-offset);
@@ -80,12 +85,68 @@ static bool ellipsoid_yminmax_new(const struct Ellipsoid *el, const struct Camer
 	return true;
 }
 
+static bool ellipsoid_xminmax_new(const struct Ellipsoid *el, const struct Camera *cam, int y, int *xmin, int *xmax)
+{
+	/*
+	Consider the line that is t*(xzr,yzr,1) in camera coordinates.
+	In unit ball coordinates, it will be
+
+		t*(xzr*v + w) + p,
+
+	where v, w and p don't depend on xzr or t.
+	*/
+	Mat3 world2uball = el->transform_inverse;
+	Mat3 cam2uball = mat3_mul_mat3(world2uball, cam->cam2world);
+	Mat3 uball2cam = mat3_mul_mat3(cam->world2cam, el->transform);
+	Vec3 v = mat3_mul_vec3(cam2uball, (Vec3){1,0,0});
+	Vec3 w = mat3_mul_vec3(cam2uball, (Vec3){0,camera_screeny_to_yzr(cam, y),1});
+	Vec3 p = mat3_mul_vec3(world2uball, vec3_sub(cam->location, el->center));
+
+	/*
+	Consider the function
+
+		f(t) = (c + t(xzr*v + w)) dot (c + t(xzr*v + w)).
+
+	Its minimum value is (distance between line and origin)^2.
+	Solve it with a derivative and set it equal to 1.
+	Then solve xzr with quadratic formula.
+
+	Variant of quadratic formula used:
+
+		x^2 + 2bx + c = 0  <=>  x = -b +- sqrt(b^2 - c)
+	*/
+	float pp = vec3_dot(p, p);
+	float vv = vec3_dot(v, v);
+	float ww = vec3_dot(w, w);
+	float pv = vec3_dot(p, v);
+	float pw = vec3_dot(p, w);
+	float vw = vec3_dot(v, w);
+	float a = (pp-1)*vv - pv*pv;
+	float b = (pp-1)*vw - pv*pw;
+	float c = (pp-1)*ww - pw*pw;
+	b /= a;
+	c /= a;
+	if (b*b-c < 0) return false;    // happens about once per frame
+	float offset = sqrtf(b*b-c);
+
+	*xmin = (int)camera_xzr_to_screenx(cam, -b+offset);
+	*xmax = (int)camera_xzr_to_screenx(cam, -b-offset);
+	clamp(xmin, 10, cam->surface->w-10);
+	clamp(xmax, 10, cam->surface->w-10);
+	return *xmin < *xmax;
+}
+
 void ellipsoid_debug_shit(const struct Ellipsoid *el, const struct Camera *cam)
 {
 	int ymin, ymax;
 	if (ellipsoid_yminmax_new(el, cam, &ymin, &ymax)) {
-		SDL_FillRect(cam->surface, &(SDL_Rect){0, ymin, cam->surface->w, 1}, (uint32_t)0x00ff0000ULL);
-		SDL_FillRect(cam->surface, &(SDL_Rect){0, ymax, cam->surface->w, 1}, (uint32_t)0x0000ff00ULL);
+		SDL_FillRect(cam->surface, &(SDL_Rect){0, ymax, cam->surface->w, 1}, (uint32_t)0x0000ff00UL);
+		SDL_FillRect(cam->surface, &(SDL_Rect){0, ymin, cam->surface->w, 1}, (uint32_t)0x00ff0000UL);
+		for (int y = ymin; y < ymax; y += 1) {
+			int xmin, xmax;
+			if (ellipsoid_xminmax_new(el, cam, y, &xmin, &xmax))
+				SDL_FillRect(cam->surface, &(SDL_Rect){xmin, y, xmax-xmin, 1}, (uint32_t)0x000000ffUL);
+		}
 	}
 }
 
