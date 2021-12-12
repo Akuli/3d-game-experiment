@@ -64,7 +64,6 @@ struct Rect wall_to_rect(const struct Wall *w)
 			{ w->startx+dx, Y_MAX, w->startz+dz },
 			{ w->startx, Y_MAX, w->startz },
 		},
-		.img = NULL,
 	};
 }
 
