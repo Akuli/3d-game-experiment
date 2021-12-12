@@ -17,7 +17,7 @@ static bool ellipsoid_intersects_plane(const struct Ellipsoid *el, struct Plane 
 	return (plane_point_distanceSQUARED(pl, center) < 1);
 }
 
-bool ellipsoid_yminmax_new(const struct Ellipsoid *el, const struct Camera *cam, int *ymin, int *ymax)
+bool ellipsoid_yminmax(const struct Ellipsoid *el, const struct Camera *cam, int *ymin, int *ymax)
 {
 	/*
 	Ensure that it's in front of camera and not even touching the
@@ -85,7 +85,7 @@ bool ellipsoid_yminmax_new(const struct Ellipsoid *el, const struct Camera *cam,
 	return true;
 }
 
-bool ellipsoid_xminmax_new(const struct Ellipsoid *el, const struct Camera *cam, int y, int *xmin, int *xmax)
+bool ellipsoid_xminmax(const struct Ellipsoid *el, const struct Camera *cam, int y, int *xmin, int *xmax)
 {
 	/*
 	Consider the line that is t*(xzr,yzr,1) in camera coordinates.

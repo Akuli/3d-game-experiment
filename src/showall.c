@@ -52,7 +52,7 @@ struct ShowingState {
 static void add_ellipsoid_if_visible(struct ShowingState *st, int idx)
 {
 	int ymin, ymax;
-	if (ellipsoid_yminmax_new(&st->els[idx], st->cam, &ymin, &ymax)) {
+	if (ellipsoid_yminmax(&st->els[idx], st->cam, &ymin, &ymax)) {
 		ID id = ID_NEW(ID_TYPE_ELLIPSOID, idx);
 		st->visible[st->nvisible++] = id;
 		st->infos[id].ndeps = 0;
@@ -234,7 +234,7 @@ static bool get_xminmax(struct ShowingState *st, ID id, int y, int *xmin, int *x
 {
 	switch(ID_TYPE(id)) {
 		case ID_TYPE_ELLIPSOID:
-			return ellipsoid_xminmax_new(&st->els[ID_INDEX(id)], st->cam, y, xmin, xmax);
+			return ellipsoid_xminmax(&st->els[ID_INDEX(id)], st->cam, y, xmin, xmax);
 			break;
 		case ID_TYPE_WALL:
 			return rect_xminmax(&st->infos[id].rcache, y, xmin, xmax);

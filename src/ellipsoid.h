@@ -74,10 +74,10 @@ void ellipsoid_update_transforms(struct Ellipsoid *el);
 Is the ellipsoid visible anywhere on screen? If it is, put range of visible screen
 y coordinates to ymin and ymax.
 */
-bool ellipsoid_yminmax_new(const struct Ellipsoid *el, const struct Camera *cam, int *ymin, int *ymax);
+bool ellipsoid_yminmax(const struct Ellipsoid *el, const struct Camera *cam, int *ymin, int *ymax);
 
 // Which range of screen x coordinates is showing the ellipsoid?
-bool ellipsoid_xminmax_new(const struct Ellipsoid *el, const struct Camera *cam, int y, int *xmin, int *xmax);
+bool ellipsoid_xminmax(const struct Ellipsoid *el, const struct Camera *cam, int y, int *xmin, int *xmax);
 
 // Draw all pixels of ellipsoid corresponding to range of x coordinates
 void ellipsoid_drawrow(
