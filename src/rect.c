@@ -75,8 +75,8 @@ bool rect_xminmax(const struct RectCache *cache, int y, int *xmin, int *xmax)
 		*xmin = min(*xmin, (int)ceilf(inters[i].x));
 		*xmax = max(*xmax, (int)      inters[i].x );
 	}
-	clamp(xmin, 0, cache->cam->surface->w);
-	clamp(xmax, 0, cache->cam->surface->w);
+	clamp(xmin, 0, cache->cam->surface->w-1);
+	clamp(xmax, 0, cache->cam->surface->w-1);
 	return (*xmin <= *xmax);
 }
 
