@@ -226,12 +226,8 @@ static void create_sorted_array(struct ShowingState *st, ID *sorted)
 static bool get_xminmax(struct ShowingState *st, ID id, int y, int *xmin, int *xmax)
 {
 	switch(ID_TYPE(id)) {
-		case ID_TYPE_ELLIPSOID:
-			return ellipsoid_xminmax(&st->els[ID_INDEX(id)], st->cam, y, xmin, xmax);
-			break;
-		case ID_TYPE_WALL:
-			return rect_xminmax(&st->infos[id].rcache, y, xmin, xmax);
-			break;
+		case ID_TYPE_ELLIPSOID: return ellipsoid_xminmax(&st->els[ID_INDEX(id)], st->cam, y, xmin, xmax);
+		case ID_TYPE_WALL: return rect_xminmax(&st->infos[id].rcache, y, xmin, xmax);
 	}
 	return false;  // compiler = happy
 }

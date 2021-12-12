@@ -65,14 +65,18 @@ bool rect_xminmax(const struct RectCache *cache, int y, int *xmin, int *xmax)
 		}
 	}
 
-	// TODO: fails sometimes
-	//SDL_assert(n <= 2);
-	if (n != 2)
+	// There are n=3 intersections when a line goes through corner of wall
+	if (n < 2)
 		return false;
-	*xmin = (int)ceilf(min(inters[0].x, inters[1].x));
-	*xmax = (int)      max(inters[0].x, inters[1].x);
-	clamp(xmin, 0, cache->cam->surface->w-1);
-	clamp(xmax, 0, cache->cam->surface->w-1);
+
+	*xmin = INT_MAX;
+	*xmax = INT_MIN;
+	for (int i = 0; i < n; i++) {
+		*xmin = min(*xmin, (int)ceilf(inters[i].x));
+		*xmax = max(*xmax, (int)      inters[i].x );
+	}
+	clamp(xmin, 0, cache->cam->surface->w);
+	clamp(xmax, 0, cache->cam->surface->w);
 	return (*xmin <= *xmax);
 }
 
