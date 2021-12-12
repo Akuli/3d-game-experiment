@@ -75,6 +75,7 @@ static void add_wall_if_visible(struct ShowingState *st, int idx)
 		st->infos[id].insortedarray = false;
 		st->infos[id].rect = r;
 		st->infos[id].rcache = rcache;
+		st->infos[id].highlight = false;
 	}
 }
 
