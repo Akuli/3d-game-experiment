@@ -80,8 +80,8 @@ bool ellipsoid_yminmax_new(const struct Ellipsoid *el, const struct Camera *cam,
 
 	*ymin = (int)camera_yzr_to_screeny(cam, b-offset);
 	*ymax = (int)camera_yzr_to_screeny(cam, b+offset);
-	clamp(ymin, 0, cam->surface->h);
-	clamp(ymax, 0, cam->surface->h);
+	clamp(ymin, 0, cam->surface->h-1);
+	clamp(ymax, 0, cam->surface->h-1);
 	return true;
 }
 
@@ -132,7 +132,7 @@ bool ellipsoid_xminmax_new(const struct Ellipsoid *el, const struct Camera *cam,
 	*xmax = (int)camera_xzr_to_screenx(cam, -b-offset);
 	clamp(xmin, 0, cam->surface->w);
 	clamp(xmax, 0, cam->surface->w);
-	return *xmin < *xmax;
+	return *xmin <= *xmax;
 }
 
 static inline float linear_map(float srcmin, float srcmax, float dstmin, float dstmax, float val)

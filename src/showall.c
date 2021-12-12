@@ -296,7 +296,7 @@ void show_all(
 
 			int xmin, xmax;
 			if (get_xminmax(&st, id, y, &xmin, &xmax)) {
-				SDL_assert(xmin < xmax);
+				SDL_assert(xmin <= xmax);
 				intervals[nintervals++] = (struct Interval){
 					.start = xmin,
 					.end = xmax,

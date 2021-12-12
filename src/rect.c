@@ -66,9 +66,9 @@ bool rect_xminmax(const struct RectCache *cache, int y, int *xmin, int *xmax)
 		return false;
 	*xmin = (int)ceilf(min(inters[0].x, inters[1].x));
 	*xmax = (int)      max(inters[0].x, inters[1].x);
-	clamp(xmin, 0, cache->cam->surface->w);
-	clamp(xmax, 0, cache->cam->surface->w);
-	return (*xmin < *xmax);
+	clamp(xmin, 0, cache->cam->surface->w-1);
+	clamp(xmax, 0, cache->cam->surface->w-1);
+	return (*xmin <= *xmax);
 }
 
 void rect_drawrow(const struct RectCache *cache, int y, int xmin, int xmax, bool highlight)
@@ -84,10 +84,10 @@ void rect_drawrow(const struct RectCache *cache, int y, int xmin, int xmax, bool
 	SDL_assert(f->Rmask == 0xff0000 && f->Gmask == 0x00ff00 && f->Bmask == 0x0000ff);
 
 	if (highlight) {
-		for (uint32_t *ptr = start; ptr < end; ptr++)
+		for (uint32_t *ptr = start; ptr <= end; ptr++)
 			*ptr = misc_rgb_average(*ptr, 0xff0000);
 	} else {
-		for (uint32_t *ptr = start; ptr < end; ptr++)
+		for (uint32_t *ptr = start; ptr <= end; ptr++)
 			*ptr = misc_rgb_average(*ptr, 0x00ffff);
 	}
 }
