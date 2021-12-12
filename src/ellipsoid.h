@@ -67,30 +67,8 @@ struct Ellipsoid {
 	Mat3 transform, transform_inverse;
 };
 
-/*
-Information shared in multiple functions, specific to screen x coordinate
-*/
-struct EllipsoidXCache {
-	int screenx;
-	float ballcenterscreenx;    // where is ellipsoid->center on screen?
-	float xzr;
-	const struct Camera *cam;
-
-	// coordinates are in camera coordinates with Ellipsoid.transform_inverse applied
-	Vec3 ballcenter;        // ellipsoid->center, transformed as described above
-	struct Plane xplane;    // plane of points that are visible at given screen x
-	float dSQUARED;         // (distance between xplane and ballcenter)^2
-};
-
 // calculate el->transform and el->transform_inverse
 void ellipsoid_update_transforms(struct Ellipsoid *el);
-
-/*
-Is the ellipsoid visible anywhere on screen? If it is, put range of visible screen
-x coordinates to xmin and xmax.
-*/
-bool ellipsoid_visible_xminmax(
-	const struct Ellipsoid *el, const struct Camera *cam, int *xmin, int *xmax);
 
 /*
 Is the ellipsoid visible anywhere on screen? If it is, put range of visible screen
@@ -98,29 +76,13 @@ y coordinates to ymin and ymax.
 */
 bool ellipsoid_yminmax_new(const struct Ellipsoid *el, const struct Camera *cam, int *ymin, int *ymax);
 
-// Which range of screen y coordinates is showing the ellipsoid? Also fill in xcache.
-void ellipsoid_yminmax(
-	const struct Ellipsoid *el, const struct Camera *cam,
-	int x, struct EllipsoidXCache *xcache,
-	int *ymin, int *ymax);
-
 // Which range of screen x coordinates is showing the ellipsoid?
 bool ellipsoid_xminmax_new(const struct Ellipsoid *el, const struct Camera *cam, int y, int *xmin, int *xmax);
-
-/*
-Draw all pixels of ellipsoid corresponding to range of y coordinates. May be
-called more than once with same xcache but different ymin and ymax.
-*/
-void ellipsoid_drawcolumn(
-	const struct Ellipsoid *el, const struct EllipsoidXCache *xcache,
-	int ymin, int ymax);
 
 // Draw all pixels of ellipsoid corresponding to range of x coordinates
 void ellipsoid_drawrow(
 	const struct Ellipsoid *el, const struct Camera *cam,
 	int y, int xmin, int xmax);
-
-void ellipsoid_debug_shit(const struct Ellipsoid *el, const struct Camera *cam);
 
 /*
 Returns how much ellipsoids should be moved apart from each other to make them not

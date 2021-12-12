@@ -351,8 +351,6 @@ enum MiscState play_the_game(
 		SDL_BlitSurface(surf, NULL, winsurf, &(SDL_Rect){20,10});
 		SDL_FreeSurface(surf);
 
-		ellipsoid_debug_shit(&gs.players[0].ellipsoid, &gs.players[1].cam);
-
 		SDL_UpdateWindowSurface(wnd);
 		looptimer_wait(&lt);
 	}

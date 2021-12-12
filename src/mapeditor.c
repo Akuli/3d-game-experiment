@@ -174,6 +174,8 @@ static void keep_wall_within_map(const struct MapEditor *ed, struct Wall *w, boo
 
 static bool mouse_is_on_ellipsoid(const struct Camera *cam, const struct Ellipsoid *el, int x, int y)
 {
+	return false;   // FIXME
+	/*
 	int xmin, xmax;
 	if (!ellipsoid_visible_xminmax(el, cam, &xmin, &xmax) || !(xmin <= x && x <= xmax))
 		return false;
@@ -182,10 +184,13 @@ static bool mouse_is_on_ellipsoid(const struct Camera *cam, const struct Ellipso
 	struct EllipsoidXCache exc;
 	ellipsoid_yminmax(el, cam, x, &exc, &ymin, &ymax);
 	return ymin <= y && y <= ymax;
+	*/
 }
 
 static bool mouse_is_on_wall(const struct Camera *cam, const struct Wall *w, int x, int y)
 {
+	return false;  // FIXME
+	/*
 	struct WallCache wc;
 	int xmin, xmax;
 	if (!wall_visible_xminmax_fillcache(w, cam, &xmin, &xmax, &wc) || !(xmin <= x && x <= xmax))
@@ -194,6 +199,7 @@ static bool mouse_is_on_wall(const struct Camera *cam, const struct Wall *w, int
 	int ymin, ymax;
 	wall_yminmax(&wc, x, &ymin, &ymax);
 	return ymin <= y && y <= ymax;
+	*/
 }
 
 static bool mouse_is_on_ellipsoid_with_no_walls_between(struct MapEditor *ed, const struct Ellipsoid *el, int x, int y)
