@@ -165,7 +165,13 @@ static void setup_dependencies(struct ShowingState *st)
 			ID id1 = st->visible[i];
 			ID id2 = st->visible[k];
 
-			if (SDL_HasIntersection(&st->infos[id1].bbox, &st->infos[id2].bbox)) {
+			struct SDL_Rect bbox1 = st->infos[id1].bbox;
+			struct SDL_Rect bbox2 = st->infos[id2].bbox;
+
+			// my interval_overlap() is measurably faster than SDL_HasIntersection
+			if (interval_overlap(bbox1.x, bbox1.x+bbox1.w, bbox2.x, bbox2.x+bbox2.w)
+				&& interval_overlap(bbox1.y, bbox1.y+bbox1.h, bbox2.y, bbox2.y+bbox2.h))
+			{
 				if (ID_TYPE(id1) == ID_TYPE_ELLIPSOID && ID_TYPE(id2) == ID_TYPE_WALL)
 					setup_ellipsoid_wall_dependency(st, id1, id2);
 				else if (ID_TYPE(id1) == ID_TYPE_WALL && ID_TYPE(id2) == ID_TYPE_ELLIPSOID)
