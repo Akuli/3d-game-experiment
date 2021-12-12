@@ -76,7 +76,6 @@ SDL_Rect ellipsoid_bounding_box(const struct Ellipsoid *el, const struct Camera 
 	float toptop = vec3_dot(top, top);
 	float midmid = vec3_dot(mid, mid);
 	float botbot = vec3_dot(bot, bot);
-	float topmid = vec3_dot(top, mid);
 	float topbot = vec3_dot(top, bot);
 	float midbot = vec3_dot(mid, bot);
 	Vec3 center = camera_point_world2cam(cam, el->center);
