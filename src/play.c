@@ -17,7 +17,6 @@
 #include "player.h"
 #include "showall.h"
 #include "sound.h"
-#include "region.h"
 
 // includes all the GameObjects that all players should see
 struct GameState {
@@ -66,22 +65,9 @@ static void add_enemy(struct GameState *gs, const struct MapCoords *coordptr)
 	if (coordptr)
 		pc = *coordptr;
 	else {
-		// Choose random enemy location. Use region sizes as weights.
-		int sum = 0;
-		for (int i = 0; i < gs->map->nenemylocs; i++)
-			sum += gs->enemyregionsizes[i];
-		int val = rand() % sum;
-		int lo = 0;
-		int i = 0;
-		while(1) {
-			SDL_assert(i < gs->map->nenemylocs);
-			int hi = lo + gs->enemyregionsizes[i];
-			if (lo <= val && val < hi)
-				break;
-			lo = hi;
-			i++;
-		}
-		pc = gs->map->enemylocs[i];
+		// Choose random enemy location.
+		// Does not take in account region size, otherwise small regions are too safe.
+		pc = gs->map->enemylocs[rand() % gs->map->nenemylocs];
 	}
 
 	gs->enemies[gs->nenemies++] = enemy_new(gs->map, pc);
@@ -117,8 +103,11 @@ static void add_guards_and_enemies_as_needed(struct GameState *gs)
 	/*
 	People make mistakes, and the enemies win eventually, even with the variables we have
 	now, but that can take a very long time. Making this slightly off makes games shorter.
+	Also spawn 3 times more if there are 3 spawning points.
 	*/
-	enemydelay = (unsigned)(enemydelay * 0.4f);
+	enemydelay = (unsigned)(enemydelay * 0.6f);
+	if (gs->map->nenemylocs != 0)
+		enemydelay /= gs->map->nenemylocs;
 
 	gs->thisframe++;
 	if (time_to_do_something(&gs->lastguardframe, gs->thisframe, guarddelay)) {
@@ -305,10 +294,8 @@ enum MiscState play_the_game(
 			},
 		},
 	};
-	for (int i = 0; i < map->nenemylocs; i++) {
-		gs.enemyregionsizes[i] = region_size(map, map->enemylocs[i]);
+	for (int i = 0; i < map->nenemylocs; i++)
 		add_enemy(&gs, &map->enemylocs[i]);
-	}
 
 	struct LoopTimer lt = {0};
 	enum MiscState ret;
