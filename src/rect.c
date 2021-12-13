@@ -56,10 +56,8 @@ bool rect_xminmax(const struct RectCache *cache, int y, int *xmin, int *xmax)
 	Vec2 inters[4];
 
 	for (int c = 0; c < 4; c++) {
-		if (intersect_line_segments(
-			cache->screencorners[c], cache->screencorners[(c+1)%4],
-			(Vec2){0,y}, (Vec2){1,y}, true,
-			&inters[n]))
+		if (intersect_with_horizontal_line(
+			cache->screencorners[c], cache->screencorners[(c+1)%4], y, &inters[n]))
 		{
 			n++;
 		}
