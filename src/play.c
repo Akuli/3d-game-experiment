@@ -103,7 +103,7 @@ static void add_guards_and_enemies_as_needed(struct GameState *gs)
 	/*
 	People make mistakes, and the enemies win eventually, even with the variables we have
 	now, but that can take a very long time.
-	Also spawn 3 times more if there are 3 spawning points.
+	Also make sure that small areas containing a spawning point are not too safe.
 	*/
 	enemydelay = (unsigned)(enemydelay * 0.6f);
 	if (gs->map->nenemylocs != 0)
