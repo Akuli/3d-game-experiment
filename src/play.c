@@ -102,7 +102,7 @@ static void add_guards_and_enemies_as_needed(struct GameState *gs)
 
 	/*
 	People make mistakes, and the enemies win eventually, even with the variables we have
-	now, but that can take a very long time. Making this slightly off makes games shorter.
+	now, but that can take a very long time.
 	Also spawn 3 times more if there are 3 spawning points.
 	*/
 	enemydelay = (unsigned)(enemydelay * 0.6f);
