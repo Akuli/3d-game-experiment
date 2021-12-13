@@ -5,12 +5,7 @@
 
 // Check if line segments intersect. If they do, store an intersection point in *res.
 // There can be multiple intersections, if lines go in same direction and overlap.
-// If infinite2 is true, treat line 2 as infinitely long in both directions, not a line segment.
-// TODO: infinite2 needed?
 bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, Vec2 *res);
-
-// Treats the horizontal line at y as infinitely long in both directions.
-bool intersect_with_horizontal_line(Vec2 start, Vec2 end, int y, Vec2 *res);
 
 // Both tetragons (polygon with 4 corners) should be arrays of 4 elements.
 // If returns true, sets ipoint to an example intersection point.

@@ -104,20 +104,3 @@ bool intersect_line_segments(Vec2 start1, Vec2 end1, Vec2 start2, Vec2 end2, Vec
 	*res = vec2_add(start1, vec2_mul_float(dir1, t));
 	return true;
 }
-
-bool intersect_with_horizontal_line(Vec2 start, Vec2 end, int y, Vec2 *res)
-{
-	if (fabsf(end.y-start.y) < 1e-5) {
-		if (fabsf(start.y - y) > 1e-5f)
-			return false;
-		*res = (Vec2){ (start.x + end.x)/2, y };
-		return true;
-	}
-
-	if (!(start.y <= y && y <= end.y) && !(start.y >= y && y >= end.y))
-		return false;
-
-	float t = (y - start.y) / (end.y - start.y);
-	*res = (Vec2){ start.x + t*(end.x - start.x), y };
-	return true;
-}

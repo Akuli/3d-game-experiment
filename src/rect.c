@@ -53,14 +53,18 @@ bool rect_xminmax(const struct RectCache *cache, int y, int *xmin, int *xmax)
 		return false;
 
 	int n = 0;
-	Vec2 inters[4];
+	float interx[4];
 
+	Vec2 corner1 = cache->screencorners[3];
 	for (int c = 0; c < 4; c++) {
-		if (intersect_with_horizontal_line(
-			cache->screencorners[c], cache->screencorners[(c+1)%4], y, &inters[n]))
+		Vec2 corner2 = cache->screencorners[c];
+		if (fabsf(corner1.y - corner2.y) > 1e-5f &&
+			((corner1.y <= y && y <= corner2.y) || (corner1.y >= y && y >= corner2.y)))
 		{
-			n++;
+			float t = (y - corner1.y) / (corner2.y - corner1.y);
+			interx[n++] = corner1.x + t*(corner2.x - corner1.x);
 		}
+		corner1 = corner2;
 	}
 
 	// There are n=3 intersections when a line goes through corner of wall
@@ -70,8 +74,8 @@ bool rect_xminmax(const struct RectCache *cache, int y, int *xmin, int *xmax)
 	*xmin = INT_MAX;
 	*xmax = INT_MIN;
 	for (int i = 0; i < n; i++) {
-		*xmin = min(*xmin, (int)ceilf(inters[i].x));
-		*xmax = max(*xmax, (int)      inters[i].x );
+		*xmin = min(*xmin, (int)ceilf(interx[i]));
+		*xmax = max(*xmax, (int)      interx[i] );
 	}
 	clamp(xmin, 0, cache->cam->surface->w-1);
 	clamp(xmax, 0, cache->cam->surface->w-1);
