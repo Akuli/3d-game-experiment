@@ -138,50 +138,52 @@ static void setup_dependencies(struct ShowingState *st)
 
 }
 
-#if 0
 static void debug_print_dependencies(const struct ShowingState *st)
 {
-	printf("\ndependency dump:\n");
+	log_printf("dependency dump:");
 	for (int i = 0; i < st->nvisible; i++) {
 		ID id = st->visible[i];
 		if (st->infos[id].ndeps == 0)
 			continue;
 
-		printf("   %-3d --> ", id);
+		log_printf("  %d", id);
 		for (int d = 0; d < st->infos[id].ndeps; d++)
-			printf("%s%d", (d?",":""), st->infos[id].deps[d]);
-		printf("\n");
+			log_printf("  `--> %d", st->infos[id].deps[d]);
 	}
-	printf("\n");
-}
-#endif
-
-static void add_dependencies_and_id_to_sorted_array(struct ShowingState *st, ID **ptr, ID id, int depth)
-{
-	if (depth > MAX_WALLS + MAX_ELLIPSOIDS) {
-		// don't know when this could happen, but prevent disasters
-		log_printf("hitting recursion depth limit, something weird is happening");
-		return;
-	}
-	if (st->infos[id].insortedarray)
-		return;
-
-	// setting this early avoids infinite recursion in case dependency graph has a cycle
-	st->infos[id].insortedarray = true;   
-
-	for (int i = 0; i < st->infos[id].ndeps; i++)
-		add_dependencies_and_id_to_sorted_array(st, ptr, st->infos[id].deps[i], depth+1);
-
-	*(*ptr)++ = id;
 }
 
 // In which order should walls and ellipsoids be shown?
 static void create_sorted_array(struct ShowingState *st, ID *sorted)
 {
-	ID *ptr = sorted;
-	for (int i = 0; i < st->nvisible; i++)
-		add_dependencies_and_id_to_sorted_array(st, &ptr, st->visible[i], 0);
-	SDL_assert(sorted + st->nvisible == ptr);
+	static ID todo[MAX_WALLS + MAX_ELLIPSOIDS];
+	int ntodo = st->nvisible;
+	memcpy(todo, st->visible, ntodo*sizeof(todo[0]));
+
+	// Standard topological sort algorithm. I learned it from Python's toposort module
+	while (ntodo > 0) {
+		bool stuck = true;
+		for (int i = ntodo-1; i >= 0; i--) {
+			if (st->infos[todo[i]].ndeps == 0) {
+				*sorted++ = todo[i];
+				st->infos[todo[i]].insortedarray = true;
+				todo[i] = todo[--ntodo];
+				stuck = false;
+			}
+		}
+		if (stuck) {
+			log_printf("dependency cycle detected");
+			debug_print_dependencies(st);
+			st->infos[todo[0]].ndeps--;
+			continue;
+		}
+		for (int i = 0; i < ntodo; i++) {
+			struct Info *info = &st->infos[todo[i]];
+			for (int k = info->ndeps-1; k >= 0; k--) {
+				if (st->infos[info->deps[k]].insortedarray)
+					info->deps[k] = info->deps[--info->ndeps];
+			}
+		}
+	}
 }
 
 static bool get_xminmax(struct ShowingState *st, ID id, int y, int *xmin, int *xmax)
