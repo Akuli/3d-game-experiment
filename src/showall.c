@@ -138,7 +138,7 @@ static void setup_dependencies(struct ShowingState *st)
 
 }
 
-//#if 0
+#if 0
 static void debug_print_dependencies(const struct ShowingState *st)
 {
 	printf("\ndependency dump:\n");
@@ -154,7 +154,7 @@ static void debug_print_dependencies(const struct ShowingState *st)
 	}
 	printf("\n");
 }
-//#endif
+#endif
 
 static void add_dependencies_and_id_to_sorted_array(struct ShowingState *st, ID **ptr, ID id, int depth)
 {
@@ -231,7 +231,6 @@ void show_all(
 		st.infos[ID_NEW(ID_TYPE_WALL, *i)].highlight = true;
 
 	setup_dependencies(&st);
-	debug_print_dependencies(&st);
 
 	static ID sorted[ArrayLen(st.visible)];
 	create_sorted_array(&st, sorted);

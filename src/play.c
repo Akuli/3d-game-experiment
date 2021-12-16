@@ -51,7 +51,6 @@ static bool time_to_do_something(unsigned *frameptr, unsigned thisframe, unsigne
 
 static void add_enemy(struct GameState *gs, const struct MapCoords *coordptr)
 {
-	return;
 	if (gs->map->nenemylocs == 0) {  // avoid crash in "% 0" below
 		log_printf("map has no enemies");
 		return;
@@ -91,7 +90,6 @@ static void add_enemy(struct GameState *gs, const struct MapCoords *coordptr)
 // runs each frame
 static void add_guards_and_enemies_as_needed(struct GameState *gs)
 {
-	return;
 	int n = 3;
 	float nprob = 0.2f;    // probability to get stack of n guards instead of 1 guard
 
@@ -341,16 +339,8 @@ enum MiscState play_the_game(
 		const struct Ellipsoid *els;
 		int nels = get_all_ellipsoids(&gs, &els);
 
-		for (int i = 0; i < 1; i++)
+		for (int i = 0; i < 2; i++)
 			show_all(map->walls, map->nwalls, (int[]){-1}, els, nels, &gs.players[i].cam);
-
-		struct Rect r = ellipsoid_get_sort_rect(&gs.players[1].ellipsoid, &gs.players[0].cam);
-		rect_drawborder(&r, &gs.players[0].cam);
-		for (int i = 0; i < 4; i++)
-			printf("corner: %f %f %f\n", r.corners[i].x, r.corners[i].y, r.corners[i].z);
-
-		rect_drawborder((struct Rect[]){wall_to_rect(&gs.map->walls[63>>1])}, &gs.players[0].cam);
-		rect_drawborder((struct Rect[]){wall_to_rect(&gs.map->walls[61>>1])}, &gs.players[0].cam);
 
 		// horizontal line
 		SDL_FillRect(winsurf, &(SDL_Rect){ winsurf->w/2, 0, 1, winsurf->h }, SDL_MapRGB(winsurf->format, 0xff, 0xff, 0xff));
