@@ -84,106 +84,61 @@ static void add_dependency(struct ShowingState *st, ID before, ID after)
 	st->infos[after].deps[st->infos[after].ndeps++] = before;
 }
 
-static void setup_ellipsoid_wall_dependency(struct ShowingState *st, ID eid, ID wid)
+float get_z_in_camera_coordinates(const struct ShowingState *st, ID id, float xzr, float yzr)
 {
-	SDL_assert(ID_TYPE(eid) == ID_TYPE_ELLIPSOID);
-	SDL_assert(ID_TYPE(wid) == ID_TYPE_WALL);
-
-	const struct Ellipsoid *el = &st->els[ID_INDEX(eid)];
-	const struct Wall *w = &st->walls[ID_INDEX(wid)];
-
-	// biggest and smallest camera z coords of wall corners (don't know which is which)
-	float z1 = camera_point_world2cam(st->cam, w->top1).z;
-	float z2 = camera_point_world2cam(st->cam, w->top2).z;
-
-	float elcenterz = camera_point_world2cam(st->cam, el->center).z;
-
-	if (elcenterz < z1 && elcenterz < z2) {
-		// ellipsoid is behind every corner of the wall
-		add_dependency(st, eid, wid);
-	} else if (elcenterz > z1 && elcenterz > z2) {
-		// in front of every corner of the wall
-		add_dependency(st, wid, eid);
-	} else if (wall_side(w, el->center) == wall_side(w, st->cam->location)) {
-		// lined up with wall and on same side of wall as camera
-		add_dependency(st, wid, eid);
-	} else {
-		// lined up with wall and on different side of wall as camera
-		add_dependency(st, eid, wid);
+	struct Rect r;
+	switch(ID_TYPE(id)) {
+	case ID_TYPE_WALL:
+		r = wall_to_rect(&st->walls[ID_INDEX(id)]);
+		break;
+	case ID_TYPE_ELLIPSOID:
+		r = ellipsoid_get_sort_rect(&st->els[ID_INDEX(id)], st->cam);
+		break;
 	}
+	return rect_get_camcoords_z(&r, st->cam, xzr, yzr);
 }
 
-static void setup_same_type_dependency(struct ShowingState *st, ID id1, ID id2)
-{
-	SDL_assert(ID_TYPE(id1) == ID_TYPE(id2));
-	Vec3 center1, center2;
-
-	switch(ID_TYPE(id1)) {
-		case ID_TYPE_ELLIPSOID:
-			center1 = st->els[ID_INDEX(id1)].center;
-			center2 = st->els[ID_INDEX(id2)].center;
-			break;
-
-		case ID_TYPE_WALL:
-			if (wall_linedup(&st->walls[ID_INDEX(id1)], &st->walls[ID_INDEX(id2)]))
-				return;
-			center1 = wall_center(&st->walls[ID_INDEX(id1)]);
-			center2 = wall_center(&st->walls[ID_INDEX(id2)]);
-			break;
-	}
-
-	float c1, c2;
-	if (center1.x == center2.x && center1.z == center2.z) {
-		// comparing y coordinates does the right thing for guards above players
-		c1 = center1.y;
-		c2 = center2.y;
-	} else {
-		/*
-		using distance between camera and center instead creates funny bug: Set up
-		two players with wall in between them. Make player A look at player B
-		(behind the wall), and jump up and down with player B. Sometimes B will
-		show up through the wall.
-
-		tl;dr: don't "improve" this code by replacing z coordinate (in camera coords)
-		       with something like |camera - center|
-		*/
-		c1 = camera_point_world2cam(st->cam, center1).z;
-		c2 = camera_point_world2cam(st->cam, center2).z;
-	}
-
-	if (c1 < c2)
-		add_dependency(st, id1, id2);
-	else
-		add_dependency(st, id2, id1);
-}
-
-// FIXME: determining dependencies probably needs a complete rewrite
 static void setup_dependencies(struct ShowingState *st)
 {
-	for (int i = 0; i < st->nvisible; i++) {
-		for (int k = 0; k < i; k++) {
-			ID id1 = st->visible[i];
-			ID id2 = st->visible[k];
+	for (int x = 0; x < st->cam->surface->w; x++) {
+		float xzr = camera_screenx_to_xzr(st->cam, x);
 
-			struct SDL_Rect bbox1 = st->infos[id1].bbox;
-			struct SDL_Rect bbox2 = st->infos[id2].bbox;
+		static struct Match {
+			ID id;
+			SDL_Rect bbox;
+		} matches[MAX_WALLS + MAX_ELLIPSOIDS];
+		int nmatches = 0;
 
-			// my interval_overlap() is measurably faster than SDL_HasIntersection
-			if (interval_overlap(bbox1.x, bbox1.x+bbox1.w, bbox2.x, bbox2.x+bbox2.w)
-				&& interval_overlap(bbox1.y, bbox1.y+bbox1.h, bbox2.y, bbox2.y+bbox2.h))
-			{
-				if (ID_TYPE(id1) == ID_TYPE_ELLIPSOID && ID_TYPE(id2) == ID_TYPE_WALL)
-					setup_ellipsoid_wall_dependency(st, id1, id2);
-				else if (ID_TYPE(id1) == ID_TYPE_WALL && ID_TYPE(id2) == ID_TYPE_ELLIPSOID)
-					setup_ellipsoid_wall_dependency(st, id2, id1);
+		for (int i = 0; i < st->nvisible; i++) {
+			ID id = st->visible[i];
+			SDL_Rect bbox = st->infos[id].bbox;
+			if (bbox.x < x && x < bbox.x+bbox.w)
+				matches[nmatches++] = (struct Match){ id, bbox };
+		}
+
+		for (int i = 0; i < nmatches; i++) {
+			for (int k = 0; k < i; k++) {
+				struct Match m1 = matches[i];
+				struct Match m2 = matches[k];
+
+				int ystart = max(m1.bbox.y, m2.bbox.y);
+				int yend = min(m1.bbox.y + m1.bbox.h, m2.bbox.y + m2.bbox.h);
+				if (ystart > yend)
+					continue;
+				float yzr = camera_screeny_to_yzr(st->cam, (ystart + yend)*0.5f);
+				float z1 = get_z_in_camera_coordinates(st, m1.id, xzr, yzr);
+				float z2 = get_z_in_camera_coordinates(st, m2.id, xzr, yzr);
+				if (z1 < z2)
+					add_dependency(st, m1.id, m2.id);
 				else
-					setup_same_type_dependency(st, id1, id2);
+					add_dependency(st, m2.id, m1.id);
 			}
 		}
 	}
+
 }
 
-#if 0
+//#if 0
 static void debug_print_dependencies(const struct ShowingState *st)
 {
 	printf("\ndependency dump:\n");
@@ -199,7 +154,7 @@ static void debug_print_dependencies(const struct ShowingState *st)
 	}
 	printf("\n");
 }
-#endif
+//#endif
 
 static void add_dependencies_and_id_to_sorted_array(struct ShowingState *st, ID **ptr, ID id, int depth)
 {
@@ -276,6 +231,7 @@ void show_all(
 		st.infos[ID_NEW(ID_TYPE_WALL, *i)].highlight = true;
 
 	setup_dependencies(&st);
+	debug_print_dependencies(&st);
 
 	static ID sorted[ArrayLen(st.visible)];
 	create_sorted_array(&st, sorted);
