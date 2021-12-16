@@ -26,7 +26,6 @@ struct Rect {
 	Vec3 corners[4];
 };
 
-// TODO: not implemented yet
 void rect_drawborder(const struct Rect *r, const struct Camera *cam);
 
 struct RectCache {
