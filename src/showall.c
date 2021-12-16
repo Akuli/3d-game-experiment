@@ -29,10 +29,9 @@ struct Info {
 	int ndeps;
 
 	SDL_Rect bbox;       // bounding box
+	struct Rect sortrect;
 	bool insortedarray;  // for sorting infos to display them in correct order
 
-	// only for walls
-	struct Rect rect;
 	struct RectCache rcache;
 	bool highlight;
 };
@@ -54,6 +53,7 @@ static void add_ellipsoid_if_visible(struct ShowingState *st, int idx)
 		st->visible[st->nvisible++] = id;
 		st->infos[id].ndeps = 0;
 		st->infos[id].bbox = ellipsoid_bounding_box(&st->els[idx], st->cam);
+		st->infos[id].sortrect = ellipsoid_get_sort_rect(&st->els[idx], st->cam);
 		st->infos[id].insortedarray = false;
 	}
 }
@@ -67,8 +67,8 @@ static void add_wall_if_visible(struct ShowingState *st, int idx)
 		st->visible[st->nvisible++] = id;
 		st->infos[id].ndeps = 0;
 		st->infos[id].bbox = rcache.bbox;
+		st->infos[id].sortrect = r;
 		st->infos[id].insortedarray = false;
-		st->infos[id].rect = r;
 		st->infos[id].rcache = rcache;
 		st->infos[id].highlight = false;
 	}
@@ -80,27 +80,30 @@ static void add_dependency(struct ShowingState *st, ID before, ID after)
 		if (st->infos[after].deps[i] == before)
 			return;
 	}
-
 	st->infos[after].deps[st->infos[after].ndeps++] = before;
-}
-
-float get_z_in_camera_coordinates(const struct ShowingState *st, ID id, float xzr, float yzr)
-{
-	struct Rect r;
-	switch(ID_TYPE(id)) {
-	case ID_TYPE_WALL:
-		r = wall_to_rect(&st->walls[ID_INDEX(id)]);
-		break;
-	case ID_TYPE_ELLIPSOID:
-		r = ellipsoid_get_sort_rect(&st->els[ID_INDEX(id)], st->cam);
-		break;
-	}
-	return rect_get_camcoords_z(&r, st->cam, xzr, yzr);
 }
 
 static void setup_dependencies(struct ShowingState *st)
 {
-	for (int x = 0; x < st->cam->surface->w; x++) {
+	bool xcoords[CAMERA_SCREEN_WIDTH] = {0};
+	for (int i = 0; i < st->nvisible; i++) {
+		SDL_Rect bbox = st->infos[st->visible[i]].bbox;
+		int lo = bbox.x, hi = bbox.x+bbox.w;
+		SDL_assert(0 <= lo && lo < CAMERA_SCREEN_WIDTH);
+		SDL_assert(0 <= hi && hi < CAMERA_SCREEN_WIDTH);
+		xcoords[lo] = true;
+		xcoords[hi] = true;
+	}
+
+	int xlist[CAMERA_SCREEN_WIDTH];
+	int xlistlen = 0;
+	for (int x = 0; x < sizeof(xcoords)/sizeof(xcoords[0]); x++)
+		if (xcoords[x])
+			xlist[xlistlen++] = x;
+
+	// It should be enough to check in the middles of intervals between bboxes
+	for (int xidx = 1; xidx < xlistlen; xidx++) {
+		int x = (xlist[xidx-1] + xlist[xidx])/2;
 		float xzr = camera_screenx_to_xzr(st->cam, x);
 
 		static struct Match {
@@ -125,9 +128,9 @@ static void setup_dependencies(struct ShowingState *st)
 				int yend = min(m1.bbox.y + m1.bbox.h, m2.bbox.y + m2.bbox.h);
 				if (ystart > yend)
 					continue;
-				float yzr = camera_screeny_to_yzr(st->cam, (ystart + yend)*0.5f);
-				float z1 = get_z_in_camera_coordinates(st, m1.id, xzr, yzr);
-				float z2 = get_z_in_camera_coordinates(st, m2.id, xzr, yzr);
+				float yzr = camera_screeny_to_yzr(st->cam, (ystart + yend)/2);
+				float z1 = rect_get_camcoords_z(&st->infos[m1.id].sortrect, st->cam, xzr, yzr);
+				float z2 = rect_get_camcoords_z(&st->infos[m2.id].sortrect, st->cam, xzr, yzr);
 				if (z1 < z2)
 					add_dependency(st, m1.id, m2.id);
 				else
