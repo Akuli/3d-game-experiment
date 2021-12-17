@@ -223,8 +223,6 @@ static void draw_row(const struct ShowingState *st, int y, ID id, int xmin, int 
 	}
 }
 
-#define ArrayLen(arr) ( sizeof(arr) / sizeof((arr)[0]) )
-
 void show_all(
 	const struct Wall *walls, int nwalls,
 	const int *highlightwalls,
@@ -278,7 +276,7 @@ void show_all(
 			}
 		}
 
-		static struct Interval nonoverlap[INTERVAL_NON_OVERLAPPING_MAX(ArrayLen(intervals))];
+		static struct Interval nonoverlap[INTERVAL_NON_OVERLAPPING_MAX(ARRAYLEN_CONTAINING_ID)];
 		int nnonoverlap = interval_non_overlapping(intervals, nintervals, nonoverlap);
 
 		for (int i = 0; i < nnonoverlap; i++)
