@@ -9,7 +9,7 @@
 #include "wall.h"
 #include "log.h"
 
-// fitting too much stuff into an int
+// fitting too much stuff into an integer
 typedef short ID;
 #define ID_TYPE_ELLIPSOID 0
 #define ID_TYPE_WALL 1
@@ -18,10 +18,13 @@ typedef short ID;
 #define ID_NEW(type, idx) ((type) | ((idx) << 1))
 
 // length of array indexed by id
-#define ID_ARRAYLEN max( \
+#define ARRAYLEN_INDEXED_BY_ID max( \
 	ID_NEW(ID_TYPE_ELLIPSOID, MAX_ELLIPSOIDS-1) + 1, \
 	ID_NEW(ID_TYPE_WALL, MAX_WALLS-1) + 1 \
 )
+
+// length of array containing ids
+#define ARRAYLEN_CONTAINING_ID (MAX_WALLS + MAX_ELLIPSOIDS)
 
 struct Info {
 	// dependencies must be displayed first, they go to behind the ellipsoid or wall
@@ -40,9 +43,9 @@ struct ShowingState {
 	const struct Camera *cam;
 	const struct Wall *walls;           // indexed by ID_INDEX(wall id)
 	const struct Ellipsoid *els;        // indexed by ID_INDEX(ellipsoid id)
-	struct Info infos[ID_ARRAYLEN];     // indexed by id
+	struct Info infos[ARRAYLEN_INDEXED_BY_ID];
 
-	ID visible[MAX_WALLS + MAX_ELLIPSOIDS];
+	ID visible[ARRAYLEN_CONTAINING_ID];
 	int nvisible;
 };
 
@@ -102,27 +105,6 @@ static int __attribute__((noinline)) create_xlist(struct ShowingState *st, int *
 	return xlistlen;
 }
 
-struct Match {
-	ID id;
-	SDL_Rect bbox;
-};
-
-// Assumes the bboxes intersect in x
-static void __attribute__((noinline)) add_dependency_if_bboxes_intersect(struct ShowingState *st, float xzr, struct Match m1, struct Match m2)
-{
-	int ystart = max(m1.bbox.y, m2.bbox.y);
-	int yend = min(m1.bbox.y + m1.bbox.h, m2.bbox.y + m2.bbox.h);
-	if (ystart <= yend) {
-		float yzr = camera_screeny_to_yzr(st->cam, (ystart + yend)/2);
-		float z1 = rect_get_camcoords_z(&st->infos[m1.id].sortrect, st->cam, xzr, yzr);
-		float z2 = rect_get_camcoords_z(&st->infos[m2.id].sortrect, st->cam, xzr, yzr);
-		if (z1 < z2)
-			add_dependency(st, m1.id, m2.id);
-		else
-			add_dependency(st, m2.id, m1.id);
-	}
-}
-
 static void debug_print_dependencies(const struct ShowingState *st)
 {
 	log_printf("dependency dump:");
@@ -137,7 +119,10 @@ static void debug_print_dependencies(const struct ShowingState *st)
 	}
 }
 
-static void __attribute__((noinline)) setup_dependencies(struct ShowingState *st)
+static void __attribute__((noinline)) setup_dependencies(
+	struct ShowingState *st,
+	const ID (*const objects_by_x)[CAMERA_SCREEN_WIDTH][ARRAYLEN_CONTAINING_ID],
+	const int *nobjects_by_x)
 {
 	int xlist[CAMERA_SCREEN_WIDTH];
 	int xlistlen = create_xlist(st, xlist);
@@ -147,20 +132,33 @@ static void __attribute__((noinline)) setup_dependencies(struct ShowingState *st
 		int x = (xlist[xidx-1] + xlist[xidx])/2;
 		float xzr = camera_screenx_to_xzr(st->cam, x);
 
-		static struct Match matches[MAX_WALLS + MAX_ELLIPSOIDS];
-		int nmatches = 0;
-
-		for (int i = 0; i < st->nvisible; i++) {
-			ID id = st->visible[i];
-			SDL_Rect bbox = st->infos[id].bbox;
-			if (bbox.x < x && x < bbox.x+bbox.w)
-				matches[nmatches++] = (struct Match){ id, bbox };
-		}
-
-		for (int i = 0; i < nmatches; i++)
+		for (int i = 0; i < nobjects_by_x[x]; i++)
 			for (int k = 0; k < i; k++)
-				if (ID_TYPE(matches[i].id) != ID_TYPE_WALL || ID_TYPE(matches[k].id) != ID_TYPE_WALL)
-					add_dependency_if_bboxes_intersect(st, xzr, matches[i], matches[k]);
+			{
+				ID id1 = (*objects_by_x)[x][i];
+				ID id2 = (*objects_by_x)[x][k];
+				if (ID_TYPE(id1) == ID_TYPE_WALL && ID_TYPE(id2) == ID_TYPE_WALL)
+					continue;
+
+				SDL_Rect bbox1 = st->infos[id1].bbox;
+
+				int ystart = max(
+					st->infos[id1].bbox.y,
+					st->infos[id2].bbox.y);
+				int yend = min(
+					st->infos[id1].bbox.y + st->infos[id1].bbox.h,
+					st->infos[id2].bbox.y + st->infos[id2].bbox.h);
+				if (ystart > yend)
+					continue;
+
+				float yzr = camera_screeny_to_yzr(st->cam, (ystart + yend)/2);
+				float z1 = rect_get_camcoords_z(&st->infos[id1].sortrect, st->cam, xzr, yzr);
+				float z2 = rect_get_camcoords_z(&st->infos[id2].sortrect, st->cam, xzr, yzr);
+				if (z1 < z2)
+					add_dependency(st, id1, id2);
+				else
+					add_dependency(st, id2, id1);
+			}
 	}
 
 	//debug_print_dependencies(st);
@@ -255,7 +253,7 @@ void show_all(
 
 	add_visible_objects(&st, walls, nwalls, highlightwalls, els, nels);
 
-	static ID objects_by_x[CAMERA_SCREEN_WIDTH][ArrayLen(st.visible)];
+	static ID objects_by_x[CAMERA_SCREEN_WIDTH][ARRAYLEN_CONTAINING_ID];
 	int nobjects_by_x[CAMERA_SCREEN_WIDTH] = {0};
 
 	for (int i = 0; i < st.nvisible; i++) {
@@ -265,13 +263,13 @@ void show_all(
 			objects_by_x[x][nobjects_by_x[x]++] = st.visible[i];
 	}
 
-	setup_dependencies(&st);
+	setup_dependencies(&st, &objects_by_x, nobjects_by_x);
 
 	static ID sorted[ArrayLen(st.visible)];
 	create_sorted_array(&st, sorted);
 
 	// static to keep stack usage down
-	static ID objects_by_y[CAMERA_SCREEN_HEIGHT][sizeof(st.visible)/sizeof(st.visible[0])];
+	static ID objects_by_y[CAMERA_SCREEN_HEIGHT][ARRAYLEN_CONTAINING_ID];
 	int nobjects_by_y[CAMERA_SCREEN_HEIGHT] = {0};
 
 	for (int i = 0; i < st.nvisible; i++) {
