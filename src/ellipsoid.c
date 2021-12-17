@@ -204,12 +204,13 @@ static void get_middle_circle_xzr_minmax(const struct Ellipsoid *el, const struc
 	Vec3 p = { a*k*inv, 0, c*k*inv };
 	Vec3 dir = { -c, 0, a };
 
-	// Solve t = +-abst so that intersection is on the unit ball x^2+y^2+z^2=1
-	SDL_assert(k*k*inv <= 1);
-	float abst = sqrtf(inv - k*k*inv*inv);
+	// Solve t so that intersection is on the unit ball x^2+y^2+z^2=1
+	float tSQUARED = inv - k*k*inv*inv;
+	SDL_assert(tSQUARED >= 0);
+	float t = sqrtf(tSQUARED);
 
-	Vec3 p1 = vec3_add(p, vec3_mul_float(dir, -abst));
-	Vec3 p2 = vec3_add(p, vec3_mul_float(dir, abst));
+	Vec3 p1 = vec3_add(p, vec3_mul_float(dir, -t));
+	Vec3 p2 = vec3_add(p, vec3_mul_float(dir, t));
 	vec3_apply_matrix(&p1, el->uball2world);
 	vec3_apply_matrix(&p2, el->uball2world);
 	vec3_add_inplace(&p1, vec3_sub(cam->location, el->center));
