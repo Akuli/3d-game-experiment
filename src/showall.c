@@ -28,12 +28,12 @@ typedef short ID;
 
 struct Info {
 	// dependencies must be displayed first, they go to behind the ellipsoid or wall
-	ID deps[MAX_WALLS + MAX_ELLIPSOIDS];
+	ID deps[ARRAYLEN_CONTAINING_ID];
 	int ndeps;
 
-	SDL_Rect bbox;       // bounding box
+	SDL_Rect bbox;	// bounding box
 	struct Rect sortrect;
-	bool insortedarray;  // for sorting infos to display them in correct order
+	bool sortingdone;  // for sorting infos to display them in correct order
 
 	struct RectCache rcache;
 	bool highlight;
@@ -41,12 +41,20 @@ struct Info {
 
 struct ShowingState {
 	const struct Camera *cam;
-	const struct Wall *walls;           // indexed by ID_INDEX(wall id)
-	const struct Ellipsoid *els;        // indexed by ID_INDEX(ellipsoid id)
+	const struct Wall *walls;	    // indexed by ID_INDEX(wall id)
+	const struct Ellipsoid *els;	 // indexed by ID_INDEX(ellipsoid id)
 	struct Info infos[ARRAYLEN_INDEXED_BY_ID];
 
 	ID visible[ARRAYLEN_CONTAINING_ID];
 	int nvisible;
+
+	// Visible objects in arbitrary order
+	ID objects_by_x[CAMERA_SCREEN_WIDTH][ARRAYLEN_CONTAINING_ID];
+	int nobjects_by_x[CAMERA_SCREEN_WIDTH];
+
+	// Visible objects in the order in which they are drawn (bottommost first)
+	ID objects_by_y[CAMERA_SCREEN_HEIGHT][ARRAYLEN_CONTAINING_ID];
+	int nobjects_by_y[CAMERA_SCREEN_HEIGHT];
 };
 
 static void add_ellipsoid_if_visible(struct ShowingState *st, int idx)
@@ -57,7 +65,7 @@ static void add_ellipsoid_if_visible(struct ShowingState *st, int idx)
 		st->infos[id].ndeps = 0;
 		st->infos[id].bbox = ellipsoid_bounding_box(&st->els[idx], st->cam);
 		st->infos[id].sortrect = ellipsoid_get_sort_rect(&st->els[idx], st->cam);
-		st->infos[id].insortedarray = false;
+		st->infos[id].sortingdone = false;
 	}
 }
 
@@ -71,40 +79,13 @@ static void add_wall_if_visible(struct ShowingState *st, int idx)
 		st->infos[id].ndeps = 0;
 		st->infos[id].bbox = rcache.bbox;
 		st->infos[id].sortrect = r;
-		st->infos[id].insortedarray = false;
+		st->infos[id].sortingdone = false;
 		st->infos[id].rcache = rcache;
 		st->infos[id].highlight = false;
 	}
 }
 
-static void __attribute__((noinline)) add_dependency(struct ShowingState *st, ID before, ID after)
-{
-	for (int i = 0; i < st->infos[after].ndeps; i++) {
-		if (st->infos[after].deps[i] == before)
-			return;
-	}
-	st->infos[after].deps[st->infos[after].ndeps++] = before;
-}
-
-static int __attribute__((noinline)) create_xlist(struct ShowingState *st, int *xlist)
-{
-	bool xcoords[CAMERA_SCREEN_WIDTH] = {0};
-	for (int i = 0; i < st->nvisible; i++) {
-		SDL_Rect bbox = st->infos[st->visible[i]].bbox;
-		int lo = bbox.x, hi = bbox.x+bbox.w;
-		SDL_assert(0 <= lo && lo < CAMERA_SCREEN_WIDTH);
-		SDL_assert(0 <= hi && hi < CAMERA_SCREEN_WIDTH);
-		xcoords[lo] = true;
-		xcoords[hi] = true;
-	}
-
-	int xlistlen = 0;
-	for (int x = 0; x < sizeof(xcoords)/sizeof(xcoords[0]); x++)
-		if (xcoords[x])
-			xlist[xlistlen++] = x;
-	return xlistlen;
-}
-
+#if 0
 static void debug_print_dependencies(const struct ShowingState *st)
 {
 	log_printf("dependency dump:");
@@ -118,29 +99,47 @@ static void debug_print_dependencies(const struct ShowingState *st)
 			log_printf("  `--> %d", st->infos[id].deps[d]);
 	}
 }
+#endif
 
-static void __attribute__((noinline)) setup_dependencies(
-	struct ShowingState *st,
-	const ID (*const objects_by_x)[CAMERA_SCREEN_WIDTH][ARRAYLEN_CONTAINING_ID],
-	const int *nobjects_by_x)
+static void add_dependency(struct ShowingState *st, ID before, ID after)
 {
+	for (int i = 0; i < st->infos[after].ndeps; i++) {
+		if (st->infos[after].deps[i] == before)
+			return;
+	}
+	st->infos[after].deps[st->infos[after].ndeps++] = before;
+}
+
+static void setup_dependencies(struct ShowingState *st)
+{
+	bool xcoords[CAMERA_SCREEN_WIDTH] = {0};
+	for (int i = 0; i < st->nvisible; i++) {
+		SDL_Rect bbox = st->infos[st->visible[i]].bbox;
+		int lo = bbox.x, hi = bbox.x+bbox.w;
+		SDL_assert(0 <= lo && lo < CAMERA_SCREEN_WIDTH);
+		SDL_assert(0 <= hi && hi < CAMERA_SCREEN_WIDTH);
+		xcoords[lo] = true;
+		xcoords[hi] = true;
+	}
+
 	int xlist[CAMERA_SCREEN_WIDTH];
-	int xlistlen = create_xlist(st, xlist);
+	int xlistlen = 0;
+	for (int x = 0; x < sizeof(xcoords)/sizeof(xcoords[0]); x++)
+		if (xcoords[x])
+			xlist[xlistlen++] = x;
 
 	// It should be enough to check in the middles of intervals between bboxes
 	for (int xidx = 1; xidx < xlistlen; xidx++) {
 		int x = (xlist[xidx-1] + xlist[xidx])/2;
 		float xzr = camera_screenx_to_xzr(st->cam, x);
 
-		for (int i = 0; i < nobjects_by_x[x]; i++)
+		for (int i = 0; i < st->nobjects_by_x[x]; i++)
 			for (int k = 0; k < i; k++)
 			{
-				ID id1 = (*objects_by_x)[x][i];
-				ID id2 = (*objects_by_x)[x][k];
+				ID id1 = st->objects_by_x[x][i];
+				ID id2 = st->objects_by_x[x][k];
 				if (ID_TYPE(id1) == ID_TYPE_WALL && ID_TYPE(id2) == ID_TYPE_WALL)
 					continue;
-
-				SDL_Rect bbox1 = st->infos[id1].bbox;
 
 				int ystart = max(
 					st->infos[id1].bbox.y,
@@ -160,14 +159,20 @@ static void __attribute__((noinline)) setup_dependencies(
 					add_dependency(st, id2, id1);
 			}
 	}
-
-	//debug_print_dependencies(st);
 }
 
-// In which order should walls and ellipsoids be shown?
-static void __attribute__((noinline)) create_sorted_array(struct ShowingState *st, ID *sorted)
+// Called for each visible object, in the order of drawing
+static void add_id_to_drawing_order(struct ShowingState *st, ID id)
 {
-	static ID todo[MAX_WALLS + MAX_ELLIPSOIDS];
+	SDL_Rect bbox = st->infos[id].bbox;
+	SDL_assert(0 <= bbox.y && bbox.y+bbox.h <= st->cam->surface->h);
+	for (int y = bbox.y; y < bbox.y+bbox.h; y++)
+		st->objects_by_y[y][st->nobjects_by_y[y]++] = id;
+}
+
+static void create_showing_order_from_dependencies(struct ShowingState *st)
+{
+	static ID todo[ARRAYLEN_CONTAINING_ID];
 	int ntodo = st->nvisible;
 	memcpy(todo, st->visible, ntodo*sizeof(todo[0]));
 
@@ -176,22 +181,21 @@ static void __attribute__((noinline)) create_sorted_array(struct ShowingState *s
 		bool stuck = true;
 		for (int i = ntodo-1; i >= 0; i--) {
 			if (st->infos[todo[i]].ndeps == 0) {
-				*sorted++ = todo[i];
-				st->infos[todo[i]].insortedarray = true;
+				add_id_to_drawing_order(st, todo[i]);
+				st->infos[todo[i]].sortingdone = true;
 				todo[i] = todo[--ntodo];
 				stuck = false;
 			}
 		}
 		if (stuck) {
 			log_printf("dependency cycle detected");
-			debug_print_dependencies(st);
 			st->infos[todo[0]].ndeps--;
 			continue;
 		}
 		for (int i = 0; i < ntodo; i++) {
 			struct Info *info = &st->infos[todo[i]];
 			for (int k = info->ndeps-1; k >= 0; k--) {
-				if (st->infos[info->deps[k]].insortedarray)
+				if (st->infos[info->deps[k]].sortingdone)
 					info->deps[k] = info->deps[--info->ndeps];
 			}
 		}
@@ -219,20 +223,6 @@ static void draw_row(const struct ShowingState *st, int y, ID id, int xmin, int 
 	}
 }
 
-static void __attribute__((noinline)) add_visible_objects(
-	struct ShowingState *st,
-	const struct Wall *walls, int nwalls,
-	const int *highlightwalls,
-	const struct Ellipsoid *els, int nels)
-{
-	for (int i = 0; i < nels; i++)
-		add_ellipsoid_if_visible(st, i);
-	for (int i = 0; i < nwalls; i++)
-		add_wall_if_visible(st, i);
-	for (const int *i = highlightwalls; *i != -1; i++)
-		st->infos[ID_NEW(ID_TYPE_WALL, *i)].highlight = true;
-}
-
 #define ArrayLen(arr) ( sizeof(arr) / sizeof((arr)[0]) )
 
 void show_all(
@@ -250,41 +240,32 @@ void show_all(
 	st.walls = walls;
 	st.els = els;
 	st.nvisible = 0;
+	memset(st.nobjects_by_x, 0, sizeof st.nobjects_by_x);
+	memset(st.nobjects_by_y, 0, sizeof st.nobjects_by_y);
 
-	add_visible_objects(&st, walls, nwalls, highlightwalls, els, nels);
-
-	static ID objects_by_x[CAMERA_SCREEN_WIDTH][ARRAYLEN_CONTAINING_ID];
-	int nobjects_by_x[CAMERA_SCREEN_WIDTH] = {0};
+	for (int i = 0; i < nels; i++)
+		add_ellipsoid_if_visible(&st, i);
+	for (int i = 0; i < nwalls; i++)
+		add_wall_if_visible(&st, i);
+	for (const int *i = highlightwalls; *i != -1; i++)
+		st.infos[ID_NEW(ID_TYPE_WALL, *i)].highlight = true;
 
 	for (int i = 0; i < st.nvisible; i++) {
 		SDL_Rect bbox = st.infos[st.visible[i]].bbox;
 		SDL_assert(0 <= bbox.x && bbox.x+bbox.w <= cam->surface->w);
 		for (int x = bbox.x; x < bbox.x+bbox.w; x++)
-			objects_by_x[x][nobjects_by_x[x]++] = st.visible[i];
+			st.objects_by_x[x][st.nobjects_by_x[x]++] = st.visible[i];
 	}
 
-	setup_dependencies(&st, &objects_by_x, nobjects_by_x);
-
-	static ID sorted[ArrayLen(st.visible)];
-	create_sorted_array(&st, sorted);
-
-	// static to keep stack usage down
-	static ID objects_by_y[CAMERA_SCREEN_HEIGHT][ARRAYLEN_CONTAINING_ID];
-	int nobjects_by_y[CAMERA_SCREEN_HEIGHT] = {0};
-
-	for (int i = 0; i < st.nvisible; i++) {
-		SDL_Rect bbox = st.infos[sorted[i]].bbox;
-		SDL_assert(0 <= bbox.y && bbox.y+bbox.h <= cam->surface->h);
-		for (int y = bbox.y; y < bbox.y+bbox.h; y++)
-			objects_by_y[y][nobjects_by_y[y]++] = sorted[i];
-	}
+	setup_dependencies(&st);
+	create_showing_order_from_dependencies(&st);
 
 	for (int y = 0; y < cam->surface->h; y++) {
-		static struct Interval intervals[ArrayLen(sorted)];
+		static struct Interval intervals[ARRAYLEN_CONTAINING_ID];
 		int nintervals = 0;
 
-		for (int i = 0; i < nobjects_by_y[y]; i++) {
-			ID id = objects_by_y[y][i];
+		for (int i = 0; i < st.nobjects_by_y[y]; i++) {
+			ID id = st.objects_by_y[y][i];
 			int xmin, xmax;
 			if (get_xminmax(&st, id, y, &xmin, &xmax)) {
 				SDL_assert(xmin <= xmax);
