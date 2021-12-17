@@ -138,6 +138,7 @@ static void setup_dependencies(struct ShowingState *st)
 			{
 				ID id1 = st->objects_by_x[x][i];
 				ID id2 = st->objects_by_x[x][k];
+				// TODO: walls of different color
 				if (ID_TYPE(id1) == ID_TYPE_WALL && ID_TYPE(id2) == ID_TYPE_WALL)
 					continue;
 
