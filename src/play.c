@@ -313,8 +313,6 @@ enum MiscState play_the_game(
 	struct LoopTimer lt = {0};
 	enum MiscState ret;
 
-	guard_create_unpickeds_random(gs.unpicked_guards, &gs.n_unpicked_guards, 1, gs.map);
-
 	while(gs.players[0].nguards >= 0 && gs.players[1].nguards >= 0) {
 		SDL_Event e;
 		while(SDL_PollEvent(&e)) {
@@ -341,26 +339,8 @@ enum MiscState play_the_game(
 		const struct Ellipsoid *els;
 		int nels = get_all_ellipsoids(&gs, &els);
 
-		for (int i = 0; i < 2; i++) {
+		for (int i = 0; i < 2; i++)
 			show_all(map->walls, map->nwalls, (int[]){-1}, els, nels, &gs.players[i].cam);
-			/*
-			for (int k = 0; k < gs.n_unpicked_guards; k++) {
-				struct Rect r = ellipsoid_get_sort_rect(&gs.unpicked_guards[k], &gs.players[i].cam);
-				rect_drawborder(&r, &gs.players[i].cam);
-			}
-			*/
-			/*
-			for (int k = 0; k < gs.n_unpicked_guards; k++) {
-				if (ellipsoid_is_visible(&gs.unpicked_guards[k], &gs.players[i].cam)) {
-					SDL_assert(gs.unpicked_guards[k].epic->hidelowerhalf);
-					SDL_Rect bbox = ellipsoid_bounding_box(&gs.unpicked_guards[k], &gs.players[i].cam);
-					SDL_FillRect(gs.players[i].cam.surface, &(SDL_Rect){bbox.x,bbox.y,bbox.w,3}, 0x00ff00);
-					SDL_FillRect(gs.players[i].cam.surface, &(SDL_Rect){bbox.x,bbox.y,3,bbox.h}, 0x00ff00);
-					SDL_FillRect(gs.players[i].cam.surface, &(SDL_Rect){bbox.x,bbox.y+bbox.h,bbox.w,3}, 0x00ff00);
-					SDL_FillRect(gs.players[i].cam.surface, &(SDL_Rect){bbox.x+bbox.w,bbox.y,3,bbox.h}, 0x00ff00);
-				}
-			}*/
-		}
 
 		// horizontal line
 		SDL_FillRect(winsurf, &(SDL_Rect){ winsurf->w/2, 0, 1, winsurf->h }, SDL_MapRGB(winsurf->format, 0xff, 0xff, 0xff));
