@@ -178,7 +178,7 @@ static bool mouse_is_on_ellipsoid(const struct Camera *cam, const struct Ellipso
 		return false;
 
 	int xmin, xmax;
-	SDL_Rect bbox = ellipsoid_bounding_box(el, cam);
+	SDL_Rect bbox = ellipsoid_bbox(el, cam);
 	return SDL_PointInRect(&(SDL_Point){x,y}, &bbox)
 		&& ellipsoid_xminmax(el, cam, y, &xmin, &xmax)
 		&& xmin <= x && x <= xmax;

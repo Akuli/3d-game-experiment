@@ -32,7 +32,7 @@ struct RectCache {
 	const struct Rect *rect;
 	const struct Camera *cam;
 	Vec2 screencorners[4];
-	SDL_Rect bbox;
+	SDL_Rect bbox;  // will contain everything that gets drawn
 };
 
 // Returns whether the rect is visible. If true, fills the cache.

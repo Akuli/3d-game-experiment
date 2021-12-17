@@ -49,7 +49,7 @@ bool ellipsoid_is_visible(const struct Ellipsoid *el, const struct Camera *cam)
 	return true;
 }
 
-static SDL_Rect bounding_box_without_hidelowerhalf(
+static SDL_Rect bbox_without_hidelowerhalf(
 	const struct Ellipsoid *el, const struct Camera *cam)
 {
 	Mat3 uball2cam = mat3_mul_mat3(cam->world2cam, el->uball2world);
@@ -105,11 +105,11 @@ static SDL_Rect bounding_box_without_hidelowerhalf(
 	return (SDL_Rect){ xmin, ymin, xmax-xmin, ymax-ymin };
 }
 
-static SDL_Rect bounding_box_of_middle_circle(
+static SDL_Rect bbox_of_middle_circle(
 	const struct Ellipsoid *el, const struct Camera *cam)
 {
 	/*
-	Similar to bounding_box_without_hidelowerhalf.
+	Similar to bbox_without_hidelowerhalf.
 	Doing this with the 2D circle in the middle (y=0 in unit ball coords)
 	basically leads to the same equations, but in 2D.
 	*/
@@ -153,12 +153,12 @@ static SDL_Rect bounding_box_of_middle_circle(
 	return (SDL_Rect){ xmin, ymin, xmax-xmin, ymax-ymin };
 }
 
-SDL_Rect ellipsoid_bounding_box(const struct Ellipsoid *el, const struct Camera *cam)
+SDL_Rect ellipsoid_bbox(const struct Ellipsoid *el, const struct Camera *cam)
 {
 
-	SDL_Rect bbox = bounding_box_without_hidelowerhalf(el, cam);
+	SDL_Rect bbox = bbox_without_hidelowerhalf(el, cam);
 	if (el->epic->hidelowerhalf) {
-		SDL_Rect circlebbox = bounding_box_of_middle_circle(el, cam);
+		SDL_Rect circlebbox = bbox_of_middle_circle(el, cam);
 		bbox.h -= bbox.y - circlebbox.y;
 	}
 

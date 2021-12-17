@@ -63,7 +63,7 @@ static void add_ellipsoid_if_visible(struct ShowingState *st, int idx)
 		ID id = ID_NEW(ID_TYPE_ELLIPSOID, idx);
 		st->visible[st->nvisible++] = id;
 		st->infos[id].ndeps = 0;
-		st->infos[id].bbox = ellipsoid_bounding_box(&st->els[idx], st->cam);
+		st->infos[id].bbox = ellipsoid_bbox(&st->els[idx], st->cam);
 		st->infos[id].sortrect = ellipsoid_get_sort_rect(&st->els[idx], st->cam);
 		st->infos[id].sortingdone = false;
 	}

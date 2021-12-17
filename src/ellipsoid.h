@@ -74,8 +74,9 @@ void ellipsoid_update_transforms(struct Ellipsoid *el);
 // Is the ellipsoid visible anywhere on screen?
 bool ellipsoid_is_visible(const struct Ellipsoid *el, const struct Camera *cam);
 
+// Ellipsoid will be drawn fully within the returned rectangle.
 // Assumes that ellipsoid_is_visible() has returned true.
-SDL_Rect ellipsoid_bounding_box(const struct Ellipsoid *el, const struct Camera *cam);
+SDL_Rect ellipsoid_bbox(const struct Ellipsoid *el, const struct Camera *cam);
 
 // Returned rectangle is suitable for sorting ellipsoids and walls for display
 struct Rect ellipsoid_get_sort_rect(const struct Ellipsoid *el, const struct Camera *cam);
