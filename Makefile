@@ -4,12 +4,12 @@ CFLAGS += -Wfloat-conversion -Wno-sign-compare -Werror=int-conversion
 CFLAGS += -Werror=incompatible-pointer-types
 CFLAGS += -Werror=implicit-function-declaration
 CFLAGS += -Werror=discarded-qualifiers
-CFLAGS += -Werror=stack-usage=50000
+#CFLAGS += -Werror=stack-usage=50000
 CFLAGS += -Wno-format-truncation            # gcc warns about how snprintf truncates, insane lol
 CFLAGS += -Wno-missing-field-initializers   # it's often handy to leave stuff zeroed
 CFLAGS += -DSDL_ASSERT_LEVEL=2              # enable SDL_assert()
 CFLAGS += -g
-CFLAGS += -O3
+CFLAGS += -O0
 VENDOR_CFLAGS := $(CFLAGS:-W%=)   # no warnings from other people's code please
 LDFLAGS += -lSDL2 -lSDL2_mixer -lSDL2_ttf
 LDFLAGS += -lm
