@@ -116,10 +116,10 @@ static void setup_dependencies(struct ShowingState *st)
 	for (int i = 0; i < st->nvisible; i++) {
 		SDL_Rect bbox = st->infos[st->visible[i]].bbox;
 		int lo = bbox.x, hi = bbox.x+bbox.w;
-		SDL_assert(0 <= lo && lo < CAMERA_SCREEN_WIDTH);
-		SDL_assert(0 <= hi && hi < CAMERA_SCREEN_WIDTH);
-		xcoords[lo] = true;
-		xcoords[hi] = true;
+		SDL_assert(0 <= lo && lo <= CAMERA_SCREEN_WIDTH);
+		SDL_assert(0 <= hi && hi <= CAMERA_SCREEN_WIDTH);
+		if (lo != CAMERA_SCREEN_WIDTH) xcoords[lo] = true;
+		if (hi != CAMERA_SCREEN_WIDTH) xcoords[hi] = true;
 	}
 
 	int xlist[CAMERA_SCREEN_WIDTH];
