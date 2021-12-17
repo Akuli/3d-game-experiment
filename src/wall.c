@@ -97,11 +97,11 @@ void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el)
 		return;
 
 	// Switch to coordinates where the ellipsoid is a ball with radius 1
-	Vec3 elcenter = mat3_mul_vec3(el->transform_inverse, el->center);
+	Vec3 elcenter = mat3_mul_vec3(el->world2uball, el->center);
 
 	for (int xznum = 0; xznum < WALL_CP_COUNT; xznum++) {
 		for (int ynum = 0; ynum < WALL_CP_COUNT; ynum++) {
-			Vec3 collpoint = mat3_mul_vec3(el->transform_inverse, w->collpoints[xznum][ynum]);
+			Vec3 collpoint = mat3_mul_vec3(el->world2uball, w->collpoints[xznum][ynum]);
 			Vec3 diff = vec3_sub(elcenter, collpoint);
 
 			float distSQUARED = vec3_lengthSQUARED(diff);
@@ -112,7 +112,7 @@ void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el)
 
 			diff.y = 0;   // don't move up/down
 			diff = vec3_withlength(diff, 1 - dist);  // move just enough to not touch
-			vec3_apply_matrix(&diff, el->transform);
+			vec3_apply_matrix(&diff, el->uball2world);
 
 			// if we're not bumping on the edge of the wall
 			if (xznum != 0 && xznum != WALL_CP_COUNT - 1) {
@@ -124,7 +124,7 @@ void wall_bumps_ellipsoid(const struct Wall *w, struct Ellipsoid *el)
 			}
 
 			vec3_add_inplace(&el->center, diff);
-			elcenter = mat3_mul_vec3(el->transform_inverse, el->center);   // cache invalidation
+			elcenter = mat3_mul_vec3(el->world2uball, el->center);   // cache invalidation
 		}
 	}
 }

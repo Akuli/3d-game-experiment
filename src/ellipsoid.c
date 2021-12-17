@@ -11,9 +11,9 @@
 
 static bool ellipsoid_intersects_plane(const struct Ellipsoid *el, struct Plane pl)
 {
-	// Switch to coordinates where ellipsoid is unit ball (a ball with radius 1)
-	Vec3 center = mat3_mul_vec3(el->transform_inverse, el->center);
-	plane_apply_mat3_INVERSE(&pl, el->transform);
+	// TODO: this works, but rewrite with plane_move() so it makes more sense
+	Vec3 center = mat3_mul_vec3(el->world2uball, el->center);
+	plane_apply_mat3_INVERSE(&pl, el->uball2world);
 
 	return (plane_point_distanceSQUARED(pl, center) < 1);
 }
@@ -52,15 +52,10 @@ bool ellipsoid_is_visible(const struct Ellipsoid *el, const struct Camera *cam)
 static SDL_Rect bounding_box_without_hidelowerhalf(
 	const struct Ellipsoid *el, const struct Camera *cam)
 {
-	/*
-	Each y coordinate on screen corresponds with a plane y/z = yzr, where yzr is a constant.
-	To find them, we switch to coordinates where the ellipsoid is simply x^2+y^2+z^2=1.
-	Let's call these "unit ball coordinates".
-	*/
-	Mat3 uball2world = el->transform;
-	Mat3 uball2cam = mat3_mul_mat3(cam->world2cam, uball2world);
+	Mat3 uball2cam = mat3_mul_mat3(cam->world2cam, el->uball2world);
 
 	/*
+	Each y coordinate on screen corresponds with a plane y/z = yzr, where yzr is a constant.
 	At min and max screen y values, the distance between the plane and (0,0,0) is 1.
 	If the plane is ax+by+cz+d=0, this gives
 
@@ -123,7 +118,7 @@ static SDL_Rect bounding_box_of_middle_circle(
 	Doing this with the 2D circle in the middle (y=0 in unit ball coords)
 	basically leads to the same equations, but in 2D.
 	*/
-	Mat3 uball2world = el->transform;
+	Mat3 uball2world = el->uball2world;
 	Mat3 uball2cam = mat3_mul_mat3(cam->world2cam, uball2world);
 
 	Vec2 top = { uball2cam.rows[0][0], uball2cam.rows[0][2] };
@@ -208,7 +203,7 @@ static void get_middle_circle_xzr_minmax(const struct Ellipsoid *el, const struc
 	struct Plane yzrplane = { .normal = {0,1,-yzr}, .constant = 0 };
 	plane_apply_mat3_INVERSE(&yzrplane, cam->world2cam);
 	plane_move(&yzrplane, vec3_sub(el->center, cam->location));
-	plane_apply_mat3_INVERSE(&yzrplane, el->transform);
+	plane_apply_mat3_INVERSE(&yzrplane, el->uball2world);
 
 	// Equation of yzrplane: (x,y,z) dot (a,b,c) = k
 	float a = yzrplane.normal.x;
@@ -226,8 +221,8 @@ static void get_middle_circle_xzr_minmax(const struct Ellipsoid *el, const struc
 
 	Vec3 p1 = vec3_add(p, vec3_mul_float(dir, -abst));
 	Vec3 p2 = vec3_add(p, vec3_mul_float(dir, abst));
-	vec3_apply_matrix(&p1, el->transform);
-	vec3_apply_matrix(&p2, el->transform);
+	vec3_apply_matrix(&p1, el->uball2world);
+	vec3_apply_matrix(&p2, el->uball2world);
 	vec3_add_inplace(&p1, vec3_sub(cam->location, el->center));
 	vec3_add_inplace(&p2, vec3_sub(cam->location, el->center));
 	vec3_apply_matrix(&p1, cam->world2cam);
@@ -247,7 +242,7 @@ bool ellipsoid_xminmax(const struct Ellipsoid *el, const struct Camera *cam, int
 
 	where v, w and p don't depend on xzr or t.
 	*/
-	Mat3 world2uball = el->transform_inverse;
+	Mat3 world2uball = el->world2uball;
 	Mat3 cam2uball = mat3_mul_mat3(world2uball, cam->cam2world);
 	Vec3 v = mat3_mul_vec3(cam2uball, (Vec3){1,0,0});
 	Vec3 w = mat3_mul_vec3(cam2uball, (Vec3){0,camera_screeny_to_yzr(cam, y),1});
@@ -345,9 +340,9 @@ void ellipsoid_drawrow(
 	*/
 	float yzr = camera_screeny_to_yzr(cam, y);
 	float linedirx[CAMERA_SCREEN_WIDTH], linediry[CAMERA_SCREEN_WIDTH], linedirz[CAMERA_SCREEN_WIDTH];
-	LOOP linedirx[i] = mat3_mul_vec3(el->transform_inverse, (Vec3){xzr[i],yzr,1}).x;
-	LOOP linediry[i] = mat3_mul_vec3(el->transform_inverse, (Vec3){xzr[i],yzr,1}).y;
-	LOOP linedirz[i] = mat3_mul_vec3(el->transform_inverse, (Vec3){xzr[i],yzr,1}).z;
+	LOOP linedirx[i] = mat3_mul_vec3(el->world2uball, (Vec3){xzr[i],yzr,1}).x;
+	LOOP linediry[i] = mat3_mul_vec3(el->world2uball, (Vec3){xzr[i],yzr,1}).y;
+	LOOP linedirz[i] = mat3_mul_vec3(el->world2uball, (Vec3){xzr[i],yzr,1}).z;
 #define LineDir(i) ( (Vec3){ linedirx[i], linediry[i], linedirz[i] } )
 
 	/*
@@ -362,7 +357,7 @@ void ellipsoid_drawrow(
 	creates a quadratic equation in t. We want the solution with bigger t,
 	because the direction vector is pointing towards the camera.
 	*/
-	Vec3 ballcenter = mat3_mul_vec3(el->transform_inverse, camera_point_world2cam(cam, el->center));
+	Vec3 ballcenter = mat3_mul_vec3(el->world2uball, camera_point_world2cam(cam, el->center));
 	float cc = vec3_dot(ballcenter, ballcenter);
 	float dd[CAMERA_SCREEN_WIDTH];
 	float cd[CAMERA_SCREEN_WIDTH];
@@ -411,10 +406,10 @@ static Mat3 diag(float a, float b, float c)
 
 void ellipsoid_update_transforms(struct Ellipsoid *el)
 {
-	el->transform = mat3_mul_mat3(
+	el->uball2world = mat3_mul_mat3(
 		diag(el->xzradius, el->yradius, el->xzradius),
 		mat3_rotation_xz(el->angle));
-	el->transform_inverse = mat3_inverse(el->transform);
+	el->world2uball = mat3_inverse(el->uball2world);
 }
 
 void ellipsoid_move_apart(struct Ellipsoid *el1, struct Ellipsoid *el2, float mv)

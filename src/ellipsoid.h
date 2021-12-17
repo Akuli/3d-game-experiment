@@ -62,13 +62,13 @@ struct Ellipsoid {
 	float yradius;     // positive
 
 	/*
-	Applying transform to an origin-centered unit ball gives this ellipsoid
-	centered at the origin (you still need to add the center vector).
+	Coordinates where the ellipsoid is simply x^2+y^2+z^2=1 are called
+	"unit ball coordinates", or uball for short.
 	*/
-	Mat3 transform, transform_inverse;
+	Mat3 uball2world, world2uball;
 };
 
-// calculate el->transform and el->transform_inverse
+// calculate el->transform and el->world2uball
 void ellipsoid_update_transforms(struct Ellipsoid *el);
 
 // Is the ellipsoid visible anywhere on screen?
