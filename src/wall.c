@@ -241,6 +241,7 @@ static void draw_line(SDL_Surface *surf, Vec2 start, Vec2 end)
 	}
 }
 
+// FIXME: should use rect_drawborder()
 void wall_drawborder(const struct Wall *w, const struct Camera *cam)
 {
 	if (!wall_is_visible(w, cam))
