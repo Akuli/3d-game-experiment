@@ -188,13 +188,56 @@ struct Rect ellipsoid_get_sort_rect(const struct Ellipsoid *el, const struct Cam
 {
 	Vec3 center2cam = vec3_sub(cam->location, el->center);
 	Vec3 dir = { center2cam.z, 0, -center2cam.x };
-	Vec3 center2edge = vec3_withlength(dir, 0.95f*el->xzradius);
-	return (struct Rect){ .corners = {
-		vec3_add(vec3_add(el->center, center2edge), (Vec3){0,-el->yradius,0}),
-		vec3_add(vec3_sub(el->center, center2edge), (Vec3){0,-el->yradius,0}),
-		vec3_add(vec3_sub(el->center, center2edge), (Vec3){0,el->yradius,0}),
-		vec3_add(vec3_add(el->center, center2edge), (Vec3){0,el->yradius,0}),
-	}};
+	Vec3 center2edge = vec3_withlength(dir, 0.95f*el->xzradius);  // TODO: 0.95f still needed?
+
+	Vec3 topleft, topright, botleft, botright;
+	topleft = botleft = vec3_sub(el->center, center2edge);
+	topright = botright = vec3_add(el->center, center2edge);
+	topleft.y += el->yradius;
+	topright.y += el->yradius;
+	botleft.y -= el->yradius;
+	botright.y -= el->yradius;
+	return (struct Rect){.corners={ topleft, topright, botright, botleft }};
+}
+
+static void get_middle_circle_xzr_minmax(const struct Ellipsoid *el, const struct Camera *cam, int y, float *xzrmin, float *xzrmax)
+{
+	float yzr = camera_screeny_to_yzr(cam, y);
+
+	// Find intersection of y/z = yzr (camera coords) and y=0 (unit ball coords)
+	struct Plane yzrplane = { .normal = {0,1,-yzr}, .constant = 0 };
+	plane_apply_mat3_INVERSE(&yzrplane, cam->world2cam);
+	plane_move(&yzrplane, vec3_sub(el->center, cam->location));
+	plane_apply_mat3_INVERSE(&yzrplane, el->transform);
+
+	// Equation of yzrplane: (x,y,z) dot (a,b,c) = k
+	float a = yzrplane.normal.x;
+	float c = yzrplane.normal.z;
+	float k = yzrplane.constant;
+
+	// Intersecting yzrplane with y=0 gives a line (x,y,z) = p + t*dir
+	float inv = 1/(a*a + c*c);
+	Vec3 p = { a*k*inv, 0, c*k*inv };
+	Vec3 dir = { -c, 0, a };
+
+	// Solve t = +-abst so that intersection is on the unit ball x^2+y^2+z^2=1
+	SDL_assert(k*k*inv <= 1);
+	float abst = sqrtf(inv - k*k*inv*inv);
+
+	Vec3 p1 = vec3_add(p, vec3_mul_float(dir, -abst));
+	Vec3 p2 = vec3_add(p, vec3_mul_float(dir, abst));
+	vec3_apply_matrix(&p1, el->transform);
+	vec3_apply_matrix(&p2, el->transform);
+	vec3_add_inplace(&p1, vec3_sub(cam->location, el->center));
+	vec3_add_inplace(&p2, vec3_sub(cam->location, el->center));
+	vec3_apply_matrix(&p1, cam->world2cam);
+	vec3_apply_matrix(&p2, cam->world2cam);
+	float xzr1 = p1.x / p1.z;
+	float xzr2 = p2.x / p2.z;
+	SDL_assert(xzr1 < xzr2);
+	*xzrmin = xzr1;
+	*xzrmax = xzr2;
+	SDL_assert(*xzrmin <= *xzrmax);
 }
 
 bool ellipsoid_xminmax(const struct Ellipsoid *el, const struct Camera *cam, int y, int *xmin, int *xmax)
@@ -216,7 +259,7 @@ bool ellipsoid_xminmax(const struct Ellipsoid *el, const struct Camera *cam, int
 	/*
 	Consider the function
 
-		f(t) = (c + t(xzr*v + w)) dot (c + t(xzr*v + w)).
+		f(t) = (p + t(xzr*v + w)) dot (p + t(xzr*v + w)).
 
 	Its minimum value is (distance between line and origin)^2.
 	Solve it with a derivative and set it equal to 1.
@@ -239,9 +282,27 @@ bool ellipsoid_xminmax(const struct Ellipsoid *el, const struct Camera *cam, int
 	c /= a;
 	if (b*b-c < 0) return false;    // happens about once per frame
 	float offset = sqrtf(b*b-c);
+	float xzrleft = -b+offset;
+	float xzrright = -b-offset;
 
-	*xmin = (int)camera_xzr_to_screenx(cam, -b+offset);
-	*xmax = (int)camera_xzr_to_screenx(cam, -b-offset);
+	if (el->epic->hidelowerhalf) {
+		// Find y coords of corresponding points on the unit ball (bl left side, br right side)
+		Vec3 ul = vec3_add(vec3_mul_float(v, xzrleft), w);
+		Vec3 ur = vec3_add(vec3_mul_float(v, xzrright), w);
+		float yl = p.y - vec3_dot(p,ul)/vec3_dot(ul,ul)*ul.y;
+		float yr = p.y - vec3_dot(p,ur)/vec3_dot(ur,ur)*ur.y;
+
+		// If below, use unit circle point instead
+		if (yl < 0 || yr < 0) {
+			float l, r;
+			get_middle_circle_xzr_minmax(el, cam, y, &r, &l);
+			if (yl < 0) xzrleft = l;
+			if (yr < 0) xzrright = r;
+		}
+	}
+
+	*xmin = (int)camera_xzr_to_screenx(cam, xzrleft);
+	*xmax = (int)camera_xzr_to_screenx(cam, xzrright);
 	clamp(xmin, 0, cam->surface->w);
 	clamp(xmax, 0, cam->surface->w);
 	return *xmin <= *xmax;
