@@ -146,13 +146,4 @@ void plane_move(struct Plane *pl, Vec3 mv);
 // distance between plane and point, ^2 to avoid slow sqrt
 float plane_point_distanceSQUARED(struct Plane pl, Vec3 pt);
 
-
-struct Line {
-	Vec3 point;       // any point on the line
-	Vec3 dir;         // nonzero vector going in direction of the line
-};
-
-// distance between line and point, ^2 to avoid slow sqrt
-float line_point_distanceSQUARED(struct Line ln, Vec3 pt);
-
 #endif   // MATHSTUFF_H

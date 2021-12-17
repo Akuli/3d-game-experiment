@@ -185,16 +185,3 @@ float plane_point_distanceSQUARED(struct Plane pl, Vec3 pt)
 	float top = vec3_dot(pl.normal, pt) - pl.constant;
 	return top*top / vec3_lengthSQUARED(pl.normal);
 }
-
-
-float line_point_distanceSQUARED(struct Line ln, Vec3 pt)
-{
-	// any vector from line to pt
-	Vec3 line2point = vec3_sub(pt, ln.point);
-
-	// calculate area of parallelogram with line2point and ln.dir as sides
-	float areaSQUARED = vec3_lengthSQUARED(vec3_cross(line2point, ln.dir));
-
-	// area = base * height = |ln.dir| * distance
-	return areaSQUARED / vec3_lengthSQUARED(ln.dir);
-}

@@ -3,8 +3,8 @@
 #include <limits.h>
 #include "../stb/stb_image.h"
 #include "camera.h"
-#include "intersections.h"
 #include "log.h"
+#include "mathstuff.h"
 #include "misc.h"
 
 bool rect_visible_fillcache(const struct Rect *r, const struct Camera *cam, struct RectCache *cache)
