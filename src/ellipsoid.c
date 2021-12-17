@@ -286,7 +286,7 @@ bool ellipsoid_xminmax(const struct Ellipsoid *el, const struct Camera *cam, int
 	float xzrright = -b-offset;
 
 	if (el->epic->hidelowerhalf) {
-		// Find y coords of corresponding points on the unit ball (bl left side, br right side)
+		// Find y coords of corresponding points on the unit ball (l left side, r right side)
 		Vec3 ul = vec3_add(vec3_mul_float(v, xzrleft), w);
 		Vec3 ur = vec3_add(vec3_mul_float(v, xzrright), w);
 		float yl = p.y - vec3_dot(p,ul)/vec3_dot(ul,ul)*ul.y;
