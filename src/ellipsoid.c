@@ -172,7 +172,7 @@ struct Rect ellipsoid_get_sort_rect(const struct Ellipsoid *el, const struct Cam
 {
 	Vec3 center2cam = vec3_sub(cam->location, el->center);
 	Vec3 dir = { center2cam.z, 0, -center2cam.x };
-	Vec3 center2edge = vec3_withlength(dir, 0.95f*el->xzradius);  // TODO: 0.95f still needed?
+	Vec3 center2edge = vec3_withlength(dir, el->xzradius);
 
 	Vec3 topleft, topright, botleft, botright;
 	topleft = botleft = vec3_sub(el->center, center2edge);
