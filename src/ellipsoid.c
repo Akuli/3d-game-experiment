@@ -159,7 +159,7 @@ SDL_Rect ellipsoid_bbox(const struct Ellipsoid *el, const struct Camera *cam)
 	SDL_Rect bbox = bbox_without_hidelowerhalf(el, cam);
 	if (el->epic->hidelowerhalf) {
 		SDL_Rect circlebbox = bbox_of_middle_circle(el, cam);
-		bbox.h -= bbox.y - circlebbox.y;
+		bbox.h = (circlebbox.y - bbox.y) + circlebbox.h;
 	}
 
 	SDL_Rect res;
