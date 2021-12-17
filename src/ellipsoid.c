@@ -181,6 +181,14 @@ struct Rect ellipsoid_get_sort_rect(const struct Ellipsoid *el, const struct Cam
 	topright.y += el->yradius;
 	botleft.y -= el->yradius;
 	botright.y -= el->yradius;
+
+	if (el->epic->hidelowerhalf) {
+		// Hack to help stacking guards on top of player and other guards
+		Vec3 tilt = vec3_withlength(center2cam, 1e-5f);
+		vec3_add_inplace(&botleft, tilt);
+		vec3_add_inplace(&botright, tilt);
+	}
+
 	return (struct Rect){.corners={ topleft, topright, botright, botleft }};
 }
 
