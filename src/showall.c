@@ -108,7 +108,7 @@ struct Match {
 };
 
 // Assumes the bboxes intersect in x
-static int __attribute__((noinline)) add_dependency_if_bboxes_intersect(struct ShowingState *st, float xzr, struct Match m1, struct Match m2)
+static void __attribute__((noinline)) add_dependency_if_bboxes_intersect(struct ShowingState *st, float xzr, struct Match m1, struct Match m2)
 {
 	int ystart = max(m1.bbox.y, m2.bbox.y);
 	int yend = min(m1.bbox.y + m1.bbox.h, m2.bbox.y + m2.bbox.h);
@@ -120,6 +120,20 @@ static int __attribute__((noinline)) add_dependency_if_bboxes_intersect(struct S
 			add_dependency(st, m1.id, m2.id);
 		else
 			add_dependency(st, m2.id, m1.id);
+	}
+}
+
+static void debug_print_dependencies(const struct ShowingState *st)
+{
+	log_printf("dependency dump:");
+	for (int i = 0; i < st->nvisible; i++) {
+		ID id = st->visible[i];
+		if (st->infos[id].ndeps == 0)
+			continue;
+
+		log_printf("  %d", id);
+		for (int d = 0; d < st->infos[id].ndeps; d++)
+			log_printf("  `--> %d", st->infos[id].deps[d]);
 	}
 }
 
@@ -143,27 +157,13 @@ static void __attribute__((noinline)) setup_dependencies(struct ShowingState *st
 				matches[nmatches++] = (struct Match){ id, bbox };
 		}
 
-		for (int i = 0; i < nmatches; i++) {
-			for (int k = 0; k < i; k++) {
-				add_dependency_if_bboxes_intersect(st, xzr, matches[i], matches[k]);
-			}
-		}
+		for (int i = 0; i < nmatches; i++)
+			for (int k = 0; k < i; k++)
+				if (ID_TYPE(matches[i].id) != ID_TYPE_WALL || ID_TYPE(matches[k].id) != ID_TYPE_WALL)
+					add_dependency_if_bboxes_intersect(st, xzr, matches[i], matches[k]);
 	}
 
-}
-
-static void debug_print_dependencies(const struct ShowingState *st)
-{
-	log_printf("dependency dump:");
-	for (int i = 0; i < st->nvisible; i++) {
-		ID id = st->visible[i];
-		if (st->infos[id].ndeps == 0)
-			continue;
-
-		log_printf("  %d", id);
-		for (int d = 0; d < st->infos[id].ndeps; d++)
-			log_printf("  `--> %d", st->infos[id].deps[d]);
-	}
+	//debug_print_dependencies(st);
 }
 
 // In which order should walls and ellipsoids be shown?
