@@ -156,22 +156,14 @@ static SDL_Rect bounding_box_of_middle_circle(
 SDL_Rect ellipsoid_bounding_box(const struct Ellipsoid *el, const struct Camera *cam)
 {
 
-	SDL_Rect mainbbox = bounding_box_without_hidelowerhalf(el, cam);
-	SDL_Rect tmp;
+	SDL_Rect bbox = bounding_box_without_hidelowerhalf(el, cam);
 	if (el->epic->hidelowerhalf) {
 		SDL_Rect circlebbox = bounding_box_of_middle_circle(el, cam);
-		tmp = (SDL_Rect){
-			.x = mainbbox.x,
-			.y = mainbbox.y,
-			.w = mainbbox.w,
-			.h = circlebbox.y + circlebbox.h - mainbbox.y,
-		};
-	} else {
-		tmp = mainbbox;
+		bbox.h -= bbox.y - circlebbox.y;
 	}
 
 	SDL_Rect res;
-	SDL_IntersectRect(&(SDL_Rect){ 0, 0, cam->surface->w, cam->surface->h }, &tmp, &res);
+	SDL_IntersectRect(&(SDL_Rect){ 0, 0, cam->surface->w, cam->surface->h }, &bbox, &res);
 	SDL_assert(0 <= res.x && res.x+res.w <= cam->surface->w && 0 <= res.y && res.y+res.h <= cam->surface->h);
 	return res;
 }
