@@ -10,7 +10,7 @@
 #include "log.h"
 
 // fitting too much stuff into an int
-typedef int ID;
+typedef short ID;
 #define ID_TYPE_ELLIPSOID 0
 #define ID_TYPE_WALL 1
 #define ID_TYPE(id) ((id) & 1)
@@ -254,20 +254,39 @@ void show_all(
 	st.nvisible = 0;
 
 	add_visible_objects(&st, walls, nwalls, highlightwalls, els, nels);
+
+	static ID objects_by_x[CAMERA_SCREEN_WIDTH][ArrayLen(st.visible)];
+	int nobjects_by_x[CAMERA_SCREEN_WIDTH] = {0};
+
+	for (int i = 0; i < st.nvisible; i++) {
+		SDL_Rect bbox = st.infos[st.visible[i]].bbox;
+		SDL_assert(0 <= bbox.x && bbox.x+bbox.w <= cam->surface->w);
+		for (int x = bbox.x; x < bbox.x+bbox.w; x++)
+			objects_by_x[x][nobjects_by_x[x]++] = st.visible[i];
+	}
+
 	setup_dependencies(&st);
 
 	static ID sorted[ArrayLen(st.visible)];
 	create_sorted_array(&st, sorted);
 
+	// static to keep stack usage down
+	static ID objects_by_y[CAMERA_SCREEN_HEIGHT][sizeof(st.visible)/sizeof(st.visible[0])];
+	int nobjects_by_y[CAMERA_SCREEN_HEIGHT] = {0};
+
+	for (int i = 0; i < st.nvisible; i++) {
+		SDL_Rect bbox = st.infos[sorted[i]].bbox;
+		SDL_assert(0 <= bbox.y && bbox.y+bbox.h <= cam->surface->h);
+		for (int y = bbox.y; y < bbox.y+bbox.h; y++)
+			objects_by_y[y][nobjects_by_y[y]++] = sorted[i];
+	}
+
 	for (int y = 0; y < cam->surface->h; y++) {
 		static struct Interval intervals[ArrayLen(sorted)];
 		int nintervals = 0;
 
-		for (int i = 0; i < st.nvisible; i++) {
-			ID id = sorted[i];
-			if (!( st.infos[id].bbox.y <= y && y <= st.infos[id].bbox.y + st.infos[id].bbox.h ))
-				continue;
-
+		for (int i = 0; i < nobjects_by_y[y]; i++) {
+			ID id = objects_by_y[y][i];
 			int xmin, xmax;
 			if (get_xminmax(&st, id, y, &xmin, &xmax)) {
 				SDL_assert(xmin <= xmax);
