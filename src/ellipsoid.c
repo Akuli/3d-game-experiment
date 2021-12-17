@@ -102,12 +102,7 @@ static SDL_Rect bounding_box_without_hidelowerhalf(
 		ymax = (int)camera_yzr_to_screeny(cam, b+offset);
 	}
 
-	SDL_Rect res;
-	SDL_IntersectRect(
-		&(SDL_Rect){ 0, 0, cam->surface->w, cam->surface->h },
-		&(SDL_Rect){ xmin, ymin, xmax-xmin, ymax-ymin },
-		&res);
-	return res;
+	return (SDL_Rect){ xmin, ymin, xmax-xmin, ymax-ymin };
 }
 
 static SDL_Rect bounding_box_of_middle_circle(
@@ -155,28 +150,30 @@ static SDL_Rect bounding_box_of_middle_circle(
 		ymax = (int)camera_yzr_to_screeny(cam, b+offset);
 	}
 
-	SDL_Rect res;
-	SDL_IntersectRect(
-		&(SDL_Rect){ 0, 0, cam->surface->w, cam->surface->h },
-		&(SDL_Rect){ xmin, ymin, xmax-xmin, ymax-ymin },
-		&res);
-	return res;
+	return (SDL_Rect){ xmin, ymin, xmax-xmin, ymax-ymin };
 }
 
 SDL_Rect ellipsoid_bounding_box(const struct Ellipsoid *el, const struct Camera *cam)
 {
 
 	SDL_Rect mainbbox = bounding_box_without_hidelowerhalf(el, cam);
-	if (!el->epic->hidelowerhalf)
-		return mainbbox;
+	SDL_Rect tmp;
+	if (el->epic->hidelowerhalf) {
+		SDL_Rect circlebbox = bounding_box_of_middle_circle(el, cam);
+		tmp = (SDL_Rect){
+			.x = mainbbox.x,
+			.y = mainbbox.y,
+			.w = mainbbox.w,
+			.h = circlebbox.y + circlebbox.h - mainbbox.y,
+		};
+	} else {
+		tmp = mainbbox;
+	}
 
-	SDL_Rect circlebbox = bounding_box_of_middle_circle(el, cam);
-	return (SDL_Rect){
-		.x = mainbbox.x,
-		.y = mainbbox.y,
-		.w = mainbbox.w,
-		.h = circlebbox.y + circlebbox.h - mainbbox.y,
-	};
+	SDL_Rect res;
+	SDL_IntersectRect(&(SDL_Rect){ 0, 0, cam->surface->w, cam->surface->h }, &tmp, &res);
+	SDL_assert(0 <= res.x && res.x+res.w <= cam->surface->w && 0 <= res.y && res.y+res.h <= cam->surface->h);
+	return res;
 }
 
 struct Rect ellipsoid_get_sort_rect(const struct Ellipsoid *el, const struct Camera *cam)
@@ -229,7 +226,6 @@ static void get_middle_circle_xzr_minmax(const struct Ellipsoid *el, const struc
 	vec3_apply_matrix(&p2, cam->world2cam);
 	*xzrmin = p1.x / p1.z;
 	*xzrmax = p2.x / p2.z;
-	SDL_assert(*xzrmin <= *xzrmax);
 }
 
 bool ellipsoid_xminmax(const struct Ellipsoid *el, const struct Camera *cam, int y, int *xmin, int *xmax)
