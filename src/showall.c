@@ -52,7 +52,7 @@ struct ShowingState {
 	ID objects_by_x[CAMERA_SCREEN_WIDTH][ARRAYLEN_CONTAINING_ID];
 	int nobjects_by_x[CAMERA_SCREEN_WIDTH];
 
-	// Visible objects in the order in which they are drawn (bottommost first)
+	// Visible objects in the order in which they are drawn (closest to camera last)
 	ID objects_by_y[CAMERA_SCREEN_HEIGHT][ARRAYLEN_CONTAINING_ID];
 	int nobjects_by_y[CAMERA_SCREEN_HEIGHT];
 };
@@ -138,6 +138,7 @@ static void setup_dependencies(struct ShowingState *st)
 			{
 				ID id1 = st->objects_by_x[x][i];
 				ID id2 = st->objects_by_x[x][k];
+				// TODO: walls of different color
 				if (ID_TYPE(id1) == ID_TYPE_WALL && ID_TYPE(id2) == ID_TYPE_WALL)
 					continue;
 

@@ -232,11 +232,8 @@ static void get_middle_circle_xzr_minmax(const struct Ellipsoid *el, const struc
 	vec3_add_inplace(&p2, vec3_sub(cam->location, el->center));
 	vec3_apply_matrix(&p1, cam->world2cam);
 	vec3_apply_matrix(&p2, cam->world2cam);
-	float xzr1 = p1.x / p1.z;
-	float xzr2 = p2.x / p2.z;
-	SDL_assert(xzr1 < xzr2);
-	*xzrmin = xzr1;
-	*xzrmax = xzr2;
+	*xzrmin = p1.x / p1.z;
+	*xzrmax = p2.x / p2.z;
 	SDL_assert(*xzrmin <= *xzrmax);
 }
 
@@ -286,7 +283,7 @@ bool ellipsoid_xminmax(const struct Ellipsoid *el, const struct Camera *cam, int
 	float xzrright = -b-offset;
 
 	if (el->epic->hidelowerhalf) {
-		// Find y coords of corresponding points on the unit ball (bl left side, br right side)
+		// Find y coords of corresponding points on the unit ball (l left side, r right side)
 		Vec3 ul = vec3_add(vec3_mul_float(v, xzrleft), w);
 		Vec3 ur = vec3_add(vec3_mul_float(v, xzrright), w);
 		float yl = p.y - vec3_dot(p,ul)/vec3_dot(ul,ul)*ul.y;
