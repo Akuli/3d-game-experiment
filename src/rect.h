@@ -2,7 +2,7 @@
 #ifndef RECT_H
 #define RECT_H
 
-#include <stdint.h>
+#include <stdbool.h>
 #include <SDL2/SDL.h>
 #include "mathstuff.h"
 #include "camera.h"

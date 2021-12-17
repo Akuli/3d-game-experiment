@@ -1,9 +1,10 @@
 #include "rect.h"
 #include <SDL2/SDL.h>
 #include <limits.h>
-#include "../stb/stb_image.h"
+#include <math.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include "camera.h"
-#include "log.h"
 #include "mathstuff.h"
 #include "misc.h"
 

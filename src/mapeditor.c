@@ -2,19 +2,20 @@
 #include <math.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include "mathstuff.h"
-#include "enemy.h"
 #include "button.h"
+#include "camera.h"
+#include "enemy.h"
 #include "log.h"
+#include "looptimer.h"
+#include "map.h"
+#include "mathstuff.h"
 #include "max.h"
 #include "misc.h"
-#include "map.h"
 #include "player.h"
-#include "wall.h"
-#include "looptimer.h"
+#include "rect.h"
 #include "showall.h"
-#include "camera.h"
 #include "textentry.h"
+#include "wall.h"
 
 struct EllipsoidEdit {
 	struct Ellipsoid el;

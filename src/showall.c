@@ -1,13 +1,15 @@
 #include "showall.h"
 #include <stdbool.h>
+#include <string.h>
 #include <SDL2/SDL.h>
 #include "camera.h"
 #include "ellipsoid.h"
 #include "interval.h"
+#include "log.h"
 #include "mathstuff.h"
 #include "max.h"
+#include "rect.h"
 #include "wall.h"
-#include "log.h"
 
 // fitting too much stuff into an integer
 typedef short ID;

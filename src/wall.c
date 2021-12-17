@@ -1,12 +1,7 @@
 #include "wall.h"
 #include <math.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <SDL2/SDL.h>
-#include "camera.h"
 #include "mathstuff.h"
 #include "player.h"
-#include "misc.h"
 
 #define Y_MIN PLAYER_HEIGHT_FLAT   // allow players to go under the wall
 #define Y_MAX 1.0f

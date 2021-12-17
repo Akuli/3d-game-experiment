@@ -1,6 +1,5 @@
 #include "mathstuff.h"
 #include <math.h>
-#include <SDL2/SDL.h>
 
 /*
 Non-static inline functions are weird in c. You need to put definition to h file
