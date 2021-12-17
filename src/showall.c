@@ -74,7 +74,7 @@ static void add_wall_if_visible(struct ShowingState *st, int idx)
 	}
 }
 
-static void add_dependency(struct ShowingState *st, ID before, ID after)
+static void __attribute__((noinline)) add_dependency(struct ShowingState *st, ID before, ID after)
 {
 	for (int i = 0; i < st->infos[after].ndeps; i++) {
 		if (st->infos[after].deps[i] == before)
@@ -83,7 +83,7 @@ static void add_dependency(struct ShowingState *st, ID before, ID after)
 	st->infos[after].deps[st->infos[after].ndeps++] = before;
 }
 
-static void setup_dependencies(struct ShowingState *st)
+static int __attribute__((noinline)) create_xlist(struct ShowingState *st, int *xlist)
 {
 	bool xcoords[CAMERA_SCREEN_WIDTH] = {0};
 	for (int i = 0; i < st->nvisible; i++) {
@@ -95,21 +95,45 @@ static void setup_dependencies(struct ShowingState *st)
 		xcoords[hi] = true;
 	}
 
-	int xlist[CAMERA_SCREEN_WIDTH];
 	int xlistlen = 0;
 	for (int x = 0; x < sizeof(xcoords)/sizeof(xcoords[0]); x++)
 		if (xcoords[x])
 			xlist[xlistlen++] = x;
+	return xlistlen;
+}
+
+struct Match {
+	ID id;
+	SDL_Rect bbox;
+};
+
+// Assumes the bboxes intersect in x
+static int __attribute__((noinline)) add_dependency_if_bboxes_intersect(struct ShowingState *st, float xzr, struct Match m1, struct Match m2)
+{
+	int ystart = max(m1.bbox.y, m2.bbox.y);
+	int yend = min(m1.bbox.y + m1.bbox.h, m2.bbox.y + m2.bbox.h);
+	if (ystart <= yend) {
+		float yzr = camera_screeny_to_yzr(st->cam, (ystart + yend)/2);
+		float z1 = rect_get_camcoords_z(&st->infos[m1.id].sortrect, st->cam, xzr, yzr);
+		float z2 = rect_get_camcoords_z(&st->infos[m2.id].sortrect, st->cam, xzr, yzr);
+		if (z1 < z2)
+			add_dependency(st, m1.id, m2.id);
+		else
+			add_dependency(st, m2.id, m1.id);
+	}
+}
+
+static void __attribute__((noinline)) setup_dependencies(struct ShowingState *st)
+{
+	int xlist[CAMERA_SCREEN_WIDTH];
+	int xlistlen = create_xlist(st, xlist);
 
 	// It should be enough to check in the middles of intervals between bboxes
 	for (int xidx = 1; xidx < xlistlen; xidx++) {
 		int x = (xlist[xidx-1] + xlist[xidx])/2;
 		float xzr = camera_screenx_to_xzr(st->cam, x);
 
-		static struct Match {
-			ID id;
-			SDL_Rect bbox;
-		} matches[MAX_WALLS + MAX_ELLIPSOIDS];
+		static struct Match matches[MAX_WALLS + MAX_ELLIPSOIDS];
 		int nmatches = 0;
 
 		for (int i = 0; i < st->nvisible; i++) {
@@ -121,20 +145,7 @@ static void setup_dependencies(struct ShowingState *st)
 
 		for (int i = 0; i < nmatches; i++) {
 			for (int k = 0; k < i; k++) {
-				struct Match m1 = matches[i];
-				struct Match m2 = matches[k];
-
-				int ystart = max(m1.bbox.y, m2.bbox.y);
-				int yend = min(m1.bbox.y + m1.bbox.h, m2.bbox.y + m2.bbox.h);
-				if (ystart > yend)
-					continue;
-				float yzr = camera_screeny_to_yzr(st->cam, (ystart + yend)/2);
-				float z1 = rect_get_camcoords_z(&st->infos[m1.id].sortrect, st->cam, xzr, yzr);
-				float z2 = rect_get_camcoords_z(&st->infos[m2.id].sortrect, st->cam, xzr, yzr);
-				if (z1 < z2)
-					add_dependency(st, m1.id, m2.id);
-				else
-					add_dependency(st, m2.id, m1.id);
+				add_dependency_if_bboxes_intersect(st, xzr, matches[i], matches[k]);
 			}
 		}
 	}
@@ -156,7 +167,7 @@ static void debug_print_dependencies(const struct ShowingState *st)
 }
 
 // In which order should walls and ellipsoids be shown?
-static void create_sorted_array(struct ShowingState *st, ID *sorted)
+static void __attribute__((noinline)) create_sorted_array(struct ShowingState *st, ID *sorted)
 {
 	static ID todo[MAX_WALLS + MAX_ELLIPSOIDS];
 	int ntodo = st->nvisible;
@@ -210,6 +221,20 @@ static void draw_row(const struct ShowingState *st, int y, ID id, int xmin, int 
 	}
 }
 
+static void __attribute__((noinline)) add_visible_objects(
+	struct ShowingState *st,
+	const struct Wall *walls, int nwalls,
+	const int *highlightwalls,
+	const struct Ellipsoid *els, int nels)
+{
+	for (int i = 0; i < nels; i++)
+		add_ellipsoid_if_visible(st, i);
+	for (int i = 0; i < nwalls; i++)
+		add_wall_if_visible(st, i);
+	for (const int *i = highlightwalls; *i != -1; i++)
+		st->infos[ID_NEW(ID_TYPE_WALL, *i)].highlight = true;
+}
+
 #define ArrayLen(arr) ( sizeof(arr) / sizeof((arr)[0]) )
 
 void show_all(
@@ -228,13 +253,7 @@ void show_all(
 	st.els = els;
 	st.nvisible = 0;
 
-	for (int i = 0; i < nels; i++)
-		add_ellipsoid_if_visible(&st, i);
-	for (int i = 0; i < nwalls; i++)
-		add_wall_if_visible(&st, i);
-	for (const int *i = highlightwalls; *i != -1; i++)
-		st.infos[ID_NEW(ID_TYPE_WALL, *i)].highlight = true;
-
+	add_visible_objects(&st, walls, nwalls, highlightwalls, els, nels);
 	setup_dependencies(&st);
 
 	static ID sorted[ArrayLen(st.visible)];
