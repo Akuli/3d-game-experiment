@@ -767,7 +767,8 @@ static void show_editor(struct MapEditor *ed)
 	show_all(ed->map->walls, ed->map->nwalls, highlight, els, nels, &ed->cam);
 	if (borderwall) {
 		wall_init(borderwall);
-		wall_drawborder(borderwall, &ed->cam);
+		struct Rect r = wall_to_rect(borderwall);
+		rect_drawborder(&r, &ed->cam);
 	}
 }
 

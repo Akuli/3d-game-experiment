@@ -84,7 +84,5 @@ inline bool wall_linedup(const struct Wall *w1, const struct Wall *w2)
 		(w1->dir == WALL_DIR_ZY && w2->dir == WALL_DIR_ZY && w1->startx == w2->startx);
 }
 
-void wall_drawborder(const struct Wall *w, const struct Camera *cam);
-
 
 #endif    // WALL_H
