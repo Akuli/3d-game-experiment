@@ -192,6 +192,8 @@ static void create_showing_order_from_dependencies(struct ShowingState *st)
 		}
 		if (stuck) {
 			log_printf("dependency cycle detected");
+			// TODO: This doesn't necessarily remove the cycle on first attempt.
+			//       It can remove a completely unrelated dependency instead.
 			st->infos[todo[0]].ndeps--;
 			continue;
 		}
