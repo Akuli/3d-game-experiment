@@ -71,19 +71,11 @@ int button_height(enum ButtonFlags f) { return get_image(f)->h + 2*get_margin(f)
 void button_show(const struct Button *butt)
 {
 	blit_with_center(get_image(butt->flags), butt->destsurf, &butt->center);
-	int textx, imgx;
-
-	if (butt->imgpath && butt->text[0]) {
-		int left = butt->center.x - button_width(butt->flags)/2;
-		imgx = left + (int)(0.3f*button_width(butt->flags));
-		textx = left + (int)(0.7f*button_width(butt->flags));
-	} else {
-		textx = imgx = butt->center.x;
-	}
+	SDL_assert(!(butt->imgpath && butt->text[0]));
 
 	if (butt->imgpath) {
 		SDL_Surface *s = create_image_surface(butt->imgpath);
-		blit_with_center(s, butt->destsurf, &(SDL_Point){ imgx, butt->center.y });
+		blit_with_center(s, butt->destsurf, &butt->center);
 		free_image_surface(s);
 	}
 
@@ -110,15 +102,15 @@ void button_show(const struct Button *butt)
 			SDL_Surface *s2 = create_text_surface(line2, black, fontsz);
 
 			blit_with_center(
-				s1, butt->destsurf, &(SDL_Point){ textx, butt->center.y - s1->h/2 });
+				s1, butt->destsurf, &(SDL_Point){ butt->center.x, butt->center.y - s1->h/2 });
 			blit_with_center(
-				s2, butt->destsurf, &(SDL_Point){ textx, butt->center.y + s2->h/2 });
+				s2, butt->destsurf, &(SDL_Point){ butt->center.y, butt->center.y + s2->h/2 });
 
 			SDL_FreeSurface(s1);
 			SDL_FreeSurface(s2);
 		} else {
 			SDL_Surface *s = create_text_surface(butt->text, black, fontsz);
-			blit_with_center(s, butt->destsurf, &(SDL_Point){ textx, butt->center.y });
+			blit_with_center(s, butt->destsurf, &butt->center);
 			SDL_FreeSurface(s);
 		}
 	}
@@ -168,6 +160,8 @@ void button_handle_event(const SDL_Event *evt, struct Button *butt)
 	}
 
 	button_show(butt);
-	if (click)
+	if (click) {
+		log_printf("clicking button \"%s\"", butt->text);
 		butt->onclick(butt->onclickdata);  // may free the button, must be last
+	}
 }

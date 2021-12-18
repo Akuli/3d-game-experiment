@@ -13,7 +13,7 @@ mkdir -vp {tiny,small,medium,big,thick}/{horizontal,vertical}
 
 for file in $(cd huge/narrow && echo */*.png); do
     $convert huge/narrow/$file -resize 55x55 small/$file
-    $convert huge/narrow/$file -resize 150x150 thick/$file
+    $convert huge/narrow/$file -resize 100x100 thick/$file
 done
 
 for file in $(cd huge/wide && echo */*.png); do
@@ -34,7 +34,7 @@ $convert huge-right.png -resize 30x30 right.png
 $convert huge-right.png -resize 30x30 -rotate 90 down.png
 $convert huge-right.png -resize 30x30 -rotate 180 left.png
 $convert huge-right.png -resize 30x30 -rotate 270 up.png
-$convert huge-enemy.png -resize 45x45 enemy.png
+$convert huge-enemy.png -resize 60x60 enemy.png
 
 cd ../listbox
 $convert huge/normal.png -scale '500x25!' normal.png

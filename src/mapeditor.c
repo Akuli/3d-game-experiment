@@ -778,16 +778,6 @@ static void show_editor(struct MapEditor *ed)
 	}
 }
 
-static void set_number_of_button(struct Button *butt, int num)
-{
-	SDL_assert(num >= 0);
-	sprintf(butt->text, "%d", num);
-	if (num == 0)
-		butt->flags |= BUTTON_DISABLED;
-	else
-		butt->flags &= ~BUTTON_DISABLED;
-}
-
 static void update_buttons(struct MapEditor *ed)
 {
 	int maxenemies = min(MAX_ENEMIES, ed->map->xsize*ed->map->zsize - 2);
@@ -796,8 +786,15 @@ static void update_buttons(struct MapEditor *ed)
 		  ed->map->xsize*(ed->map->zsize+1)
 		+ ed->map->zsize*(ed->map->xsize+1));
 
-	set_number_of_button(&ed->toolbuttons[TOOL_ENEMY], maxenemies - ed->map->nenemylocs);
-	set_number_of_button(&ed->toolbuttons[TOOL_WALL], maxwalls - ed->map->nwalls);
+	if (ed->map->nenemylocs == maxenemies)
+		ed->toolbuttons[TOOL_ENEMY].flags |= BUTTON_DISABLED;
+	else
+		ed->toolbuttons[TOOL_ENEMY].flags &= ~BUTTON_DISABLED;
+
+	if (ed->map->nwalls == maxwalls)
+		ed->toolbuttons[TOOL_WALL].flags |= BUTTON_DISABLED;
+	else
+		ed->toolbuttons[TOOL_WALL].flags &= ~BUTTON_DISABLED;
 }
 
 static void on_tool_changed(struct MapEditor *ed, enum Tool tool)
@@ -805,10 +802,11 @@ static void on_tool_changed(struct MapEditor *ed, enum Tool tool)
 	log_printf("Changing tool to %d", tool);
 	end_moving_or_resizing(ed);
 	ed->tool = tool;
-	for (int t = 0; t < TOOL_COUNT; t++)
+	for (int t = 0; t < TOOL_COUNT; t++) {
 		if (t != tool)
 			ed->toolbuttons[t].flags &= ~BUTTON_PRESSED;
-	update_buttons(ed);
+	}
+	ed->redraw = true;
 
 	/*// evaluation order rules troll me
 	struct MapCoords c = map_findempty(ed->map, hint);
@@ -833,6 +831,7 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 	if (!ed)
 		log_printf_abort("out of mem");
 
+	enum ButtonFlags bf = BUTTON_THICK | BUTTON_VERTICAL | BUTTON_STAYPRESSED;
 	*ed = (struct MapEditor){
 		.zoom = zoom,
 		.cam = { .surface = surf, .screencentery = ytop, .angle = 0 },
@@ -850,24 +849,24 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 		.toolbuttons = {
 			[TOOL_WALL] = {
 				.imgpath = "assets/buttonpics/enemy.png",  // TODO this sucks
-				.flags = BUTTON_THICK | BUTTON_STAYPRESSED | BUTTON_PRESSED,
+				.flags = bf | BUTTON_PRESSED,
 				.scancodes = { SDL_SCANCODE_W },
 				.destsurf = surf,
 				.center = {
 					CAMERA_SCREEN_WIDTH - button_width(BUTTON_THICK)/2,
-					button_height(BUTTON_THICK)/2
+					button_height(bf)/2
 				},
 				.onclick = on_wall_button_clicked,
 				.onclickdata = ed,
 			},
 			[TOOL_ENEMY] = {
 				.imgpath = "assets/buttonpics/enemy.png",
-				.flags = BUTTON_THICK | BUTTON_STAYPRESSED,
+				.flags = bf,
 				.scancodes = { SDL_SCANCODE_E },
 				.destsurf = surf,
 				.center = {
 					CAMERA_SCREEN_WIDTH - button_width(BUTTON_THICK)/2,
-					button_height(BUTTON_THICK)*3/2
+					button_height(bf)*3/2
 				},
 				.onclick = on_enemy_button_clicked,
 				.onclickdata = ed,
