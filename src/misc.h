@@ -29,7 +29,7 @@ enum State {
 	STATE_QUIT,
 };
 
-// logs errors, won't work with non-ascii paths on windows
+// cross-platform, logs errors, won't work with non-ascii paths on windows
 void my_mkdir(const char *path);
 
 /*
