@@ -74,7 +74,7 @@ void ellipsoid_update_transforms(struct Ellipsoid *el);
 // Is the ellipsoid visible anywhere on screen?
 bool ellipsoid_is_visible(const struct Ellipsoid *el, const struct Camera *cam);
 
-// Ellipsoid will be drawn fully within the returned rectangle.
+// Ellipsoid will be drawn fully within the returned 2D rectangle.
 // Assumes that ellipsoid_is_visible() has returned true.
 SDL_Rect ellipsoid_bbox(const struct Ellipsoid *el, const struct Camera *cam);
 
