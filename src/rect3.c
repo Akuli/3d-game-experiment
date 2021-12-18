@@ -1,4 +1,4 @@
-#include "rect.h"
+#include "rect3.h"
 #include <SDL2/SDL.h>
 #include <limits.h>
 #include <math.h>
@@ -8,7 +8,7 @@
 #include "mathstuff.h"
 #include "misc.h"
 
-bool rect_visible_fillcache(const struct Rect *r, const struct Camera *cam, struct RectCache *cache)
+bool rect3_visible_fillcache(const struct Rect3 *r, const struct Camera *cam, struct Rect3Cache *cache)
 {
 	// Ensure that no corner is behind camera. This means that x/z and y/z ratios will work.
 	for (int c = 0; c < 4; c++)
@@ -48,7 +48,7 @@ bool rect_visible_fillcache(const struct Rect *r, const struct Camera *cam, stru
 		&& SDL_IntersectRect(&tmp, &camrect, &cache->bbox);
 }
 
-bool rect_xminmax(const struct RectCache *cache, int y, int *xmin, int *xmax)
+bool rect3_xminmax(const struct Rect3Cache *cache, int y, int *xmin, int *xmax)
 {
 	if (!(cache->bbox.y <= y && y < cache->bbox.y+cache->bbox.h))
 		return false;
@@ -83,7 +83,7 @@ bool rect_xminmax(const struct RectCache *cache, int y, int *xmin, int *xmax)
 	return (*xmin <= *xmax);
 }
 
-void rect_drawrow(const struct RectCache *cache, int y, int xmin, int xmax, bool highlight)
+void rect3_drawrow(const struct Rect3Cache *cache, int y, int xmin, int xmax, bool highlight)
 {
 	SDL_Surface *surf = cache->cam->surface;
 	SDL_assert(surf->pitch % sizeof(uint32_t) == 0);
@@ -104,7 +104,7 @@ void rect_drawrow(const struct RectCache *cache, int y, int xmin, int xmax, bool
 	}
 }
 
-float rect_get_camcoords_z(const struct Rect *r, const struct Camera *cam, float xzr, float yzr)
+float rect3_get_camcoords_z(const struct Rect3 *r, const struct Camera *cam, float xzr, float yzr)
 {
 	Vec3 start = camera_point_world2cam(cam, r->corners[1]);
 	Vec3 v = mat3_mul_vec3(cam->world2cam, vec3_sub(r->corners[1], r->corners[0]));
@@ -135,7 +135,7 @@ float rect_get_camcoords_z(const struct Rect *r, const struct Camera *cam, float
 }
 
 
-static void draw_rect(SDL_Surface *surf, SDL_Rect r)
+static void draw_2d_rect(SDL_Surface *surf, SDL_Rect r)
 {
 	if (r.w < 0) {
 		r.w = abs(r.w);
@@ -169,10 +169,10 @@ static void draw_line(SDL_Surface *surf, Vec2 start, Vec2 end)
 
 	if (x1 == x2) {
 		// Vertical line
-		draw_rect(surf, (SDL_Rect){ x1-1, y1, 3, y2-y1 });
+		draw_2d_rect(surf, (SDL_Rect){ x1-1, y1, 3, y2-y1 });
 	} else if (y1 == y2) {
 		// Horizontal line
-		draw_rect(surf, (SDL_Rect){ x1, y1-1, x2-x1, 3 });
+		draw_2d_rect(surf, (SDL_Rect){ x1, y1-1, x2-x1, 3 });
 	} else if (abs(y2-y1) > abs(x2-x1)) {
 		// Many vertical lines
 		if (x1 > x2) { swap(&x1, &x2); swap(&y1, &y2); }
@@ -180,7 +180,7 @@ static void draw_line(SDL_Surface *surf, Vec2 start, Vec2 end)
 			int y     = y1 + (y2 - y1)*(x   - x1)/(x2 - x1);
 			int ynext = y1 + (y2 - y1)*(x+1 - x1)/(x2 - x1);
 			clamp(&ynext, min(y1,y2), max(y1,y2));
-			draw_rect(surf, (SDL_Rect){ x-1, y, 3, ynext-y });
+			draw_2d_rect(surf, (SDL_Rect){ x-1, y, 3, ynext-y });
 		}
 	} else {
 		// Many horizontal lines
@@ -189,15 +189,15 @@ static void draw_line(SDL_Surface *surf, Vec2 start, Vec2 end)
 			int x     = x1 + (x2 - x1)*(y   - y1)/(y2 - y1);
 			int xnext = x1 + (x2 - x1)*(y+1 - y1)/(y2 - y1);
 			clamp(&xnext, min(x1,x2), max(x1,x2));
-			draw_rect(surf, (SDL_Rect){ x, y-1, xnext-x, 3 });
+			draw_2d_rect(surf, (SDL_Rect){ x, y-1, xnext-x, 3 });
 		}
 	}
 }
 
-void rect_drawborder(const struct Rect *r, const struct Camera *cam)
+void rect3_drawborder(const struct Rect3 *r, const struct Camera *cam)
 {
-	struct RectCache rcache;
-	if (!rect_visible_fillcache(r, cam, &rcache))
+	struct Rect3Cache rcache;
+	if (!rect3_visible_fillcache(r, cam, &rcache))
 		return;
 
 	draw_line(cam->surface, rcache.screencorners[0], rcache.screencorners[1]);

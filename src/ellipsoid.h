@@ -6,7 +6,7 @@
 #include <SDL2/SDL.h>
 #include "camera.h"
 #include "mathstuff.h"
-#include "rect.h"
+#include "rect3.h"
 
 
 // DON'T MAKE THIS TOO BIG, it uses this^3 amount of memory...
@@ -81,7 +81,7 @@ bool ellipsoid_is_visible(const struct Ellipsoid *el, const struct Camera *cam);
 SDL_Rect ellipsoid_bbox(const struct Ellipsoid *el, const struct Camera *cam);
 
 // Returned 3D rectangle is suitable for sorting ellipsoids and walls for display
-struct Rect ellipsoid_get_sort_rect(const struct Ellipsoid *el, const struct Camera *cam);
+struct Rect3 ellipsoid_get_sort_rect(const struct Ellipsoid *el, const struct Camera *cam);
 
 // returns false if nothing visible for given y
 bool ellipsoid_xminmax(const struct Ellipsoid *el, const struct Camera *cam, int y, int *xmin, int *xmax);

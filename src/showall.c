@@ -8,7 +8,7 @@
 #include "log.h"
 #include "mathstuff.h"
 #include "max.h"
-#include "rect.h"
+#include "rect3.h"
 #include "wall.h"
 
 // fitting too much stuff into an integer
@@ -34,10 +34,10 @@ struct Info {
 	int ndeps;
 
 	SDL_Rect bbox;	// bounding box
-	struct Rect sortrect;
+	struct Rect3 sortrect;
 	bool sortingdone;  // for sorting infos to display them in correct order
 
-	struct RectCache rcache;
+	struct Rect3Cache rcache;
 	bool highlight;
 };
 
@@ -73,9 +73,9 @@ static void add_ellipsoid_if_visible(struct ShowingState *st, int idx)
 
 static void add_wall_if_visible(struct ShowingState *st, int idx)
 {
-	struct Rect r = wall_to_rect(&st->walls[idx]);
-	struct RectCache rcache;
-	if (rect_visible_fillcache(&r, st->cam, &rcache)) {
+	struct Rect3 r = wall_to_rect(&st->walls[idx]);
+	struct Rect3Cache rcache;
+	if (rect3_visible_fillcache(&r, st->cam, &rcache)) {
 		ID id = ID_NEW(ID_TYPE_WALL, idx);
 		st->visible[st->nvisible++] = id;
 		st->infos[id].ndeps = 0;
@@ -154,8 +154,8 @@ static void setup_dependencies(struct ShowingState *st)
 					continue;
 
 				float yzr = camera_screeny_to_yzr(st->cam, (ystart + yend)/2);
-				float z1 = rect_get_camcoords_z(&st->infos[id1].sortrect, st->cam, xzr, yzr);
-				float z2 = rect_get_camcoords_z(&st->infos[id2].sortrect, st->cam, xzr, yzr);
+				float z1 = rect3_get_camcoords_z(&st->infos[id1].sortrect, st->cam, xzr, yzr);
+				float z2 = rect3_get_camcoords_z(&st->infos[id2].sortrect, st->cam, xzr, yzr);
 				if (z1 < z2)
 					add_dependency(st, id1, id2);
 				else
@@ -211,7 +211,7 @@ static bool get_xminmax(struct ShowingState *st, ID id, int y, int *xmin, int *x
 {
 	switch(ID_TYPE(id)) {
 		case ID_TYPE_ELLIPSOID: return ellipsoid_xminmax(&st->els[ID_INDEX(id)], st->cam, y, xmin, xmax);
-		case ID_TYPE_WALL: return rect_xminmax(&st->infos[id].rcache, y, xmin, xmax);
+		case ID_TYPE_WALL: return rect3_xminmax(&st->infos[id].rcache, y, xmin, xmax);
 	}
 	return false;  // compiler = happy
 }
@@ -223,7 +223,7 @@ static void draw_row(const struct ShowingState *st, int y, ID id, int xmin, int 
 		ellipsoid_drawrow(&st->els[ID_INDEX(id)], st->cam, y, xmin, xmax);
 		break;
 	case ID_TYPE_WALL:
-		rect_drawrow(&st->infos[id].rcache, y, xmin, xmax, st->infos[id].highlight);
+		rect3_drawrow(&st->infos[id].rcache, y, xmin, xmax, st->infos[id].highlight);
 		break;
 	}
 }

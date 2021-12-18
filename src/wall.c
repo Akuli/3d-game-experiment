@@ -48,11 +48,11 @@ void wall_init(struct Wall *w)
 	}
 }
 
-struct Rect wall_to_rect(const struct Wall *w)
+struct Rect3 wall_to_rect(const struct Wall *w)
 {
 	int dx = (w->dir == WALL_DIR_XY);
 	int dz = (w->dir == WALL_DIR_ZY);
-	return (struct Rect){
+	return (struct Rect3){
 		.corners = {
 			{ w->startx, Y_MIN, w->startz },
 			{ w->startx+dx, Y_MIN, w->startz+dz },

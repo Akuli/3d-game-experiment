@@ -7,7 +7,7 @@
 #include "camera.h"
 #include "log.h"
 #include "mathstuff.h"
-#include "rect.h"
+#include "rect3.h"
 
 static bool ellipsoid_intersects_plane(const struct Ellipsoid *el, struct Plane pl)
 {
@@ -168,7 +168,7 @@ SDL_Rect ellipsoid_bbox(const struct Ellipsoid *el, const struct Camera *cam)
 	return res;
 }
 
-struct Rect ellipsoid_get_sort_rect(const struct Ellipsoid *el, const struct Camera *cam)
+struct Rect3 ellipsoid_get_sort_rect(const struct Ellipsoid *el, const struct Camera *cam)
 {
 	Vec3 center2cam = vec3_sub(cam->location, el->center);
 	Vec3 dir = { center2cam.z, 0, -center2cam.x };
@@ -189,7 +189,7 @@ struct Rect ellipsoid_get_sort_rect(const struct Ellipsoid *el, const struct Cam
 		vec3_add_inplace(&botright, tilt);
 	}
 
-	return (struct Rect){.corners={ topleft, topright, botright, botleft }};
+	return (struct Rect3){.corners={ topleft, topright, botright, botleft }};
 }
 
 static void get_middle_circle_xzr_minmax(const struct Ellipsoid *el, const struct Camera *cam, int y, float *xzrmin, float *xzrmax)

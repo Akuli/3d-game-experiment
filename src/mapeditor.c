@@ -12,7 +12,7 @@
 #include "max.h"
 #include "misc.h"
 #include "player.h"
-#include "rect.h"
+#include "rect3.h"
 #include "showall.h"
 #include "textentry.h"
 #include "wall.h"
@@ -188,10 +188,10 @@ static bool mouse_is_on_ellipsoid(const struct Camera *cam, const struct Ellipso
 static bool mouse_is_on_wall(const struct Camera *cam, const struct Wall *w, int x, int y)
 {
 	int xmin, xmax;
-	struct RectCache rcache;
-	struct Rect r = wall_to_rect(w);
-	return rect_visible_fillcache(&r, cam, &rcache)
-		&& rect_xminmax(&rcache, y, &xmin, &xmax)
+	struct Rect3Cache rcache;
+	struct Rect3 r = wall_to_rect(w);
+	return rect3_visible_fillcache(&r, cam, &rcache)
+		&& rect3_xminmax(&rcache, y, &xmin, &xmax)
 		&& xmin <= x && x <= xmax;
 }
 
@@ -768,8 +768,8 @@ static void show_editor(struct MapEditor *ed)
 	show_all(ed->map->walls, ed->map->nwalls, highlight, els, nels, &ed->cam);
 	if (borderwall) {
 		wall_init(borderwall);
-		struct Rect r = wall_to_rect(borderwall);
-		rect_drawborder(&r, &ed->cam);
+		struct Rect3 r = wall_to_rect(borderwall);
+		rect3_drawborder(&r, &ed->cam);
 	}
 }
 
