@@ -841,6 +841,7 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 		},
 		.addenemybtn = {
 			.text = "Add\nenemy",
+			.imgpath = "assets/buttonpics/enemy.png",
 			.scancodes = { SDL_SCANCODE_E },
 			.destsurf = surf,
 			.center = {

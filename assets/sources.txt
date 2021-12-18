@@ -21,11 +21,13 @@ listbox/*.png:      see scripts/resize_images
 
 enemies/enemy1.png: I drew this myself with gimp
 guard.png: https://pixabay.com/photos/corrugated-sheet-metal-plate-2370925/
-arrows/huge-right.png: edited from https://commons.wikimedia.org/wiki/File:Arrow_Blue_Right_001.svg, see scripts/resize_images
-arrows/left.png:  see scripts/resize_images
-arrows/right.png: see scripts/resize_images
-arrows/up.png:    see scripts/resize_images
-arrows/down.png:  see scripts/resize_images
+buttonpics/huge-right.png: edited from https://commons.wikimedia.org/wiki/File:Arrow_Blue_Right_001.svg, see scripts/resize_images
+buttonpics/huge-enemy.png: screenshot from game
+buttonpics/left.png:  see scripts/resize_images
+buttonpics/right.png: see scripts/resize_images
+buttonpics/up.png:    see scripts/resize_images
+buttonpics/down.png:  see scripts/resize_images
+buttonpics/enemy.png: see scripts/resize_images
 
 default_maps/*.txt: I wrote myself
 DejaVuSans.ttf: /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf from Debian package fonts-dejavu-core, version 2.37-1
