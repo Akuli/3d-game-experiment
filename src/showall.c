@@ -73,7 +73,7 @@ static void add_ellipsoid_if_visible(struct ShowingState *st, int idx)
 
 static void add_wall_if_visible(struct ShowingState *st, int idx)
 {
-	struct Rect3 r = wall_to_rect(&st->walls[idx]);
+	struct Rect3 r = wall_to_rect3(&st->walls[idx]);
 	struct Rect3Cache rcache;
 	if (rect3_visible_fillcache(&r, st->cam, &rcache)) {
 		ID id = ID_NEW(ID_TYPE_WALL, idx);

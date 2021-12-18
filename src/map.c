@@ -302,7 +302,6 @@ void map_addwall(struct Map *map, int x, int z, enum WallDirection dir)
 	w->startx = x;
 	w->startz = z;
 	w->dir = dir;
-	wall_init(w);
 }
 
 void map_movecontent(struct Map *map, int dx, int dz)
@@ -310,7 +309,6 @@ void map_movecontent(struct Map *map, int dx, int dz)
 	for (int i = 0; i < map->nwalls; i++) {
 		map->walls[i].startx += dx;
 		map->walls[i].startz += dz;
-		wall_init(&map->walls[i]);
 	}
 	for (int i = 0; i < 2; i++) {
 		map->playerlocs[i].x += dx;
