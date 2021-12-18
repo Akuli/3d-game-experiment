@@ -32,10 +32,11 @@ static SDL_Surface *get_image(enum ButtonFlags f)
 	if (!image_surfaces[f]) {
 		char path[100] = "assets/buttons/";
 
-		switch((int)f & (BUTTON_TINY | BUTTON_SMALL | BUTTON_BIG)) {
+		switch((int)f & (BUTTON_TINY | BUTTON_SMALL | BUTTON_BIG | BUTTON_THICK)) {
 			case BUTTON_TINY: strcat(path, "tiny/"); break;
 			case BUTTON_SMALL: strcat(path, "small/"); break;
 			case BUTTON_BIG: strcat(path, "big/"); break;
+			case BUTTON_THICK: strcat(path, "thick/"); break;
 			case 0: strcat(path, "medium/"); break;
 			default: log_printf_abort("bad button size flags: %#x", f);
 		}
@@ -70,16 +71,18 @@ int button_height(enum ButtonFlags f) { return get_image(f)->h + 2*get_margin(f)
 void button_show(const struct Button *butt)
 {
 	blit_with_center(get_image(butt->flags), butt->destsurf, &butt->center);
-	int textx = butt->center.x, imgx = butt->center.x;
+	int textx, imgx;
+
+	if (butt->imgpath && butt->text) {
+		int left = butt->center.x - button_width(butt->flags)/2;
+		imgx = left + (int)(0.3f*button_width(butt->flags));
+		textx = left + (int)(0.7f*button_width(butt->flags));
+	} else {
+		textx = imgx = butt->center.x;
+	}
 
 	if (butt->imgpath) {
 		SDL_Surface *s = create_image_surface(butt->imgpath);
-		if (butt->text) {
-			imgx += button_width(butt->flags)/2;
-			imgx -= s->w/2;
-			imgx -= 20;  // try to keep inside button
-			textx -= s->w/2;
-		}
 		blit_with_center(s, butt->destsurf, &(SDL_Point){ imgx, butt->center.y });
 		free_image_surface(s);
 	}
@@ -89,6 +92,8 @@ void button_show(const struct Button *butt)
 		int fontsz;
 		if (butt->flags & BUTTON_TINY)
 			fontsz = 16;
+		else if (butt->flags & BUTTON_THICK)
+			fontsz = 40;
 		else
 			fontsz = button_height(butt->flags)/2;
 
@@ -113,7 +118,7 @@ void button_show(const struct Button *butt)
 			SDL_FreeSurface(s2);
 		} else {
 			SDL_Surface *s = create_text_surface(butt->text, black, fontsz);
-			blit_with_center(s, butt->destsurf, &butt->center);
+			blit_with_center(s, butt->destsurf, &(SDL_Point){ textx, butt->center.y });
 			SDL_FreeSurface(s);
 		}
 	}
@@ -146,13 +151,15 @@ void button_handle_event(const SDL_Event *evt, struct Button *butt)
 		(evt->type == SDL_KEYDOWN && scancode_matches_button(evt, butt))
 	) && !(butt->flags & BUTTON_PRESSED)) {
 		butt->flags |= BUTTON_PRESSED;
+		if (butt->flags & BUTTON_STAYPRESSED)
+			click = true;
 	} else if ((
 		(evt->type == SDL_MOUSEBUTTONUP && mouse_on_button(&evt->button, butt)) ||
 		(evt->type == SDL_KEYUP && scancode_matches_button(evt, butt))
-	) && (butt->flags & BUTTON_PRESSED)) {
+	) && (butt->flags & BUTTON_PRESSED) && !(butt->flags & BUTTON_STAYPRESSED)) {
 		butt->flags &= ~BUTTON_PRESSED;
 		click = true;
-	} else if (evt->type == SDL_MOUSEBUTTONUP && (butt->flags & BUTTON_PRESSED)) {
+	} else if (evt->type == SDL_MOUSEBUTTONUP && (butt->flags & BUTTON_PRESSED) && !(butt->flags & BUTTON_STAYPRESSED)) {
 		// if button has been pressed and mouse has been moved away, unpress button but don't click
 		butt->flags &= ~BUTTON_PRESSED;
 	} else {

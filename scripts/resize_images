@@ -8,11 +8,12 @@ convert="convert +set date:create +set date:modify"
 
 # Create assets/buttons/big and assets/buttons/small from assets/buttons/huge
 cd assets/buttons
-rm -rvf tiny small medium big
-mkdir -vp {tiny,small,medium,big}/{horizontal,vertical}
+rm -rvf tiny small medium big thick
+mkdir -vp {tiny,small,medium,big,thick}/{horizontal,vertical}
 
 for file in $(cd huge/narrow && echo */*.png); do
     $convert huge/narrow/$file -resize 55x55 small/$file
+    $convert huge/narrow/$file -resize 150x150 thick/$file
 done
 
 for file in $(cd huge/wide && echo */*.png); do
@@ -21,7 +22,7 @@ for file in $(cd huge/wide && echo */*.png); do
     $convert huge/wide/$file -resize 300x300 big/$file
 done
 
-for dir in {small,medium,big}/*; do
+for dir in {tiny,small,medium,big,thick}/*; do
     if [ -f $dir/normal.png ]; then
         # MS gives the darkest out of all i tried (MS, RMS, Average, Brightness, Lightness)
         $convert $dir/normal.png -grayscale MS $dir/disabled.png

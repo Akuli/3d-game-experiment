@@ -39,6 +39,10 @@ struct Selection {
 	} data;
 };
 
+struct ToolButtons {
+	struct Button wall, enemy;
+};
+
 struct MapEditor {
 	SDL_Window *wnd;
 	enum State state;
@@ -49,7 +53,7 @@ struct MapEditor {
 	float zoom;
 	int rotatedir;
 	struct Button donebtn;
-	struct Button addenemybtn;
+	struct ToolButtons toolbuttons;
 	struct Selection sel;
 	bool up, down, left, right;   // are arrow keys pressed
 	struct TextEntry nameentry;
@@ -588,7 +592,8 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 	float pi = acosf(-1);
 
 	button_handle_event(e, &ed->donebtn);
-	button_handle_event(e, &ed->addenemybtn);
+	button_handle_event(e, &ed->toolbuttons.wall);
+	button_handle_event(e, &ed->toolbuttons.enemy);
 
 	// If "Yes, delete this map" button was clicked and the map no longer
 	// exists, we must avoid handling the click event again
@@ -773,8 +778,10 @@ static void show_editor(struct MapEditor *ed)
 	}
 }
 
-static void add_enemy(void *editorptr)
+static void on_tool_changed(void *editorptr)
 {
+	log_printf("on_tool_changed");
+	return;
 	struct MapEditor *ed = editorptr;
 	int m = min(MAX_ENEMIES, ed->map->xsize*ed->map->zsize - 2);
 	SDL_assert(ed->map->nenemylocs < m);  // button should be disabled if not
@@ -805,12 +812,15 @@ static void add_enemy(void *editorptr)
 
 static void update_button_disableds(struct MapEditor *ed)
 {
+	// FIXME
+	/*
 	int m = min(MAX_ENEMIES, ed->map->xsize*ed->map->zsize - 2);
 	SDL_assert(ed->map->nenemylocs <= m);
 	if (ed->map->nenemylocs == m)
 		ed->addenemybtn.flags |= BUTTON_DISABLED;
 	else
 		ed->addenemybtn.flags &= ~BUTTON_DISABLED;
+	*/
 }
 
 static void on_done_clicked(void *data)
@@ -839,17 +849,33 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 			.onclick = on_done_clicked,
 			.onclickdata = ed,
 		},
-		.addenemybtn = {
-			.text = "Add\nenemy",
-			.imgpath = "assets/buttonpics/enemy.png",
-			.scancodes = { SDL_SCANCODE_E },
-			.destsurf = surf,
-			.center = {
-				CAMERA_SCREEN_WIDTH - button_width(0)/2,
-				button_height(0)/2
+		.toolbuttons = {
+			.wall = {
+				.text = "1",
+				.imgpath = "assets/buttonpics/enemy.png",  // TODO this sucks
+				.flags = BUTTON_THICK | BUTTON_STAYPRESSED,
+				.scancodes = { SDL_SCANCODE_W },
+				.destsurf = surf,
+				.center = {
+					CAMERA_SCREEN_WIDTH - button_width(BUTTON_THICK)/2,
+					button_height(BUTTON_THICK)/2
+				},
+				.onclick = on_tool_changed,
+				.onclickdata = ed,
 			},
-			.onclick = add_enemy,
-			.onclickdata = ed,
+			.enemy = {
+				.text = "57",
+				.imgpath = "assets/buttonpics/enemy.png",
+				.flags = BUTTON_THICK | BUTTON_STAYPRESSED,
+				.scancodes = { SDL_SCANCODE_E },
+				.destsurf = surf,
+				.center = {
+					CAMERA_SCREEN_WIDTH - button_width(BUTTON_THICK)/2,
+					button_height(BUTTON_THICK)*3/2
+				},
+				.onclick = on_tool_changed,
+				.onclickdata = ed,
+			},
 		},
 		.nameentry = {
 			.surf = surf,
@@ -921,7 +947,8 @@ static void show_and_rotate_map_editor(struct MapEditor *ed, bool canedit)
 		if (canedit) {
 			update_button_disableds(ed);
 			button_show(&ed->donebtn);
-			button_show(&ed->addenemybtn);
+			button_show(&ed->toolbuttons.wall);
+			button_show(&ed->toolbuttons.enemy);
 			ed->nameentry.redraw = true;  // because entire surface was cleared above
 		}
 	}
