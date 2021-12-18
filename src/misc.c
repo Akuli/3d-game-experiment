@@ -44,6 +44,10 @@ int normalize_scancode(int sc)
 		case SDL_SCANCODE_KP_0:
 			return SDL_SCANCODE_0;
 
+		// numpad enter --> usual enter
+		case SDL_SCANCODE_KP_ENTER:
+			return SDL_SCANCODE_RETURN;
+
 		// numpad arrow keys --> actual arrow keys
 		case SDL_SCANCODE_KP_4:
 			return SDL_SCANCODE_LEFT;
