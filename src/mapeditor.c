@@ -895,7 +895,7 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 		},
 		.toolbuttons = {
 			[TOOL_WALL] = {
-				.imgpath = "assets/buttonpics/enemy.png",  // TODO this sucks
+				.imgpath = "assets/buttonpics/wall.png",
 				.flags = bf | BUTTON_PRESSED,
 				.scancodes = { SDL_SCANCODE_W },
 				.destsurf = surf,
