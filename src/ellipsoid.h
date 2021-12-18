@@ -78,7 +78,7 @@ bool ellipsoid_is_visible(const struct Ellipsoid *el, const struct Camera *cam);
 // Assumes that ellipsoid_is_visible() has returned true.
 SDL_Rect ellipsoid_bbox(const struct Ellipsoid *el, const struct Camera *cam);
 
-// Returned rectangle is suitable for sorting ellipsoids and walls for display
+// Returned 3D rectangle is suitable for sorting ellipsoids and walls for display
 struct Rect ellipsoid_get_sort_rect(const struct Ellipsoid *el, const struct Camera *cam);
 
 // returns false if nothing visible for given y
