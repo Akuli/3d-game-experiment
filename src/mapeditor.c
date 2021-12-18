@@ -450,6 +450,29 @@ static void move_selected_ellipsoid(struct MapEditor *ed, int x, int z)
 	map_save(ed->map);
 }
 
+static struct MapCoords wall_to_square(const struct Map *map, const struct Wall *w, int dx, int dz)
+{
+	SDL_assert(abs(dx) <= 1 && abs(dz) <= 1);
+	struct MapCoords res = {
+		w->startx - (dx==-1 && w->dir==WALL_DIR_ZY),
+		w->startz - (dz==-1 && w->dir==WALL_DIR_XY),
+	};
+	clamp(&res.x, 0, map->xsize-1);
+	clamp(&res.z, 0, map->zsize-1);
+	return res;
+}
+
+static struct Wall square_to_wall(struct MapCoords square, int dx, int dz)
+{
+	SDL_assert(abs(dx) <= 1 && abs(dz) <= 1);
+	SDL_assert((dx || dz) && !(dx && dz));
+	return (struct Wall){
+		.startx = square.x + max(0,dx),
+		.startz = square.z + max(0,dz),
+		.dir = dx ? WALL_DIR_ZY : WALL_DIR_XY,
+	};
+}
+
 static void on_arrow_key(struct MapEditor *ed, float angle, bool oppositespressed)
 {
 	float pi = acosf(-1);
@@ -465,45 +488,60 @@ static void on_arrow_key(struct MapEditor *ed, float angle, bool oppositespresse
 	}
 
 	switch(ed->sel.mode) {
-	case SEL_NONE:
-		ed->sel = (struct Selection){ .mode = SEL_WALL, .data = { .wall = {0}}};
-		// fall through
-
-	case SEL_WALL:
-	{
-		// FIXME
-		//struct Wall old = ed->sel.data.wall;
-		//move_or_select_wall_with_keyboard(ed, &ed->sel.data.wall, dx, dz, oppositespressed);
-		//select_ellipsoid_between_walls_if_any(ed, &old, &ed->sel.data.wall);
-		break;
-	}
-
-	case SEL_MVWALL:
-	{
-		struct Wall w = *ed->sel.data.mvwall;
-		move_or_select_wall_with_keyboard(ed, &w, dx, dz, oppositespressed);
-		set_location_of_moving_wall(ed, w);
-		break;
-	}
-
-	case SEL_SQUARE:
-	{
-		ed->sel.data.square.x += dx;
-		ed->sel.data.square.z += dz;
-		clamp(&ed->sel.data.square.x, 0, ed->map->xsize-1);
-		clamp(&ed->sel.data.square.z, 0, ed->map->zsize-1);
-		break;
-	}
-
-	case SEL_MVELLIPSOID:
-	{
-		struct MapCoords old = *ed->sel.data.eledit->loc;
-		move_selected_ellipsoid(ed, old.x + dx, old.z + dz);
-		break;
-	}
-
 	case SEL_RESIZE:
 		do_resize(ed, ed->sel.data.resize.mainwall.startx + dx, ed->sel.data.resize.mainwall.startz + dz);
+		break;
+	case SEL_MVELLIPSOID:
+		ed->sel.data.eledit->loc->x += dx;
+		ed->sel.data.eledit->loc->z += dz;
+		clamp(&ed->sel.data.eledit->loc->x, 0, ed->map->xsize-1);
+		clamp(&ed->sel.data.eledit->loc->z, 0, ed->map->zsize-1);
+		break;
+	case SEL_MVWALL:
+		ed->sel.data.mvwall->startx += dx;
+		ed->sel.data.mvwall->startz += dz;
+		keep_wall_within_map(ed, ed->sel.data.mvwall, false);
+		break;
+	case SEL_SQUARE:
+		switch(ed->tool) {
+		case TOOL_ENEMY:
+			ed->sel.data.square.x += dx;
+			ed->sel.data.square.z += dz;
+			clamp(&ed->sel.data.square.x, 0, ed->map->xsize-1);
+			clamp(&ed->sel.data.square.z, 0, ed->map->zsize-1);
+			break;
+		case TOOL_WALL:
+			ed->sel = (struct Selection){
+				.mode = SEL_WALL,
+				.data.wall = square_to_wall(ed->sel.data.square, dx, dz),
+			};
+			break;
+		}
+		break;
+	case SEL_WALL:
+		switch(ed->tool) {
+		case TOOL_ENEMY:
+			log_printf("startx=%d startz=%d dir=%d", ed->sel.data.wall.startx, ed->sel.data.wall.startz, ed->sel.data.wall.dir);
+			ed->sel = (struct Selection){
+				.mode = SEL_SQUARE,
+				.data.square = wall_to_square(ed->map, &ed->sel.data.wall, dx, dz),
+			};
+			log_printf("dx=%d dz=%d sqx=%d sqz=%d", dx,dz, ed->sel.data.square.x, ed->sel.data.square.z);
+			break;
+		case TOOL_WALL:
+			move_or_select_wall_with_keyboard(ed, &ed->sel.data.wall, dx, dz, oppositespressed);
+			break;
+		}
+		break;
+	case SEL_NONE:
+		switch(ed->tool) {
+		case TOOL_ENEMY:
+			ed->sel = (struct Selection){ .mode = SEL_SQUARE, .data.square = {0} };
+			break;
+		case TOOL_WALL:
+			ed->sel = (struct Selection){ .mode = SEL_WALL, .data.wall = {0} };
+			break;
+		}
 		break;
 	}
 }
@@ -518,13 +556,8 @@ static void delete_selected(struct MapEditor *ed)
 			// Watch out for ub, comparing pointers to different arrays is undefined
 			if (ee && ee != &ed->playeredits[0] && ee != &ed->playeredits[1]) {
 				SDL_assert(&ed->enemyedits[0] <= ee && ee < &ed->enemyedits[ed->map->nenemylocs]);
-
-				// Once ellipsoid location is deleted, must select something else
-				struct Wall w = { .startx = ee->loc->x, .startz = ee->loc->z };
-
 				*ee->loc = ed->map->enemylocs[--ed->map->nenemylocs];
 				log_printf("Deleted enemy, now there are %d enemies", ed->map->nenemylocs);
-				ed->sel = (struct Selection){ .mode = SEL_WALL, .data = { .wall = w }};
 				map_save(ed->map);
 			}
 			break;
