@@ -496,12 +496,10 @@ static void on_arrow_key(struct MapEditor *ed, float angle, bool oppositespresse
 	case SEL_WALL:
 		switch(ed->tool) {
 		case TOOL_ENEMY:
-			log_printf("startx=%d startz=%d dir=%d", ed->sel.data.wall.startx, ed->sel.data.wall.startz, ed->sel.data.wall.dir);
 			ed->sel = (struct Selection){
 				.mode = SEL_SQUARE,
 				.data.square = wall_to_square(ed->map, &ed->sel.data.wall, dx, dz),
 			};
-			log_printf("dx=%d dz=%d sqx=%d sqz=%d", dx,dz, ed->sel.data.square.x, ed->sel.data.square.z);
 			break;
 		case TOOL_WALL:
 			move_or_select_wall_with_keyboard(ed, &ed->sel.data.wall, dx, dz, oppositespressed);
