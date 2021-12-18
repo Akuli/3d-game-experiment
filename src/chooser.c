@@ -41,12 +41,12 @@ static void update_player_name_display(struct ChooserPlayerStuff *plrch)
 	}
 
 	char name[100];
-	misc_basename_without_extension(plrch->epic->path, name, sizeof name);
+	basename_without_extension(plrch->epic->path, name, sizeof name);
 
-	SDL_Surface *s = misc_create_text_surface(name, white_color, FONT_SIZE);
+	SDL_Surface *s = create_text_surface(name, white_color, FONT_SIZE);
 	plrch->namew = s->w;
 	plrch->nameh = s->h;
-	misc_blit_with_center(s, winsurf, &center);
+	blit_with_center(s, winsurf, &center);
 	SDL_FreeSurface(s);
 }
 
@@ -115,7 +115,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 		},
 		.cam = {
 			.screencentery = -preview.h / 10,
-			.surface = misc_create_cropped_surface(ch->winsurf, preview),
+			.surface = create_cropped_surface(ch->winsurf, preview),
 			.angle = -(2*pi)/player_nepics * idx,
 		},
 	};
@@ -189,8 +189,8 @@ static void on_copy_clicked(void *chptr)
 	mapeditor_setmap(ch->editor, &ch->mapch.maps[ch->mapch.listbox.selectidx]);
 	ch->mapch.listbox.redraw = true;
 }
-static void on_edit_clicked(void *chptr) { ((struct Chooser *)chptr)->state = MISC_STATE_MAPEDITOR; }
-static void on_delete_clicked(void *chptr) { ((struct Chooser *)chptr)->state = MISC_STATE_DELETEMAP; }
+static void on_edit_clicked(void *chptr) { ((struct Chooser *)chptr)->state = STATE_MAPEDITOR; }
+static void on_delete_clicked(void *chptr) { ((struct Chooser *)chptr)->state = STATE_DELETEMAP; }
 
 static const struct ListboxEntry *get_listbox_entry(void *chptr, int i)
 {
@@ -260,8 +260,8 @@ static void handle_event(const SDL_Event *evt, struct Chooser *ch)
 		mapeditor_setmap(ch->editor, &ch->mapch.maps[ch->mapch.listbox.selectidx]);
 }
 
-static void on_play_clicked(void *ptr) { *(enum MiscState *)ptr = MISC_STATE_PLAY; }
-static void on_quit_clicked(void *ptr) { *(enum MiscState *)ptr = MISC_STATE_QUIT; }
+static void on_play_clicked(void *ptr) { *(enum State *)ptr = STATE_PLAY; }
+static void on_quit_clicked(void *ptr) { *(enum State *)ptr = STATE_QUIT; }
 
 void chooser_init(struct Chooser *ch, SDL_Window *win)
 {
@@ -322,7 +322,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 	ch->mapch.maps = map_list(&ch->mapch.nmaps);
 	listbox_init(&ch->mapch.listbox);
 
-	ch->editorsurf = misc_create_cropped_surface(winsurf, (SDL_Rect){
+	ch->editorsurf = create_cropped_surface(winsurf, (SDL_Rect){
 		.x = LISTBOX_WIDTH,
 		.y = PLAYER_CHOOSER_HEIGHT,
 		.w = CAMERA_SCREEN_WIDTH - LISTBOX_WIDTH,
@@ -345,12 +345,12 @@ void chooser_destroy(const struct Chooser *ch)
 
 static void show_title_text(SDL_Surface *winsurf)
 {
-	SDL_Surface *s = misc_create_text_surface("Choose players and map:", white_color, FONT_SIZE);
-	misc_blit_with_center(s, winsurf, &(SDL_Point){ winsurf->w/2, FONT_SIZE/2 });
+	SDL_Surface *s = create_text_surface("Choose players and map:", white_color, FONT_SIZE);
+	blit_with_center(s, winsurf, &(SDL_Point){ winsurf->w/2, FONT_SIZE/2 });
 	SDL_FreeSurface(s);
 }
 
-enum MiscState chooser_run(struct Chooser *ch)
+enum State chooser_run(struct Chooser *ch)
 {
 	// Maps can be deleted while chooser not running
 	clamp(&ch->mapch.listbox.selectidx, 0, ch->mapch.nmaps-1);
@@ -364,18 +364,18 @@ enum MiscState chooser_run(struct Chooser *ch)
 	show_player_chooser_in_beginning(&ch->playerch[1]);
 	show_title_text(ch->winsurf);
 
-	ch->state = MISC_STATE_CHOOSER;
+	ch->state = STATE_CHOOSER;
 	struct LoopTimer lt = {0};
 
 	while(1) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
 			if (e.type == SDL_QUIT)
-				return MISC_STATE_QUIT;
+				return STATE_QUIT;
 			handle_event(&e, ch);
 		}
 
-		if (ch->state != MISC_STATE_CHOOSER)
+		if (ch->state != STATE_CHOOSER)
 			return ch->state;
 
 		rotate_player_ellipsoids(ch->ellipsoids);

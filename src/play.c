@@ -121,17 +121,17 @@ static void add_guards_and_enemies_as_needed(struct GameState *gs)
 	}
 }
 
-static enum MiscState handle_event(SDL_Event event, struct GameState *gs, SDL_Window *wnd)
+static enum State handle_event(SDL_Event event, struct GameState *gs, SDL_Window *wnd)
 {
 	bool down = (event.type == SDL_KEYDOWN);
 
 	switch(event.type) {
 	case SDL_QUIT:
-		return MISC_STATE_QUIT;
+		return STATE_QUIT;
 
 	case SDL_KEYDOWN:
 	case SDL_KEYUP:
-		switch(misc_handle_scancode(event.key.keysym.scancode)) {
+		switch(normalize_scancode(event.key.keysym.scancode)) {
 			// many keyboards have numpad with zero right next to the "→" arrow, like "f" is next to "d"
 			case SDL_SCANCODE_F:
 				if (down) player_drop_guard(&gs->players[0], gs->unpicked_guards, &gs->n_unpicked_guards);
@@ -155,10 +155,10 @@ static enum MiscState handle_event(SDL_Event event, struct GameState *gs, SDL_Wi
 			default:
 				log_printf("unknown key press/release scancode %d", event.key.keysym.scancode);
 		}
-		return MISC_STATE_PLAY;
+		return STATE_PLAY;
 
 	default:
-		return MISC_STATE_PLAY;
+		return STATE_PLAY;
 	}
 }
 
@@ -250,7 +250,7 @@ static int get_all_ellipsoids(
 	return ptr - result;
 }
 
-enum MiscState play_the_game(
+enum State play_the_game(
 	SDL_Window *wnd,
 	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic,
 	const struct EllipsoidPic **winnerpic,
@@ -274,7 +274,7 @@ enum MiscState play_the_game(
 				},
 				.cam = {
 					.screencentery = winsurf->h/4,
-					.surface = misc_create_cropped_surface(
+					.surface = create_cropped_surface(
 						winsurf, (SDL_Rect){ 0, 0, winsurf->w/2, winsurf->h }
 					),
 				},
@@ -287,7 +287,7 @@ enum MiscState play_the_game(
 				},
 				.cam = {
 					.screencentery = winsurf->h/4,
-					.surface = misc_create_cropped_surface(
+					.surface = create_cropped_surface(
 						winsurf, (SDL_Rect){ winsurf->w/2, 0, winsurf->w/2, winsurf->h }
 					),
 				},
@@ -298,13 +298,13 @@ enum MiscState play_the_game(
 		add_enemy(&gs, &map->enemylocs[i]);
 
 	struct LoopTimer lt = {0};
-	enum MiscState ret;
+	enum State ret;
 
 	while(gs.players[0].nguards >= 0 && gs.players[1].nguards >= 0) {
 		SDL_Event e;
 		while(SDL_PollEvent(&e)) {
 			ret = handle_event(e, &gs, wnd);
-			if (ret != MISC_STATE_PLAY)
+			if (ret != STATE_PLAY)
 				goto out;
 		}
 
@@ -334,14 +334,14 @@ enum MiscState play_the_game(
 
 		char s[100];
 		sprintf(s, "%d enemies, %d unpicked guards", gs.nenemies, gs.n_unpicked_guards);
-		SDL_Surface *surf = misc_create_text_surface(s, (SDL_Color){0xff,0xff,0xff}, 20);
+		SDL_Surface *surf = create_text_surface(s, (SDL_Color){0xff,0xff,0xff}, 20);
 		SDL_BlitSurface(surf, NULL, winsurf, &(SDL_Rect){20,10});
 		SDL_FreeSurface(surf);
 
 		SDL_UpdateWindowSurface(wnd);
 		looptimer_wait(&lt);
 	}
-	ret = MISC_STATE_GAMEOVER;
+	ret = STATE_GAMEOVER;
 
 	if (gs.players[0].nguards >= 0)
 		*winnerpic = plr0pic;

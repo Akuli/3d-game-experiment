@@ -23,10 +23,10 @@ extern inline void clamp(int *val, int lo, int hi);
 extern inline void clamp_float(float *val, float lo, float hi);
 
 
-void misc_mkdir(const char *path)
+void my_mkdir(const char *path)
 {
 #ifdef _WIN32
-	int ret = _wmkdir(misc_utf8_to_windows(path));    // sets errno
+	int ret = _wmkdir(utf8_to_windows(path));    // sets errno
 #else
 	// python uses 777 as default perms, see help(os.mkdir)
 	// It's ANDed with current umask
@@ -37,7 +37,7 @@ void misc_mkdir(const char *path)
 		log_printf_abort("creating directory '%s' failed: %s", path, strerror(errno));
 }
 
-int misc_handle_scancode(int sc)
+int normalize_scancode(int sc)
 {
 	switch(sc) {
 		// numpad 0 --> usual 0
@@ -60,7 +60,7 @@ int misc_handle_scancode(int sc)
 	}
 }
 
-void misc_blit_with_center(SDL_Surface *src, SDL_Surface *dst, const SDL_Point *center)
+void blit_with_center(SDL_Surface *src, SDL_Surface *dst, const SDL_Point *center)
 {
 	int cx, cy;
 	if (center) {
@@ -85,7 +85,7 @@ static void close_loaded_fonts(void)
 	}
 }
 
-TTF_Font *misc_get_font(int fontsz)
+TTF_Font *get_font(int fontsz)
 {
 	int n = sizeof(loaded_fonts)/sizeof(loaded_fonts[0]);
 	SDL_assert(0 < fontsz && fontsz < n);
@@ -106,19 +106,19 @@ TTF_Font *misc_get_font(int fontsz)
 	return loaded_fonts[fontsz];
 }
 
-SDL_Surface *misc_create_text_surface(const char *text, SDL_Color col, int fontsz)
+SDL_Surface *create_text_surface(const char *text, SDL_Color col, int fontsz)
 {
 	// It fails with zero length text, lol
 	if (!text[0])
 		text = " ";
 
-	SDL_Surface *s = TTF_RenderUTF8_Blended(misc_get_font(fontsz), text, col);
+	SDL_Surface *s = TTF_RenderUTF8_Blended(get_font(fontsz), text, col);
 	if (!s)
 		log_printf_abort("TTF_RenderUTF8_Blended failed: %s", TTF_GetError());
 	return s;
 }
 
-SDL_Surface *misc_create_image_surface(const char *path)
+SDL_Surface *create_image_surface(const char *path)
 {
 	int fmt, w, h;
 	unsigned char *data = stbi_load(path, &w, &h, &fmt, 4);
@@ -134,13 +134,13 @@ SDL_Surface *misc_create_image_surface(const char *path)
 	return s;
 }
 
-void misc_free_image_surface(SDL_Surface *s)
+void free_image_surface(SDL_Surface *s)
 {
 	stbi_image_free(s->pixels);
 	SDL_FreeSurface(s);
 }
 
-SDL_Surface *misc_create_cropped_surface(SDL_Surface *surf, SDL_Rect r)
+SDL_Surface *create_cropped_surface(SDL_Surface *surf, SDL_Rect r)
 {
 	SDL_assert(surf->format->BitsPerPixel == 8*surf->format->BytesPerPixel);
 	SDL_Surface *res = SDL_CreateRGBSurfaceFrom(
@@ -154,9 +154,9 @@ SDL_Surface *misc_create_cropped_surface(SDL_Surface *surf, SDL_Rect r)
 	return res;
 }
 
-extern inline uint32_t misc_rgb_average(uint32_t a, uint32_t b);
+extern inline uint32_t rgb_average(uint32_t a, uint32_t b);
 
-void misc_basename_without_extension(const char *path, char *name, int sizeofname)
+void basename_without_extension(const char *path, char *name, int sizeofname)
 {
 	if (strrchr(path, '/'))
 		path = strrchr(path, '/') + 1;
@@ -173,7 +173,7 @@ void misc_basename_without_extension(const char *path, char *name, int sizeofnam
 // TODO: most of my code uses strerror(errno) for windows errors which is wrong?
 
 #ifdef _WIN32
-const char *misc_windows_to_utf8(const wchar_t *winstr)
+const char *windows_to_utf8(const wchar_t *winstr)
 {
 	static char utf8[1024];
 	int n = WideCharToMultiByte(
@@ -189,7 +189,7 @@ const char *misc_windows_to_utf8(const wchar_t *winstr)
 	return utf8;
 }
 
-const wchar_t *misc_utf8_to_windows(const char *utf8)
+const wchar_t *utf8_to_windows(const char *utf8)
 {
 	static wchar_t winstr[1024];
 	int n = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, winstr, sizeof(winstr)/sizeof(winstr[0]) - 1);

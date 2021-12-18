@@ -249,7 +249,7 @@ static void read_map_from_file(struct Map *map, const char *path, bool custom)
 	if (custom) {
 		// Find 12345 from custom_maps/12345-foo-bar.txt
 		char digits[10];
-		misc_basename_without_extension(map->path, digits, sizeof digits);
+		basename_without_extension(map->path, digits, sizeof digits);
 		int n = atoi(digits);
 		SDL_assert(n >= 0);
 		map->num = n;
@@ -562,7 +562,7 @@ void map_save(struct Map *map)
 
 	log_printf("Writing to \"%s\"", map->path);
 	SDL_assert(strstr(map->path, "custom_maps") == map->path);  // map->path is like "custom_maps/00006-foo-bar.txt"
-	misc_mkdir("custom_maps");
+	my_mkdir("custom_maps");
 	FILE *f = fopen(map->path, "w");
 	if (!f)
 		log_printf_abort("opening \"%s\" failed: %s", map->path, strerror(errno));

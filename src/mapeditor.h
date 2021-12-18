@@ -19,6 +19,6 @@ void mapeditor_setmap(struct MapEditor *ed, struct Map *map);
 void mapeditor_displayonly_eachframe(struct MapEditor *ed);
 
 // Surface passed to mapeditor_new() must be SDL_GetWindowSurface(wnd)
-enum MiscState mapeditor_run(struct MapEditor *ed, SDL_Window *wnd);
+enum State mapeditor_run(struct MapEditor *ed, SDL_Window *wnd);
 
 #endif   // MAPEDITOR_H

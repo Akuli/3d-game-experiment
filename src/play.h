@@ -8,8 +8,8 @@
 #include "misc.h"
 #include "map.h"
 
-// sets winnerpic when returns MISC_STATE_GAMEOVER
-enum MiscState play_the_game(
+// sets winnerpic when returns STATE_GAMEOVER
+enum State play_the_game(
 	SDL_Window *wnd,
 	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic,
 	const struct EllipsoidPic **winnerpic,

@@ -68,7 +68,7 @@ int glob(const char *pat, int flags, int (*errfunc)(const char *, int), glob_t *
 	const char *lastslash = find_last_slash(pat);
 
 	WIN32_FIND_DATAW dat;
-	HANDLE hnd = FindFirstFileW(misc_utf8_to_windows(pat), &dat);
+	HANDLE hnd = FindFirstFileW(utf8_to_windows(pat), &dat);
 	if (hnd == INVALID_HANDLE_VALUE)
 		return GLOB_NOMATCH;
 
@@ -86,9 +86,9 @@ int glob(const char *pat, int flags, int (*errfunc)(const char *, int), glob_t *
 		}
 
 		if (lastslash == NULL)
-			snprintf(*buf, sizeof(*buf), "%s", misc_windows_to_utf8(dat.cFileName));
+			snprintf(*buf, sizeof(*buf), "%s", windows_to_utf8(dat.cFileName));
 		else
-			snprintf(*buf, sizeof(*buf), "%.*s/%s", (int)(lastslash - pat), pat, misc_windows_to_utf8(dat.cFileName));
+			snprintf(*buf, sizeof(*buf), "%.*s/%s", (int)(lastslash - pat), pat, windows_to_utf8(dat.cFileName));
 	} while (FindNextFileW(hnd, &dat));
 	FindClose(hnd);
 

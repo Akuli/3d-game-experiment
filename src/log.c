@@ -23,7 +23,7 @@ static FILE *logfile = NULL;
 static void close_log_file(void) { fclose(logfile); }
 static void open_log_file(void)
 {
-	misc_mkdir("logs");
+	my_mkdir("logs");
 	char fname[100] = {0};
 	strftime(
 		fname, sizeof(fname)-1,    // null-terminate even if strftime fails
@@ -118,7 +118,7 @@ static void log_computer_name(void)
 	wchar_t buf[1024] = {0};
 	DWORD sz = sizeof(buf)/sizeof(buf[0]) - 1;
 	if (GetComputerNameW(buf, &sz))
-		log_printf("computer name: %s", misc_windows_to_utf8(buf));
+		log_printf("computer name: %s", windows_to_utf8(buf));
 	else
 		log_printf("error when getting computer name: %s", strerror(errno));
 #else

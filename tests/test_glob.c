@@ -6,9 +6,9 @@
 
 void test_glob_success(void)
 {
-	misc_mkdir("generated");
-	misc_mkdir("generated/testdata");
-	misc_mkdir("generated/testdata/subdir");
+	my_mkdir("generated");
+	my_mkdir("generated/testdata");
+	my_mkdir("generated/testdata/subdir");
 
 	fclose(fopen("generated/testdata/x.py", "w"));
 	fclose(fopen("generated/testdata/a.txt", "w"));

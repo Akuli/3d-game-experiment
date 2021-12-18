@@ -17,7 +17,7 @@ static void free_image_surfaces(void)
 {
 	for (int i = 0; i < sizeof(image_surfaces)/sizeof(image_surfaces[0]); i++) {
 		if (image_surfaces[i])
-			misc_free_image_surface(image_surfaces[i]);
+			free_image_surface(image_surfaces[i]);
 	}
 }
 
@@ -53,7 +53,7 @@ static SDL_Surface *get_image(enum ButtonFlags f)
 		else
 			strcat(path, "normal.png");
 
-		image_surfaces[f] = misc_create_image_surface(path);
+		image_surfaces[f] = create_image_surface(path);
 	}
 	return image_surfaces[f];
 }
@@ -69,11 +69,11 @@ int button_height(enum ButtonFlags f) { return get_image(f)->h + 2*get_margin(f)
 
 void button_show(const struct Button *butt)
 {
-	misc_blit_with_center(get_image(butt->flags), butt->destsurf, &butt->center);
+	blit_with_center(get_image(butt->flags), butt->destsurf, &butt->center);
 	if (butt->imgpath) {
-		SDL_Surface *s = misc_create_image_surface(butt->imgpath);
-		misc_blit_with_center(s, butt->destsurf, &butt->center);
-		misc_free_image_surface(s);
+		SDL_Surface *s = create_image_surface(butt->imgpath);
+		blit_with_center(s, butt->destsurf, &butt->center);
+		free_image_surface(s);
 	}
 
 	if (butt->text) {
@@ -93,19 +93,19 @@ void button_show(const struct Button *butt)
 			const char *line2 = newln + 1;
 
 			fontsz = (int)(fontsz * 0.65f);
-			SDL_Surface *s1 = misc_create_text_surface(line1, black, fontsz);
-			SDL_Surface *s2 = misc_create_text_surface(line2, black, fontsz);
+			SDL_Surface *s1 = create_text_surface(line1, black, fontsz);
+			SDL_Surface *s2 = create_text_surface(line2, black, fontsz);
 
-			misc_blit_with_center(
+			blit_with_center(
 				s1, butt->destsurf, &(SDL_Point){ butt->center.x, butt->center.y - s1->h/2 });
-			misc_blit_with_center(
+			blit_with_center(
 				s2, butt->destsurf, &(SDL_Point){ butt->center.x, butt->center.y + s2->h/2 });
 
 			SDL_FreeSurface(s1);
 			SDL_FreeSurface(s2);
 		} else {
-			SDL_Surface *s = misc_create_text_surface(butt->text, black, fontsz);
-			misc_blit_with_center(s, butt->destsurf, &butt->center);
+			SDL_Surface *s = create_text_surface(butt->text, black, fontsz);
+			blit_with_center(s, butt->destsurf, &butt->center);
 			SDL_FreeSurface(s);
 		}
 	}
@@ -119,7 +119,7 @@ static bool mouse_on_button(const SDL_MouseButtonEvent *me, const struct Button 
 
 static bool scancode_matches_button(const SDL_Event *evt, const struct Button *butt)
 {
-	int sc = misc_handle_scancode(evt->key.keysym.scancode);
+	int sc = normalize_scancode(evt->key.keysym.scancode);
 	for (int i = 0; i < sizeof(butt->scancodes)/sizeof(butt->scancodes[0]); i++) {
 		if (butt->scancodes[i] != 0 && butt->scancodes[i] == sc)
 			return true;
