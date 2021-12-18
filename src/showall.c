@@ -6,8 +6,8 @@
 #include "ellipsoid.h"
 #include "interval.h"
 #include "log.h"
-#include "linalg.h"
 #include "max.h"
+#include "misc.h"
 #include "rect3.h"
 #include "wall.h"
 

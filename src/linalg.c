@@ -6,9 +6,6 @@ Non-static inline functions are weird in c. You need to put definition to h file
 and declaration to c file.
 */
 
-extern inline void clamp(int *val, int lo, int hi);
-extern inline void clamp_float(float *val, float lo, float hi);
-
 extern inline Vec3 vec3_add(Vec3 v, Vec3 w);
 extern inline Vec3 vec3_sub(Vec3 v, Vec3 w);
 extern inline void vec3_add_inplace(Vec3 *v, Vec3 w);

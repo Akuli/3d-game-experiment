@@ -5,8 +5,9 @@
 #include "camera.h"
 #include "ellipsoid.h"
 #include "linalg.h"
-#include "max.h"
 #include "log.h"
+#include "max.h"
+#include "misc.h"
 
 #define YRADIUS_BASIC 1.0f
 #define SPACING_BASIC 0.2f

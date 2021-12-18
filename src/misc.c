@@ -19,6 +19,9 @@
 #include <SDL2/SDL_ttf.h>
 #include "../stb/stb_image.h"
 
+extern inline void clamp(int *val, int lo, int hi);
+extern inline void clamp_float(float *val, float lo, float hi);
+
 
 void misc_mkdir(const char *path)
 {

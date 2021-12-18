@@ -5,8 +5,9 @@
 #include <string.h>
 #include <SDL2/SDL.h>
 #include "camera.h"
-#include "log.h"
 #include "linalg.h"
+#include "log.h"
+#include "misc.h"
 #include "rect3.h"
 
 static bool ellipsoid_intersects_plane(const struct Ellipsoid *el, struct Plane pl)
