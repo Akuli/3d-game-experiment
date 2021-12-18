@@ -22,7 +22,17 @@ struct EllipsoidEdit {
 	struct MapCoords *loc;
 };
 
-enum SelectMode { SEL_NONE, SEL_RESIZE, SEL_WALL, SEL_MVWALL, SEL_SQUARE, SEL_MVELLIPSOID };
+enum Tool { TOOL_WALL, TOOL_ENEMY };
+#define TOOL_COUNT 2
+
+enum SelectMode {
+	SEL_NONE,         // any tool
+	SEL_RESIZE,       // TOOL_WALL
+	SEL_WALL,         // TOOL_WALL
+	SEL_MVWALL,       // TOOL_WALL
+	SEL_SQUARE,       // TOOL_ENEMY
+	SEL_MVELLIPSOID,  // TOOL_ENEMY
+};
 struct ResizeData {
 	struct Wall *walls[MAX_MAPSIZE];
 	int nwalls;
@@ -39,9 +49,6 @@ struct Selection {
 		struct ResizeData resize;      // SEL_RESIZE
 	} data;
 };
-
-enum Tool { TOOL_WALL, TOOL_ENEMY };
-#define TOOL_COUNT 2
 
 struct MapEditor {
 	SDL_Window *wnd;
@@ -270,43 +277,49 @@ static bool mouse_location_to_wall(const struct MapEditor *ed, struct Wall *dst,
 
 static void select_by_mouse_coords(struct MapEditor *ed, int mousex, int mousey)
 {
-	float smallestd = HUGE_VALF;
-	struct EllipsoidEdit *nearest = NULL;
+	switch(ed->tool) {
+	case TOOL_ENEMY:
+	{
+		float smallestd = HUGE_VALF;
+		struct EllipsoidEdit *selected = NULL;
 
-	// Find ellipsoid visible with no walls between having smallest distance to camera
-	for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); ) {
-		if (mouse_is_on_ellipsoid_with_no_walls_between(ed, &ee->el, mousex, mousey)) {
-			float d = vec3_lengthSQUARED(vec3_sub(ee->el.center, ed->cam.location));
-			if (d < smallestd) {
-				nearest = ee;
-				smallestd = d;
+		// Find ellipsoid visible with no walls between having smallest distance to camera
+		for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); ) {
+			if (mouse_is_on_ellipsoid_with_no_walls_between(ed, &ee->el, mousex, mousey)) {
+				float d = vec3_lengthSQUARED(vec3_sub(ee->el.center, ed->cam.location));
+				if (d < smallestd) {
+					selected = ee;
+					smallestd = d;
+				}
 			}
 		}
-	}
-	if (nearest) {
-		ed->sel = (struct Selection){ .mode = SEL_SQUARE, .data.square = *nearest->loc };
-		return;
+		if (selected) {
+			ed->sel = (struct Selection){ .mode = SEL_SQUARE, .data.square = *selected->loc };
+			return;
+		}
+
+		// Project mouse ray to ground and select matching square
+		float x, z;
+		if (project_mouse_to_horizontal_plane(ed, 0, mousex, mousey, &x, &z)
+			&& 0 <= (int)x && (int)x < ed->map->xsize
+			&& 0 <= (int)z && (int)z < ed->map->zsize)
+		{
+			ed->sel = (struct Selection){ .mode = SEL_SQUARE, .data.square = { (int)x, (int)z }};
+			return;
+		}
+		break;
 	}
 
-	// Can we select a wall? When wall tool is not turned on, only select existing walls.
-	struct Wall w;
-	if (mouse_location_to_wall(ed, &w, mousex, mousey)
-		&& wall_is_within_map(&w, ed->map)
-		&& (ed->tool == TOOL_WALL || find_wall_from_map(&w, ed->map)))
+	case TOOL_WALL:
 	{
-		ed->sel = (struct Selection){ .mode = SEL_WALL, .data.wall = w };
-		return;
+		struct Wall w;
+		if (mouse_location_to_wall(ed, &w, mousex, mousey) && wall_is_within_map(&w, ed->map))
+		{
+			ed->sel = (struct Selection){ .mode = SEL_WALL, .data.wall = w };
+			return;
+		}
+		break;
 	}
-
-	// Can we select a square?
-	float x, z;
-	if (ed->tool == TOOL_ENEMY
-		&& project_mouse_to_horizontal_plane(ed, 0, mousex, mousey, &x, &z)
-		&& 0 <= (int)x && (int)x < ed->map->xsize
-		&& 0 <= (int)z && (int)z < ed->map->zsize)
-	{
-		ed->sel = (struct Selection){ .mode = SEL_SQUARE, .data.square = { (int)x, (int)z }};
-		return;
 	}
 
 	ed->sel = (struct Selection){ .mode = SEL_NONE };
