@@ -838,19 +838,6 @@ static void show_editor(struct MapEditor *ed)
 	}
 }
 
-static void update_buttons(struct MapEditor *ed)
-{
-	if (can_add_enemy(ed))
-		ed->toolbuttons[TOOL_ENEMY].flags &= ~BUTTON_DISABLED;
-	else
-		ed->toolbuttons[TOOL_ENEMY].flags |= BUTTON_DISABLED;
-
-	if (can_add_wall(ed))
-		ed->toolbuttons[TOOL_WALL].flags &= ~BUTTON_DISABLED;
-	else
-		ed->toolbuttons[TOOL_WALL].flags |= BUTTON_DISABLED;
-}
-
 static void on_tool_changed(struct MapEditor *ed, enum Tool tool)
 {
 	log_printf("Changing tool to %d", tool);
@@ -987,7 +974,6 @@ static void show_and_rotate_map_editor(struct MapEditor *ed, bool canedit)
 		SDL_FillRect(ed->cam.surface, NULL, 0);
 		show_editor(ed);
 		if (canedit) {
-			update_buttons(ed);
 			button_show(&ed->donebutton);
 			for (int i = 0; i < TOOL_COUNT; i++)
 				button_show(&ed->toolbuttons[i]);
@@ -1033,7 +1019,6 @@ enum State mapeditor_run(struct MapEditor *ed, SDL_Window *wnd)
 		}
 
 		show_and_rotate_map_editor(ed, true);
-		update_buttons(ed);
 		SDL_UpdateWindowSurface(wnd);  // Run every time, in case buttons redraw themselves
 		looptimer_wait(&lt);
 	}
