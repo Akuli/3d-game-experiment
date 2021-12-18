@@ -439,30 +439,20 @@ static bool point_is_available(const struct Map *map, const struct MapCoords p)
 	return true;
 }
 
-static struct MapCoords findempty_without_the_check(const struct Map *map, struct MapCoords hint)
-{
-	struct MapCoords p = hint;
-	while (!point_is_available(map, p))
-		manhattan_spiral(&p, hint);
-	return p;
-}
-
-struct MapCoords map_findempty(const struct Map *map, struct MapCoords hint)
-{
-	SDL_assert(2 + map->nenemylocs < map->xsize*map->zsize);   // must not be full
-	return findempty_without_the_check(map, hint);
-}
-
 static void fix_location(const struct Map *map, struct MapCoords *ptr)
 {
 	SDL_assert(2 + map->nenemylocs <= map->xsize*map->zsize);
-	struct MapCoords hint = *ptr;
 
 	// Make it temporary disappear from the map, so we won't see it when looking for free place
 	// Prevents it from always moving, but still moves in case of overlaps
 	// Also ensures there's enough room for it
+	struct MapCoords hint = *ptr;
 	*ptr = (struct MapCoords){ -1, -1 };
-	*ptr = findempty_without_the_check(map, hint);
+
+	struct MapCoords p = hint;
+	while (!point_is_available(map, p))
+		manhattan_spiral(&p, hint);
+	*ptr = p;
 }
 
 static void ensure_players_and_enemies_are_inside_the_map_and_dont_overlap(struct Map *map)
