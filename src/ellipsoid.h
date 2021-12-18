@@ -64,21 +64,23 @@ struct Ellipsoid {
 	/*
 	Coordinates where the ellipsoid is simply x^2+y^2+z^2=1 are called
 	"unit ball coordinates", or uball for short.
+	As with camera and world coords, the matrices aren't enough to do conversions.
+	You also need to add/subtract the center point.
 	*/
 	Mat3 uball2world, world2uball;
 };
 
-// calculate el->transform and el->world2uball
+// calculate el->uball2world and el->world2uball
 void ellipsoid_update_transforms(struct Ellipsoid *el);
 
 // Is the ellipsoid visible anywhere on screen?
 bool ellipsoid_is_visible(const struct Ellipsoid *el, const struct Camera *cam);
 
-// Ellipsoid will be drawn fully within the returned rectangle.
+// Ellipsoid will be drawn fully within the returned 2D rectangle.
 // Assumes that ellipsoid_is_visible() has returned true.
 SDL_Rect ellipsoid_bbox(const struct Ellipsoid *el, const struct Camera *cam);
 
-// Returned rectangle is suitable for sorting ellipsoids and walls for display
+// Returned 3D rectangle is suitable for sorting ellipsoids and walls for display
 struct Rect ellipsoid_get_sort_rect(const struct Ellipsoid *el, const struct Camera *cam);
 
 // returns false if nothing visible for given y

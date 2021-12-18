@@ -22,6 +22,7 @@ bool rect_visible_fillcache(const struct Rect *r, const struct Camera *cam, stru
 				goto next_corner;
 		}
 		anycornervisible = true;
+		break;
 	next_corner:
 		continue;
 	}

@@ -43,8 +43,8 @@ struct Info {
 
 struct ShowingState {
 	const struct Camera *cam;
-	const struct Wall *walls;	    // indexed by ID_INDEX(wall id)
-	const struct Ellipsoid *els;	 // indexed by ID_INDEX(ellipsoid id)
+	const struct Wall *walls;           // indexed by ID_INDEX(wall id)
+	const struct Ellipsoid *els;        // indexed by ID_INDEX(ellipsoid id)
 	struct Info infos[ARRAYLEN_INDEXED_BY_ID];
 
 	ID visible[ARRAYLEN_CONTAINING_ID];
