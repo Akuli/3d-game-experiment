@@ -68,7 +68,7 @@ struct Ellipsoid {
 	Mat3 uball2world, world2uball;
 };
 
-// calculate el->transform and el->world2uball
+// calculate el->uball2world and el->world2uball
 void ellipsoid_update_transforms(struct Ellipsoid *el);
 
 // Is the ellipsoid visible anywhere on screen?
