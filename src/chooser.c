@@ -10,7 +10,7 @@
 #include "ellipsoid.h"
 #include "log.h"
 #include "looptimer.h"
-#include "mathstuff.h"
+#include "linalg.h"
 #include "misc.h"
 #include "map.h"
 #include "player.h"

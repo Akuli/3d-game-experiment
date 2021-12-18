@@ -4,11 +4,12 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <SDL2/SDL.h>
-#include "ellipsoid.h"
 #include "camera.h"
-#include "mathstuff.h"
-#include "wall.h"
+#include "ellipsoid.h"
+#include "linalg.h"
 #include "log.h"
+#include "misc.h"
+#include "wall.h"
 
 #define IMAGE_FILE_COUNT 1
 #define MOVE_UNITS_PER_SECOND 2.5f

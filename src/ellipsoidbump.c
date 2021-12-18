@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 #include "log.h"
-#include "mathstuff.h"
+#include "linalg.h"
 
 /*
 With 1e-7f, tests sometimes hit the max number of iterations. This didn't happen

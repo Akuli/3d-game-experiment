@@ -2,7 +2,7 @@
 #define GUARD_H
 
 #include <SDL2/SDL.h>
-#include "mathstuff.h"
+#include "linalg.h"
 #include "ellipsoid.h"
 #include "map.h"
 #include "player.h"

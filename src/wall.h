@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 #include "ellipsoid.h"
-#include "mathstuff.h"
+#include "linalg.h"
 #include "rect3.h"
 
 /*

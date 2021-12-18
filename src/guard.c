@@ -4,9 +4,10 @@
 #include <SDL2/SDL.h>
 #include "camera.h"
 #include "ellipsoid.h"
-#include "mathstuff.h"
-#include "max.h"
+#include "linalg.h"
 #include "log.h"
+#include "max.h"
+#include "misc.h"
 
 #define YRADIUS_BASIC 1.0f
 #define SPACING_BASIC 0.2f

@@ -3,9 +3,10 @@
 #include <SDL2/SDL.h>
 #include "ellipsoid.h"
 #include "guard.h"
+#include "linalg.h"
 #include "log.h"
-#include "mathstuff.h"
 #include "map.h"
+#include "misc.h"
 #include "sound.h"
 #include "wall.h"
 

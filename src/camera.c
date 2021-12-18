@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <string.h>
 #include <SDL2/SDL.h>
-#include "mathstuff.h"
+#include "linalg.h"
 
 // non-static inlines are weird in c
 extern inline float camera_xzr_to_screenx(const struct Camera *cam, float xzr);

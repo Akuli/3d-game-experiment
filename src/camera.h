@@ -2,7 +2,7 @@
 #define CAMERA_H
 
 #include <SDL2/SDL.h>
-#include "mathstuff.h"
+#include "linalg.h"
 
 // surfaces can be smaller than this, but these are handy for array sizes
 #define CAMERA_SCREEN_WIDTH 800

@@ -4,21 +4,6 @@
 #include <math.h>
 #include <stdbool.h>
 
-// windows.h defines min and max macros just like the ones below
-#if !defined(min) && !defined(max)
-	#define min(a,b) ((a)<(b) ? (a) : (b))
-	#define max(a,b) ((a)>(b) ? (a) : (b))
-#endif
-
-inline void clamp(int *val, int lo, int hi) {
-	if (*val < lo) *val = lo;
-	if (*val > hi) *val = hi;
-}
-inline void clamp_float(float *val, float lo, float hi) {
-	if (*val < lo) *val = lo;
-	if (*val > hi) *val = hi;
-}
-
 // matrices are structs because that way it's easier to return them and stuff
 typedef struct { float x,y; } Vec2;
 typedef struct { float x,y,z; } Vec3;

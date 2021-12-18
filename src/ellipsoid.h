@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <SDL2/SDL.h>
 #include "camera.h"
-#include "mathstuff.h"
+#include "linalg.h"
 #include "rect3.h"
 
 
