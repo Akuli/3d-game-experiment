@@ -64,6 +64,8 @@ struct Ellipsoid {
 	/*
 	Coordinates where the ellipsoid is simply x^2+y^2+z^2=1 are called
 	"unit ball coordinates", or uball for short.
+	As with camera and world coords, the matrices aren't enough to do conversions.
+	You also need to add/subtract the center point.
 	*/
 	Mat3 uball2world, world2uball;
 };
