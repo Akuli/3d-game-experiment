@@ -8,7 +8,7 @@
 #define Y_MAX 1.0f
 
 
-struct Rect3 wall_to_rect(const struct Wall *w)
+struct Rect3 wall_to_rect3(const struct Wall *w)
 {
 	int dx = (w->dir == WALL_DIR_XY);
 	int dz = (w->dir == WALL_DIR_ZY);

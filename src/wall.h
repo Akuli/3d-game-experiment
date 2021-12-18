@@ -18,7 +18,7 @@ struct Wall {
 	enum WallDirection dir;
 };
 
-struct Rect3 wall_to_rect(const struct Wall *w);
+struct Rect3 wall_to_rect3(const struct Wall *w);
 
 // does not require using wall_init()
 bool wall_match(const struct Wall *w1, const struct Wall *w2);

@@ -188,7 +188,7 @@ static bool mouse_is_on_wall(const struct Camera *cam, const struct Wall *w, int
 {
 	int xmin, xmax;
 	struct Rect3Cache rcache;
-	struct Rect3 r = wall_to_rect(w);
+	struct Rect3 r = wall_to_rect3(w);
 	return rect3_visible_fillcache(&r, cam, &rcache)
 		&& rect3_xminmax(&rcache, y, &xmin, &xmax)
 		&& xmin <= x && x <= xmax;
@@ -762,7 +762,7 @@ static void show_editor(struct MapEditor *ed)
 
 	show_all(ed->map->walls, ed->map->nwalls, highlight, els, nels, &ed->cam);
 	if (borderwall) {
-		struct Rect3 r = wall_to_rect(borderwall);
+		struct Rect3 r = wall_to_rect3(borderwall);
 		rect3_drawborder(&r, &ed->cam);
 	}
 }
