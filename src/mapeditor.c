@@ -170,7 +170,6 @@ static void keep_wall_within_map(const struct MapEditor *ed, struct Wall *w, boo
 
 	clamp(&w->startx, xmin, xmax);
 	clamp(&w->startz, zmin, zmax);
-	wall_init(w);
 }
 
 static bool mouse_is_on_ellipsoid(const struct Camera *cam, const struct Ellipsoid *el, int x, int y)
@@ -189,7 +188,7 @@ static bool mouse_is_on_wall(const struct Camera *cam, const struct Wall *w, int
 {
 	int xmin, xmax;
 	struct Rect3Cache rcache;
-	struct Rect3 r = wall_to_rect(w);
+	struct Rect3 r = wall_to_rect3(w);
 	return rect3_visible_fillcache(&r, cam, &rcache)
 		&& rect3_xminmax(&rcache, y, &xmin, &xmax)
 		&& xmin <= x && x <= xmax;
@@ -246,7 +245,6 @@ static bool mouse_location_to_wall(const struct MapEditor *ed, struct Wall *dst,
 	};
 
 	for (int i = 0; i < sizeof(couldbe)/sizeof(couldbe[0]); i++) {
-		wall_init(&couldbe[i]);
 		if (mouse_is_on_wall(&ed->cam, &couldbe[i], mousex, mousey)) {
 			*dst = couldbe[i];
 			return true;
@@ -309,7 +307,6 @@ static void do_resize(struct MapEditor *ed, int x, int z)
 	ed->sel.data.resize.mainwall.startz = z;
 
 	keep_wall_within_map(ed, &ed->sel.data.resize.mainwall, true);
-	wall_init(&ed->sel.data.resize.mainwall);
 	for (struct Wall *const *w = ed->sel.data.resize.walls; w < &ed->sel.data.resize.walls[ed->sel.data.resize.nwalls]; w++)
 	{
 		switch(ed->sel.data.resize.mainwall.dir) {
@@ -320,7 +317,6 @@ static void do_resize(struct MapEditor *ed, int x, int z)
 			(*w)->startx = ed->sel.data.resize.mainwall.startx;
 			break;
 		}
-		wall_init(*w);
 	}
 }
 
@@ -364,7 +360,6 @@ static void set_location_of_moving_wall(struct MapEditor *ed, struct Wall w)
 	if (!find_wall_from_map(&w, ed->map)) {
 		// Not going on top of another wall, can move
 		*ed->sel.data.mvwall = w;
-		wall_init(ed->sel.data.mvwall);
 		map_save(ed->map);
 	}
 }
@@ -767,8 +762,7 @@ static void show_editor(struct MapEditor *ed)
 
 	show_all(ed->map->walls, ed->map->nwalls, highlight, els, nels, &ed->cam);
 	if (borderwall) {
-		wall_init(borderwall);
-		struct Rect3 r = wall_to_rect(borderwall);
+		struct Rect3 r = wall_to_rect3(borderwall);
 		rect3_drawborder(&r, &ed->cam);
 	}
 }
