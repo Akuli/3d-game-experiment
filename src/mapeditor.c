@@ -2,19 +2,20 @@
 #include <math.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include "mathstuff.h"
-#include "enemy.h"
 #include "button.h"
+#include "camera.h"
+#include "enemy.h"
 #include "log.h"
+#include "looptimer.h"
+#include "map.h"
+#include "mathstuff.h"
 #include "max.h"
 #include "misc.h"
-#include "map.h"
 #include "player.h"
-#include "wall.h"
-#include "looptimer.h"
+#include "rect3.h"
 #include "showall.h"
-#include "camera.h"
 #include "textentry.h"
+#include "wall.h"
 
 struct EllipsoidEdit {
 	struct Ellipsoid el;
@@ -174,26 +175,24 @@ static void keep_wall_within_map(const struct MapEditor *ed, struct Wall *w, boo
 
 static bool mouse_is_on_ellipsoid(const struct Camera *cam, const struct Ellipsoid *el, int x, int y)
 {
-	int xmin, xmax;
-	if (!ellipsoid_visible_xminmax(el, cam, &xmin, &xmax) || !(xmin <= x && x <= xmax))
+	if (!ellipsoid_is_visible(el, cam))
 		return false;
 
-	int ymin, ymax;
-	struct EllipsoidXCache exc;
-	ellipsoid_yminmax(el, cam, x, &exc, &ymin, &ymax);
-	return ymin <= y && y <= ymax;
+	int xmin, xmax;
+	SDL_Rect bbox = ellipsoid_bbox(el, cam);
+	return SDL_PointInRect(&(SDL_Point){x,y}, &bbox)
+		&& ellipsoid_xminmax(el, cam, y, &xmin, &xmax)
+		&& xmin <= x && x <= xmax;
 }
 
 static bool mouse_is_on_wall(const struct Camera *cam, const struct Wall *w, int x, int y)
 {
-	struct WallCache wc;
 	int xmin, xmax;
-	if (!wall_visible_xminmax_fillcache(w, cam, &xmin, &xmax, &wc) || !(xmin <= x && x <= xmax))
-		return false;
-
-	int ymin, ymax;
-	wall_yminmax(&wc, x, &ymin, &ymax);
-	return ymin <= y && y <= ymax;
+	struct Rect3Cache rcache;
+	struct Rect3 r = wall_to_rect(w);
+	return rect3_visible_fillcache(&r, cam, &rcache)
+		&& rect3_xminmax(&rcache, y, &xmin, &xmax)
+		&& xmin <= x && x <= xmax;
 }
 
 static bool mouse_is_on_ellipsoid_with_no_walls_between(struct MapEditor *ed, const struct Ellipsoid *el, int x, int y)
@@ -769,7 +768,8 @@ static void show_editor(struct MapEditor *ed)
 	show_all(ed->map->walls, ed->map->nwalls, highlight, els, nels, &ed->cam);
 	if (borderwall) {
 		wall_init(borderwall);
-		wall_drawborder(borderwall, &ed->cam);
+		struct Rect3 r = wall_to_rect(borderwall);
+		rect3_drawborder(&r, &ed->cam);
 	}
 }
 

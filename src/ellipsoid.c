@@ -7,83 +7,18 @@
 #include "camera.h"
 #include "log.h"
 #include "mathstuff.h"
+#include "rect3.h"
 
 static bool ellipsoid_intersects_plane(const struct Ellipsoid *el, struct Plane pl)
 {
-	// Switch to coordinates where ellipsoid is unit ball (a ball with radius 1)
-	Vec3 center = mat3_mul_vec3(el->transform_inverse, el->center);
-	plane_apply_mat3_INVERSE(&pl, el->transform);
+	// TODO: this works, but rewrite with plane_move() so it makes more sense
+	Vec3 center = mat3_mul_vec3(el->world2uball, el->center);
+	plane_apply_mat3_INVERSE(&pl, el->uball2world);
 
 	return (plane_point_distanceSQUARED(pl, center) < 1);
 }
 
-/*
-Given a circle on a plane going through (0,0,0), find the points A and B where
-tangent lines of circle going through (0,0,0) intersect the circle
-*/
-static void tangent_line_intersections(
-	Vec3 planenormal, Vec3 center, float radiusSQUARED, Vec3 *A, Vec3 *B)
-{
-	/*
-		       o o
-		    o       o
-		  o           o
-		\o    center   o/
-		 \A-----C-----B/
-		  \ o       o /
-		   \   o o   /
-		    \       /
-		     \     /
-		      \   /
-		       \ /
-		     (0,0,0)
-
-	The \ and / lines are tangent lines of the intersection circle going
-	through the camera. We want to find those, because they correspond to
-	the first and last y pixel of the ball visible to the camera. Letting
-	A and B denote the intersections of the tangent lines with the circle,
-	and letting C denote the center of line AB, we see that the triangles
-
-		B-C-center  and  camera-B-center
-
-	are similar (90deg angle and the angle at center in both). Hence
-
-		|C - center| / |center - B| = |B - center| / |center - camera|
-
-	which gives
-
-		|C - center| = radius^2 / |center|.
-
-	The unit vector in direction of center (thinking of center as a
-	vector from camera=(0,0,0) to center) is center/|center|, so
-
-		C = center/|center| * (|center| - radius^2/|center|)
-		  = center * (1 - radius^2/|center|^2)
-	*/
-	Vec3 C = vec3_mul_float(center, 1 - radiusSQUARED/vec3_lengthSQUARED(center));
-
-	/*
-	Pythagorean theorem: radius^2 = |C-A|^2 + |C - center|^2
-
-	Plugging in from above gives this. Note that it has radius^4, aka
-	radius^2 * radius^2.
-	*/
-	float distanceCA = sqrtf(radiusSQUARED - radiusSQUARED*radiusSQUARED/vec3_lengthSQUARED(center));
-
-	/*
-	Use right hand rule for cross product, with normal vector
-	pointing from you towards your screen in above picture.
-
-	The pointing direction could also be the opposite and you would get
-	CtoB instead of CtoA. Doesn't matter.
-	*/
-	Vec3 CtoA = vec3_withlength(vec3_cross(center, planenormal), distanceCA);
-	*A = vec3_add(C, CtoA);
-	*B = vec3_sub(C, CtoA);
-}
-
-bool ellipsoid_visible_xminmax(
-	const struct Ellipsoid *el, const struct Camera *cam, int *xmin, int *xmax)
+bool ellipsoid_is_visible(const struct Ellipsoid *el, const struct Camera *cam)
 {
 	/*
 	Ensure that it's in front of camera and not even touching the
@@ -111,133 +46,255 @@ bool ellipsoid_visible_xminmax(
 			return false;
 		}
 	}
-
-	// switch to camera coordinates
-	Vec3 center = camera_point_world2cam(cam, el->center);
-
-	// A non-tilted plane (i.e. planenormal.x = 0) going through camera at (0,0,0) and center
-	struct Plane pl = { .normal = { 0, center.z, -center.y }, .constant = 0 };
-
-	// switch to coordinates with unit ball
-	vec3_apply_matrix(&center, el->transform_inverse);
-	plane_apply_mat3_INVERSE(&pl, el->transform);
-
-	Vec3 A, B;
-	tangent_line_intersections(pl.normal, center, 1*1, &A, &B);
-
-	// back to camera coordinates
-	vec3_apply_matrix(&A, el->transform);
-	vec3_apply_matrix(&B, el->transform);
-
-	// trial and error has been used to figure out which is bigger
-	*xmin = (int)ceilf(camera_point_cam2screen(cam, A).x);
-	*xmax = (int)      camera_point_cam2screen(cam, B).x;
 	return true;
 }
 
-static void fill_xcache(
-	const struct Ellipsoid *el, const struct Camera *cam,
-	int x, struct EllipsoidXCache *xcache)
+static SDL_Rect bbox_without_hidelowerhalf(
+	const struct Ellipsoid *el, const struct Camera *cam)
 {
-	xcache->screenx = x;
-	xcache->cam = cam;
-	xcache->xzr = camera_screenx_to_xzr(cam, x);
+	Mat3 uball2cam = mat3_mul_mat3(cam->world2cam, el->uball2world);
 
 	/*
-	Equation of plane of points having this screen x:
-	x/z = xzr, aka 1x + 0y + (-xzr)z = 0
-	Note that xplane's normal vector always points towards positive camera x direction.
+	Each y coordinate on screen corresponds with a plane y/z = yzr, where yzr is a constant.
+	At min and max screen y values, the distance between the plane and (0,0,0) is 1.
+	If the plane is ax+by+cz+d=0, this gives
+
+		|d| / sqrt(a^2 + b^2 + c^2) = 1.
+
+	Solving yzr leads to a quadratic.
+	The variant of the quadratic formula used:
+
+		x^2 - 2bx + c = 0  <=>  x = b +- sqrt(b^2 - c)
+
+	The same calculation works with x coordinates instead of y coordinates.
 	*/
-	xcache->xplane = (struct Plane) { .normal = { 1, 0, -xcache->xzr }, .constant = 0 };
-	plane_apply_mat3_INVERSE(&xcache->xplane, el->transform);
+	Vec3 top = { uball2cam.rows[0][0], uball2cam.rows[0][1], uball2cam.rows[0][2] };
+	Vec3 mid = { uball2cam.rows[1][0], uball2cam.rows[1][1], uball2cam.rows[1][2] };
+	Vec3 bot = { uball2cam.rows[2][0], uball2cam.rows[2][1], uball2cam.rows[2][2] };
+	float toptop = vec3_dot(top, top);
+	float midmid = vec3_dot(mid, mid);
+	float botbot = vec3_dot(bot, bot);
+	float topbot = vec3_dot(top, bot);
+	float midbot = vec3_dot(mid, bot);
+	Vec3 center = camera_point_world2cam(cam, el->center);
 
-	Vec3 ballcenter = camera_point_world2cam(cam, el->center);
-	xcache->ballcenter = mat3_mul_vec3(el->transform_inverse, ballcenter);
-	xcache->ballcenterscreenx = camera_point_cam2screen(xcache->cam, ballcenter).x;
-
-	xcache->dSQUARED = plane_point_distanceSQUARED(xcache->xplane, xcache->ballcenter);
-	if (xcache->dSQUARED >= 1) {
-		log_printf("hopefully this is near 1: %f", xcache->dSQUARED);
-		xcache->dSQUARED = 1;
+	int xmin, xmax, ymin, ymax;
+	{
+		float a = botbot - center.z*center.z;
+		float b = topbot - center.x*center.z;
+		float c = toptop - center.x*center.x;
+		b /= a;
+		c /= a;
+		SDL_assert(b*b-c >= 0);  // doesn't seem to ever be sqrt(negative)
+		float offset = sqrtf(b*b-c);
+		xmin = (int)camera_xzr_to_screenx(cam, b+offset);
+		xmax = (int)camera_xzr_to_screenx(cam, b-offset);
 	}
+	{
+		float a = botbot - center.z*center.z;
+		float b = midbot - center.y*center.z;
+		float c = midmid - center.y*center.y;
+		b /= a;
+		c /= a;
+		SDL_assert(b*b-c >= 0);  // doesn't seem to ever be sqrt(negative)
+		float offset = sqrtf(b*b-c);
+		ymin = (int)camera_yzr_to_screeny(cam, b-offset);
+		ymax = (int)camera_yzr_to_screeny(cam, b+offset);
+	}
+
+	return (SDL_Rect){ xmin, ymin, xmax-xmin, ymax-ymin };
 }
 
-static void calculate_yminmax_without_hidelowerhalf(const struct Ellipsoid *el, const struct EllipsoidXCache *xcache, int *ymin, int *ymax)
+static SDL_Rect bbox_of_middle_circle(
+	const struct Ellipsoid *el, const struct Camera *cam)
 {
-	// center and radiusSQUARED describe intersection of xplane and unit ball, which is a circle
-	float len = sqrtf(xcache->dSQUARED);
-	if (xcache->screenx < xcache->ballcenterscreenx) {
-		// xplane normal vector points to right, but we need to go left instead
-		len = -len;
+	/*
+	Similar to bbox_without_hidelowerhalf.
+	Doing this with the 2D circle in the middle (y=0 in unit ball coords)
+	basically leads to the same equations, but in 2D.
+	*/
+	Mat3 uball2world = el->uball2world;
+	Mat3 uball2cam = mat3_mul_mat3(cam->world2cam, uball2world);
+
+	Vec2 top = { uball2cam.rows[0][0], uball2cam.rows[0][2] };
+	Vec2 mid = { uball2cam.rows[1][0], uball2cam.rows[1][2] };
+	Vec2 bot = { uball2cam.rows[2][0], uball2cam.rows[2][2] };
+	Vec3 center = camera_point_world2cam(cam, el->center);
+	float toptop = vec2_dot(top, top);
+	float midmid = vec2_dot(mid, mid);
+	float botbot = vec2_dot(bot, bot);
+	float topbot = vec2_dot(top, bot);
+	float midbot = vec2_dot(mid, bot);
+
+	int xmin, xmax, ymin, ymax;
+	{
+		float a = botbot - center.z*center.z;
+		float b = topbot - center.x*center.z;
+		float c = toptop - center.x*center.x;
+		b /= a;
+		c /= a;
+		SDL_assert(b*b-c >= 0);  // doesn't seem to ever be sqrt(negative)
+		float offset = sqrtf(b*b-c);
+		xmin = (int)camera_yzr_to_screeny(cam, b-offset);
+		xmax = (int)camera_yzr_to_screeny(cam, b+offset);
 	}
-	Vec3 center = vec3_add(xcache->ballcenter, vec3_withlength(xcache->xplane.normal, len));
-	float radiusSQUARED = 1 - xcache->dSQUARED;   // Pythagorean theorem
+	{
+		float a = botbot - center.z*center.z;
+		float b = midbot - center.y*center.z;
+		float c = midmid - center.y*center.y;
+		b /= a;
+		c /= a;
+		SDL_assert(b*b-c >= 0);  // doesn't seem to ever be sqrt(negative)
+		float offset = sqrtf(b*b-c);
+		ymin = (int)camera_yzr_to_screeny(cam, b-offset);
+		ymax = (int)camera_yzr_to_screeny(cam, b+offset);
+	}
 
-	// camera is at (0,0,0) and tangent lines correspond to first and last visible y pixel of the ball
-	Vec3 A, B;
-	tangent_line_intersections(xcache->xplane.normal, center, radiusSQUARED, &A, &B);
-
-	// Trial and error has been used to figure out which is bigger and which is smaller...
-	*ymax = (int)ceilf(camera_point_cam2screen(xcache->cam, mat3_mul_vec3(el->transform, A)).y);
-	*ymin = (int)      camera_point_cam2screen(xcache->cam, mat3_mul_vec3(el->transform, B)).y;
-	SDL_assert(*ymin <= *ymax);
+	return (SDL_Rect){ xmin, ymin, xmax-xmin, ymax-ymin };
 }
 
-static int calculate_center_y(const struct Ellipsoid *el, const struct EllipsoidXCache *xcache)
+SDL_Rect ellipsoid_bbox(const struct Ellipsoid *el, const struct Camera *cam)
 {
-	SDL_assert(xcache->xplane.constant == 0);  // goes through camera at (0,0,0)
-	SDL_assert(xcache->xplane.normal.y == 0);  // not tilted
+
+	SDL_Rect bbox = bbox_without_hidelowerhalf(el, cam);
+	if (el->epic->hidelowerhalf) {
+		SDL_Rect circlebbox = bbox_of_middle_circle(el, cam);
+		bbox.h = (circlebbox.y - bbox.y) + circlebbox.h;
+	}
+
+	SDL_Rect res;
+	SDL_IntersectRect(&(SDL_Rect){ 0, 0, cam->surface->w, cam->surface->h }, &bbox, &res);
+	SDL_assert(0 <= res.x && res.x+res.w <= cam->surface->w && 0 <= res.y && res.y+res.h <= cam->surface->h);
+	return res;
+}
+
+struct Rect3 ellipsoid_get_sort_rect(const struct Ellipsoid *el, const struct Camera *cam)
+{
+	Vec3 center2cam = vec3_sub(cam->location, el->center);
+	Vec3 dir = { center2cam.z, 0, -center2cam.x };
+	Vec3 center2edge = vec3_withlength(dir, el->xzradius);
+
+	Vec3 topleft, topright, botleft, botright;
+	topleft = botleft = vec3_sub(el->center, center2edge);
+	topright = botright = vec3_add(el->center, center2edge);
+	topleft.y += el->yradius;
+	topright.y += el->yradius;
+	botleft.y -= el->yradius;
+	botright.y -= el->yradius;
+
+	if (el->epic->hidelowerhalf) {
+		// Hack to help stacking guards on top of player and other guards
+		Vec3 tilt = vec3_withlength(center2cam, 1e-5f);
+		vec3_add_inplace(&botleft, tilt);
+		vec3_add_inplace(&botright, tilt);
+	}
+
+	return (struct Rect3){.corners={ topleft, topright, botright, botleft }};
+}
+
+static void get_middle_circle_xzr_minmax(const struct Ellipsoid *el, const struct Camera *cam, int y, float *xzrmin, float *xzrmax)
+{
+	float yzr = camera_screeny_to_yzr(cam, y);
+
+	// Find intersection of y/z = yzr (camera coords) and y=0 (unit ball coords)
+	struct Plane yzrplane = { .normal = {0,1,-yzr}, .constant = 0 };
+	plane_apply_mat3_INVERSE(&yzrplane, cam->world2cam);
+	plane_move(&yzrplane, vec3_sub(el->center, cam->location));
+	plane_apply_mat3_INVERSE(&yzrplane, el->uball2world);
+
+	// Equation of yzrplane: (x,y,z) dot (a,b,c) = k
+	float a = yzrplane.normal.x;
+	float c = yzrplane.normal.z;
+	float k = yzrplane.constant;
+
+	// Intersecting yzrplane with y=0 gives a line (x,y,z) = p + t*dir
+	float inv = 1/(a*a + c*c);
+	Vec3 p = { a*k*inv, 0, c*k*inv };
+	Vec3 dir = { -c, 0, a };
+
+	// Solve t so that intersection is on the unit ball x^2+y^2+z^2=1
+	float tSQUARED = inv - k*k*inv*inv;
+	SDL_assert(tSQUARED >= 0);
+	float t = sqrtf(tSQUARED);
+
+	Vec3 p1 = vec3_add(p, vec3_mul_float(dir, -t));
+	Vec3 p2 = vec3_add(p, vec3_mul_float(dir, t));
+	vec3_apply_matrix(&p1, el->uball2world);
+	vec3_apply_matrix(&p2, el->uball2world);
+	vec3_add_inplace(&p1, vec3_sub(cam->location, el->center));
+	vec3_add_inplace(&p2, vec3_sub(cam->location, el->center));
+	vec3_apply_matrix(&p1, cam->world2cam);
+	vec3_apply_matrix(&p2, cam->world2cam);
+	*xzrmin = p1.x / p1.z;
+	*xzrmax = p2.x / p2.z;
+}
+
+bool ellipsoid_xminmax(const struct Ellipsoid *el, const struct Camera *cam, int y, int *xmin, int *xmax)
+{
+	/*
+	Consider the line that is t*(xzr,yzr,1) in camera coordinates.
+	In unit ball coordinates, it will be
+
+		t*(xzr*v + w) + p,
+
+	where v, w and p don't depend on xzr or t.
+	*/
+	Mat3 world2uball = el->world2uball;
+	Mat3 cam2uball = mat3_mul_mat3(world2uball, cam->cam2world);
+	Vec3 v = mat3_mul_vec3(cam2uball, (Vec3){1,0,0});
+	Vec3 w = mat3_mul_vec3(cam2uball, (Vec3){0,camera_screeny_to_yzr(cam, y),1});
+	Vec3 p = mat3_mul_vec3(world2uball, vec3_sub(cam->location, el->center));
 
 	/*
-	We want to intersect these:
-	- unit ball: (x - ballcenter.x)^2 + (y - ballcenter.y)^2 + (z - ballcenter.z)^2 = 1
-	- plane that splits unit ball in half: y = ballcenter.y
-	- xplane: x*xplane.normal.x + z*xplane.normal.z = 0
+	Consider the function
 
-	Intersecting all that gives 3 equations with 3 unknowns x,y,z.
+		f(t) = (p + t(xzr*v + w)) dot (p + t(xzr*v + w)).
+
+	Its minimum value is (distance between line and origin)^2.
+	Solve it with a derivative and set it equal to 1.
+	Then solve xzr with quadratic formula.
+
+	Variant of quadratic formula used:
+
+		x^2 + 2bx + c = 0  <=>  x = -b +- sqrt(b^2 - c)
 	*/
+	float pp = vec3_dot(p, p);
+	float vv = vec3_dot(v, v);
+	float ww = vec3_dot(w, w);
+	float pv = vec3_dot(p, v);
+	float pw = vec3_dot(p, w);
+	float vw = vec3_dot(v, w);
+	float a = (pp-1)*vv - pv*pv;
+	float b = (pp-1)*vw - pv*pw;
+	float c = (pp-1)*ww - pw*pw;
+	b /= a;
+	c /= a;
+	if (b*b-c < 0) return false;    // happens about once per frame
+	float offset = sqrtf(b*b-c);
+	float xzrleft = -b+offset;
+	float xzrright = -b-offset;
 
-	float bottom = vec3_lengthSQUARED(xcache->xplane.normal);
-	float dot = vec3_dot(xcache->xplane.normal, xcache->ballcenter);
-	float undersqrt = bottom - dot*dot;
-	if (undersqrt < 0)
-		undersqrt = 0;
+	if (el->epic->hidelowerhalf) {
+		// Find y coords of corresponding points on the unit ball (l left side, r right side)
+		Vec3 ul = vec3_add(vec3_mul_float(v, xzrleft), w);
+		Vec3 ur = vec3_add(vec3_mul_float(v, xzrright), w);
+		float yl = p.y - vec3_dot(p,ul)/vec3_dot(ul,ul)*ul.y;
+		float yr = p.y - vec3_dot(p,ur)/vec3_dot(ur,ur)*ur.y;
 
-	float nx = xcache->xplane.normal.x;
-	float nz = xcache->xplane.normal.z;
-	float bx = xcache->ballcenter.x;
-	float bz = xcache->ballcenter.z;
-	float infrontofsqrt = nx*bz - bx*nz;
+		// If below, use unit circle point instead
+		if (yl < 0 || yr < 0) {
+			float l, r;
+			get_middle_circle_xzr_minmax(el, cam, y, &r, &l);
+			if (yl < 0) xzrleft = l;
+			if (yr < 0) xzrright = r;
+		}
+	}
 
-	// Choosing +sqrt seems to always work
-	float tmp = (infrontofsqrt + sqrtf(undersqrt))/bottom;
-	Vec3 v = { -nz*tmp, xcache->ballcenter.y, nx*tmp };
-
-	vec3_apply_matrix(&v, el->transform);
-	return (int)camera_yzr_to_screeny(xcache->cam, v.y/v.z);
-}
-
-void ellipsoid_yminmax(
-	const struct Ellipsoid *el, const struct Camera *cam,
-	int x, struct EllipsoidXCache *xcache,
-	int *ymin, int *ymax)
-{
-	fill_xcache(el, cam, x, xcache);
-	calculate_yminmax_without_hidelowerhalf(el, xcache, ymin, ymax);
-	if (el->epic->hidelowerhalf)
-		*ymax = calculate_center_y(el, xcache);
-
-	clamp(ymin, 0, xcache->cam->surface->h - 1);
-	clamp(ymax, 0, xcache->cam->surface->h - 1);
-}
-
-// about 2x faster than SDL_FillRect(surf, &(SDL_Rect){x,y,1,1}, px)
-static inline void set_pixel(SDL_Surface *surf, int x, int y, uint32_t px)
-{
-	unsigned char *ptr = surf->pixels;
-	ptr += y*surf->pitch;
-	ptr += x*sizeof(px);
-	memcpy(ptr, &px, sizeof(px));   // no strict aliasing issues thx
+	*xmin = (int)camera_xzr_to_screenx(cam, xzrleft);
+	*xmax = (int)camera_xzr_to_screenx(cam, xzrright);
+	clamp(xmin, 0, cam->surface->w);
+	clamp(xmax, 0, cam->surface->w);
+	return *xmin <= *xmax;
 }
 
 static inline float linear_map(float srcmin, float srcmax, float dstmin, float dstmax, float val)
@@ -247,15 +304,18 @@ static inline float linear_map(float srcmin, float srcmax, float dstmin, float d
 	return dstmin + (val - srcmin)*ratio;
 }
 
-void ellipsoid_drawcolumn(
-	const struct Ellipsoid *el, const struct EllipsoidXCache *xcache,
-	int ymin, int ymax)
+void ellipsoid_drawrow(
+	const struct Ellipsoid *el, const struct Camera *cam,
+	int y, int xmin, int xmax)
 {
-	int ydiff = ymax - ymin;
-	if (ydiff <= 0)
+	int xdiff = xmax - xmin;
+	if (xdiff <= 0)
 		return;
-	SDL_assert(0 <= ymin && ymin+ydiff <= xcache->cam->surface->h);
-	SDL_assert(ydiff <= CAMERA_SCREEN_HEIGHT);
+	SDL_assert(0 <= xmin && xmin+xdiff <= cam->surface->w);
+	SDL_assert(xdiff <= CAMERA_SCREEN_WIDTH);
+
+	SDL_assert(cam->surface->pitch % sizeof(uint32_t) == 0);
+	int mypitch = cam->surface->pitch / sizeof(uint32_t);
 
 	/*
 	Code is ugly but gcc vectorizes it to make it very fast. This code was the
@@ -263,54 +323,56 @@ void ellipsoid_drawcolumn(
 	at the time of writing this comment.
 	*/
 
-#define LOOP for(int i = 0; i < ydiff; i++)
+#define LOOP for(int i = 0; i < xdiff; i++)
 
-	float yzr[CAMERA_SCREEN_HEIGHT];
-	LOOP yzr[i] = camera_screeny_to_yzr(xcache->cam, (float)(ymin + i));
+	float xzr[CAMERA_SCREEN_WIDTH];
+	LOOP xzr[i] = camera_screenx_to_xzr(cam, (float)(xmin + i));
 
 	/*
 	line equation in camera coordinates:
 
 		x = xzr*z, y = yzr*z aka (x,y,z) = z*(xzr,yzr,1)
 
-	Note that this has z coordinate 1 in camera coordinates, i.e. pointing toward camera
+	Note that this has z coordinate 1 in camera coordinates, i.e. pointing toward camera.
 	*/
-	float linedirx[CAMERA_SCREEN_HEIGHT], linediry[CAMERA_SCREEN_HEIGHT], linedirz[CAMERA_SCREEN_HEIGHT];
-	LOOP linedirx[i] = mat3_mul_vec3(el->transform_inverse, (Vec3){xcache->xzr,yzr[i],1}).x;
-	LOOP linediry[i] = mat3_mul_vec3(el->transform_inverse, (Vec3){xcache->xzr,yzr[i],1}).y;
-	LOOP linedirz[i] = mat3_mul_vec3(el->transform_inverse, (Vec3){xcache->xzr,yzr[i],1}).z;
+	float yzr = camera_screeny_to_yzr(cam, y);
+	float linedirx[CAMERA_SCREEN_WIDTH], linediry[CAMERA_SCREEN_WIDTH], linedirz[CAMERA_SCREEN_WIDTH];
+	LOOP linedirx[i] = mat3_mul_vec3(el->world2uball, (Vec3){xzr[i],yzr,1}).x;
+	LOOP linediry[i] = mat3_mul_vec3(el->world2uball, (Vec3){xzr[i],yzr,1}).y;
+	LOOP linedirz[i] = mat3_mul_vec3(el->world2uball, (Vec3){xzr[i],yzr,1}).z;
 #define LineDir(i) ( (Vec3){ linedirx[i], linediry[i], linedirz[i] } )
 
 	/*
-	Let xyz denote the vector (x,y,z). Intersecting the ball
+	Intersecting the ball
 
-		(xyz - ballcenter) dot (xyz - ballcenter) = 1
+		((x,y,z) - ballcenter) dot ((x,y,z) - ballcenter) = 1
 
 	with the line
 
-		xyz = t*linedir
+		(x,y,z) = t*linedir
 
 	creates a quadratic equation in t. We want the solution with bigger t,
 	because the direction vector is pointing towards the camera.
 	*/
-	float cc = vec3_lengthSQUARED(xcache->ballcenter);    // ballcenter dot ballcenter
-	float dd[CAMERA_SCREEN_HEIGHT];    // linedir dot linedir
-	float cd[CAMERA_SCREEN_HEIGHT];    // ballcenter dot linedir
-	LOOP dd[i] = vec3_lengthSQUARED(LineDir(i));
-	LOOP cd[i] = vec3_dot(xcache->ballcenter, LineDir(i));
+	Vec3 ballcenter = mat3_mul_vec3(el->world2uball, camera_point_world2cam(cam, el->center));
+	float cc = vec3_dot(ballcenter, ballcenter);
+	float dd[CAMERA_SCREEN_WIDTH];
+	float cd[CAMERA_SCREEN_WIDTH];
+	LOOP dd[i] = vec3_dot(LineDir(i), LineDir(i));
+	LOOP cd[i] = vec3_dot(ballcenter, LineDir(i));
 
-	float t[CAMERA_SCREEN_HEIGHT];
+	float t[CAMERA_SCREEN_WIDTH];
 	LOOP t[i] = cd[i]*cd[i] - dd[i]*(cc-1);
 	LOOP t[i] = max(0, t[i]);   // no negative under sqrt plz. Don't know why t[i] can be more than just a little bit negative...
 	LOOP t[i] = (cd[i] + sqrtf(t[i]))/dd[i];
 
-	float vecx[CAMERA_SCREEN_HEIGHT], vecy[CAMERA_SCREEN_HEIGHT], vecz[CAMERA_SCREEN_HEIGHT];
-	LOOP vecx[i] = mat3_mul_vec3(xcache->cam->cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), xcache->ballcenter)).x;
-	LOOP vecy[i] = mat3_mul_vec3(xcache->cam->cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), xcache->ballcenter)).y;
-	LOOP vecz[i] = mat3_mul_vec3(xcache->cam->cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), xcache->ballcenter)).z;
+	float vecx[CAMERA_SCREEN_WIDTH], vecy[CAMERA_SCREEN_WIDTH], vecz[CAMERA_SCREEN_WIDTH];
+	LOOP vecx[i] = mat3_mul_vec3(cam->cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), ballcenter)).x;
+	LOOP vecy[i] = mat3_mul_vec3(cam->cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), ballcenter)).y;
+	LOOP vecz[i] = mat3_mul_vec3(cam->cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), ballcenter)).z;
 #undef LineDir
 
-	int ex[CAMERA_SCREEN_HEIGHT], ey[CAMERA_SCREEN_HEIGHT], ez[CAMERA_SCREEN_HEIGHT];
+	int ex[CAMERA_SCREEN_WIDTH], ey[CAMERA_SCREEN_WIDTH], ez[CAMERA_SCREEN_WIDTH];
 	LOOP ex[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE, vecx[i]);
 	LOOP ey[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE, vecy[i]);
 	LOOP ez[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE, vecz[i]);
@@ -320,11 +382,14 @@ void ellipsoid_drawcolumn(
 	LOOP clamp(&ey[i], 0, ELLIPSOIDPIC_SIDE-1);
 	LOOP clamp(&ez[i], 0, ELLIPSOIDPIC_SIDE-1);
 
-	uint32_t px[CAMERA_SCREEN_HEIGHT];
+	uint32_t px[CAMERA_SCREEN_WIDTH];
 	bool hl = el->highlighted;
 	LOOP px[i] = el->epic->cubepixels[hl][ex[i]][ey[i]][ez[i]];
-	LOOP set_pixel(xcache->cam->surface, xcache->screenx, ymin + i, px[i]);
 #undef LOOP
+
+	// TODO: faster with or without memcpy?
+	uint32_t *pixdst = (uint32_t *)cam->surface->pixels + mypitch*y + xmin;
+	memcpy(pixdst, px, sizeof(uint32_t)*xdiff);
 }
 
 static Mat3 diag(float a, float b, float c)
@@ -338,10 +403,10 @@ static Mat3 diag(float a, float b, float c)
 
 void ellipsoid_update_transforms(struct Ellipsoid *el)
 {
-	el->transform = mat3_mul_mat3(
+	el->uball2world = mat3_mul_mat3(
 		diag(el->xzradius, el->yradius, el->xzradius),
 		mat3_rotation_xz(el->angle));
-	el->transform_inverse = mat3_inverse(el->transform);
+	el->world2uball = mat3_inverse(el->uball2world);
 }
 
 void ellipsoid_move_apart(struct Ellipsoid *el1, struct Ellipsoid *el2, float mv)

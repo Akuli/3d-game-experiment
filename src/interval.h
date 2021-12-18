@@ -16,9 +16,6 @@ struct Interval {
 	bool allowoverlap;
 };
 
-// do intervals [start1,end1] and [start2,end2] overlap?
-bool interval_overlap(int start1, int end1, int start2, int end2);
-
 /*
 Given n intervals, we want an upper bound for how many non-overlapping intervals
 they will be turned into.

@@ -5,20 +5,36 @@
 Non-static inline functions are weird in c. You need to put definition to h file
 and declaration to c file.
 */
+
 extern inline void clamp(int *val, int lo, int hi);
 extern inline void clamp_float(float *val, float lo, float hi);
+
 extern inline Vec3 vec3_add(Vec3 v, Vec3 w);
 extern inline Vec3 vec3_sub(Vec3 v, Vec3 w);
 extern inline void vec3_add_inplace(Vec3 *v, Vec3 w);
 extern inline void vec3_sub_inplace(Vec3 *v, Vec3 w);
 extern inline Vec3 vec3_mul_float(Vec3 v, float f);
 extern inline float vec3_dot(Vec3 v, Vec3 w);
+
+extern inline Vec2 vec2_add(Vec2 v, Vec2 w);
+extern inline Vec2 vec2_sub(Vec2 v, Vec2 w);
+extern inline Vec2 vec2_mul_float(Vec2 v, float f);
+extern inline float vec2_dot(Vec2 v, Vec2 w);
+
 extern inline float vec3_lengthSQUARED(Vec3 v);
 extern inline Vec3 vec3_withlength(Vec3 v, float len);
 extern inline Vec3 vec3_cross(Vec3 v, Vec3 w);
 extern inline Vec3 mat3_mul_vec3(Mat3 M, Vec3 v);
 extern inline void vec3_apply_matrix(Vec3 *v, Mat3 M);
 extern inline bool plane_whichside(struct Plane pl, Vec3 pt);
+
+extern inline Vec2 mat2_mul_vec2(Mat2 M, Vec2 v);
+extern inline Vec3 mat3_mul_vec3(Mat3 M, Vec3 v);
+extern inline void vec3_apply_matrix(Vec3 *v, Mat3 M);
+
+extern inline float mat2_det(Mat2 M);
+extern inline float mat3_det(Mat3 M);
+
 
 Mat3 mat3_mul_mat3(Mat3 A, Mat3 B)
 {
@@ -47,14 +63,6 @@ static Mat3 multiply_matrix_by_float(Mat3 M, float f)
 	return M;
 }
 
-static float determinant(Mat3 M)
-{
-	Vec3 row1 = { M.rows[0][0], M.rows[0][1], M.rows[0][2] };
-	Vec3 row2 = { M.rows[1][0], M.rows[1][1], M.rows[1][2] };
-	Vec3 row3 = { M.rows[2][0], M.rows[2][1], M.rows[2][2] };
-	return vec3_dot(row1, vec3_cross(row2, row3));
-}
-
 Mat3 mat3_inverse(Mat3 M)
 {
 	// https://ardoris.wordpress.com/2008/07/18/general-formula-for-the-inverse-of-a-3x3-matrix/
@@ -69,7 +77,7 @@ Mat3 mat3_inverse(Mat3 M)
 			{ f*g-d*i, a*i-c*g, c*d-a*f },
 			{ d*h-e*g, b*g-a*h, a*e-b*d },
 		}},
-		1.0f/determinant(M)
+		1.0f/mat3_det(M)
 	);
 }
 

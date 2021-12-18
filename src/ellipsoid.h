@@ -6,6 +6,7 @@
 #include <SDL2/SDL.h>
 #include "camera.h"
 #include "mathstuff.h"
+#include "rect3.h"
 
 
 // DON'T MAKE THIS TOO BIG, it uses this^3 amount of memory...
@@ -61,50 +62,34 @@ struct Ellipsoid {
 	float yradius;     // positive
 
 	/*
-	Applying transform to an origin-centered unit ball gives this ellipsoid
-	centered at the origin (you still need to add the center vector).
+	Coordinates where the ellipsoid is simply x^2+y^2+z^2=1 are called
+	"unit ball coordinates", or uball for short.
+	As with camera and world coords, the matrices aren't enough to do conversions.
+	You also need to add/subtract the center point.
 	*/
-	Mat3 transform, transform_inverse;
+	Mat3 uball2world, world2uball;
 };
 
-/*
-Information shared in multiple functions, specific to screen x coordinate
-*/
-struct EllipsoidXCache {
-	int screenx;
-	float ballcenterscreenx;    // where is ellipsoid->center on screen?
-	float xzr;
-	const struct Camera *cam;
-
-	// coordinates are in camera coordinates with Ellipsoid.transform_inverse applied
-	Vec3 ballcenter;        // ellipsoid->center, transformed as described above
-	struct Plane xplane;    // plane of points that are visible at given screen x
-	float dSQUARED;         // (distance between xplane and ballcenter)^2
-};
-
-// calculate el->transform and el->transform_inverse
+// calculate el->uball2world and el->world2uball
 void ellipsoid_update_transforms(struct Ellipsoid *el);
 
-/*
-Is the ellipsoid visible anywhere on screen? If it is, put range of visible screen
-x coordinates to xmin and xmax.
-*/
-bool ellipsoid_visible_xminmax(
-	const struct Ellipsoid *el, const struct Camera *cam, int *xmin, int *xmax);
+// Is the ellipsoid visible anywhere on screen?
+bool ellipsoid_is_visible(const struct Ellipsoid *el, const struct Camera *cam);
 
-// Which range of screen y coordinates is showing the ellipsoid? Also fill in xcache.
-void ellipsoid_yminmax(
+// Ellipsoid will be drawn fully within the returned 2D rectangle.
+// Assumes that ellipsoid_is_visible() has returned true.
+SDL_Rect ellipsoid_bbox(const struct Ellipsoid *el, const struct Camera *cam);
+
+// Returned 3D rectangle is suitable for sorting ellipsoids and walls for display
+struct Rect3 ellipsoid_get_sort_rect(const struct Ellipsoid *el, const struct Camera *cam);
+
+// returns false if nothing visible for given y
+bool ellipsoid_xminmax(const struct Ellipsoid *el, const struct Camera *cam, int y, int *xmin, int *xmax);
+
+// Draw all pixels of ellipsoid corresponding to range of x coordinates
+void ellipsoid_drawrow(
 	const struct Ellipsoid *el, const struct Camera *cam,
-	int x, struct EllipsoidXCache *xcache,
-	int *ymin, int *ymax);
-
-/*
-Draw all pixels of ellipsoid corresponding to range of y coordinates. May be
-called more than once with same xcache but different ymin and ymax.
-*/
-void ellipsoid_drawcolumn(
-	const struct Ellipsoid *el, const struct EllipsoidXCache *xcache,
-	int ymin, int ymax);
+	int y, int xmin, int xmax);
 
 /*
 Returns how much ellipsoids should be moved apart from each other to make them not

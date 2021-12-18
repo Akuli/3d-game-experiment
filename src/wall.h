@@ -3,8 +3,8 @@
 
 #include <stdbool.h>
 #include "ellipsoid.h"
-#include "camera.h"
 #include "mathstuff.h"
+#include "rect3.h"
 
 /*
 Walls always start and end in integer x and z coordinates and go 1 unit to
@@ -61,6 +61,8 @@ struct Wall {
 // Can be called multiple times
 void wall_init(struct Wall *w);
 
+struct Rect3 wall_to_rect(const struct Wall *w);
+
 // does not require using wall_init()
 bool wall_match(const struct Wall *w1, const struct Wall *w2);
 
@@ -80,34 +82,6 @@ inline bool wall_linedup(const struct Wall *w1, const struct Wall *w2)
 		(w1->dir == WALL_DIR_XY && w2->dir == WALL_DIR_XY && w1->startz == w2->startz) ||
 		(w1->dir == WALL_DIR_ZY && w2->dir == WALL_DIR_ZY && w1->startx == w2->startx);
 }
-
-void wall_drawborder(const struct Wall *w, const struct Camera *cam);
-
-// for non-border drawing functions
-struct WallCache {
-	bool highlight;  // meant to be set outside wall.c
-	const struct Wall *wall;
-	const struct Camera *cam;
-	Vec2 top1, top2, bot1, bot2;  // screen points
-};
-
-/*
-Returns whether wall is visible.
-
-Many things in one function, hard to separate. Cache is needed for visibility checking,
-but can't be created if not visible. Visibility checking also produces xmin and xmax.
-*/
-bool wall_visible_xminmax_fillcache(
-	const struct Wall *w, const struct Camera *cam,
-	int *xmin, int *xmax,   // If returns true, set to where on screen will wall go
-	struct WallCache *wc    // Filled if returns true
-);
-
-// Which range of screen y coordinates is showing the wall?
-void wall_yminmax(const struct WallCache *wc, int x, int *ymin, int *ymax);
-
-// Draw all pixels of wall corresponding to range of y coordinates
-void wall_drawcolumn(const struct WallCache *wc, int x, int ymin, int ymax);
 
 
 #endif    // WALL_H

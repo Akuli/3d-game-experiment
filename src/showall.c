@@ -1,16 +1,18 @@
 #include "showall.h"
 #include <stdbool.h>
+#include <string.h>
 #include <SDL2/SDL.h>
 #include "camera.h"
 #include "ellipsoid.h"
 #include "interval.h"
+#include "log.h"
 #include "mathstuff.h"
 #include "max.h"
+#include "rect3.h"
 #include "wall.h"
-#include "log.h"
 
-// fitting too much stuff into an int
-typedef int ID;
+// fitting too much stuff into an integer
+typedef short ID;
 #define ID_TYPE_ELLIPSOID 0
 #define ID_TYPE_WALL 1
 #define ID_TYPE(id) ((id) & 1)
@@ -18,64 +20,88 @@ typedef int ID;
 #define ID_NEW(type, idx) ((type) | ((idx) << 1))
 
 // length of array indexed by id
-#define ID_ARRAYLEN max( \
+#define ARRAYLEN_INDEXED_BY_ID max( \
 	ID_NEW(ID_TYPE_ELLIPSOID, MAX_ELLIPSOIDS-1) + 1, \
 	ID_NEW(ID_TYPE_WALL, MAX_WALLS-1) + 1 \
 )
 
+// length of array containing ids
+#define ARRAYLEN_CONTAINING_ID (MAX_WALLS + MAX_ELLIPSOIDS)
+
 struct Info {
 	// dependencies must be displayed first, they go to behind the ellipsoid or wall
-	ID deps[MAX_WALLS + MAX_ELLIPSOIDS];
+	ID deps[ARRAYLEN_CONTAINING_ID];
 	int ndeps;
 
-	// which range of x coordinates will be showing this ellipsoid or wall?
-	int xmin, xmax;
+	SDL_Rect bbox;	// bounding box
+	struct Rect3 sortrect;
+	bool sortingdone;  // for sorting infos to display them in correct order
 
-	bool insortedarray;  // for sorting infos to display them in correct order
-
-	union {
-		struct WallCache wallc;
-		struct EllipsoidXCache ellipsoidc;
-	} cache;
+	struct Rect3Cache rcache;
+	bool highlight;
 };
 
 struct ShowingState {
 	const struct Camera *cam;
 	const struct Wall *walls;           // indexed by ID_INDEX(wall id)
 	const struct Ellipsoid *els;        // indexed by ID_INDEX(ellipsoid id)
-	struct Info infos[ID_ARRAYLEN];     // indexed by id
+	struct Info infos[ARRAYLEN_INDEXED_BY_ID];
 
-	ID visible[MAX_WALLS + MAX_ELLIPSOIDS];
+	ID visible[ARRAYLEN_CONTAINING_ID];
 	int nvisible;
+
+	// Visible objects in arbitrary order
+	ID objects_by_x[CAMERA_SCREEN_WIDTH][ARRAYLEN_CONTAINING_ID];
+	int nobjects_by_x[CAMERA_SCREEN_WIDTH];
+
+	// Visible objects in the order in which they are drawn (closest to camera last)
+	ID objects_by_y[CAMERA_SCREEN_HEIGHT][ARRAYLEN_CONTAINING_ID];
+	int nobjects_by_y[CAMERA_SCREEN_HEIGHT];
 };
 
 static void add_ellipsoid_if_visible(struct ShowingState *st, int idx)
 {
-	int xmin, xmax;
-	if (ellipsoid_visible_xminmax(&st->els[idx], st->cam, &xmin, &xmax)) {
+	if (ellipsoid_is_visible(&st->els[idx], st->cam)) {
 		ID id = ID_NEW(ID_TYPE_ELLIPSOID, idx);
 		st->visible[st->nvisible++] = id;
 		st->infos[id].ndeps = 0;
-		st->infos[id].xmin = xmin;
-		st->infos[id].xmax = xmax;
-		st->infos[id].insortedarray = false;
+		st->infos[id].bbox = ellipsoid_bbox(&st->els[idx], st->cam);
+		st->infos[id].sortrect = ellipsoid_get_sort_rect(&st->els[idx], st->cam);
+		st->infos[id].sortingdone = false;
 	}
 }
 
 static void add_wall_if_visible(struct ShowingState *st, int idx)
 {
-	int xmin, xmax;
-	struct WallCache wc;
-	if (wall_visible_xminmax_fillcache(&st->walls[idx], st->cam, &xmin, &xmax, &wc)) {
+	struct Rect3 r = wall_to_rect(&st->walls[idx]);
+	struct Rect3Cache rcache;
+	if (rect3_visible_fillcache(&r, st->cam, &rcache)) {
 		ID id = ID_NEW(ID_TYPE_WALL, idx);
 		st->visible[st->nvisible++] = id;
 		st->infos[id].ndeps = 0;
-		st->infos[id].xmin = xmin;
-		st->infos[id].xmax = xmax;
-		st->infos[id].insortedarray = false;
-		st->infos[id].cache.wallc = wc;
+		st->infos[id].bbox = rcache.bbox;
+		st->infos[id].sortrect = r;
+		st->infos[id].sortingdone = false;
+		st->infos[id].rcache = rcache;
+		st->infos[id].highlight = false;
 	}
 }
+
+#if 0
+static void debug_print_dependencies(const struct ShowingState *st)
+{
+	log_printf("dependency dump:");
+	for (int i = 0; i < st->nvisible; i++) {
+		ID id = st->visible[i];
+		if (st->infos[id].ndeps == 0)
+			continue;
+
+		log_printf("  %d", id);
+		for (int d = 0; d < st->infos[id].ndeps; d++)
+			log_printf("  `--> %d", st->infos[id].deps[d]);
+	}
+}
+#endif
 
 static void add_dependency(struct ShowingState *st, ID before, ID after)
 {
@@ -83,178 +109,124 @@ static void add_dependency(struct ShowingState *st, ID before, ID after)
 		if (st->infos[after].deps[i] == before)
 			return;
 	}
-
 	st->infos[after].deps[st->infos[after].ndeps++] = before;
-}
-
-static void setup_ellipsoid_wall_dependency(struct ShowingState *st, ID eid, ID wid)
-{
-	SDL_assert(ID_TYPE(eid) == ID_TYPE_ELLIPSOID);
-	SDL_assert(ID_TYPE(wid) == ID_TYPE_WALL);
-
-	const struct Ellipsoid *el = &st->els[ID_INDEX(eid)];
-	const struct Wall *w = &st->walls[ID_INDEX(wid)];
-
-	// biggest and smallest camera z coords of wall corners (don't know which is which)
-	float z1 = camera_point_world2cam(st->cam, w->top1).z;
-	float z2 = camera_point_world2cam(st->cam, w->top2).z;
-
-	float elcenterz = camera_point_world2cam(st->cam, el->center).z;
-
-	if (elcenterz < z1 && elcenterz < z2) {
-		// ellipsoid is behind every corner of the wall
-		add_dependency(st, eid, wid);
-	} else if (elcenterz > z1 && elcenterz > z2) {
-		// in front of every corner of the wall
-		add_dependency(st, wid, eid);
-	} else if (wall_side(w, el->center) == wall_side(w, st->cam->location)) {
-		// lined up with wall and on same side of wall as camera
-		add_dependency(st, wid, eid);
-	} else {
-		// lined up with wall and on different side of wall as camera
-		add_dependency(st, eid, wid);
-	}
-}
-
-static void setup_same_type_dependency(struct ShowingState *st, ID id1, ID id2)
-{
-	SDL_assert(ID_TYPE(id1) == ID_TYPE(id2));
-	Vec3 center1, center2;
-
-	switch(ID_TYPE(id1)) {
-		case ID_TYPE_ELLIPSOID:
-			center1 = st->els[ID_INDEX(id1)].center;
-			center2 = st->els[ID_INDEX(id2)].center;
-			break;
-
-		case ID_TYPE_WALL:
-			if (wall_linedup(&st->walls[ID_INDEX(id1)], &st->walls[ID_INDEX(id2)]))
-				return;
-			center1 = wall_center(&st->walls[ID_INDEX(id1)]);
-			center2 = wall_center(&st->walls[ID_INDEX(id2)]);
-			break;
-	}
-
-	float c1, c2;
-	if (center1.x == center2.x && center1.z == center2.z) {
-		// comparing y coordinates does the right thing for guards above players
-		c1 = center1.y;
-		c2 = center2.y;
-	} else {
-		/*
-		using distance between camera and center instead creates funny bug: Set up
-		two players with wall in between them. Make player A look at player B
-		(behind the wall), and jump up and down with player B. Sometimes B will
-		show up through the wall.
-
-		tl;dr: don't "improve" this code by replacing z coordinate (in camera coords)
-		       with something like |camera - center|
-		*/
-		c1 = camera_point_world2cam(st->cam, center1).z;
-		c2 = camera_point_world2cam(st->cam, center2).z;
-	}
-
-	if (c1 < c2)
-		add_dependency(st, id1, id2);
-	else
-		add_dependency(st, id2, id1);
 }
 
 static void setup_dependencies(struct ShowingState *st)
 {
-	for (int i = 0  ; i < st->nvisible; i++) {
-		for (int k = i+1; k < st->nvisible; k++) {
-			ID id1 = st->visible[i];
-			ID id2 = st->visible[k];
+	bool xcoords[CAMERA_SCREEN_WIDTH] = {0};
+	for (int i = 0; i < st->nvisible; i++) {
+		SDL_Rect bbox = st->infos[st->visible[i]].bbox;
+		int lo = bbox.x, hi = bbox.x+bbox.w;
+		SDL_assert(0 <= lo && lo <= CAMERA_SCREEN_WIDTH);
+		SDL_assert(0 <= hi && hi <= CAMERA_SCREEN_WIDTH);
+		if (lo != CAMERA_SCREEN_WIDTH) xcoords[lo] = true;
+		if (hi != CAMERA_SCREEN_WIDTH) xcoords[hi] = true;
+	}
 
-			if (!interval_overlap(
-					st->infos[id1].xmin, st->infos[id1].xmax,
-					st->infos[id2].xmin, st->infos[id2].xmax))
+	int xlist[CAMERA_SCREEN_WIDTH];
+	int xlistlen = 0;
+	for (int x = 0; x < sizeof(xcoords)/sizeof(xcoords[0]); x++)
+		if (xcoords[x])
+			xlist[xlistlen++] = x;
+
+	// It should be enough to check in the middles of intervals between bboxes
+	for (int xidx = 1; xidx < xlistlen; xidx++) {
+		int x = (xlist[xidx-1] + xlist[xidx])/2;
+		float xzr = camera_screenx_to_xzr(st->cam, x);
+
+		for (int i = 0; i < st->nobjects_by_x[x]; i++)
+			for (int k = 0; k < i; k++)
 			{
-				continue;
-			}
+				ID id1 = st->objects_by_x[x][i];
+				ID id2 = st->objects_by_x[x][k];
+				// TODO: walls of different color
+				if (ID_TYPE(id1) == ID_TYPE_WALL && ID_TYPE(id2) == ID_TYPE_WALL)
+					continue;
 
-			if (ID_TYPE(id1) == ID_TYPE_ELLIPSOID && ID_TYPE(id2) == ID_TYPE_WALL)
-				setup_ellipsoid_wall_dependency(st, id1, id2);
-			else if (ID_TYPE(id1) == ID_TYPE_WALL && ID_TYPE(id2) == ID_TYPE_ELLIPSOID)
-				setup_ellipsoid_wall_dependency(st, id2, id1);
-			else
-				setup_same_type_dependency(st, id1, id2);
+				int ystart = max(
+					st->infos[id1].bbox.y,
+					st->infos[id2].bbox.y);
+				int yend = min(
+					st->infos[id1].bbox.y + st->infos[id1].bbox.h,
+					st->infos[id2].bbox.y + st->infos[id2].bbox.h);
+				if (ystart > yend)
+					continue;
+
+				float yzr = camera_screeny_to_yzr(st->cam, (ystart + yend)/2);
+				float z1 = rect3_get_camcoords_z(&st->infos[id1].sortrect, st->cam, xzr, yzr);
+				float z2 = rect3_get_camcoords_z(&st->infos[id2].sortrect, st->cam, xzr, yzr);
+				if (z1 < z2)
+					add_dependency(st, id1, id2);
+				else
+					add_dependency(st, id2, id1);
+			}
+	}
+}
+
+// Called for each visible object, in the order of drawing
+static void add_id_to_drawing_order(struct ShowingState *st, ID id)
+{
+	SDL_Rect bbox = st->infos[id].bbox;
+	SDL_assert(0 <= bbox.y && bbox.y+bbox.h <= st->cam->surface->h);
+	for (int y = bbox.y; y < bbox.y+bbox.h; y++)
+		st->objects_by_y[y][st->nobjects_by_y[y]++] = id;
+}
+
+static void create_showing_order_from_dependencies(struct ShowingState *st)
+{
+	static ID todo[ARRAYLEN_CONTAINING_ID];
+	int ntodo = st->nvisible;
+	memcpy(todo, st->visible, ntodo*sizeof(todo[0]));
+
+	// Standard topological sort algorithm. I learned it from Python's toposort module
+	while (ntodo > 0) {
+		bool stuck = true;
+		for (int i = ntodo-1; i >= 0; i--) {
+			if (st->infos[todo[i]].ndeps == 0) {
+				add_id_to_drawing_order(st, todo[i]);
+				st->infos[todo[i]].sortingdone = true;
+				todo[i] = todo[--ntodo];
+				stuck = false;
+			}
+		}
+		if (stuck) {
+			log_printf("dependency cycle detected");
+			// TODO: This doesn't necessarily remove the cycle on first attempt.
+			//       It can remove a completely unrelated dependency instead.
+			st->infos[todo[0]].ndeps--;
+			continue;
+		}
+		for (int i = 0; i < ntodo; i++) {
+			struct Info *info = &st->infos[todo[i]];
+			for (int k = info->ndeps-1; k >= 0; k--) {
+				if (st->infos[info->deps[k]].sortingdone)
+					info->deps[k] = info->deps[--info->ndeps];
+			}
 		}
 	}
 }
 
-#if 0
-static void debug_print_dependencies(const struct ShowingState *st)
-{
-	printf("\ndependency dump:\n");
-	for (int i = 0; i < st->nvisible; i++) {
-		ID id = st->visible[i];
-		if (st->infos[id].ndeps == 0)
-			continue;
-
-		printf("   %-3d --> ", id);
-		for (int d = 0; d < st->infos[id].ndeps; d++)
-			printf("%s%d", (d?",":""), st->infos[id].deps[d]);
-		printf("\n");
-	}
-	printf("\n");
-}
-#endif
-
-static void add_dependencies_and_id_to_sorted_array(struct ShowingState *st, ID **ptr, ID id, int depth)
-{
-	if (depth > MAX_WALLS + MAX_ELLIPSOIDS) {
-		// don't know when this could happen, but prevent disasters
-		log_printf("hitting recursion depth limit, something weird is happening");
-		return;
-	}
-	if (st->infos[id].insortedarray)
-		return;
-
-	// setting this early avoids infinite recursion in case dependency graph has a cycle
-	st->infos[id].insortedarray = true;   
-
-	for (int i = 0; i < st->infos[id].ndeps; i++)
-		add_dependencies_and_id_to_sorted_array(st, ptr, st->infos[id].deps[i], depth+1);
-
-	*(*ptr)++ = id;
-}
-
-// In which order should walls and ellipsoids be shown?
-static void create_sorted_array(struct ShowingState *st, ID *sorted)
-{
-	ID *ptr = sorted;
-	for (int i = 0; i < st->nvisible; i++)
-		add_dependencies_and_id_to_sorted_array(st, &ptr, st->visible[i], 0);
-	SDL_assert(sorted + st->nvisible == ptr);
-}
-
-static void get_yminmax(struct ShowingState *st, ID id, int x, int *ymin, int *ymax)
+static bool get_xminmax(struct ShowingState *st, ID id, int y, int *xmin, int *xmax)
 {
 	switch(ID_TYPE(id)) {
-		case ID_TYPE_ELLIPSOID:
-			ellipsoid_yminmax(&st->els[ID_INDEX(id)], st->cam, x, &st->infos[id].cache.ellipsoidc, ymin, ymax);
-			break;
-		case ID_TYPE_WALL:
-			wall_yminmax(&st->infos[id].cache.wallc, x, ymin, ymax);
-			break;
+		case ID_TYPE_ELLIPSOID: return ellipsoid_xminmax(&st->els[ID_INDEX(id)], st->cam, y, xmin, xmax);
+		case ID_TYPE_WALL: return rect3_xminmax(&st->infos[id].rcache, y, xmin, xmax);
 	}
+	return false;  // compiler = happy
 }
 
-static void draw_column(const struct ShowingState *st, int x, ID id, int ymin, int ymax)
+static void draw_row(const struct ShowingState *st, int y, ID id, int xmin, int xmax)
 {
 	switch(ID_TYPE(id)) {
 	case ID_TYPE_ELLIPSOID:
-		ellipsoid_drawcolumn(&st->els[ID_INDEX(id)], &st->infos[id].cache.ellipsoidc, ymin, ymax);
+		ellipsoid_drawrow(&st->els[ID_INDEX(id)], st->cam, y, xmin, xmax);
 		break;
 	case ID_TYPE_WALL:
-		wall_drawcolumn(&st->infos[id].cache.wallc, x, ymin, ymax);
+		rect3_drawrow(&st->infos[id].rcache, y, xmin, xmax, st->infos[id].highlight);
 		break;
 	}
 }
-
-#define ArrayLen(arr) ( sizeof(arr) / sizeof((arr)[0]) )
 
 void show_all(
 	const struct Wall *walls, int nwalls,
@@ -271,44 +243,48 @@ void show_all(
 	st.walls = walls;
 	st.els = els;
 	st.nvisible = 0;
+	memset(st.nobjects_by_x, 0, sizeof st.nobjects_by_x);
+	memset(st.nobjects_by_y, 0, sizeof st.nobjects_by_y);
 
 	for (int i = 0; i < nels; i++)
 		add_ellipsoid_if_visible(&st, i);
 	for (int i = 0; i < nwalls; i++)
 		add_wall_if_visible(&st, i);
 	for (const int *i = highlightwalls; *i != -1; i++)
-		st.infos[ID_NEW(ID_TYPE_WALL, *i)].cache.wallc.highlight = true;
+		st.infos[ID_NEW(ID_TYPE_WALL, *i)].highlight = true;
+
+	for (int i = 0; i < st.nvisible; i++) {
+		SDL_Rect bbox = st.infos[st.visible[i]].bbox;
+		SDL_assert(0 <= bbox.x && bbox.x+bbox.w <= cam->surface->w);
+		for (int x = bbox.x; x < bbox.x+bbox.w; x++)
+			st.objects_by_x[x][st.nobjects_by_x[x]++] = st.visible[i];
+	}
 
 	setup_dependencies(&st);
+	create_showing_order_from_dependencies(&st);
 
-	static ID sorted[ArrayLen(st.visible)];
-	create_sorted_array(&st, sorted);
-
-	for (int x = 0; x < cam->surface->w; x++) {
-		static struct Interval intervals[ArrayLen(sorted)];
+	for (int y = 0; y < cam->surface->h; y++) {
+		static struct Interval intervals[ARRAYLEN_CONTAINING_ID];
 		int nintervals = 0;
 
-		for (int i = 0; i < st.nvisible; i++) {
-			ID id = sorted[i];
-			if (!( st.infos[id].xmin <= x && x <= st.infos[id].xmax ))
-				continue;
-
-			int ymin, ymax;
-			get_yminmax(&st, id, x, &ymin, &ymax);
-			if (ymin < ymax) {
+		for (int i = 0; i < st.nobjects_by_y[y]; i++) {
+			ID id = st.objects_by_y[y][i];
+			int xmin, xmax;
+			if (get_xminmax(&st, id, y, &xmin, &xmax)) {
+				SDL_assert(xmin <= xmax);
 				intervals[nintervals++] = (struct Interval){
-					.start = ymin,
-					.end = ymax,
+					.start = xmin,
+					.end = xmax,
 					.id = id,
 					.allowoverlap = (ID_TYPE(id) == ID_TYPE_WALL),
 				};
 			}
 		}
 
-		static struct Interval nonoverlap[INTERVAL_NON_OVERLAPPING_MAX(ArrayLen(intervals))];
+		static struct Interval nonoverlap[INTERVAL_NON_OVERLAPPING_MAX(ARRAYLEN_CONTAINING_ID)];
 		int nnonoverlap = interval_non_overlapping(intervals, nintervals, nonoverlap);
 
 		for (int i = 0; i < nnonoverlap; i++)
-			draw_column(&st, x, nonoverlap[i].id, nonoverlap[i].start, nonoverlap[i].end);
+			draw_row(&st, y, nonoverlap[i].id, nonoverlap[i].start, nonoverlap[i].end);
 	}
 }
