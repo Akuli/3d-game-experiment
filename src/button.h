@@ -18,7 +18,7 @@ enum ButtonFlags {
 struct Button {
 	// imgpath image and text are drawn on top of a generic button background image
 	const char *imgpath;
-	const char *text;
+	char text[100];
 
 	enum ButtonFlags flags;
 

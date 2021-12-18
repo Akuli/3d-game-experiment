@@ -73,7 +73,7 @@ void button_show(const struct Button *butt)
 	blit_with_center(get_image(butt->flags), butt->destsurf, &butt->center);
 	int textx, imgx;
 
-	if (butt->imgpath && butt->text) {
+	if (butt->imgpath && butt->text[0]) {
 		int left = butt->center.x - button_width(butt->flags)/2;
 		imgx = left + (int)(0.3f*button_width(butt->flags));
 		textx = left + (int)(0.7f*button_width(butt->flags));
@@ -87,7 +87,7 @@ void button_show(const struct Button *butt)
 		free_image_surface(s);
 	}
 
-	if (butt->text) {
+	if (butt->text[0]) {
 		SDL_Color black = { 0x00, 0x00, 0x00, 0xff };
 		int fontsz;
 		if (butt->flags & BUTTON_TINY)

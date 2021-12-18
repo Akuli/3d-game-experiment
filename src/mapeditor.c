@@ -39,9 +39,8 @@ struct Selection {
 	} data;
 };
 
-struct ToolButtons {
-	struct Button wall, enemy;
-};
+enum Tool { TOOL_WALL, TOOL_ENEMY };
+#define TOOL_COUNT 2
 
 struct MapEditor {
 	SDL_Window *wnd;
@@ -52,8 +51,9 @@ struct MapEditor {
 	struct Camera cam;
 	float zoom;
 	int rotatedir;
-	struct Button donebtn;
-	struct ToolButtons toolbuttons;
+	struct Button donebutton;
+	struct Button toolbuttons[TOOL_COUNT];
+	enum Tool tool;
 	struct Selection sel;
 	bool up, down, left, right;   // are arrow keys pressed
 	struct TextEntry nameentry;
@@ -591,9 +591,9 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 
 	float pi = acosf(-1);
 
-	button_handle_event(e, &ed->donebtn);
-	button_handle_event(e, &ed->toolbuttons.wall);
-	button_handle_event(e, &ed->toolbuttons.enemy);
+	button_handle_event(e, &ed->donebutton);
+	for (int i = 0; i < TOOL_COUNT; i++)
+		button_handle_event(e, &ed->toolbuttons[i]);
 
 	// If "Yes, delete this map" button was clicked and the map no longer
 	// exists, we must avoid handling the click event again
@@ -778,50 +778,48 @@ static void show_editor(struct MapEditor *ed)
 	}
 }
 
-static void on_tool_changed(void *editorptr)
+static void set_number_of_button(struct Button *butt, int num)
 {
-	log_printf("on_tool_changed");
-	return;
-	struct MapEditor *ed = editorptr;
-	int m = min(MAX_ENEMIES, ed->map->xsize*ed->map->zsize - 2);
-	SDL_assert(ed->map->nenemylocs < m);  // button should be disabled if not
+	SDL_assert(num >= 0);
+	sprintf(butt->text, "%d", num);
+	if (num == 0)
+		butt->flags |= BUTTON_DISABLED;
+	else
+		butt->flags &= ~BUTTON_DISABLED;
+}
 
-	struct MapCoords hint;
-	switch(ed->sel.mode) {
-		case SEL_ELLIPSOID:
-			hint = *ed->sel.data.eledit->loc;
-			break;
-		case SEL_WALL:
-			hint = (struct MapCoords){ ed->sel.data.wall.startx, ed->sel.data.wall.startz };
-			break;
-		default:
-			// Do not add enemies e.g. while moving something
-			return;
-	}
+static void update_buttons(struct MapEditor *ed)
+{
+	int maxenemies = min(MAX_ENEMIES, ed->map->xsize*ed->map->zsize - 2);
+	int maxwalls = min(
+		MAX_WALLS,
+		  ed->map->xsize*(ed->map->zsize+1)
+		+ ed->map->zsize*(ed->map->xsize+1));
 
-	int i = ed->map->nenemylocs;
-	// evaluation order rules troll me
+	set_number_of_button(&ed->toolbuttons[TOOL_ENEMY], maxenemies - ed->map->nenemylocs);
+	set_number_of_button(&ed->toolbuttons[TOOL_WALL], maxwalls - ed->map->nwalls);
+}
+
+static void on_tool_changed(struct MapEditor *ed, enum Tool tool)
+{
+	log_printf("Changing tool to %d", tool);
+	end_moving_or_resizing(ed);
+	ed->tool = tool;
+	for (int t = 0; t < TOOL_COUNT; t++)
+		if (t != tool)
+			ed->toolbuttons[t].flags &= ~BUTTON_PRESSED;
+	update_buttons(ed);
+
+	/*// evaluation order rules troll me
 	struct MapCoords c = map_findempty(ed->map, hint);
 	ed->map->enemylocs[ed->map->nenemylocs++] = c;
 	log_printf("Added enemy, now there are %d enemies", ed->map->nenemylocs);
 	map_save(ed->map);
-
-	ed->sel = (struct Selection){ .mode = SEL_ELLIPSOID, .data = {.eledit = &ed->enemyedits[i]} };
-	ed->redraw = true;
-}
-
-static void update_button_disableds(struct MapEditor *ed)
-{
-	// FIXME
-	/*
-	int m = min(MAX_ENEMIES, ed->map->xsize*ed->map->zsize - 2);
-	SDL_assert(ed->map->nenemylocs <= m);
-	if (ed->map->nenemylocs == m)
-		ed->addenemybtn.flags |= BUTTON_DISABLED;
-	else
-		ed->addenemybtn.flags &= ~BUTTON_DISABLED;
 	*/
 }
+
+static void on_wall_button_clicked(void *edptr) { on_tool_changed(edptr, TOOL_WALL); }
+static void on_enemy_button_clicked(void *edptr) { on_tool_changed(edptr, TOOL_ENEMY); }
 
 static void on_done_clicked(void *data)
 {
@@ -838,7 +836,7 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 	*ed = (struct MapEditor){
 		.zoom = zoom,
 		.cam = { .surface = surf, .screencentery = ytop, .angle = 0 },
-		.donebtn = {
+		.donebutton = {
 			.text = "Done",
 			.destsurf = surf,
 			.center = {
@@ -850,21 +848,19 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 			.onclickdata = ed,
 		},
 		.toolbuttons = {
-			.wall = {
-				.text = "1",
+			[TOOL_WALL] = {
 				.imgpath = "assets/buttonpics/enemy.png",  // TODO this sucks
-				.flags = BUTTON_THICK | BUTTON_STAYPRESSED,
+				.flags = BUTTON_THICK | BUTTON_STAYPRESSED | BUTTON_PRESSED,
 				.scancodes = { SDL_SCANCODE_W },
 				.destsurf = surf,
 				.center = {
 					CAMERA_SCREEN_WIDTH - button_width(BUTTON_THICK)/2,
 					button_height(BUTTON_THICK)/2
 				},
-				.onclick = on_tool_changed,
+				.onclick = on_wall_button_clicked,
 				.onclickdata = ed,
 			},
-			.enemy = {
-				.text = "57",
+			[TOOL_ENEMY] = {
 				.imgpath = "assets/buttonpics/enemy.png",
 				.flags = BUTTON_THICK | BUTTON_STAYPRESSED,
 				.scancodes = { SDL_SCANCODE_E },
@@ -873,7 +869,7 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 					CAMERA_SCREEN_WIDTH - button_width(BUTTON_THICK)/2,
 					button_height(BUTTON_THICK)*3/2
 				},
-				.onclick = on_tool_changed,
+				.onclick = on_enemy_button_clicked,
 				.onclickdata = ed,
 			},
 		},
@@ -945,10 +941,10 @@ static void show_and_rotate_map_editor(struct MapEditor *ed, bool canedit)
 		SDL_FillRect(ed->cam.surface, NULL, 0);
 		show_editor(ed);
 		if (canedit) {
-			update_button_disableds(ed);
-			button_show(&ed->donebtn);
-			button_show(&ed->toolbuttons.wall);
-			button_show(&ed->toolbuttons.enemy);
+			update_buttons(ed);
+			button_show(&ed->donebutton);
+			for (int i = 0; i < TOOL_COUNT; i++)
+				button_show(&ed->toolbuttons[i]);
 			ed->nameentry.redraw = true;  // because entire surface was cleared above
 		}
 	}
@@ -991,6 +987,7 @@ enum State mapeditor_run(struct MapEditor *ed, SDL_Window *wnd)
 		}
 
 		show_and_rotate_map_editor(ed, true);
+		update_buttons(ed);
 		SDL_UpdateWindowSurface(wnd);  // Run every time, in case buttons redraw themselves
 		looptimer_wait(&lt);
 	}
