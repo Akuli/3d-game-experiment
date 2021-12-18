@@ -18,9 +18,6 @@ struct Wall {
 	enum WallDirection dir;
 };
 
-// Can be called multiple times
-void wall_init_collpoints(struct Wall *w);
-
 struct Rect3 wall_to_rect(const struct Wall *w);
 
 // does not require using wall_init()
