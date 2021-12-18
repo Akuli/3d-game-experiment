@@ -41,7 +41,7 @@ struct Selection {
 
 struct MapEditor {
 	SDL_Window *wnd;
-	enum MiscState state;
+	enum State state;
 	struct Map *map;
 	struct EllipsoidEdit playeredits[2];
 	struct EllipsoidEdit enemyedits[MAX_ENEMIES];
@@ -592,7 +592,7 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 
 	// If "Yes, delete this map" button was clicked and the map no longer
 	// exists, we must avoid handling the click event again
-	if (ed->state != MISC_STATE_MAPEDITOR)
+	if (ed->state != STATE_MAPEDITOR)
 		return false;
 
 	switch(e->type) {
@@ -652,7 +652,7 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 	}
 
 	case SDL_KEYDOWN:
-		switch(misc_handle_scancode(e->key.keysym.scancode)) {
+		switch(normalize_scancode(e->key.keysym.scancode)) {
 		case SDL_SCANCODE_DOWN:
 			ed->down = true;
 			on_arrow_key(ed, ed->cam.angle, ed->up && ed->down);
@@ -691,7 +691,7 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 		}
 
 	case SDL_KEYUP:
-		switch(misc_handle_scancode(e->key.keysym.scancode)) {
+		switch(normalize_scancode(e->key.keysym.scancode)) {
 			case SDL_SCANCODE_UP: ed->up = false; return false;
 			case SDL_SCANCODE_DOWN: ed->down = false; return false;
 			case SDL_SCANCODE_LEFT: ed->left = false; return false;
@@ -816,7 +816,7 @@ static void update_button_disableds(struct MapEditor *ed)
 static void on_done_clicked(void *data)
 {
 	struct MapEditor *ed = data;
-	ed->state = MISC_STATE_CHOOSER;
+	ed->state = STATE_CHOOSER;
 }
 
 struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
@@ -892,7 +892,7 @@ void mapeditor_setmap(struct MapEditor *ed, struct Map *map)
 	ed->map = map;
 	ed->redraw = true;
 	ed->sel = (struct Selection){ .mode = SEL_NONE };
-	ed->state = MISC_STATE_MAPEDITOR;
+	ed->state = STATE_MAPEDITOR;
 	ed->rotatedir = 0;
 
 	ed->nameentry.text = map->name;
@@ -942,7 +942,7 @@ void mapeditor_setplayers(struct MapEditor *ed, const struct EllipsoidPic *plr0p
 	ed->playeredits[1].el.epic = plr1pic;
 }
 
-enum MiscState mapeditor_run(struct MapEditor *ed, SDL_Window *wnd)
+enum State mapeditor_run(struct MapEditor *ed, SDL_Window *wnd)
 {
 	ed->wnd = wnd;
 	SDL_Surface *wndsurf = SDL_GetWindowSurface(wnd);
@@ -955,10 +955,10 @@ enum MiscState mapeditor_run(struct MapEditor *ed, SDL_Window *wnd)
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
 			if (e.type == SDL_QUIT)
-				return MISC_STATE_QUIT;
+				return STATE_QUIT;
 			if (handle_event(ed, &e))
 				ed->redraw = true;
-			if (ed->state != MISC_STATE_MAPEDITOR)
+			if (ed->state != STATE_MAPEDITOR)
 				return ed->state;
 		}
 

@@ -97,10 +97,10 @@ void rect3_drawrow(const struct Rect3Cache *cache, int y, int xmin, int xmax, bo
 
 	if (highlight) {
 		for (uint32_t *ptr = start; ptr <= end; ptr++)
-			*ptr = misc_rgb_average(*ptr, 0xff0000);
+			*ptr = rgb_average(*ptr, 0xff0000);
 	} else {
 		for (uint32_t *ptr = start; ptr <= end; ptr++)
-			*ptr = misc_rgb_average(*ptr, 0x00ffff);
+			*ptr = rgb_average(*ptr, 0x00ffff);
 	}
 }
 

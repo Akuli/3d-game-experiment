@@ -10,7 +10,7 @@
 static int text_width(const struct TextEntry *te, const char *s)
 {
 	int w, h;
-	if (TTF_SizeUTF8(misc_get_font(te->fontsz), s, &w, &h) < 0)
+	if (TTF_SizeUTF8(get_font(te->fontsz), s, &w, &h) < 0)
 		log_printf_abort("TTF_SizeUTF8 failed: %s", TTF_GetError());
 	return w;
 }
@@ -73,7 +73,7 @@ void textentry_handle_event(struct TextEntry *te, const SDL_Event *e)
 		bool lcontrol = SDL_GetKeyboardState(NULL)[SDL_SCANCODE_LCTRL];
 		bool rcontrol = SDL_GetKeyboardState(NULL)[SDL_SCANCODE_RCTRL];
 
-		switch(misc_handle_scancode(e->key.keysym.scancode)) {
+		switch(normalize_scancode(e->key.keysym.scancode)) {
 		case SDL_SCANCODE_LEFT:
 		{
 			if (te->cursor > te->text)
@@ -181,7 +181,7 @@ void textentry_show(struct TextEntry *te)
 
 	// it errors for empty text, lol
 	if (*te->text) {
-		SDL_Surface *s = TTF_RenderUTF8_Blended(misc_get_font(te->fontsz), te->text, white);
+		SDL_Surface *s = TTF_RenderUTF8_Blended(get_font(te->fontsz), te->text, white);
 		if (!s)
 			log_printf_abort("TTF_RenderUTF8_Blended failed with text \"%s\": %s", te->text, TTF_GetError());
 

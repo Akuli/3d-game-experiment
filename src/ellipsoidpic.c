@@ -109,7 +109,7 @@ static void read_image(struct EllipsoidPic *epic)
 		size_t i = (size_t)( (picy*filew + picx)*4 );
 		epic->cubepixels[false][x][y][z] = SDL_MapRGB(
 			epic->pixfmt, filedata[i], filedata[i+1], filedata[i+2]);
-		epic->cubepixels[true][x][y][z] = misc_rgb_average(epic->cubepixels[false][x][y][z], red);
+		epic->cubepixels[true][x][y][z] = rgb_average(epic->cubepixels[false][x][y][z], red);
 	}
 
 	stbi_image_free(filedata);

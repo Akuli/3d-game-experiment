@@ -6,8 +6,8 @@
 
 void listbox_init(struct Listbox *lb)
 {
-	lb->bgimg = misc_create_image_surface("assets/listbox/normal.png");
-	lb->selectimg = misc_create_image_surface("assets/listbox/selected.png");
+	lb->bgimg = create_image_surface("assets/listbox/normal.png");
+	lb->selectimg = create_image_surface("assets/listbox/selected.png");
 
 	SDL_assert(lb->destrect.w == LISTBOX_WIDTH);
 	SDL_assert(lb->selectimg->w == LISTBOX_WIDTH);
@@ -23,8 +23,8 @@ void listbox_init(struct Listbox *lb)
 
 void listbox_destroy(const struct Listbox *lb)
 {
-	misc_free_image_surface(lb->selectimg);
-	misc_free_image_surface(lb->bgimg);
+	free_image_surface(lb->selectimg);
+	free_image_surface(lb->bgimg);
 	free(lb->visiblebuttons);
 }
 
@@ -62,7 +62,7 @@ void listbox_show(struct Listbox *lb)
 		const struct ListboxEntry *e = lb->getentry(lb->cbdata, i);
 		SDL_Surface *img = (i == lb->selectidx) ? lb->selectimg : lb->bgimg;
 
-		SDL_Surface *t = misc_create_text_surface(e->text, (SDL_Color){0xff,0xff,0xff,0xff}, 20);
+		SDL_Surface *t = create_text_surface(e->text, (SDL_Color){0xff,0xff,0xff,0xff}, 20);
 		SDL_BlitSurface(img, NULL, lb->destsurf, &(SDL_Rect){lb->destrect.x, topy});
 		SDL_BlitSurface(t, NULL, lb->destsurf, &(SDL_Rect){lb->destrect.x + 10, topy});
 		SDL_FreeSurface(t);
@@ -88,7 +88,7 @@ static int scancode_to_delta(const SDL_Event *evt, const struct Listbox *lb)
 	static_assert(sizeof(lb->upscancodes) == sizeof(lb->downscancodes), "");
 	static_assert(sizeof(lb->upscancodes[0]) == sizeof(lb->downscancodes[0]), "");
 
-	int sc = misc_handle_scancode(evt->key.keysym.scancode);
+	int sc = normalize_scancode(evt->key.keysym.scancode);
 	for (int i = 0; i < sizeof(lb->upscancodes)/sizeof(lb->upscancodes[0]); i++) {
 		if (lb->upscancodes[i] != 0 && lb->upscancodes[i] == sc)
 			return -1;

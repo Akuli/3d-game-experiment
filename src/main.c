@@ -41,7 +41,7 @@ static void cd_where_everything_is(void)
 	SDL_assert(n >= 0);
 	SDL_assert(n < sizeof(exepath)/sizeof(exepath[0]));
 	exepath[n] = L'\0';
-	log_printf("exe file: %s\n", misc_windows_to_utf8(exepath));
+	log_printf("exe file: %s\n", windows_to_utf8(exepath));
 
 	wchar_t drive[10] = {0};
 	wchar_t dir[MAX_PATH] = {0};
@@ -51,15 +51,15 @@ static void cd_where_everything_is(void)
 		dir, sizeof(dir)/sizeof(dir[0]) - 1,
 		NULL, 0, NULL, 0);
 	if (ret != 0)
-		log_printf_abort("_wsplitpath_s failed with path '%s': %s", misc_windows_to_utf8(exepath), strerror(errno));
+		log_printf_abort("_wsplitpath_s failed with path '%s': %s", windows_to_utf8(exepath), strerror(errno));
 
 	wchar_t fulldir[sizeof(drive)/sizeof(drive[0]) + sizeof(dir)/sizeof(dir[0])];
 	wcscpy(fulldir, drive);
 	wcscat(fulldir, dir);
 
 	if (_wchdir(fulldir) != 0)
-		log_printf_abort("_wchdir to '%s' failed: %s", misc_windows_to_utf8(fulldir), strerror(errno));
-	log_printf("Changed directory: %s", misc_windows_to_utf8(fulldir));
+		log_printf_abort("_wchdir to '%s' failed: %s", windows_to_utf8(fulldir), strerror(errno));
+	log_printf("Changed directory: %s", windows_to_utf8(fulldir));
 #endif
 }
 
@@ -69,7 +69,7 @@ static void show_loading(const char *msg, SDL_Window *wnd, SDL_Surface *wndsurf,
 	int fontsz = 50;
 	SDL_Color white = { 0xff, 0xff, 0xff, 0xff };
 
-	SDL_Surface *msgsurf = misc_create_text_surface(msg, white, fontsz);
+	SDL_Surface *msgsurf = create_text_surface(msg, white, fontsz);
 	SDL_BlitSurface(msgsurf, NULL, wndsurf, &(SDL_Rect){
 		fontsz/5, fontsz*yidx,
 		123, 456,   // ignored
@@ -146,16 +146,16 @@ int main(int argc, char **argv)
 	struct Chooser ch;
 	chooser_init(&ch, wnd);
 	const struct EllipsoidPic *winner;
-	enum MiscState s = MISC_STATE_CHOOSER;
+	enum State s = STATE_CHOOSER;
 
 	while(1) {
 		switch(s) {
-		case MISC_STATE_CHOOSER:
+		case STATE_CHOOSER:
 			log_printf("running chooser");
 			s = chooser_run(&ch);
 			break;
 
-		case MISC_STATE_PLAY:
+		case STATE_PLAY:
 			log_printf(
 				"playing the game begins with map \"%s\"",
 				ch.mapch.maps[ch.mapch.listbox.selectidx].name);
@@ -164,12 +164,12 @@ int main(int argc, char **argv)
 				&ch.mapch.maps[ch.mapch.listbox.selectidx]);
 			break;
 
-		case MISC_STATE_GAMEOVER:
+		case STATE_GAMEOVER:
 			log_printf("showing game over screen");
 			s = game_over(wnd, winner);
 			break;
 
-		case MISC_STATE_MAPEDITOR:
+		case STATE_MAPEDITOR:
 			log_printf("starting map editor");
 			struct MapEditor *ed = mapeditor_new(wndsurf, 0, 1);
 			mapeditor_setmap(ed, &ch.mapch.maps[ch.mapch.listbox.selectidx]);
@@ -178,14 +178,14 @@ int main(int argc, char **argv)
 			free(ed);
 			break;
 
-		case MISC_STATE_DELETEMAP:
+		case STATE_DELETEMAP:
 			log_printf("starting delete map dialog");
 			s = deletemap_dialog(
 				wnd, ch.mapch.maps, &ch.mapch.nmaps, ch.mapch.listbox.selectidx,
 				ch.playerch[0].epic, ch.playerch[1].epic);
 			break;
 
-		case MISC_STATE_QUIT:
+		case STATE_QUIT:
 			log_printf("cleaning up for successful exit");
 			chooser_destroy(&ch);
 			sound_deinit();

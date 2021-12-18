@@ -5,7 +5,7 @@
 #include "ellipsoid.h"
 #include "misc.h"
 
-enum MiscState game_over(
+enum State game_over(
 	struct SDL_Window *wnd, const struct EllipsoidPic *winnerpic);
 
 

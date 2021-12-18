@@ -6,8 +6,8 @@
 #include "map.h"
 #include "misc.h"
 
-// returns MISC_STATE_CHOOSER or MISC_STATE_QUIT
-enum MiscState deletemap_dialog(
+// returns STATE_CHOOSER or STATE_QUIT
+enum State deletemap_dialog(
 	struct SDL_Window *wnd, struct Map *maps, int *nmaps, int mapidx,
 	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic);
 

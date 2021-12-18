@@ -4,7 +4,7 @@
 #include <SDL2/SDL.h>
 #include "misc.h"
 
-enum MiscState show_pause_screen(struct SDL_Window *wnd);
+enum State show_pause_screen(struct SDL_Window *wnd);
 
 
 #endif    // PAUSE_H

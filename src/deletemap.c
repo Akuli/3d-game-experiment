@@ -13,7 +13,7 @@ static void set_to_true(void *ptr)
 	*(bool *)ptr = true;
 }
 
-enum MiscState deletemap_dialog(
+enum State deletemap_dialog(
 	struct SDL_Window *wnd, struct Map *maps, int *nmaps, int mapidx,
 	const struct EllipsoidPic *plr0pic, const struct EllipsoidPic *plr1pic)
 {
@@ -29,8 +29,8 @@ enum MiscState deletemap_dialog(
 
 	char msg[200];
 	snprintf(msg, sizeof msg, "Do you really want to delete \"%s\"?", maps[mapidx].name);
-	SDL_Surface *tsurf = misc_create_text_surface(msg, (SDL_Color){0xff,0xff,0xff}, 25);
-	misc_blit_with_center(tsurf, wndsurf, &(SDL_Point){ wndsurf->w/2, msgy });
+	SDL_Surface *tsurf = create_text_surface(msg, (SDL_Color){0xff,0xff,0xff}, 25);
+	blit_with_center(tsurf, wndsurf, &(SDL_Point){ wndsurf->w/2, msgy });
 	SDL_FreeSurface(tsurf);
 
 	bool yesclicked = false;
@@ -54,7 +54,7 @@ enum MiscState deletemap_dialog(
 	button_show(&yesbtn);
 	button_show(&nobtn);
 
-	SDL_Surface *edsurf = misc_create_cropped_surface(wndsurf, (SDL_Rect){
+	SDL_Surface *edsurf = create_cropped_surface(wndsurf, (SDL_Rect){
 		.x = 0,
 		.y = buttony + button_height(0)/2,
 		.w = wndsurf->w,
@@ -64,13 +64,13 @@ enum MiscState deletemap_dialog(
 	mapeditor_setmap(ed, &maps[mapidx]);
 	mapeditor_setplayers(ed, plr0pic, plr1pic);
 
-	enum MiscState ret;
+	enum State ret;
 	struct LoopTimer lt = {0};
 	while(!yesclicked && !noclicked) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
 			if (e.type == SDL_QUIT) {
-				ret = MISC_STATE_QUIT;
+				ret = STATE_QUIT;
 				goto out;
 			}
 			button_handle_event(&e, &yesbtn);
@@ -83,7 +83,7 @@ enum MiscState deletemap_dialog(
 
 	if (yesclicked)
 		map_delete(maps, nmaps, mapidx);
-	ret = MISC_STATE_CHOOSER;
+	ret = STATE_CHOOSER;
 
 out:
 	SDL_FreeSurface(edsurf);
