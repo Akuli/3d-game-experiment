@@ -1034,10 +1034,8 @@ enum State mapeditor_run(struct MapEditor *ed, SDL_Window *wnd)
 				return STATE_QUIT;
 			if (handle_event(ed, &e))
 				ed->redraw = true;
-			if (ed->state != STATE_MAPEDITOR) {
-				// TODO: Call wall_init() here and delete other calls
+			if (ed->state != STATE_MAPEDITOR)
 				return ed->state;
-			}
 		}
 
 		show_and_rotate_map_editor(ed, true);
