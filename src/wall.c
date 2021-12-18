@@ -33,20 +33,6 @@ void wall_init(struct Wall *w)
 			}
 		}
 	}
-
-	w->top1 = w->top2 = (Vec3){ (float)w->startx, Y_MAX, (float)w->startz };
-	w->bot1 = w->bot2 = (Vec3){ (float)w->startx, Y_MIN, (float)w->startz };
-
-	switch(w->dir) {
-		case WALL_DIR_XY:
-			w->top2.x += 1.0f;
-			w->bot2.x += 1.0f;
-			break;
-		case WALL_DIR_ZY:
-			w->top2.z += 1.0f;
-			w->bot2.z += 1.0f;
-			break;
-	}
 }
 
 struct Rect3 wall_to_rect(const struct Wall *w)

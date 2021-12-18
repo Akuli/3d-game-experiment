@@ -30,29 +30,6 @@ struct Wall {
 	int startz;
 	enum WallDirection dir;
 
-	/* corners in world coordinates, always up to date because walls don't move.
-
-	now some 3D ascii art (imagine top1 and bot1 being closer to you)
-
-	       /top2
-	      / |
-	     /  |
-	    /   |
-	   /    |
-	 top1   |
-	  |     bot2
-	  |    /
-	  |   /
-	  |  /
-	  | /
-	 bot1
-
-	top1 and bot1 aren't always closer to camera than top2 and bot2. The important
-	thing is that top1 and bot1 are always vertically lined up, and so are top2
-	and bot2.
-	*/
-	Vec3 top1, top2, bot1, bot2;
-
 	// don't use outside wall.c
 	Vec3 collpoints[WALL_CP_COUNT][WALL_CP_COUNT];
 };
