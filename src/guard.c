@@ -4,7 +4,7 @@
 #include <SDL2/SDL.h>
 #include "camera.h"
 #include "ellipsoid.h"
-#include "mathstuff.h"
+#include "linalg.h"
 #include "max.h"
 #include "log.h"
 

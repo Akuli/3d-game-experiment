@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <SDL2/SDL.h>
-#include "mathstuff.h"
+#include "linalg.h"
 
 
 // returns new value of top (easier than pointer to pointer)

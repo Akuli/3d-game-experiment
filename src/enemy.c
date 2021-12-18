@@ -6,7 +6,7 @@
 #include <SDL2/SDL.h>
 #include "ellipsoid.h"
 #include "camera.h"
-#include "mathstuff.h"
+#include "linalg.h"
 #include "wall.h"
 #include "log.h"
 

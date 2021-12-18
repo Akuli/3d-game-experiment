@@ -1,4 +1,4 @@
-#include "mathstuff.h"
+#include "linalg.h"
 #include <math.h>
 
 /*

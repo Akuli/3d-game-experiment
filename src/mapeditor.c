@@ -8,7 +8,7 @@
 #include "log.h"
 #include "looptimer.h"
 #include "map.h"
-#include "mathstuff.h"
+#include "linalg.h"
 #include "max.h"
 #include "misc.h"
 #include "player.h"

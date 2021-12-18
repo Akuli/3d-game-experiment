@@ -4,7 +4,7 @@
 #include "ellipsoid.h"
 #include "guard.h"
 #include "log.h"
-#include "mathstuff.h"
+#include "linalg.h"
 #include "map.h"
 #include "sound.h"
 #include "wall.h"

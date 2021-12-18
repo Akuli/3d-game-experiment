@@ -6,7 +6,7 @@
 #include "camera.h"
 #include "ellipsoid.h"
 #include "map.h"
-#include "mathstuff.h"
+#include "linalg.h"
 
 // smallest possible height of the player (then ellipsoid.yradius is half of this)
 #define PLAYER_HEIGHT_FLAT 0.1f

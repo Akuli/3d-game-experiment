@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include "log.h"
 #include "misc.h"
-#include "mathstuff.h"
+#include "linalg.h"
 
 void listbox_init(struct Listbox *lb)
 {

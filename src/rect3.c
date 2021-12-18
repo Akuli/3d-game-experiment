@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "camera.h"
-#include "mathstuff.h"
+#include "linalg.h"
 #include "misc.h"
 
 bool rect3_visible_fillcache(const struct Rect3 *r, const struct Camera *cam, struct Rect3Cache *cache)

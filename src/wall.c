@@ -1,6 +1,6 @@
 #include "wall.h"
 #include <math.h>
-#include "mathstuff.h"
+#include "linalg.h"
 #include "player.h"
 
 #define Y_MIN PLAYER_HEIGHT_FLAT   // allow players to go under the wall

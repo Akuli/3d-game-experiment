@@ -11,7 +11,7 @@
 #include "glob.h"
 #include "log.h"
 #include "max.h"
-#include "mathstuff.h"
+#include "linalg.h"
 #include "misc.h"
 
 #define COMPILE_TIME_STRLEN(s) (sizeof(s)-1)

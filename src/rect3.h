@@ -4,7 +4,7 @@
 
 #include <stdbool.h>
 #include <SDL2/SDL.h>
-#include "mathstuff.h"
+#include "linalg.h"
 #include "camera.h"
 
 struct Rect3 {
