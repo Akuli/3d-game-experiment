@@ -10,13 +10,15 @@
 #include "guard.h"
 #include "log.h"
 #include "looptimer.h"
+#include "map.h"
 #include "max.h"
 #include "misc.h"
-#include "map.h"
 #include "pause.h"
 #include "player.h"
+#include "rect3.h"
 #include "showall.h"
 #include "sound.h"
+#include "wall.h"
 
 // includes all the GameObjects that all players should see
 struct GameState {
