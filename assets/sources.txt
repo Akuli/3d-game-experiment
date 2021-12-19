@@ -30,8 +30,9 @@ buttonpics/left.png:  see scripts/resize_images
 buttonpics/right.png: see scripts/resize_images
 buttonpics/up.png:    see scripts/resize_images
 buttonpics/down.png:  see scripts/resize_images
-buttonpics/enemy.png: see scripts/resize_images
 buttonpics/wall.png:  see scripts/resize_images
+buttonpics/enemy.png: see scripts/resize_images
+buttonpics/jumper.png: see scripts/resize_images
 
 default_maps/*.txt: I wrote myself
 DejaVuSans.ttf: /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf from Debian package fonts-dejavu-core, version 2.37-1

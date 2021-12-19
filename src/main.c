@@ -100,7 +100,7 @@ static void load_the_stuff(SDL_Window *wnd, SDL_Surface *wndsurf, bool sound)
 	}
 
 	show_loading("Loading some other stuff...", wnd, wndsurf, yidx++);
-	jumper_init_global_image(wndsurf->format);
+	jumper_init_global_images(wndsurf->format);
 }
 
 int main(int argc, char **argv)

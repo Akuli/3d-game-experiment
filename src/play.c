@@ -305,7 +305,10 @@ enum State play_the_game(
 	struct Rect3 *jrectptr = &rects[map->nwalls];
 
 	for (int i = 0; i < map->njumpers; i++)
-		gs.jumpers[i] = (struct Jumper){ .x = map->jumperlocs[i].x, .z = map->jumperlocs[i].z };
+		gs.jumpers[i] = (struct Jumper){
+			.x = map->jumperlocs[i].x,
+			.z = map->jumperlocs[i].z,
+		};
 
 	struct LoopTimer lt = {0};
 	enum State ret;

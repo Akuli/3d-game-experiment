@@ -7,14 +7,18 @@
 // Set y speed to this when jump begins
 #define JUMPER_YSPEED 30
 
-void jumper_init_global_image(const SDL_PixelFormat *pixfmt);
+void jumper_init_global_images(const SDL_PixelFormat *pixfmt);
 
 struct Jumper {
 	int x, z;
 	float y;
+	bool highlight;
 };
 
-// Returned rect can be used for drawing the jumper on screen
+/*
+Returned rect can be used for drawing the jumper on screen.
+Usually it is highlighted only when the jumper is being pressed.
+*/
 struct Rect3 jumper_eachframe(struct Jumper *jmp);
 
 // May begin a jump by changing el->jumpstate

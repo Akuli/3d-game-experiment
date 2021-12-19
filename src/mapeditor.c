@@ -23,16 +23,16 @@ struct EllipsoidEdit {
 	struct MapCoords *loc;
 };
 
-enum Tool { TOOL_WALL, TOOL_ENEMY };
-#define TOOL_COUNT 2
+enum Tool { TOOL_WALL, TOOL_ENEMY, TOOL_JUMPER };
+#define TOOL_COUNT 3
 
 enum SelectMode {
 	SEL_NONE,         // any tool
 	SEL_RESIZE,       // TOOL_WALL
 	SEL_WALL,         // TOOL_WALL
 	SEL_MVWALL,       // TOOL_WALL
-	SEL_SQUARE,       // TOOL_ENEMY
-	SEL_MVELLIPSOID,  // TOOL_ENEMY
+	SEL_SQUARE,       // TOOL_ENEMY or TOOL_JUMPER
+	SEL_MVSQUARE,     // TOOL_ENEMY or TOOL_JUMPER
 };
 struct ResizeData {
 	struct Wall *walls[MAX_MAPSIZE];
@@ -44,7 +44,7 @@ struct Selection {
 	enum SelectMode mode;
 	union {
 		struct MapCoords square;       // SEL_SQUARE
-		struct EllipsoidEdit *eledit;  // SEL_MVELLIPSOID
+		struct MapCoords *mvsquare;    // SEL_MVSQUARE
 		struct Wall wall;              // SEL_WALL
 		struct Wall *mvwall;           // SEL_MVWALL
 		struct ResizeData resize;      // SEL_RESIZE
@@ -115,30 +115,17 @@ static struct Wall *find_wall_from_map(const struct Wall *w, struct Map *map)
 	return NULL;
 }
 
-static struct EllipsoidEdit *find_ellipsoid_edit_for_square(struct MapEditor *ed, struct MapCoords square)
+static struct MapCoords *find_ellipsoid_or_jumper_for_square(struct MapEditor *ed, struct MapCoords square)
 {
-	for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); ) {
+	for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); )
 		if (ee->loc->x == square.x && ee->loc->z == square.z)
-			return ee;
-	}
+			return ee->loc;
+
+	for (int i = 0; i < ed->map->njumpers; i++)
+		if (ed->map->jumperlocs[i].x == square.x && ed->map->jumperlocs[i].z == square.z)
+			return &ed->map->jumperlocs[i];
+
 	return NULL;
-}
-
-static bool can_add_wall(const struct MapEditor *ed)
-{
-	int m = min(
-		MAX_WALLS,
-		  ed->map->xsize*(ed->map->zsize+1)
-		+ ed->map->zsize*(ed->map->xsize+1));
-	SDL_assert(ed->map->nwalls <= m);
-	return ed->map->nwalls < m;
-}
-
-static bool can_add_enemy(const struct MapEditor *ed)
-{
-	int m = min(MAX_ENEMIES, ed->map->xsize*ed->map->zsize - 2);
-	SDL_assert(ed->map->nenemylocs <= m);
-	return ed->map->nenemylocs < m;
 }
 
 static bool is_at_edge(const struct Wall *w, const struct Map *map)
@@ -298,7 +285,11 @@ static void select_by_mouse_coords(struct MapEditor *ed, int mousex, int mousey)
 			ed->sel = (struct Selection){ .mode = SEL_SQUARE, .data.square = *selected->loc };
 			return;
 		}
+	}
+	// fall through
 
+	case TOOL_JUMPER:
+	{
 		// Project mouse ray to ground and select matching square
 		float fx, fz;
 		if (project_mouse_to_horizontal_plane(ed, 0, mousex, mousey, &fx, &fz)) {
@@ -418,16 +409,16 @@ static void move_or_select_wall_with_keyboard(struct MapEditor *ed, struct Wall 
 	keep_wall_within_map(ed, w, false);
 }
 
-static void move_selected_ellipsoid(struct MapEditor *ed, int x, int z)
+static void move_selected_square(struct MapEditor *ed, int x, int z)
 {
-	SDL_assert(ed->sel.mode == SEL_MVELLIPSOID);
+	SDL_assert(ed->sel.mode == SEL_MVSQUARE);
 	clamp(&x, 0, ed->map->xsize-1);
 	clamp(&z, 0, ed->map->zsize-1);
-	if (find_ellipsoid_edit_for_square(ed, (struct MapCoords){x,z}))
+	if (find_ellipsoid_or_jumper_for_square(ed, (struct MapCoords){x,z}))
 		return;
 
-	ed->sel.data.eledit->loc->x = x;
-	ed->sel.data.eledit->loc->z = z;
+	ed->sel.data.mvsquare->x = x;
+	ed->sel.data.mvsquare->z = z;
 	map_save(ed->map);
 }
 
@@ -471,8 +462,8 @@ static void on_arrow_key(struct MapEditor *ed, float angle, bool oppositespresse
 	case SEL_RESIZE:
 		do_resize(ed, ed->sel.data.resize.mainwall.startx + dx, ed->sel.data.resize.mainwall.startz + dz);
 		break;
-	case SEL_MVELLIPSOID:
-		move_selected_ellipsoid(ed, ed->sel.data.eledit->loc->x + dx, ed->sel.data.eledit->loc->z + dz);
+	case SEL_MVSQUARE:
+		move_selected_square(ed, ed->sel.data.mvsquare->x + dx, ed->sel.data.mvsquare->z + dz);
 		break;
 	case SEL_MVWALL:
 	{
@@ -485,6 +476,7 @@ static void on_arrow_key(struct MapEditor *ed, float angle, bool oppositespresse
 	case SEL_SQUARE:
 		switch(ed->tool) {
 		case TOOL_ENEMY:
+		case TOOL_JUMPER:
 			ed->sel.data.square.x += dx;
 			ed->sel.data.square.z += dz;
 			clamp(&ed->sel.data.square.x, 0, ed->map->xsize-1);
@@ -501,6 +493,7 @@ static void on_arrow_key(struct MapEditor *ed, float angle, bool oppositespresse
 	case SEL_WALL:
 		switch(ed->tool) {
 		case TOOL_ENEMY:
+		case TOOL_JUMPER:
 			ed->sel = (struct Selection){
 				.mode = SEL_SQUARE,
 				.data.square = wall_to_square(ed->map, &ed->sel.data.wall, dx, dz),
@@ -514,6 +507,7 @@ static void on_arrow_key(struct MapEditor *ed, float angle, bool oppositespresse
 	case SEL_NONE:
 		switch(ed->tool) {
 		case TOOL_ENEMY:
+		case TOOL_JUMPER:
 			ed->sel = (struct Selection){ .mode = SEL_SQUARE, .data.square = {0} };
 			break;
 		case TOOL_WALL:
@@ -530,13 +524,26 @@ static void delete_selected(struct MapEditor *ed)
 	switch(ed->sel.mode) {
 		case SEL_SQUARE:
 		{
-			struct EllipsoidEdit *ee = find_ellipsoid_edit_for_square(ed, ed->sel.data.square);
-			// Watch out for ub, comparing pointers to different arrays is undefined
-			if (ee && ee != &ed->playeredits[0] && ee != &ed->playeredits[1]) {
-				SDL_assert(&ed->enemyedits[0] <= ee && ee < &ed->enemyedits[ed->map->nenemylocs]);
-				*ee->loc = ed->map->enemylocs[--ed->map->nenemylocs];
-				log_printf("Deleted enemy, now there are %d enemies", ed->map->nenemylocs);
-				map_save(ed->map);
+			for (int i = 0; i < ed->map->nenemylocs; i++) {
+				if (ed->map->enemylocs[i].x == ed->sel.data.square.x
+					&& ed->map->enemylocs[i].z == ed->sel.data.square.z)
+				{
+					ed->map->enemylocs[i] = ed->map->enemylocs[--ed->map->nenemylocs];
+					log_printf("Deleted an enemy spawning location");
+					map_save(ed->map);
+					return;
+				}
+			}
+
+			for (int i = 0; i < ed->map->njumpers; i++) {
+				if (ed->map->jumperlocs[i].x == ed->sel.data.square.x
+					&& ed->map->jumperlocs[i].z == ed->sel.data.square.z)
+				{
+					ed->map->jumperlocs[i] = ed->map->jumperlocs[--ed->map->njumpers];
+					log_printf("Deleted a jumper");
+					map_save(ed->map);
+					return;
+				}
 			}
 			break;
 		}
@@ -578,10 +585,10 @@ static void begin_moving_or_resizing(struct MapEditor *ed)
 
 	case SEL_SQUARE:
 	{
-		struct EllipsoidEdit *ee = find_ellipsoid_edit_for_square(ed, ed->sel.data.square);
-		if (ee) {
-			log_printf("Moving ellipsoid begins");
-			ed->sel = (struct Selection){ .mode = SEL_MVELLIPSOID, .data.eledit = ee };
+		struct MapCoords *sq = find_ellipsoid_or_jumper_for_square(ed, ed->sel.data.square);
+		if (sq) {
+			log_printf("Moving ellipsoid or jumper begins");
+			ed->sel = (struct Selection){ .mode = SEL_MVSQUARE, .data.mvsquare = sq };
 		}
 		break;
 	}
@@ -602,9 +609,9 @@ static void end_moving_or_resizing(struct MapEditor *ed)
 		log_printf("Moving a wall ends");
 		ed->sel = (struct Selection){ .mode = SEL_WALL, .data.wall = *ed->sel.data.mvwall };
 		break;
-	case SEL_MVELLIPSOID:
-		log_printf("Moving ellipsoid ends");
-		struct MapCoords loc = *ed->sel.data.eledit->loc;
+	case SEL_MVSQUARE:
+		log_printf("Moving ellipsoid or jumper ends");
+		struct MapCoords loc = *ed->sel.data.mvsquare;
 		ed->sel = (struct Selection){ .mode = SEL_SQUARE, .data.square = loc };
 		break;
 	default:
@@ -618,22 +625,33 @@ static bool on_mouse_or_enter_released(struct MapEditor *ed)
 
 	if (ed->tool == TOOL_WALL
 		&& ed->sel.mode == SEL_WALL
-		&& can_add_wall(ed)
+		&& ed->map->nwalls < MAX_WALLS
 		&& !find_wall_from_map(&ed->sel.data.wall, ed->map))
 	{
 		map_addwall(ed->map, ed->sel.data.wall.startx, ed->sel.data.wall.startz, ed->sel.data.wall.dir);
-		log_printf("Added wall, now there are %d walls", ed->map->nwalls);
+		log_printf("Added wall");
 		map_save(ed->map);
 		return true;
 	}
 
 	if (ed->tool == TOOL_ENEMY
 		&& ed->sel.mode == SEL_SQUARE
-		&& can_add_enemy(ed)
-		&& !find_ellipsoid_edit_for_square(ed, ed->sel.data.square))
+		&& ed->map->nenemylocs < MAX_ENEMIES
+		&& !find_ellipsoid_or_jumper_for_square(ed, ed->sel.data.square))
 	{
 		ed->map->enemylocs[ed->map->nenemylocs++] = ed->sel.data.square;
-		log_printf("Added enemy, now there are %d enemies", ed->map->nenemylocs);
+		log_printf("Added enemy");
+		map_save(ed->map);
+		return true;
+	}
+
+	if (ed->tool == TOOL_JUMPER
+		&& ed->sel.mode == SEL_SQUARE
+		&& ed->map->njumpers < MAX_JUMPERS
+		&& !find_ellipsoid_or_jumper_for_square(ed, ed->sel.data.square))
+	{
+		ed->map->jumperlocs[ed->map->njumpers++] = ed->sel.data.square;
+		log_printf("Added jumper");
 		map_save(ed->map);
 		return true;
 	}
@@ -686,18 +704,18 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 	case SDL_MOUSEMOTION:
 	{
 		switch(ed->sel.mode) {
-		case SEL_MVELLIPSOID:
+		case SEL_MVSQUARE:
+		{
+			float xf, zf;
+			if (project_mouse_to_horizontal_plane(ed, 0, e->button.x, e->button.y, &xf, &zf))
+				move_selected_square(ed, (int)floorf(xf), (int)floorf(zf));
+			break;
+		}
 		case SEL_RESIZE:
 		{
 			float xf, zf;
-			if (project_mouse_to_horizontal_plane(ed, 1, e->button.x, e->button.y, &xf, &zf)) {
-				if (ed->sel.mode == SEL_MVELLIPSOID)
-					move_selected_ellipsoid(ed, (int)floorf(xf), (int)floorf(zf));
-				else if (ed->sel.mode == SEL_RESIZE)
-					do_resize(ed, (int)roundf(xf), (int)roundf(zf));
-				else
-					log_printf_abort("the impossible happened");
-			}
+			if (project_mouse_to_horizontal_plane(ed, 1, e->button.x, e->button.y, &xf, &zf))
+				do_resize(ed, (int)roundf(xf), (int)roundf(zf));
 			break;
 		}
 		case SEL_MVWALL:
@@ -786,21 +804,22 @@ static bool wall_should_be_highlighted(const struct MapEditor *ed, const struct 
 
 static void show_editor(struct MapEditor *ed)
 {
-	struct EllipsoidEdit *highlightee;
-	switch(ed->sel.mode) {
-	case SEL_SQUARE:
-		highlightee = find_ellipsoid_edit_for_square(ed, ed->sel.data.square);
-		break;
-	case SEL_MVELLIPSOID:
-		highlightee = ed->sel.data.eledit;
-		break;
-	default:
-		highlightee = NULL;
-		break;
-	}
-
 	for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); )
-		ee->el.highlighted = (ee==highlightee);
+	{
+		switch(ed->sel.mode) {
+		case SEL_SQUARE:
+			ee->el.highlighted = (
+				ee->loc->x == ed->sel.data.square.x &&
+				ee->loc->z == ed->sel.data.square.z);
+			break;
+		case SEL_MVSQUARE:
+			ee->el.highlighted = ed->sel.data.mvsquare == ee->loc;
+			break;
+		default:
+			ee->el.highlighted = false;
+			break;
+		}
+	}
 
 	static struct Rect3 rects[MAX_RECTS];  // static to keep down stack usage
 	for (int i = 0; i < ed->map->nwalls; i++) {
@@ -808,7 +827,15 @@ static void show_editor(struct MapEditor *ed)
 		rects[i].highlight = wall_should_be_highlighted(ed, &ed->map->walls[i]);
 	}
 	for (int i = 0; i < ed->map->njumpers; i++) {
-		struct Jumper tmp = { .x = ed->map->jumperlocs[i].x, .z = ed->map->jumperlocs[i].z };
+		struct Jumper tmp = {
+			.x = ed->map->jumperlocs[i].x,
+			.z = ed->map->jumperlocs[i].z,
+			.highlight = (
+				ed->sel.mode == SEL_SQUARE
+				&& ed->map->jumperlocs[i].x == ed->sel.data.square.x
+				&& ed->map->jumperlocs[i].z == ed->sel.data.square.z
+			),
+		};
 		rects[ed->map->nwalls + i] = jumper_eachframe(&tmp);
 	}
 
@@ -866,7 +893,8 @@ static void on_tool_changed(struct MapEditor *ed, enum Tool tool)
 		break;
 	case SEL_RESIZE:
 	case SEL_MVWALL:
-	case SEL_MVELLIPSOID:
+	case SEL_MVSQUARE:
+		// end_moving_or_resizing() called above
 		log_printf_abort("this should never happen");
 		break;
 	case SEL_WALL:
@@ -874,6 +902,7 @@ static void on_tool_changed(struct MapEditor *ed, enum Tool tool)
 		case TOOL_WALL:
 			break;
 		case TOOL_ENEMY:
+		case TOOL_JUMPER:
 			ed->sel = (struct Selection){
 				.mode = SEL_SQUARE,
 				.data.square = wall_to_square(ed->map, &ed->sel.data.wall, 0, 0),
@@ -884,6 +913,7 @@ static void on_tool_changed(struct MapEditor *ed, enum Tool tool)
 	case SEL_SQUARE:
 		switch(ed->tool) {
 		case TOOL_ENEMY:
+		case TOOL_JUMPER:
 			break;
 		case TOOL_WALL:
 			ed->sel = (struct Selection){
@@ -898,6 +928,7 @@ static void on_tool_changed(struct MapEditor *ed, enum Tool tool)
 
 static void on_wall_button_clicked(void *edptr) { on_tool_changed(edptr, TOOL_WALL); }
 static void on_enemy_button_clicked(void *edptr) { on_tool_changed(edptr, TOOL_ENEMY); }
+static void on_jumper_button_clicked(void *edptr) { on_tool_changed(edptr, TOOL_JUMPER); }
 
 static void on_done_clicked(void *data)
 {
@@ -951,6 +982,18 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 				.onclick = on_enemy_button_clicked,
 				.onclickdata = ed,
 			},
+			[TOOL_JUMPER] = {
+				.imgpath = "assets/buttonpics/jumper.png",
+				.flags = bf,
+				.scancodes = { SDL_SCANCODE_J },
+				.destsurf = surf,
+				.center = {
+					CAMERA_SCREEN_WIDTH - button_width(BUTTON_THICK)/2,
+					button_height(bf)*5/2
+				},
+				.onclick = on_jumper_button_clicked,
+				.onclickdata = ed,
+			},
 		},
 		.nameentry = {
 			.surf = surf,
@@ -972,7 +1015,7 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 		ed->playeredits[p].el.center.y = PLAYER_YRADIUS_NOFLAT;
 		ellipsoid_update_transforms(&ed->playeredits[p].el);
 	}
-	// Enemies go all the way to max, so don't need to do again if add enemies
+	// Enemies and jumpers go all the way to max, so don't need to do again if add enemies
 	for (int i = 0; i < MAX_ENEMIES; i++) {
 		ed->enemyedits[i].el.xzradius = ENEMY_XZRADIUS;
 		ed->enemyedits[i].el.yradius = ENEMY_YRADIUS,
