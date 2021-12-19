@@ -434,8 +434,11 @@ void ellipsoid_move_apart(struct Ellipsoid *el1, struct Ellipsoid *el2, float mv
 void ellipsoid_beginjump(struct Ellipsoid *el)
 {
 	SDL_assert(!el->jumpstate.jumping);
+	log_printf("Jumper-jump begins");
 	el->jumpstate.jumping = true;
-	el->jumpstate.speed.y = 30;
+
+	float v = el->jumpstate.xzspeed;
+	el->jumpstate.speed = (Vec3){ v*sinf(el->angle), 30, -v*cosf(el->angle) };
 }
 
 static int clamp_with_bounce(float *val, float lo, float hi)

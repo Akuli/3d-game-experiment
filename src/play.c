@@ -322,10 +322,9 @@ enum State play_the_game(
 		for (int i = 0; i < gs.n_unpicked_guards; i++)
 			guard_unpicked_eachframe(&gs.unpicked_guards[i]);
 		for (int i = 0; i < gs.nenemies; i++) {
-			enemy_eachframe(&gs.enemies[i]);
-			// TODO: make enemies jump
+			enemy_eachframe(&gs.enemies[i], gs.map);
 			for (int k = 0; k < map->njumpers; k++)
-				jumper_press(&gs.jumpers[k], &gs.players[i].ellipsoid);
+				jumper_press(&gs.jumpers[k], &gs.enemies[i].ellipsoid);
 		}
 		for (int i = 0; i < 2; i++) {
 			player_eachframe(&gs.players[i], map);

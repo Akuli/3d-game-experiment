@@ -53,6 +53,10 @@ static void keep_ellipsoid_inside_map(struct Ellipsoid *el, const struct Map *ma
 
 void player_eachframe(struct Player *plr, const struct Map *map)
 {
+	// A bit unnecessary to do these each frame, but works
+	plr->ellipsoid.jumpstate.xzspeed = NORMAL_SPEED;
+	plr->ellipsoid.xzradius = PLAYER_XZRADIUS;
+
 	// Don't turn while flat. See beginning of this file for explanation.
 	if (plr->turning != 0 && !plr->flat) {
 		plr->ellipsoid.angle += (RADIANS_PER_SECOND / (float)CAMERA_FPS) * (float)plr->turning;
@@ -62,7 +66,6 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 	if (plr->ellipsoid.jumpstate.jumping) {
 		ellipsoid_jumping_eachframe(&plr->ellipsoid, map);
 
-		plr->ellipsoid.xzradius = PLAYER_XZRADIUS;
 		plr->ellipsoid.yradius = get_y_radius(plr);
 		ellipsoid_update_transforms(&plr->ellipsoid);
 
@@ -73,9 +76,6 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 		plr->cam.location = vec3_add(plr->ellipsoid.center, diff);
 		plr->cam.location.y += CAMERA_HEIGHT - plr->ellipsoid.xzradius;
 	} else {
-		plr->ellipsoid.jumpstate.speed.x = NORMAL_SPEED*sinf(plr->ellipsoid.angle);
-		plr->ellipsoid.jumpstate.speed.z = -NORMAL_SPEED*cosf(plr->ellipsoid.angle);
-
 		if (plr->moving) {
 			Vec3 v = mat3_mul_vec3(plr->cam.cam2world, (Vec3){ 0, 0, -(plr->flat ? FLAT_SPEED : NORMAL_SPEED) });
 			plr->speed.x = v.x;
@@ -93,7 +93,6 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 		}
 		plr->speed.y -= GRAVITY/CAMERA_FPS;
 
-		plr->ellipsoid.xzradius = PLAYER_XZRADIUS;
 		plr->ellipsoid.yradius = get_y_radius(plr);
 		ellipsoid_update_transforms(&plr->ellipsoid);
 

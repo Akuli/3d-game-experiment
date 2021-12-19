@@ -47,7 +47,8 @@ struct EllipsoidPic *const *ellipsoidpic_loadmany(int *n, const char *globpat, c
 // See jumper.h for code that initiates the jumps this thing represents.
 // Not to be confused with the jumping that happens when a player unflattens.
 struct EllipsoidJumpState {
-	Vec3 speed;  // Update this so it's ready when jump starts. Don't set to zero
+	float xzspeed;  // Set this once when creating ellipsoid
+	Vec3 speed;
 	bool jumping;
 };
 

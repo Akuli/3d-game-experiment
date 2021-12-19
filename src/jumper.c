@@ -45,6 +45,7 @@ struct Rect3 jumper_eachframe(struct Jumper *jmp)
 	return get_rect(jmp);
 }
 
+// TODO: optimize, wall-player collision code could be useful for this too
 void jumper_press(struct Jumper *jmp, struct Ellipsoid *el)
 {
 	if (el->jumpstate.jumping)
