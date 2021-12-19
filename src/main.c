@@ -146,7 +146,7 @@ int main(int argc, char **argv)
 	struct Chooser ch;
 	chooser_init(&ch, wnd);
 	const struct EllipsoidPic *winner;
-	enum State s = STATE_MAPEDITOR;
+	enum State s = STATE_CHOOSER;
 
 	while(1) {
 		switch(s) {
