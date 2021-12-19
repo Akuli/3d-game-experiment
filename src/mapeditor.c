@@ -299,13 +299,15 @@ static void select_by_mouse_coords(struct MapEditor *ed, int mousex, int mousey)
 		}
 
 		// Project mouse ray to ground and select matching square
-		float x, z;
-		if (project_mouse_to_horizontal_plane(ed, 0, mousex, mousey, &x, &z)
-			&& 0 <= (int)x && (int)x < ed->map->xsize
-			&& 0 <= (int)z && (int)z < ed->map->zsize)
-		{
-			ed->sel = (struct Selection){ .mode = SEL_SQUARE, .data.square = { (int)x, (int)z }};
-			return;
+		float fx, fz;
+		if (project_mouse_to_horizontal_plane(ed, 0, mousex, mousey, &fx, &fz)) {
+			int x = (int)floorf(fx);
+			int z = (int)floorf(fz);
+			if (0 <= x && x < ed->map->xsize && 0 <= z && z < ed->map->zsize)
+			{
+				ed->sel = (struct Selection){ .mode = SEL_SQUARE, .data.square = { (int)x, (int)z }};
+				return;
+			}
 		}
 		break;
 	}
@@ -445,8 +447,7 @@ static struct MapCoords wall_to_square(const struct Map *map, const struct Wall 
 
 static struct Wall square_to_wall(struct MapCoords square, int dx, int dz)
 {
-	SDL_assert(abs(dx) <= 1 && abs(dz) <= 1);
-	SDL_assert((dx || dz) && !(dx && dz));
+	SDL_assert(abs(dx) <= 1 && abs(dz) <= 1 && !(dx && dz));
 	return (struct Wall){
 		.startx = square.x + max(0,dx),
 		.startz = square.z + max(0,dz),
@@ -861,6 +862,40 @@ static void on_tool_changed(struct MapEditor *ed, enum Tool tool)
 			ed->toolbuttons[t].flags &= ~BUTTON_PRESSED;
 	}
 	ed->redraw = true;
+
+	switch(ed->sel.mode) {
+	case SEL_NONE:
+		break;
+	case SEL_RESIZE:
+	case SEL_MVWALL:
+	case SEL_MVELLIPSOID:
+		log_printf_abort("this should never happen");
+		break;
+	case SEL_WALL:
+		switch(ed->tool) {
+		case TOOL_WALL:
+			break;
+		case TOOL_ENEMY:
+			ed->sel = (struct Selection){
+				.mode = SEL_SQUARE,
+				.data.square = wall_to_square(ed->map, &ed->sel.data.wall, 0, 0),
+			};
+			break;
+		}
+		break;
+	case SEL_SQUARE:
+		switch(ed->tool) {
+		case TOOL_ENEMY:
+			break;
+		case TOOL_WALL:
+			ed->sel = (struct Selection){
+				.mode = SEL_WALL,
+				.data.wall = square_to_wall(ed->sel.data.square, 0, 0),
+			};
+			break;
+		}
+		break;
+	}
 }
 
 static void on_wall_button_clicked(void *edptr) { on_tool_changed(edptr, TOOL_WALL); }
