@@ -12,7 +12,6 @@ players/Dog.png: from a picture taken by a relative
 
 hugepics/buttons/*/*/*.png: edited from https://pixabay.com/vectors/the-button-button-icon-web-pages-859346/
 
-
 enemies/enemy1.png: I drew this myself with gimp
 guard.png: https://pixabay.com/photos/corrugated-sheet-metal-plate-2370925/
 
