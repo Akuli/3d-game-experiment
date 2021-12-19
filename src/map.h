@@ -23,7 +23,7 @@ struct Map {
 	struct MapCoords enemylocs[MAX_ENEMIES];
 	int nenemylocs;
 	struct MapCoords jumperlocs[MAX_JUMPERS];
-	int njumperlocs;
+	int njumpers;
 };
 
 // Result array must be free()d

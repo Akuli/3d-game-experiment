@@ -146,8 +146,8 @@ static void parse_square_content(char c, struct SquareParsingState *st)
 		st->map->enemylocs[st->map->nenemylocs++] = st->loc;
 		break;
 	case 'j':
-		SDL_assert(st->map->njumperlocs < MAX_JUMPERS);
-		st->map->jumperlocs[st->map->njumperlocs++] = st->loc;
+		SDL_assert(st->map->njumpers < MAX_JUMPERS);
+		st->map->jumperlocs[st->map->njumpers++] = st->loc;
 		break;
 	case 'p':
 		SDL_assert(st->map->playerlocs <= st->playerlocptr && st->playerlocptr < st->map->playerlocs + 2);
@@ -549,7 +549,7 @@ void map_save(struct Map *map)
 		set_char(data, linesz, nlines, map->playerlocs[i].x, map->playerlocs[i].z, 'p', 1);
 	for (int i = 0; i < map->nenemylocs; i++)
 		set_char(data, linesz, nlines, map->enemylocs[i].x, map->enemylocs[i].z, 'e', 1);
-	for (int i = 0; i < map->njumperlocs; i++)
+	for (int i = 0; i < map->njumpers; i++)
 		set_char(data, linesz, nlines, map->jumperlocs[i].x, map->jumperlocs[i].z, 'j', 1);
 
 	log_printf("Writing to \"%s\"", map->path);

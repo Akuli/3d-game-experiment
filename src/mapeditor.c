@@ -807,15 +807,17 @@ static void show_editor(struct MapEditor *ed)
 		rects[i] = wall_to_rect3(&ed->map->walls[i]);
 		rects[i].highlight = wall_should_be_highlighted(ed, &ed->map->walls[i]);
 	}
-	for (int i = 0; i < ed->map->njumperlocs; i++)
-		rects[ed->map->nwalls + i] = jumper_get_rect(ed->map->jumperlocs[i]);
+	for (int i = 0; i < ed->map->njumpers; i++) {
+		struct Jumper tmp = { .x = ed->map->jumperlocs[i].x, .z = ed->map->jumperlocs[i].z };
+		rects[ed->map->nwalls + i] = jumper_eachframe(&tmp);
+	}
 
 	struct Ellipsoid els[2 + MAX_ENEMIES];
 	int nels = 0;
 	for (const struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit_const(ed, &ee); )
 		els[nels++] = ee->el;
 
-	show_all(rects, ed->map->nwalls + ed->map->njumperlocs, els, nels, &ed->cam);
+	show_all(rects, ed->map->nwalls + ed->map->njumpers, els, nels, &ed->cam);
 
 	struct Wall *borderwall;
 	switch(ed->sel.mode) {

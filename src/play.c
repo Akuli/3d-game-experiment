@@ -8,6 +8,7 @@
 #include "ellipsoid.h"
 #include "enemy.h"
 #include "guard.h"
+#include "jumper.h"
 #include "log.h"
 #include "looptimer.h"
 #include "map.h"
@@ -35,6 +36,8 @@ struct GameState {
 
 	unsigned thisframe;
 	unsigned lastenemyframe, lastguardframe;
+
+	struct Jumper jumpers[MAX_JUMPERS];
 };
 
 static bool time_to_do_something(unsigned *frameptr, unsigned thisframe, unsigned delay)
@@ -300,9 +303,13 @@ enum State play_the_game(
 	for (int i = 0; i < map->nenemylocs; i++)
 		add_enemy(&gs, &map->enemylocs[i]);
 
-	static struct Rect3 wallrects[MAX_WALLS];
+	static struct Rect3 rects[MAX_RECTS];
 	for (int i = 0; i < map->nwalls; i++)
-		wallrects[i] = wall_to_rect3(&map->walls[i]);
+		rects[i] = wall_to_rect3(&map->walls[i]);
+	struct Rect3 *jrectptr = &rects[map->nwalls];
+
+	for (int i = 0; i < map->njumpers; i++)
+		gs.jumpers[i] = (struct Jumper){ .x = map->jumperlocs[i].x, .z = map->jumperlocs[i].z };
 
 	struct LoopTimer lt = {0};
 	enum State ret;
@@ -316,12 +323,20 @@ enum State play_the_game(
 		}
 
 		add_guards_and_enemies_as_needed(&gs);
-		for (int i = 0; i < gs.nenemies; i++)
-			enemy_eachframe(&gs.enemies[i]);
 		for (int i = 0; i < gs.n_unpicked_guards; i++)
 			guard_unpicked_eachframe(&gs.unpicked_guards[i]);
-		for (int i = 0; i < 2; i++)
+		for (int i = 0; i < gs.nenemies; i++) {
+			enemy_eachframe(&gs.enemies[i]);
+			for (int k = 0; k < map->njumpers; k++)
+				jumper_press(&gs.jumpers[k], &gs.players[i].ellipsoid);
+		}
+		for (int i = 0; i < 2; i++) {
 			player_eachframe(&gs.players[i], map);
+			for (int k = 0; k < map->njumpers; k++)
+				jumper_press(&gs.jumpers[k], &gs.players[i].ellipsoid);
+		}
+		for (int i = 0; i < map->njumpers; i++)
+			jrectptr[i] = jumper_eachframe(&gs.jumpers[i]);
 
 		handle_players_bumping_each_other(&gs.players[0], &gs.players[1]);
 		handle_players_bumping_enemies(&gs);
@@ -334,7 +349,7 @@ enum State play_the_game(
 		int nels = get_all_ellipsoids(&gs, &els);
 
 		for (int i = 0; i < 2; i++)
-			show_all(wallrects, map->nwalls, els, nels, &gs.players[i].cam);
+			show_all(rects, map->nwalls + map->njumpers, els, nels, &gs.players[i].cam);
 
 		// horizontal line
 		SDL_FillRect(winsurf, &(SDL_Rect){ winsurf->w/2, 0, 1, winsurf->h }, SDL_MapRGB(winsurf->format, 0xff, 0xff, 0xff));
