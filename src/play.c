@@ -139,6 +139,10 @@ static enum State handle_event(SDL_Event event, struct GameState *gs, SDL_Window
 				if (down) player_drop_guard(&gs->players[1], gs->unpicked_guards, &gs->n_unpicked_guards);
 				break;
 
+			case SDL_SCANCODE_J:
+				gs->players[0].speed.y = 100;
+				break;
+
 			case SDL_SCANCODE_A: player_set_turning(&gs->players[0], -1, down); break;
 			case SDL_SCANCODE_D: player_set_turning(&gs->players[0], +1, down); break;
 			case SDL_SCANCODE_W: player_set_moving(&gs->players[0], down); break;

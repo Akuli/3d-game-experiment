@@ -122,7 +122,6 @@ void player_set_flat(struct Player *plr, bool flat)
 	else {
 		sound_play("pop.wav");
 		if (plr->ellipsoid.center.y <= PLAYER_YRADIUS_NOFLAT) {
-			log_printf("jump start");
 			sound_play("boing.wav");
 			plr->speed.y = JUMP_INITIAL_Y_SPEED;
 		} else {

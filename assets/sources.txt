@@ -21,6 +21,7 @@ listbox/huge/*.png: edited from https://pixabay.com/vectors/the-button-button-ic
 listbox/*.png:      see scripts/resize_images
 
 enemies/enemy1.png: I drew this myself with gimp
+jumper.png: I drew this myself with gimp
 guard.png: https://pixabay.com/photos/corrugated-sheet-metal-plate-2370925/
 buttonpics/huge-right.png: edited from https://commons.wikimedia.org/wiki/File:Arrow_Blue_Right_001.svg, see scripts/resize_images
 buttonpics/huge-enemy.png: screenshot from game
