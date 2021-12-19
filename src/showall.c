@@ -69,7 +69,7 @@ static void add_ellipsoid_if_visible(struct ShowingState *st, int idx)
 	}
 }
 
-static void add_wall_if_visible(struct ShowingState *st, int idx)
+static void add_rect_if_visible(struct ShowingState *st, int idx)
 {
 	struct Rect3Cache rcache;
 	if (rect3_visible_fillcache(&st->rects[idx], st->cam, &rcache)) {
@@ -225,11 +225,11 @@ static void draw_row(const struct ShowingState *st, int y, ID id, int xmin, int 
 }
 
 void show_all(
-	const struct Rect3 *rects, int nwalls,
+	const struct Rect3 *rects, int nrects,
 	const struct Ellipsoid *els, int nels,
 	const struct Camera *cam)
 {
-	SDL_assert(nwalls <= MAX_WALLS);
+	SDL_assert(nrects <= MAX_RECTS);
 	SDL_assert(nels <= MAX_ELLIPSOIDS);
 
 	// static to keep stack usage down
@@ -243,8 +243,8 @@ void show_all(
 
 	for (int i = 0; i < nels; i++)
 		add_ellipsoid_if_visible(&st, i);
-	for (int i = 0; i < nwalls; i++)
-		add_wall_if_visible(&st, i);
+	for (int i = 0; i < nrects; i++)
+		add_rect_if_visible(&st, i);
 
 	for (int i = 0; i < st.nvisible; i++) {
 		SDL_Rect bbox = st.infos[st.visible[i]].bbox;
