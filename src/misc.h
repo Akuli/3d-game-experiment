@@ -5,6 +5,8 @@
 #include <SDL2/SDL_ttf.h>
 #include <stdint.h>
 
+#define GRAVITY 66.0f
+
 // windows.h defines min and max macros just like the ones below
 #if !defined(min) && !defined(max)
 	#define min(a,b) ((a)<(b) ? (a) : (b))

@@ -329,15 +329,8 @@ enum State play_the_game(
 		}
 		for (int i = 0; i < 2; i++) {
 			player_eachframe(&gs.players[i], map);
-			if (!gs.players[i].usedjumper) {
-				for (int k = 0; k < map->njumpers; k++) {
-					if (jumper_press(&gs.jumpers[k], &gs.players[i].ellipsoid)) {
-						gs.players[i].speed.y = JUMPER_YSPEED;
-						gs.players[i].usedjumper = true;
-						break;
-					}
-				}
-			}
+			for (int k = 0; k < map->njumpers; k++)
+				jumper_press(&gs.jumpers[k], &gs.players[i].ellipsoid);
 		}
 		for (int i = 0; i < map->njumpers; i++)
 			jrectptr[i] = jumper_eachframe(&gs.jumpers[i]);

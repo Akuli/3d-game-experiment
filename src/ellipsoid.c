@@ -7,6 +7,7 @@
 #include "camera.h"
 #include "linalg.h"
 #include "log.h"
+#include "map.h"
 #include "misc.h"
 #include "rect3.h"
 
@@ -428,4 +429,47 @@ void ellipsoid_move_apart(struct Ellipsoid *el1, struct Ellipsoid *el2, float mv
 	from1to2 = vec3_withlength(from1to2, mv/2);
 	vec3_add_inplace(&el2->center, from1to2);
 	vec3_sub_inplace(&el1->center, from1to2);
+}
+
+void ellipsoid_beginjump(struct Ellipsoid *el)
+{
+	SDL_assert(!el->jumpstate.jumping);
+	el->jumpstate.jumping = true;
+	el->jumpstate.speed.y = 30;
+}
+
+static int clamp_with_bounce(float *val, float lo, float hi)
+{
+	int ret = 1;
+	*val -= lo;
+	if (*val < 0) {
+		*val = -*val;
+		ret = -1;
+	}
+	*val += lo;
+
+	*val -= hi;
+	if (*val > 0) {
+		*val = -*val;
+		ret = -1;
+	}
+	*val += hi;
+
+	return ret;
+}
+
+void ellipsoid_jumping_eachframe(struct Ellipsoid *el, const struct Map *map)
+{
+	SDL_assert(el->jumpstate.jumping);
+	vec3_add_inplace(&el->center, vec3_mul_float(el->jumpstate.speed, 1.0f/CAMERA_FPS));
+
+	el->jumpstate.speed.x *= clamp_with_bounce(&el->center.x, el->xzradius, map->xsize - el->xzradius);
+	el->jumpstate.speed.y -= GRAVITY/CAMERA_FPS;
+	el->jumpstate.speed.z *= clamp_with_bounce(&el->center.z, el->xzradius, map->zsize - el->xzradius);
+
+	if (el->center.y < el->yradius) {
+		// end jump
+		el->center.y = el->yradius;
+		el->jumpstate.jumping = false;
+	}
 }

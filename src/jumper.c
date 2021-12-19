@@ -45,8 +45,11 @@ struct Rect3 jumper_eachframe(struct Jumper *jmp)
 	return get_rect(jmp);
 }
 
-bool jumper_press(struct Jumper *jmp, const struct Ellipsoid *el)
+void jumper_press(struct Jumper *jmp, struct Ellipsoid *el)
 {
+	if (el->jumpstate.jumping)
+		return;
+
 	// When looking from the side, jmp is a horizontal line and el is a 2D ellipse.
 	float dx = (jmp->x+0.5f) - el->center.x;
 	float dz = (jmp->z+0.5f) - el->center.z;
@@ -66,11 +69,12 @@ bool jumper_press(struct Jumper *jmp, const struct Ellipsoid *el)
 		float x = distbetween-RADIUS;
 		float undersqrt = 1 - (x*x)/(a*a);
 		if (undersqrt < 0)
-			return false;   // no intersection
+			return;   // no intersection
 		h = el->center.y - b*sqrtf(undersqrt);
 	}
 
 	jmp->y = min(jmp->y, h);
 	clamp_float(&jmp->y, 0, MAX_HEIGHT);
-	return h < MAX_HEIGHT/5;
+	if (h < MAX_HEIGHT/5)
+		ellipsoid_beginjump(el);
 }

@@ -33,9 +33,6 @@ struct Player {
 
 	// negative after game over
 	int nguards;
-
-	// see jumper.h
-	bool usedjumper;
 };
 
 extern struct EllipsoidPic *const *player_epics;  // NULL terminated

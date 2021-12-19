@@ -26,7 +26,6 @@ issues with this. To avoid that, we limit things that flat players can do:
 #define CAMERA_BEHIND_PLAYER 4.0f
 #define CAMERA_HEIGHT 4.0f
 
-#define GRAVITY 66.0f
 #define JUMP_INITIAL_Y_SPEED 20.0f
 
 struct EllipsoidPic *const *player_epics = NULL;
@@ -60,7 +59,23 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 		// ellipsoid_update_transforms() called below
 	}
 
-	if (!plr->usedjumper) {
+	if (plr->ellipsoid.jumpstate.jumping) {
+		ellipsoid_jumping_eachframe(&plr->ellipsoid, map);
+
+		plr->ellipsoid.xzradius = PLAYER_XZRADIUS;
+		plr->ellipsoid.yradius = get_y_radius(plr);
+		ellipsoid_update_transforms(&plr->ellipsoid);
+
+		Vec3 diff = { 0, 0, CAMERA_BEHIND_PLAYER };
+		vec3_apply_matrix(&diff, mat3_rotation_xz(plr->ellipsoid.angle));
+
+		plr->cam.angle = plr->ellipsoid.angle;
+		plr->cam.location = vec3_add(plr->ellipsoid.center, diff);
+		plr->cam.location.y += CAMERA_HEIGHT - plr->ellipsoid.xzradius;
+	} else {
+		plr->ellipsoid.jumpstate.speed.x = NORMAL_SPEED*sinf(plr->ellipsoid.angle);
+		plr->ellipsoid.jumpstate.speed.z = -NORMAL_SPEED*cosf(plr->ellipsoid.angle);
+
 		if (plr->moving) {
 			Vec3 v = mat3_mul_vec3(plr->cam.cam2world, (Vec3){ 0, 0, -(plr->flat ? FLAT_SPEED : NORMAL_SPEED) });
 			plr->speed.x = v.x;
@@ -69,34 +84,30 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 			plr->speed.x = 0;
 			plr->speed.z = 0;
 		}
-	}
 
-	vec3_add_inplace(&plr->ellipsoid.center, vec3_mul_float(plr->speed, 1.0f/CAMERA_FPS));
+		vec3_add_inplace(&plr->ellipsoid.center, vec3_mul_float(plr->speed, 1.0f/CAMERA_FPS));
 
-	if (plr->ellipsoid.center.y < plr->ellipsoid.yradius) {
-		plr->usedjumper = false;
-		plr->speed.y = 0;
-		plr->ellipsoid.center.y = plr->ellipsoid.yradius;
-	}
-	plr->speed.y -= GRAVITY/CAMERA_FPS;
+		if (plr->ellipsoid.center.y < plr->ellipsoid.yradius) {
+			plr->speed.y = 0;
+			plr->ellipsoid.center.y = plr->ellipsoid.yradius;
+		}
+		plr->speed.y -= GRAVITY/CAMERA_FPS;
 
-	plr->ellipsoid.xzradius = PLAYER_XZRADIUS;
-	plr->ellipsoid.yradius = get_y_radius(plr);
-	ellipsoid_update_transforms(&plr->ellipsoid);
+		plr->ellipsoid.xzradius = PLAYER_XZRADIUS;
+		plr->ellipsoid.yradius = get_y_radius(plr);
+		ellipsoid_update_transforms(&plr->ellipsoid);
 
-	for (int i = 0; i < map->nwalls; i++)
-		wall_bumps_ellipsoid(&map->walls[i], &plr->ellipsoid);
-	keep_ellipsoid_inside_map(&plr->ellipsoid, map);
+		for (int i = 0; i < map->nwalls; i++)
+			wall_bumps_ellipsoid(&map->walls[i], &plr->ellipsoid);
+		keep_ellipsoid_inside_map(&plr->ellipsoid, map);
 
-	Vec3 diff = { 0, 0, CAMERA_BEHIND_PLAYER };
-	vec3_apply_matrix(&diff, mat3_rotation_xz(plr->ellipsoid.angle));
+		Vec3 diff = { 0, 0, CAMERA_BEHIND_PLAYER };
+		vec3_apply_matrix(&diff, mat3_rotation_xz(plr->ellipsoid.angle));
 
-	plr->cam.angle = plr->ellipsoid.angle;
-	plr->cam.location = vec3_add(plr->ellipsoid.center, diff);
-	if (plr->usedjumper)
-		plr->cam.location.y += CAMERA_HEIGHT - plr->ellipsoid.xzradius;
-	else
+		plr->cam.angle = plr->ellipsoid.angle;
+		plr->cam.location = vec3_add(plr->ellipsoid.center, diff);
 		plr->cam.location.y = CAMERA_HEIGHT;
+	}
 
 	camera_update_caches(&plr->cam);
 }
