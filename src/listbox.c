@@ -69,7 +69,7 @@ void listbox_show(struct Listbox *lb)
 
 		int centerx = lb->destrect.x + lb->destrect.w - button_width(BUTTON_TINY)/2;
 		for (int k = sizeof(e->buttons)/sizeof(e->buttons[0]) - 1; k >= 0; k--) {
-			if (e->buttons[k].text[0]) {
+			if (e->buttons[k].text) {
 				struct Button *ptr = &lb->visiblebuttons[lb->nvisiblebuttons++];
 				*ptr = e->buttons[k];
 				ptr->destsurf = lb->destsurf;

@@ -203,13 +203,13 @@ static const struct ListboxEntry *get_listbox_entry(void *chptr, int i)
 		.text = ch->mapch.maps[i].name,
 		.buttons = {
 			{
-				.text = "",  // disable
+				.text = ch->mapch.maps[i].num==-1 ? NULL : "Edit",  // disable for non-custom maps
 				.scancodes = { SDL_SCANCODE_E },
 				.onclick = on_edit_clicked,
 				.onclickdata = ch,
 			},
 			{
-				.text = "",  // disable
+				.text = ch->mapch.maps[i].num==-1 ? NULL : "Delete",  // disable for non-custom maps
 				.scancodes = { SDL_SCANCODE_DELETE },
 				.onclick = on_delete_clicked,
 				.onclickdata = ch,
@@ -221,14 +221,8 @@ static const struct ListboxEntry *get_listbox_entry(void *chptr, int i)
 				.onclickdata = ch,
 			},
 		},
-		.movable = false,
+		.movable = ch->mapch.maps[i].num != -1,  // can move custom maps only
 	};
-	if (ch->mapch.maps[i].num != -1) {
-		// custom map
-		res.movable = true;
-		strcpy(res.buttons[0].text, "Edit");
-		strcpy(res.buttons[1].text, "Delete");
-	}
 	return &res;
 }
 

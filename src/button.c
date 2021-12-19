@@ -71,7 +71,7 @@ int button_height(enum ButtonFlags f) { return get_image(f)->h + 2*get_margin(f)
 void button_show(const struct Button *butt)
 {
 	blit_with_center(get_image(butt->flags), butt->destsurf, &butt->center);
-	SDL_assert(!(butt->imgpath && butt->text[0]));
+	SDL_assert(!(butt->imgpath && butt->text));
 
 	if (butt->imgpath) {
 		SDL_Surface *s = create_image_surface(butt->imgpath);
@@ -79,7 +79,7 @@ void button_show(const struct Button *butt)
 		free_image_surface(s);
 	}
 
-	if (butt->text[0]) {
+	if (butt->text) {
 		SDL_Color black = { 0x00, 0x00, 0x00, 0xff };
 		int fontsz;
 		if (butt->flags & BUTTON_TINY)
