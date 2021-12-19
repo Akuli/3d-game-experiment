@@ -97,7 +97,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 		.leftx = leftx,
 		.prevbtn = {
 			.flags = flags,
-			.imgpath = "assets/arrows/left.png",
+			.imgpath = "assets/buttonpics/left.png",
 			.scancodes = {scprev},
 			.destsurf = ch->winsurf,
 			.center = { leftx + button_width(flags)/2, PLAYER_CHOOSER_HEIGHT/2 },
@@ -106,7 +106,7 @@ static void setup_player_chooser(struct Chooser *ch, int idx, int scprev, int sc
 		},
 		.nextbtn = {
 			.flags = flags,
-			.imgpath = "assets/arrows/right.png",
+			.imgpath = "assets/buttonpics/right.png",
 			.scancodes = {scnext},
 			.destsurf = ch->winsurf,
 			.center = { leftx + CAMERA_SCREEN_WIDTH/2 - button_width(flags)/2, PLAYER_CHOOSER_HEIGHT/2 },

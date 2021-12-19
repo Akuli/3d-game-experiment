@@ -32,10 +32,11 @@ static SDL_Surface *get_image(enum ButtonFlags f)
 	if (!image_surfaces[f]) {
 		char path[100] = "assets/buttons/";
 
-		switch((int)f & (BUTTON_TINY | BUTTON_SMALL | BUTTON_BIG)) {
+		switch((int)f & (BUTTON_TINY | BUTTON_SMALL | BUTTON_BIG | BUTTON_THICK)) {
 			case BUTTON_TINY: strcat(path, "tiny/"); break;
 			case BUTTON_SMALL: strcat(path, "small/"); break;
 			case BUTTON_BIG: strcat(path, "big/"); break;
+			case BUTTON_THICK: strcat(path, "thick/"); break;
 			case 0: strcat(path, "medium/"); break;
 			default: log_printf_abort("bad button size flags: %#x", f);
 		}
@@ -70,6 +71,8 @@ int button_height(enum ButtonFlags f) { return get_image(f)->h + 2*get_margin(f)
 void button_show(const struct Button *butt)
 {
 	blit_with_center(get_image(butt->flags), butt->destsurf, &butt->center);
+	SDL_assert(!(butt->imgpath && butt->text));
+
 	if (butt->imgpath) {
 		SDL_Surface *s = create_image_surface(butt->imgpath);
 		blit_with_center(s, butt->destsurf, &butt->center);
@@ -81,6 +84,8 @@ void button_show(const struct Button *butt)
 		int fontsz;
 		if (butt->flags & BUTTON_TINY)
 			fontsz = 16;
+		else if (butt->flags & BUTTON_THICK)
+			fontsz = 40;
 		else
 			fontsz = button_height(butt->flags)/2;
 
@@ -138,13 +143,15 @@ void button_handle_event(const SDL_Event *evt, struct Button *butt)
 		(evt->type == SDL_KEYDOWN && scancode_matches_button(evt, butt))
 	) && !(butt->flags & BUTTON_PRESSED)) {
 		butt->flags |= BUTTON_PRESSED;
+		if (butt->flags & BUTTON_STAYPRESSED)
+			click = true;
 	} else if ((
 		(evt->type == SDL_MOUSEBUTTONUP && mouse_on_button(&evt->button, butt)) ||
 		(evt->type == SDL_KEYUP && scancode_matches_button(evt, butt))
-	) && (butt->flags & BUTTON_PRESSED)) {
+	) && (butt->flags & BUTTON_PRESSED) && !(butt->flags & BUTTON_STAYPRESSED)) {
 		butt->flags &= ~BUTTON_PRESSED;
 		click = true;
-	} else if (evt->type == SDL_MOUSEBUTTONUP && (butt->flags & BUTTON_PRESSED)) {
+	} else if (evt->type == SDL_MOUSEBUTTONUP && (butt->flags & BUTTON_PRESSED) && !(butt->flags & BUTTON_STAYPRESSED)) {
 		// if button has been pressed and mouse has been moved away, unpress button but don't click
 		butt->flags &= ~BUTTON_PRESSED;
 	} else {
@@ -153,6 +160,8 @@ void button_handle_event(const SDL_Event *evt, struct Button *butt)
 	}
 
 	button_show(butt);
-	if (click)
+	if (click) {
+		log_printf("clicking button \"%s\"", butt->text);
 		butt->onclick(butt->onclickdata);  // may free the button, must be last
+	}
 }

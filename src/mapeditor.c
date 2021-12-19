@@ -22,7 +22,17 @@ struct EllipsoidEdit {
 	struct MapCoords *loc;
 };
 
-enum SelectMode { SEL_NONE, SEL_RESIZE, SEL_WALL, SEL_MVWALL, SEL_ELLIPSOID, SEL_MVELLIPSOID };
+enum Tool { TOOL_WALL, TOOL_ENEMY };
+#define TOOL_COUNT 2
+
+enum SelectMode {
+	SEL_NONE,         // any tool
+	SEL_RESIZE,       // TOOL_WALL
+	SEL_WALL,         // TOOL_WALL
+	SEL_MVWALL,       // TOOL_WALL
+	SEL_SQUARE,       // TOOL_ENEMY
+	SEL_MVELLIPSOID,  // TOOL_ENEMY
+};
 struct ResizeData {
 	struct Wall *walls[MAX_MAPSIZE];
 	int nwalls;
@@ -32,7 +42,8 @@ struct ResizeData {
 struct Selection {
 	enum SelectMode mode;
 	union {
-		struct EllipsoidEdit *eledit;  // SEL_ELLIPSOID and SEL_MVELLIPSOID
+		struct MapCoords square;       // SEL_SQUARE
+		struct EllipsoidEdit *eledit;  // SEL_MVELLIPSOID
 		struct Wall wall;              // SEL_WALL
 		struct Wall *mvwall;           // SEL_MVWALL
 		struct ResizeData resize;      // SEL_RESIZE
@@ -48,8 +59,9 @@ struct MapEditor {
 	struct Camera cam;
 	float zoom;
 	int rotatedir;
-	struct Button donebtn;
-	struct Button addenemybtn;
+	struct Button donebutton;
+	struct Button toolbuttons[TOOL_COUNT];
+	enum Tool tool;
 	struct Selection sel;
 	bool up, down, left, right;   // are arrow keys pressed
 	struct TextEntry nameentry;
@@ -102,20 +114,30 @@ static struct Wall *find_wall_from_map(const struct Wall *w, struct Map *map)
 	return NULL;
 }
 
-static void add_wall(struct MapEditor *ed)
+static struct EllipsoidEdit *find_ellipsoid_edit_for_square(struct MapEditor *ed, struct MapCoords square)
 {
-	SDL_assert(ed->sel.mode == SEL_WALL);
-	SDL_assert(ed->map->nwalls <= MAX_WALLS);
-	if (ed->map->nwalls == MAX_WALLS) {
-		log_printf("hitting max number of walls, can't add more");
-		return;
+	for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); ) {
+		if (ee->loc->x == square.x && ee->loc->z == square.z)
+			return ee;
 	}
+	return NULL;
+}
 
-	if (!find_wall_from_map(&ed->sel.data.wall, ed->map)) {
-		map_addwall(ed->map, ed->sel.data.wall.startx, ed->sel.data.wall.startz, ed->sel.data.wall.dir);
-		log_printf("Added wall, now there are %d walls", ed->map->nwalls);
-		map_save(ed->map);
-	}
+static bool can_add_wall(const struct MapEditor *ed)
+{
+	int m = min(
+		MAX_WALLS,
+		  ed->map->xsize*(ed->map->zsize+1)
+		+ ed->map->zsize*(ed->map->xsize+1));
+	SDL_assert(ed->map->nwalls <= m);
+	return ed->map->nwalls < m;
+}
+
+static bool can_add_enemy(const struct MapEditor *ed)
+{
+	int m = min(MAX_ENEMIES, ed->map->xsize*ed->map->zsize - 2);
+	SDL_assert(ed->map->nenemylocs <= m);
+	return ed->map->nenemylocs < m;
 }
 
 static bool is_at_edge(const struct Wall *w, const struct Map *map)
@@ -206,10 +228,10 @@ static bool mouse_is_on_ellipsoid_with_no_walls_between(struct MapEditor *ed, co
 	return true;
 }
 
-static bool project_mouse_to_top_of_map(
-	const struct MapEditor *ed, int mousex, int mousey, float *x, float *z)
+static bool project_mouse_to_horizontal_plane(
+	const struct MapEditor *ed, float h, int mousex, int mousey, float *x, float *z)
 {
-	// Top of map is at plane y=1. Figure out where on it we clicked
+	// Figure out where on the plane y=h we clicked.
 	Vec3 cam2clickdir = {
 		// Vector from camera towards clicked direction
 		camera_screenx_to_xzr(&ed->cam, mousex),
@@ -219,7 +241,7 @@ static bool project_mouse_to_top_of_map(
 	vec3_apply_matrix(&cam2clickdir, ed->cam.cam2world);
 
 	// p.y should be 1, i.e. top of map
-	float dircoeff = -(ed->cam.location.y - 1)/cam2clickdir.y;
+	float dircoeff = -(ed->cam.location.y - h)/cam2clickdir.y;
 	Vec3 p = vec3_add(ed->cam.location, vec3_mul_float(cam2clickdir, dircoeff));
 	if (!isfinite(p.x) || !isfinite(p.z))  // e.g. mouse moved to top of screen
 		return false;
@@ -232,7 +254,7 @@ static bool project_mouse_to_top_of_map(
 static bool mouse_location_to_wall(const struct MapEditor *ed, struct Wall *dst, int mousex, int mousey)
 {
 	float fx, fz;
-	if (!project_mouse_to_top_of_map(ed, mousex, mousey, &fx, &fz))
+	if (!project_mouse_to_horizontal_plane(ed, 1, mousex, mousey, &fx, &fz))
 		return false;
 
 	int x = (int)floorf(fx);
@@ -255,33 +277,54 @@ static bool mouse_location_to_wall(const struct MapEditor *ed, struct Wall *dst,
 
 static void select_by_mouse_coords(struct MapEditor *ed, int mousex, int mousey)
 {
-	float smallestd = HUGE_VALF;
-	struct EllipsoidEdit *nearest = NULL;
+	switch(ed->tool) {
+	case TOOL_ENEMY:
+	{
+		float smallestd = HUGE_VALF;
+		struct EllipsoidEdit *selected = NULL;
 
-	// Find ellipsoid visible with no walls between having smallest distance to camera
-	for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); ) {
-		if (mouse_is_on_ellipsoid_with_no_walls_between(ed, &ee->el, mousex, mousey)) {
-			float d = vec3_lengthSQUARED(vec3_sub(ee->el.center, ed->cam.location));
-			if (d < smallestd) {
-				nearest = ee;
-				smallestd = d;
+		// Find ellipsoid visible with no walls between having smallest distance to camera
+		for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); ) {
+			if (mouse_is_on_ellipsoid_with_no_walls_between(ed, &ee->el, mousex, mousey)) {
+				float d = vec3_lengthSQUARED(vec3_sub(ee->el.center, ed->cam.location));
+				if (d < smallestd) {
+					selected = ee;
+					smallestd = d;
+				}
 			}
 		}
+		if (selected) {
+			ed->sel = (struct Selection){ .mode = SEL_SQUARE, .data.square = *selected->loc };
+			return;
+		}
+
+		// Project mouse ray to ground and select matching square
+		float fx, fz;
+		if (project_mouse_to_horizontal_plane(ed, 0, mousex, mousey, &fx, &fz)) {
+			int x = (int)floorf(fx);
+			int z = (int)floorf(fz);
+			if (0 <= x && x < ed->map->xsize && 0 <= z && z < ed->map->zsize)
+			{
+				ed->sel = (struct Selection){ .mode = SEL_SQUARE, .data.square = { (int)x, (int)z }};
+				return;
+			}
+		}
+		break;
 	}
 
-	if (nearest) {
-		ed->sel = (struct Selection){
-			.mode = SEL_ELLIPSOID,
-			.data = { .eledit = nearest },
-		};
-	} else {
-		// No ellipsoids under mouse
+	case TOOL_WALL:
+	{
 		struct Wall w;
 		if (mouse_location_to_wall(ed, &w, mousex, mousey) && wall_is_within_map(&w, ed->map))
-			ed->sel = (struct Selection){ .mode = SEL_WALL, .data = { .wall = w }};
-		else
-			ed->sel = (struct Selection){ .mode = SEL_NONE };
+		{
+			ed->sel = (struct Selection){ .mode = SEL_WALL, .data.wall = w };
+			return;
+		}
+		break;
 	}
+	}
+
+	ed->sel = (struct Selection){ .mode = SEL_NONE };
 }
 
 static struct ResizeData begin_resize(const struct Wall *edgewall, struct Map *map)
@@ -374,46 +417,39 @@ static void move_or_select_wall_with_keyboard(struct MapEditor *ed, struct Wall 
 	keep_wall_within_map(ed, w, false);
 }
 
-static void select_ellipsoid_between_walls_if_any(struct MapEditor *ed, const struct Wall *w1, const struct Wall *w2)
-{
-	bool betweenxywalls = 
-		w1->dir == WALL_DIR_XY
-		&& w2->dir == WALL_DIR_XY
-		&& w1->startx == w2->startx
-		&& abs(w1->startz - w2->startz) == 1;
-	bool betweenzywalls = 
-		w1->dir == WALL_DIR_ZY
-		&& w2->dir == WALL_DIR_ZY
-		&& w1->startz == w2->startz
-		&& abs(w1->startx - w2->startx) == 1;
-
-	if (betweenxywalls || betweenzywalls) {
-		for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); ) {
-			if (ee->loc->x == min(w1->startx, w2->startx) && ee->loc->z == min(w1->startz, w2->startz)) {
-				ed->sel = (struct Selection){
-					.mode = SEL_ELLIPSOID,
-					.data = { .eledit = ee },
-				};
-				break;
-			}
-		}
-	}
-}
-
 static void move_selected_ellipsoid(struct MapEditor *ed, int x, int z)
 {
 	SDL_assert(ed->sel.mode == SEL_MVELLIPSOID);
 	clamp(&x, 0, ed->map->xsize-1);
 	clamp(&z, 0, ed->map->zsize-1);
-
-	for (const struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit_const(ed, &ee); ) {
-		if (ee->loc->x == x && ee->loc->z == z)
-			return;
-	}
+	if (find_ellipsoid_edit_for_square(ed, (struct MapCoords){x,z}))
+		return;
 
 	ed->sel.data.eledit->loc->x = x;
 	ed->sel.data.eledit->loc->z = z;
 	map_save(ed->map);
+}
+
+static struct MapCoords wall_to_square(const struct Map *map, const struct Wall *w, int dx, int dz)
+{
+	SDL_assert(abs(dx) <= 1 && abs(dz) <= 1 && !(dx && dz));
+	struct MapCoords res = {
+		w->startx - (dx==-1 && w->dir==WALL_DIR_ZY),
+		w->startz - (dz==-1 && w->dir==WALL_DIR_XY),
+	};
+	clamp(&res.x, 0, map->xsize-1);
+	clamp(&res.z, 0, map->zsize-1);
+	return res;
+}
+
+static struct Wall square_to_wall(struct MapCoords square, int dx, int dz)
+{
+	SDL_assert(abs(dx) <= 1 && abs(dz) <= 1 && !(dx && dz));
+	return (struct Wall){
+		.startx = square.x + max(0,dx),
+		.startz = square.z + max(0,dz),
+		.dir = dx ? WALL_DIR_ZY : WALL_DIR_XY,
+	};
 }
 
 static void on_arrow_key(struct MapEditor *ed, float angle, bool oppositespressed)
@@ -431,52 +467,58 @@ static void on_arrow_key(struct MapEditor *ed, float angle, bool oppositespresse
 	}
 
 	switch(ed->sel.mode) {
-	case SEL_NONE:
-		ed->sel = (struct Selection){ .mode = SEL_WALL, .data = { .wall = {0}}};
-		// fall through
-
-	case SEL_WALL:
-	{
-		struct Wall old = ed->sel.data.wall;
-		move_or_select_wall_with_keyboard(ed, &ed->sel.data.wall, dx, dz, oppositespressed);
-		select_ellipsoid_between_walls_if_any(ed, &old, &ed->sel.data.wall);
-		break;
-	}
-
-	case SEL_MVWALL:
-	{
-		struct Wall w = *ed->sel.data.mvwall;
-		move_or_select_wall_with_keyboard(ed, &w, dx, dz, oppositespressed);
-		set_location_of_moving_wall(ed, w);
-		break;
-	}
-
-	case SEL_ELLIPSOID:
-	{
-		// Select wall near ellipsoid
-		const struct EllipsoidEdit *ee = ed->sel.data.eledit;
-		ed->sel = (struct Selection) {
-			.mode = SEL_WALL,
-			.data = {
-				.wall = {
-					.dir = (dx ? WALL_DIR_ZY : WALL_DIR_XY),
-					.startx = ee->loc->x + max(0, dx),
-					.startz = ee->loc->z + max(0, dz),
-				}
-			}
-		};
-		break;
-	}
-
-	case SEL_MVELLIPSOID:
-	{
-		struct MapCoords old = *ed->sel.data.eledit->loc;
-		move_selected_ellipsoid(ed, old.x + dx, old.z + dz);
-		break;
-	}
-
 	case SEL_RESIZE:
 		do_resize(ed, ed->sel.data.resize.mainwall.startx + dx, ed->sel.data.resize.mainwall.startz + dz);
+		break;
+	case SEL_MVELLIPSOID:
+		move_selected_ellipsoid(ed, ed->sel.data.eledit->loc->x + dx, ed->sel.data.eledit->loc->z + dz);
+		break;
+	case SEL_MVWALL:
+	{
+		struct Wall tmp = *ed->sel.data.mvwall;
+		tmp.startx += dx;
+		tmp.startz += dz;
+		set_location_of_moving_wall(ed, tmp);
+		break;
+	}
+	case SEL_SQUARE:
+		switch(ed->tool) {
+		case TOOL_ENEMY:
+			ed->sel.data.square.x += dx;
+			ed->sel.data.square.z += dz;
+			clamp(&ed->sel.data.square.x, 0, ed->map->xsize-1);
+			clamp(&ed->sel.data.square.z, 0, ed->map->zsize-1);
+			break;
+		case TOOL_WALL:
+			ed->sel = (struct Selection){
+				.mode = SEL_WALL,
+				.data.wall = square_to_wall(ed->sel.data.square, dx, dz),
+			};
+			break;
+		}
+		break;
+	case SEL_WALL:
+		switch(ed->tool) {
+		case TOOL_ENEMY:
+			ed->sel = (struct Selection){
+				.mode = SEL_SQUARE,
+				.data.square = wall_to_square(ed->map, &ed->sel.data.wall, dx, dz),
+			};
+			break;
+		case TOOL_WALL:
+			move_or_select_wall_with_keyboard(ed, &ed->sel.data.wall, dx, dz, oppositespressed);
+			break;
+		}
+		break;
+	case SEL_NONE:
+		switch(ed->tool) {
+		case TOOL_ENEMY:
+			ed->sel = (struct Selection){ .mode = SEL_SQUARE, .data.square = {0} };
+			break;
+		case TOOL_WALL:
+			ed->sel = (struct Selection){ .mode = SEL_WALL, .data.wall = {0} };
+			break;
+		}
 		break;
 	}
 }
@@ -485,19 +527,14 @@ static void delete_selected(struct MapEditor *ed)
 {
 	log_printf("Trying to delete selected item");
 	switch(ed->sel.mode) {
-		case SEL_ELLIPSOID:
+		case SEL_SQUARE:
 		{
-			struct EllipsoidEdit *ee = ed->sel.data.eledit;
+			struct EllipsoidEdit *ee = find_ellipsoid_edit_for_square(ed, ed->sel.data.square);
 			// Watch out for ub, comparing pointers to different arrays is undefined
-			if (ee != &ed->playeredits[0] && ee != &ed->playeredits[1]) {
+			if (ee && ee != &ed->playeredits[0] && ee != &ed->playeredits[1]) {
 				SDL_assert(&ed->enemyedits[0] <= ee && ee < &ed->enemyedits[ed->map->nenemylocs]);
-
-				// Once ellipsoid location is deleted, must select something else
-				struct Wall w = { .startx = ee->loc->x, .startz = ee->loc->z };
-
 				*ee->loc = ed->map->enemylocs[--ed->map->nenemylocs];
 				log_printf("Deleted enemy, now there are %d enemies", ed->map->nenemylocs);
-				ed->sel = (struct Selection){ .mode = SEL_WALL, .data = { .wall = w }};
 				map_save(ed->map);
 			}
 			break;
@@ -527,7 +564,7 @@ static void begin_moving_or_resizing(struct MapEditor *ed)
 			log_printf("Resize begins");
 			ed->sel = (struct Selection) {
 				.mode = SEL_RESIZE,
-				.data = { .resize = begin_resize(&ed->sel.data.wall, ed->map) },
+				.data.resize = begin_resize(&ed->sel.data.wall, ed->map),
 			};
 		} else {
 			struct Wall *w = find_wall_from_map(&ed->sel.data.wall, ed->map);
@@ -538,10 +575,15 @@ static void begin_moving_or_resizing(struct MapEditor *ed)
 		}
 		break;
 
-	case SEL_ELLIPSOID:
-		log_printf("Moving ellipsoid begins");
-		ed->sel.mode = SEL_MVELLIPSOID;
+	case SEL_SQUARE:
+	{
+		struct EllipsoidEdit *ee = find_ellipsoid_edit_for_square(ed, ed->sel.data.square);
+		if (ee) {
+			log_printf("Moving ellipsoid begins");
+			ed->sel = (struct Selection){ .mode = SEL_MVELLIPSOID, .data.eledit = ee };
+		}
 		break;
+	}
 
 	default:
 		break;
@@ -557,15 +599,45 @@ static void end_moving_or_resizing(struct MapEditor *ed)
 		break;
 	case SEL_MVWALL:
 		log_printf("Moving a wall ends");
-		ed->sel = (struct Selection){ .mode = SEL_WALL, .data = {.wall = *ed->sel.data.mvwall} };
+		ed->sel = (struct Selection){ .mode = SEL_WALL, .data.wall = *ed->sel.data.mvwall };
 		break;
 	case SEL_MVELLIPSOID:
 		log_printf("Moving ellipsoid ends");
-		ed->sel.mode = SEL_ELLIPSOID;
+		struct MapCoords loc = *ed->sel.data.eledit->loc;
+		ed->sel = (struct Selection){ .mode = SEL_SQUARE, .data.square = loc };
 		break;
 	default:
 		break;
 	}
+}
+
+static bool on_mouse_or_enter_released(struct MapEditor *ed)
+{
+	end_moving_or_resizing(ed);
+
+	if (ed->tool == TOOL_WALL
+		&& ed->sel.mode == SEL_WALL
+		&& can_add_wall(ed)
+		&& !find_wall_from_map(&ed->sel.data.wall, ed->map))
+	{
+		map_addwall(ed->map, ed->sel.data.wall.startx, ed->sel.data.wall.startz, ed->sel.data.wall.dir);
+		log_printf("Added wall, now there are %d walls", ed->map->nwalls);
+		map_save(ed->map);
+		return true;
+	}
+
+	if (ed->tool == TOOL_ENEMY
+		&& ed->sel.mode == SEL_SQUARE
+		&& can_add_enemy(ed)
+		&& !find_ellipsoid_edit_for_square(ed, ed->sel.data.square))
+	{
+		ed->map->enemylocs[ed->map->nenemylocs++] = ed->sel.data.square;
+		log_printf("Added enemy, now there are %d enemies", ed->map->nenemylocs);
+		map_save(ed->map);
+		return true;
+	}
+
+	return false;
 }
 
 #define LEFT_CLICK 1
@@ -582,8 +654,9 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 
 	float pi = acosf(-1);
 
-	button_handle_event(e, &ed->donebtn);
-	button_handle_event(e, &ed->addenemybtn);
+	button_handle_event(e, &ed->donebutton);
+	for (int i = 0; i < TOOL_COUNT; i++)
+		button_handle_event(e, &ed->toolbuttons[i]);
 
 	// If "Yes, delete this map" button was clicked and the map no longer
 	// exists, we must avoid handling the click event again
@@ -606,13 +679,7 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 	case SDL_MOUSEBUTTONUP:
 		if (e->button.button != LEFT_CLICK)
 			return false;
-
-		if (ed->sel.mode == SEL_WALL) {
-			log_printf("Clicked some place with no wall in it, adding wall");
-			add_wall(ed);
-		} else {
-			end_moving_or_resizing(ed);
-		}
+		on_mouse_or_enter_released(ed);
 		return true;
 
 	case SDL_MOUSEMOTION:
@@ -622,7 +689,7 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 		case SEL_RESIZE:
 		{
 			float xf, zf;
-			if (project_mouse_to_top_of_map(ed, e->button.x, e->button.y, &xf, &zf)) {
+			if (project_mouse_to_horizontal_plane(ed, 1, e->button.x, e->button.y, &xf, &zf)) {
 				if (ed->sel.mode == SEL_MVELLIPSOID)
 					move_selected_ellipsoid(ed, (int)floorf(xf), (int)floorf(zf));
 				else if (ed->sel.mode == SEL_RESIZE)
@@ -664,10 +731,6 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 			ed->right = true;
 			on_arrow_key(ed, ed->cam.angle + 3*pi/2, ed->left && ed->right);
 			return true;
-		case SDL_SCANCODE_LSHIFT:
-		case SDL_SCANCODE_RSHIFT:
-			begin_moving_or_resizing(ed);
-			return true;
 		case SDL_SCANCODE_A:
 			ed->rotatedir = 1;
 			return false;
@@ -675,8 +738,7 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 			ed->rotatedir = -1;
 			return false;
 		case SDL_SCANCODE_RETURN:
-			if (ed->sel.mode == SEL_WALL)
-				add_wall(ed);
+			begin_moving_or_resizing(ed);
 			return true;
 		case SDL_SCANCODE_DELETE:
 			delete_selected(ed);
@@ -692,11 +754,9 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 			case SDL_SCANCODE_LEFT: ed->left = false; return false;
 			case SDL_SCANCODE_RIGHT: ed->right = false; return false;
 
-			case SDL_SCANCODE_LSHIFT:
-			case SDL_SCANCODE_RSHIFT:
-				end_moving_or_resizing(ed);
+			case SDL_SCANCODE_RETURN:
+				on_mouse_or_enter_released(ed);
 				return true;
-
 			case SDL_SCANCODE_A:
 				if (ed->rotatedir == 1)
 					ed->rotatedir = 0;
@@ -725,11 +785,36 @@ static bool wall_should_be_highlighted(const struct MapEditor *ed, const struct 
 
 static void show_editor(struct MapEditor *ed)
 {
-	for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); ) {
-		ee->el.highlighted =
-			(ed->sel.mode == SEL_ELLIPSOID || ed->sel.mode == SEL_MVELLIPSOID)
-			&& ed->sel.data.eledit == ee;
+	struct EllipsoidEdit *highlightee;
+	switch(ed->sel.mode) {
+	case SEL_SQUARE:
+		highlightee = find_ellipsoid_edit_for_square(ed, ed->sel.data.square);
+		break;
+	case SEL_MVELLIPSOID:
+		highlightee = ed->sel.data.eledit;
+		break;
+	default:
+		highlightee = NULL;
+		break;
 	}
+
+	for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); )
+		ee->el.highlighted = (ee==highlightee);
+
+	int highlight[MAX_WALLS + 1];
+	int highlightidx = 0;
+	for (int i = 0; i < ed->map->nwalls; i++) {
+		if (wall_should_be_highlighted(ed, &ed->map->walls[i]))
+			highlight[highlightidx++] = i;
+	}
+	highlight[highlightidx] = -1;
+
+	struct Ellipsoid els[2 + MAX_ENEMIES];
+	int nels = 0;
+	for (const struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit_const(ed, &ee); )
+		els[nels++] = ee->el;
+
+	show_all(ed->map->walls, ed->map->nwalls, highlight, els, nels, &ed->cam);
 
 	struct Wall *borderwall;
 	switch(ed->sel.mode) {
@@ -746,66 +831,70 @@ static void show_editor(struct MapEditor *ed)
 		borderwall = NULL;
 		break;
 	}
-
-	int highlight[MAX_WALLS + 1];
-	int highlightidx = 0;
-	for (int i = 0; i < ed->map->nwalls; i++) {
-		if (wall_should_be_highlighted(ed, &ed->map->walls[i]))
-			highlight[highlightidx++] = i;
-	}
-	highlight[highlightidx] = -1;
-
-	struct Ellipsoid els[2 + MAX_ENEMIES];
-	int nels = 0;
-	for (const struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit_const(ed, &ee); )
-		els[nels++] = ee->el;
-
-	show_all(ed->map->walls, ed->map->nwalls, highlight, els, nels, &ed->cam);
 	if (borderwall) {
 		struct Rect3 r = wall_to_rect3(borderwall);
 		rect3_drawborder(&r, &ed->cam);
 	}
-}
 
-static void add_enemy(void *editorptr)
-{
-	struct MapEditor *ed = editorptr;
-	int m = min(MAX_ENEMIES, ed->map->xsize*ed->map->zsize - 2);
-	SDL_assert(ed->map->nenemylocs < m);  // button should be disabled if not
-
-	struct MapCoords hint;
-	switch(ed->sel.mode) {
-		case SEL_ELLIPSOID:
-			hint = *ed->sel.data.eledit->loc;
-			break;
-		case SEL_WALL:
-			hint = (struct MapCoords){ ed->sel.data.wall.startx, ed->sel.data.wall.startz };
-			break;
-		default:
-			// Do not add enemies e.g. while moving something
-			return;
+	if (ed->sel.mode == SEL_SQUARE) {
+		struct Rect3 r = { .corners = {
+			{ ed->sel.data.square.x, 0, ed->sel.data.square.z },
+			{ ed->sel.data.square.x, 0, ed->sel.data.square.z+1 },
+			{ ed->sel.data.square.x+1, 0, ed->sel.data.square.z+1 },
+			{ ed->sel.data.square.x+1, 0, ed->sel.data.square.z },
+		}};
+		rect3_drawborder(&r, &ed->cam);
 	}
-
-	int i = ed->map->nenemylocs;
-	// evaluation order rules troll me
-	struct MapCoords c = map_findempty(ed->map, hint);
-	ed->map->enemylocs[ed->map->nenemylocs++] = c;
-	log_printf("Added enemy, now there are %d enemies", ed->map->nenemylocs);
-	map_save(ed->map);
-
-	ed->sel = (struct Selection){ .mode = SEL_ELLIPSOID, .data = {.eledit = &ed->enemyedits[i]} };
-	ed->redraw = true;
 }
 
-static void update_button_disableds(struct MapEditor *ed)
+static void on_tool_changed(struct MapEditor *ed, enum Tool tool)
 {
-	int m = min(MAX_ENEMIES, ed->map->xsize*ed->map->zsize - 2);
-	SDL_assert(ed->map->nenemylocs <= m);
-	if (ed->map->nenemylocs == m)
-		ed->addenemybtn.flags |= BUTTON_DISABLED;
-	else
-		ed->addenemybtn.flags &= ~BUTTON_DISABLED;
+	log_printf("Changing tool to %d", tool);
+	end_moving_or_resizing(ed);
+	ed->tool = tool;
+	for (int t = 0; t < TOOL_COUNT; t++) {
+		if (t != tool)
+			ed->toolbuttons[t].flags &= ~BUTTON_PRESSED;
+	}
+	ed->redraw = true;
+
+	switch(ed->sel.mode) {
+	case SEL_NONE:
+		break;
+	case SEL_RESIZE:
+	case SEL_MVWALL:
+	case SEL_MVELLIPSOID:
+		log_printf_abort("this should never happen");
+		break;
+	case SEL_WALL:
+		switch(ed->tool) {
+		case TOOL_WALL:
+			break;
+		case TOOL_ENEMY:
+			ed->sel = (struct Selection){
+				.mode = SEL_SQUARE,
+				.data.square = wall_to_square(ed->map, &ed->sel.data.wall, 0, 0),
+			};
+			break;
+		}
+		break;
+	case SEL_SQUARE:
+		switch(ed->tool) {
+		case TOOL_ENEMY:
+			break;
+		case TOOL_WALL:
+			ed->sel = (struct Selection){
+				.mode = SEL_WALL,
+				.data.wall = square_to_wall(ed->sel.data.square, 0, 0),
+			};
+			break;
+		}
+		break;
+	}
 }
+
+static void on_wall_button_clicked(void *edptr) { on_tool_changed(edptr, TOOL_WALL); }
+static void on_enemy_button_clicked(void *edptr) { on_tool_changed(edptr, TOOL_ENEMY); }
 
 static void on_done_clicked(void *data)
 {
@@ -819,10 +908,11 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 	if (!ed)
 		log_printf_abort("out of mem");
 
+	enum ButtonFlags bf = BUTTON_THICK | BUTTON_VERTICAL | BUTTON_STAYPRESSED;
 	*ed = (struct MapEditor){
 		.zoom = zoom,
 		.cam = { .surface = surf, .screencentery = ytop, .angle = 0 },
-		.donebtn = {
+		.donebutton = {
 			.text = "Done",
 			.destsurf = surf,
 			.center = {
@@ -833,16 +923,31 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 			.onclick = on_done_clicked,
 			.onclickdata = ed,
 		},
-		.addenemybtn = {
-			.text = "Add\nenemy",
-			.scancodes = { SDL_SCANCODE_E },
-			.destsurf = surf,
-			.center = {
-				CAMERA_SCREEN_WIDTH - button_width(0)/2,
-				button_height(0)/2
+		.toolbuttons = {
+			[TOOL_WALL] = {
+				.imgpath = "assets/buttonpics/wall.png",
+				.flags = bf | BUTTON_PRESSED,
+				.scancodes = { SDL_SCANCODE_W },
+				.destsurf = surf,
+				.center = {
+					CAMERA_SCREEN_WIDTH - button_width(BUTTON_THICK)/2,
+					button_height(bf)/2
+				},
+				.onclick = on_wall_button_clicked,
+				.onclickdata = ed,
 			},
-			.onclick = add_enemy,
-			.onclickdata = ed,
+			[TOOL_ENEMY] = {
+				.imgpath = "assets/buttonpics/enemy.png",
+				.flags = bf,
+				.scancodes = { SDL_SCANCODE_E },
+				.destsurf = surf,
+				.center = {
+					CAMERA_SCREEN_WIDTH - button_width(BUTTON_THICK)/2,
+					button_height(bf)*3/2
+				},
+				.onclick = on_enemy_button_clicked,
+				.onclickdata = ed,
+			},
 		},
 		.nameentry = {
 			.surf = surf,
@@ -912,9 +1017,9 @@ static void show_and_rotate_map_editor(struct MapEditor *ed, bool canedit)
 		SDL_FillRect(ed->cam.surface, NULL, 0);
 		show_editor(ed);
 		if (canedit) {
-			update_button_disableds(ed);
-			button_show(&ed->donebtn);
-			button_show(&ed->addenemybtn);
+			button_show(&ed->donebutton);
+			for (int i = 0; i < TOOL_COUNT; i++)
+				button_show(&ed->toolbuttons[i]);
 			ed->nameentry.redraw = true;  // because entire surface was cleared above
 		}
 	}
