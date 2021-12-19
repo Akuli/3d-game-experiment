@@ -161,7 +161,10 @@ void button_handle_event(const SDL_Event *evt, struct Button *butt)
 
 	button_show(butt);
 	if (click) {
-		log_printf("clicking button \"%s\"", butt->text);
+		if (butt->text)
+			log_printf("clicking button \"%s\"", butt->text);
+		if (butt->imgpath)
+			log_printf("clicking button with image from \"%s\"", butt->imgpath);
 		butt->onclick(butt->onclickdata);  // may free the button, must be last
 	}
 }
