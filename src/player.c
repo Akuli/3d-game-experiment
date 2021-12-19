@@ -60,18 +60,21 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 		// ellipsoid_update_transforms() called below
 	}
 
-	if (plr->moving) {
-		Vec3 v = mat3_mul_vec3(plr->cam.cam2world, (Vec3){ 0, 0, -(plr->flat ? FLAT_SPEED : NORMAL_SPEED) });
-		plr->speed.x = v.x;
-		plr->speed.z = v.z;
-	} else {
-		plr->speed.x = 0;
-		plr->speed.z = 0;
+	if (!plr->usedjumper) {
+		if (plr->moving) {
+			Vec3 v = mat3_mul_vec3(plr->cam.cam2world, (Vec3){ 0, 0, -(plr->flat ? FLAT_SPEED : NORMAL_SPEED) });
+			plr->speed.x = v.x;
+			plr->speed.z = v.z;
+		} else {
+			plr->speed.x = 0;
+			plr->speed.z = 0;
+		}
 	}
 
 	vec3_add_inplace(&plr->ellipsoid.center, vec3_mul_float(plr->speed, 1.0f/CAMERA_FPS));
 
 	if (plr->ellipsoid.center.y < plr->ellipsoid.yradius) {
+		plr->usedjumper = false;
 		plr->speed.y = 0;
 		plr->ellipsoid.center.y = plr->ellipsoid.yradius;
 	}

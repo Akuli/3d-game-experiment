@@ -15,7 +15,10 @@ struct Jumper {
 // Returned rect can be used for drawing the jumper on screen
 struct Rect3 jumper_eachframe(struct Jumper *jmp);
 
-// progress is -1 when not doing the jump. If presses so much that jump begins, it is changed.
-void jumper_press(struct Jumper *jmp, const struct Ellipsoid *el);
+// Returns whether jump should begin
+bool jumper_press(struct Jumper *jmp, const struct Ellipsoid *el);
+
+// Set y speed to this when jump begins
+#define JUMPER_YSPEED 50
 
 #endif  // JUMPER_H
