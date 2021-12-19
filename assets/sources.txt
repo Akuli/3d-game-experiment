@@ -10,27 +10,15 @@ players/Tux.png: http://www.home.unix-ag.org/simon/penguin/
 players/Chick.png: from a picture taken by a relative
 players/Dog.png: from a picture taken by a relative
 
-buttons/huge/*/*/*.png: edited from https://pixabay.com/vectors/the-button-button-icon-web-pages-859346/
-buttons/thick/*/*.png:  see scripts/resize_images
-buttons/big/*/*.png:    see scripts/resize_images
-buttons/medium/*/*.png: see scripts/resize_images
-buttons/small/*/*.png:  see scripts/resize_images
-buttons/tiny/*/*.png:   see scripts/resize_images
-
-listbox/huge/*.png: edited from https://pixabay.com/vectors/the-button-button-icon-web-pages-859346/
-listbox/*.png:      see scripts/resize_images
+hugepics/buttons/*/*/*.png: edited from https://pixabay.com/vectors/the-button-button-icon-web-pages-859346/
 
 enemies/enemy1.png: I drew this myself with gimp
 guard.png: https://pixabay.com/photos/corrugated-sheet-metal-plate-2370925/
-buttonpics/huge-right.png: edited from https://commons.wikimedia.org/wiki/File:Arrow_Blue_Right_001.svg, see scripts/resize_images
-buttonpics/huge-enemy.png: screenshot from game
-buttonpics/huge-wall.png: I drew this myself with gimp
-buttonpics/left.png:  see scripts/resize_images
-buttonpics/right.png: see scripts/resize_images
-buttonpics/up.png:    see scripts/resize_images
-buttonpics/down.png:  see scripts/resize_images
-buttonpics/enemy.png: see scripts/resize_images
-buttonpics/wall.png:  see scripts/resize_images
 
-default_maps/*.txt: I wrote myself
+hugepics/listbox/*.png: edited from https://pixabay.com/vectors/the-button-button-icon-web-pages-859346/
+hugepics/right.png: edited from https://commons.wikimedia.org/wiki/File:Arrow_Blue_Right_001.svg, see scripts/resize_images
+hugepics/enemy.png: screenshot from game
+hugepics/wall.png: I drew this myself with gimp
+
+default_maps/*.txt: I wrote myself, or created with map editor
 DejaVuSans.ttf: /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf from Debian package fonts-dejavu-core, version 2.37-1

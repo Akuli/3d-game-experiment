@@ -6,8 +6,8 @@
 
 void listbox_init(struct Listbox *lb)
 {
-	lb->bgimg = create_image_surface("assets/listbox/normal.png");
-	lb->selectimg = create_image_surface("assets/listbox/selected.png");
+	lb->bgimg = create_image_surface("assets/resized/listbox/normal.png");
+	lb->selectimg = create_image_surface("assets/resized/listbox/selected.png");
 
 	SDL_assert(lb->destrect.w == LISTBOX_WIDTH);
 	SDL_assert(lb->selectimg->w == LISTBOX_WIDTH);
