@@ -959,7 +959,7 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 		},
 		.toolbuttons = {
 			[TOOL_WALL] = {
-				.imgpath = "assets/buttonpics/wall.png",
+				.imgpath = "assets/resized/buttons/wall.png",
 				.flags = bf | BUTTON_PRESSED,
 				.scancodes = { SDL_SCANCODE_W },
 				.destsurf = surf,
@@ -971,7 +971,7 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 				.onclickdata = ed,
 			},
 			[TOOL_ENEMY] = {
-				.imgpath = "assets/buttonpics/enemy.png",
+				.imgpath = "assets/resized/buttons/enemy.png",
 				.flags = bf,
 				.scancodes = { SDL_SCANCODE_E },
 				.destsurf = surf,
@@ -983,7 +983,7 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 				.onclickdata = ed,
 			},
 			[TOOL_JUMPER] = {
-				.imgpath = "assets/buttonpics/jumper.png",
+				.imgpath = "assets/resized/buttons/jumper.png",
 				.flags = bf,
 				.scancodes = { SDL_SCANCODE_J },
 				.destsurf = surf,

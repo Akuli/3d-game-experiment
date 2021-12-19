@@ -30,7 +30,7 @@ static SDL_Surface *get_image(enum ButtonFlags f)
 	}
 
 	if (!image_surfaces[f]) {
-		char path[100] = "assets/buttons/";
+		char path[100] = "assets/resized/buttons/";
 
 		switch((int)f & (BUTTON_TINY | BUTTON_SMALL | BUTTON_BIG | BUTTON_THICK)) {
 			case BUTTON_TINY: strcat(path, "tiny/"); break;
@@ -161,7 +161,10 @@ void button_handle_event(const SDL_Event *evt, struct Button *butt)
 
 	button_show(butt);
 	if (click) {
-		log_printf("clicking button \"%s\"", butt->text);
+		if (butt->text)
+			log_printf("clicking button \"%s\"", butt->text);
+		if (butt->imgpath)
+			log_printf("clicking button with image from \"%s\"", butt->imgpath);
 		butt->onclick(butt->onclickdata);  // may free the button, must be last
 	}
 }
