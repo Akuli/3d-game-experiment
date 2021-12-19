@@ -9,12 +9,11 @@
 #include "max.h"
 #include "misc.h"
 #include "rect3.h"
-#include "wall.h"
 
 // fitting too much stuff into an integer
-typedef short ID;
+typedef unsigned short ID;
 #define ID_TYPE_ELLIPSOID 0
-#define ID_TYPE_WALL 1
+#define ID_TYPE_RECT 1
 #define ID_TYPE(id) ((id) & 1)
 #define ID_INDEX(id) ((id) >> 1)
 #define ID_NEW(type, idx) ((type) | ((idx) << 1))
@@ -22,14 +21,14 @@ typedef short ID;
 // length of array indexed by id
 #define ARRAYLEN_INDEXED_BY_ID max( \
 	ID_NEW(ID_TYPE_ELLIPSOID, MAX_ELLIPSOIDS-1) + 1, \
-	ID_NEW(ID_TYPE_WALL, MAX_WALLS-1) + 1 \
+	ID_NEW(ID_TYPE_RECT, MAX_RECTS-1) + 1 \
 )
 
 // length of array containing ids
-#define ARRAYLEN_CONTAINING_ID (MAX_WALLS + MAX_ELLIPSOIDS)
+#define ARRAYLEN_CONTAINING_ID (MAX_ELLIPSOIDS + MAX_RECTS)
 
 struct Info {
-	// dependencies must be displayed first, they go to behind the ellipsoid or wall
+	// dependencies must be displayed first, they go to behind the ellipsoid or rect
 	ID deps[ARRAYLEN_CONTAINING_ID];
 	int ndeps;
 
@@ -38,12 +37,11 @@ struct Info {
 	bool sortingdone;  // for sorting infos to display them in correct order
 
 	struct Rect3Cache rcache;
-	bool highlight;
 };
 
 struct ShowingState {
 	const struct Camera *cam;
-	const struct Wall *walls;           // indexed by ID_INDEX(wall id)
+	const struct Rect3 *rects;           // indexed by ID_INDEX(rect id)
 	const struct Ellipsoid *els;        // indexed by ID_INDEX(ellipsoid id)
 	struct Info infos[ARRAYLEN_INDEXED_BY_ID];
 
@@ -73,17 +71,15 @@ static void add_ellipsoid_if_visible(struct ShowingState *st, int idx)
 
 static void add_wall_if_visible(struct ShowingState *st, int idx)
 {
-	struct Rect3 r = wall_to_rect3(&st->walls[idx]);
 	struct Rect3Cache rcache;
-	if (rect3_visible_fillcache(&r, st->cam, &rcache)) {
-		ID id = ID_NEW(ID_TYPE_WALL, idx);
+	if (rect3_visible_fillcache(&st->rects[idx], st->cam, &rcache)) {
+		ID id = ID_NEW(ID_TYPE_RECT, idx);
 		st->visible[st->nvisible++] = id;
 		st->infos[id].ndeps = 0;
 		st->infos[id].bbox = rcache.bbox;
-		st->infos[id].sortrect = r;
+		st->infos[id].sortrect = st->rects[idx];
 		st->infos[id].sortingdone = false;
 		st->infos[id].rcache = rcache;
-		st->infos[id].highlight = false;
 	}
 }
 
@@ -140,8 +136,8 @@ static void setup_dependencies(struct ShowingState *st)
 			{
 				ID id1 = st->objects_by_x[x][i];
 				ID id2 = st->objects_by_x[x][k];
-				// TODO: walls of different color
-				if (ID_TYPE(id1) == ID_TYPE_WALL && ID_TYPE(id2) == ID_TYPE_WALL)
+				// TODO: rects of different color?
+				if (ID_TYPE(id1) == ID_TYPE_RECT && ID_TYPE(id2) == ID_TYPE_RECT)
 					continue;
 
 				int ystart = max(
@@ -211,7 +207,7 @@ static bool get_xminmax(struct ShowingState *st, ID id, int y, int *xmin, int *x
 {
 	switch(ID_TYPE(id)) {
 		case ID_TYPE_ELLIPSOID: return ellipsoid_xminmax(&st->els[ID_INDEX(id)], st->cam, y, xmin, xmax);
-		case ID_TYPE_WALL: return rect3_xminmax(&st->infos[id].rcache, y, xmin, xmax);
+		case ID_TYPE_RECT: return rect3_xminmax(&st->infos[id].rcache, y, xmin, xmax);
 	}
 	return false;  // compiler = happy
 }
@@ -222,15 +218,14 @@ static void draw_row(const struct ShowingState *st, int y, ID id, int xmin, int 
 	case ID_TYPE_ELLIPSOID:
 		ellipsoid_drawrow(&st->els[ID_INDEX(id)], st->cam, y, xmin, xmax);
 		break;
-	case ID_TYPE_WALL:
-		rect3_drawrow(&st->infos[id].rcache, y, xmin, xmax, st->infos[id].highlight);
+	case ID_TYPE_RECT:
+		rect3_drawrow(&st->infos[id].rcache, y, xmin, xmax);
 		break;
 	}
 }
 
 void show_all(
-	const struct Wall *walls, int nwalls,
-	const int *highlightwalls,
+	const struct Rect3 *rects, int nwalls,
 	const struct Ellipsoid *els, int nels,
 	const struct Camera *cam)
 {
@@ -240,7 +235,7 @@ void show_all(
 	// static to keep stack usage down
 	static struct ShowingState st;
 	st.cam = cam;
-	st.walls = walls;
+	st.rects = rects;
 	st.els = els;
 	st.nvisible = 0;
 	memset(st.nobjects_by_x, 0, sizeof st.nobjects_by_x);
@@ -250,8 +245,6 @@ void show_all(
 		add_ellipsoid_if_visible(&st, i);
 	for (int i = 0; i < nwalls; i++)
 		add_wall_if_visible(&st, i);
-	for (const int *i = highlightwalls; *i != -1; i++)
-		st.infos[ID_NEW(ID_TYPE_WALL, *i)].highlight = true;
 
 	for (int i = 0; i < st.nvisible; i++) {
 		SDL_Rect bbox = st.infos[st.visible[i]].bbox;
@@ -276,7 +269,7 @@ void show_all(
 					.start = xmin,
 					.end = xmax,
 					.id = id,
-					.allowoverlap = (ID_TYPE(id) == ID_TYPE_WALL),
+					.allowoverlap = (ID_TYPE(id) == ID_TYPE_RECT),
 				};
 			}
 		}

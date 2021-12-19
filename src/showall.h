@@ -5,11 +5,10 @@
 
 #include "camera.h"
 #include "ellipsoid.h"
-#include "wall.h"
+#include "rect3.h"
 
 void show_all(
-	const struct Wall *walls, int nwalls,
-	const int *highlightwalls,  // -1 terminated list of indexes into walls
+	const struct Rect3 *rects, int nrects,
 	const struct Ellipsoid *els, int nels,
 	const struct Camera *cam
 );

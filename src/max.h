@@ -16,6 +16,7 @@
 )
 
 #define MAX_MAPSIZE 30
-#define MAX_WALLS (2*MAX_MAPSIZE*(MAX_MAPSIZE + 1))
+#define MAX_WALLS (2*MAX_MAPSIZE*(MAX_MAPSIZE + 1))  // TODO: make smaller?
+#define MAX_RECTS MAX_WALLS
 
 #endif    // MAX_H

@@ -28,9 +28,6 @@ struct GameState {
 	struct Enemy enemies[MAX_ENEMIES];
 	int nenemies;
 
-	// How many squares can reach from enemy location. Same length as map->enemylocs
-	int enemyregionsizes[MAX_ENEMIES];
-
 	struct Ellipsoid unpicked_guards[MAX_UNPICKED_GUARDS];
 	int n_unpicked_guards;
 
@@ -297,6 +294,10 @@ enum State play_the_game(
 	for (int i = 0; i < map->nenemylocs; i++)
 		add_enemy(&gs, &map->enemylocs[i]);
 
+	static struct Rect3 wallrects[MAX_WALLS];
+	for (int i = 0; i < map->nwalls; i++)
+		wallrects[i] = wall_to_rect3(&map->walls[i]);
+
 	struct LoopTimer lt = {0};
 	enum State ret;
 
@@ -327,7 +328,7 @@ enum State play_the_game(
 		int nels = get_all_ellipsoids(&gs, &els);
 
 		for (int i = 0; i < 2; i++)
-			show_all(map->walls, map->nwalls, (int[]){-1}, els, nels, &gs.players[i].cam);
+			show_all(wallrects, map->nwalls, els, nels, &gs.players[i].cam);
 
 		// horizontal line
 		SDL_FillRect(winsurf, &(SDL_Rect){ winsurf->w/2, 0, 1, winsurf->h }, SDL_MapRGB(winsurf->format, 0xff, 0xff, 0xff));
