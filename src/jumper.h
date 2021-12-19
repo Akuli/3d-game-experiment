@@ -2,7 +2,9 @@
 #define JUMPER_H
 
 #include <SDL2/SDL.h>
-#include "map.h"
+#include <stdbool.h>
+#include "ellipsoid.h"
+#include "rect3.h"
 
 // Set y speed to this when jump begins
 #define JUMPER_YSPEED 30

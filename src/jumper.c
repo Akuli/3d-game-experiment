@@ -1,11 +1,14 @@
 #include "jumper.h"
 #include <SDL2/SDL.h>
-#include <limits.h>
+#include <math.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 #include "camera.h"
+#include "linalg.h"
 #include "log.h"
-#include "rect3.h"
 #include "misc.h"
+#include "rect3.h"
 
 #define MAX_HEIGHT 0.5f
 #define RADIUS 0.4f
