@@ -93,7 +93,10 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 
 	plr->cam.angle = plr->ellipsoid.angle;
 	plr->cam.location = vec3_add(plr->ellipsoid.center, diff);
-	plr->cam.location.y = CAMERA_HEIGHT;
+	if (plr->usedjumper)
+		plr->cam.location.y += CAMERA_HEIGHT - plr->ellipsoid.xzradius;
+	else
+		plr->cam.location.y = CAMERA_HEIGHT;
 
 	camera_update_caches(&plr->cam);
 }

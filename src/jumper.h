@@ -19,6 +19,6 @@ struct Rect3 jumper_eachframe(struct Jumper *jmp);
 bool jumper_press(struct Jumper *jmp, const struct Ellipsoid *el);
 
 // Set y speed to this when jump begins
-#define JUMPER_YSPEED 50
+#define JUMPER_YSPEED 30
 
 #endif  // JUMPER_H
