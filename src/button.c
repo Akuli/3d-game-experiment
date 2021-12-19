@@ -104,7 +104,7 @@ void button_show(const struct Button *butt)
 			blit_with_center(
 				s1, butt->destsurf, &(SDL_Point){ butt->center.x, butt->center.y - s1->h/2 });
 			blit_with_center(
-				s2, butt->destsurf, &(SDL_Point){ butt->center.y, butt->center.y + s2->h/2 });
+				s2, butt->destsurf, &(SDL_Point){ butt->center.x, butt->center.y + s2->h/2 });
 
 			SDL_FreeSurface(s1);
 			SDL_FreeSurface(s2);
