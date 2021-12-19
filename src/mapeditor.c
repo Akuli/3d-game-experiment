@@ -435,7 +435,7 @@ static void move_selected_ellipsoid(struct MapEditor *ed, int x, int z)
 
 static struct MapCoords wall_to_square(const struct Map *map, const struct Wall *w, int dx, int dz)
 {
-	SDL_assert(abs(dx) <= 1 && abs(dz) <= 1);
+	SDL_assert(abs(dx) <= 1 && abs(dz) <= 1 && !(dx && dz));
 	struct MapCoords res = {
 		w->startx - (dx==-1 && w->dir==WALL_DIR_ZY),
 		w->startz - (dz==-1 && w->dir==WALL_DIR_XY),
