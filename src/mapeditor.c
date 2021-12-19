@@ -474,18 +474,16 @@ static void on_arrow_key(struct MapEditor *ed, float angle, bool oppositespresse
 		do_resize(ed, ed->sel.data.resize.mainwall.startx + dx, ed->sel.data.resize.mainwall.startz + dz);
 		break;
 	case SEL_MVELLIPSOID:
-		// FIXME: don't move on top of other ellipsoids
-		ed->sel.data.eledit->loc->x += dx;
-		ed->sel.data.eledit->loc->z += dz;
-		clamp(&ed->sel.data.eledit->loc->x, 0, ed->map->xsize-1);
-		clamp(&ed->sel.data.eledit->loc->z, 0, ed->map->zsize-1);
+		move_selected_ellipsoid(ed, ed->sel.data.eledit->loc->x + dx, ed->sel.data.eledit->loc->z + dz);
 		break;
 	case SEL_MVWALL:
-		// FIXME: don't move on top of other walls
-		ed->sel.data.mvwall->startx += dx;
-		ed->sel.data.mvwall->startz += dz;
-		keep_wall_within_map(ed, ed->sel.data.mvwall, false);
+	{
+		struct Wall tmp = *ed->sel.data.mvwall;
+		tmp.startx += dx;
+		tmp.startz += dz;
+		set_location_of_moving_wall(ed, tmp);
 		break;
+	}
 	case SEL_SQUARE:
 		switch(ed->tool) {
 		case TOOL_ENEMY:
