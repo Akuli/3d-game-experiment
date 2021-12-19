@@ -17,6 +17,7 @@
 
 #define MAX_MAPSIZE 30
 #define MAX_WALLS 1000
-#define MAX_RECTS MAX_WALLS
+#define MAX_JUMPERS 5
+#define MAX_RECTS (MAX_WALLS + MAX_JUMPERS)
 
 #endif    // MAX_H

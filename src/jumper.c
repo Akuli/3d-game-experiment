@@ -19,3 +19,17 @@ void jumper_init(const SDL_PixelFormat *pixfmt)
 	jumper_image = rect3_load_image("assets/jumper.png", pixfmt);
 	atexit(free_image);
 }
+
+struct Rect3 jumper_get_rect(struct MapCoords loc)
+{
+	SDL_assert(jumper_image != NULL);
+	return (struct Rect3){
+		.corners = {
+			{ loc.x, 0, loc.z },
+			{ loc.x, 0, loc.z+1 },
+			{ loc.x+1, 0, loc.z+1 },
+			{ loc.x+1, 0, loc.z },
+		},
+		.img = jumper_image,
+	};
+}

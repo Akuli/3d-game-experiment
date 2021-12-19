@@ -6,6 +6,6 @@
 #include "map.h"
 
 void jumper_init(const SDL_PixelFormat *pixfmt);
-void jumper_draw(const struct Camera *cam, struct MapCoords loc);
+struct Rect3 jumper_get_rect(struct MapCoords loc);
 
 #endif  // JUMPER_H

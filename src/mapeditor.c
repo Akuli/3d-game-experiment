@@ -5,10 +5,11 @@
 #include "button.h"
 #include "camera.h"
 #include "enemy.h"
+#include "jumper.h"
+#include "linalg.h"
 #include "log.h"
 #include "looptimer.h"
 #include "map.h"
-#include "linalg.h"
 #include "max.h"
 #include "misc.h"
 #include "player.h"
@@ -801,18 +802,20 @@ static void show_editor(struct MapEditor *ed)
 	for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); )
 		ee->el.highlighted = (ee==highlightee);
 
-	static struct Rect3 wallrects[MAX_WALLS];  // static to keep down stack usage
+	static struct Rect3 rects[MAX_RECTS];  // static to keep down stack usage
 	for (int i = 0; i < ed->map->nwalls; i++) {
-		wallrects[i] = wall_to_rect3(&ed->map->walls[i]);
-		wallrects[i].highlight = wall_should_be_highlighted(ed, &ed->map->walls[i]);
+		rects[i] = wall_to_rect3(&ed->map->walls[i]);
+		rects[i].highlight = wall_should_be_highlighted(ed, &ed->map->walls[i]);
 	}
+	for (int i = 0; i < ed->map->njumperlocs; i++)
+		rects[ed->map->nwalls + i] = jumper_get_rect(ed->map->jumperlocs[i]);
 
 	struct Ellipsoid els[2 + MAX_ENEMIES];
 	int nels = 0;
 	for (const struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit_const(ed, &ee); )
 		els[nels++] = ee->el;
 
-	show_all(wallrects, ed->map->nwalls, els, nels, &ed->cam);
+	show_all(rects, ed->map->nwalls + ed->map->njumperlocs, els, nels, &ed->cam);
 
 	struct Wall *borderwall;
 	switch(ed->sel.mode) {

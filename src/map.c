@@ -26,7 +26,7 @@ Small language for specifying maps in files:
 - content of square doesn't have to be spaces like above, can also be:
 	- 'p': initial player place (need two of these in the map)
 	- 'e': initial place for enemies (need one of these in the map)
-	- 'j': jumper (at most one)
+	- 'j': jumper
 - any of the '--' or '|' walls may be replaced with spaces, that means no wall
 - each line is padded with spaces to have same length
 - must have these walls:
@@ -145,15 +145,16 @@ static void parse_square_content(char c, struct SquareParsingState *st)
 		SDL_assert(st->map->nenemylocs < MAX_ENEMIES);
 		st->map->enemylocs[st->map->nenemylocs++] = st->loc;
 		break;
+	case 'j':
+		SDL_assert(st->map->njumperlocs < MAX_JUMPERS);
+		st->map->jumperlocs[st->map->njumperlocs++] = st->loc;
+		break;
 	case 'p':
 		SDL_assert(st->map->playerlocs <= st->playerlocptr && st->playerlocptr < st->map->playerlocs + 2);
 		*st->playerlocptr++ = st->loc;
 		break;
-	case 'j':
-		st->map->jumperloc = st->loc;
-		break;
 	default:
-		log_printf_abort("expected ' ', 'e', 'p' or 'j', got '%c'", c);
+		log_printf_abort("expected ' ', 'e', 'j' or 'p', got '%c'", c);
 	}
 }
 
@@ -197,9 +198,6 @@ static void read_walls_and_players_and_enemies(FILE *f, struct Map *map)
 	}
 	SDL_assert(linelen % 3 == 1 && linelen >= 4);  // e.g. "|  |", one more column means off by 3
 	map->xsize = linelen / 3;
-
-	map->nwalls = 0;
-	map->nenemylocs = 0;
 
 	struct SquareParsingState st = { .map = map, .playerlocptr = map->playerlocs };
 	for (int z = 0; z < map->zsize; z++) {
@@ -249,7 +247,6 @@ static void read_map_from_file(struct Map *map, const char *path, bool custom)
 	log_printf("Reading map from '%s'...", path);
 	SDL_assert(strlen(path) < sizeof map->path);
 	strcpy(map->path, path);
-	map->jumperloc = (struct MapCoords){-1, -1};
 
 	if (custom) {
 		// Find 12345 from custom_maps/12345-foo-bar.txt
@@ -287,7 +284,7 @@ struct Map *map_list(int *nmaps)
 	if (r != 0 && r != GLOB_NOMATCH)
 		log_printf_abort("error while globbing custom maps");
 
-	struct Map *maps = malloc(gl.gl_pathc * sizeof maps[0]);
+	struct Map *maps = calloc(gl.gl_pathc, sizeof maps[0]);
 	if (!maps)
 		log_printf_abort("not enough memory for %d maps", (int)gl.gl_pathc);
 
@@ -552,8 +549,8 @@ void map_save(struct Map *map)
 		set_char(data, linesz, nlines, map->playerlocs[i].x, map->playerlocs[i].z, 'p', 1);
 	for (int i = 0; i < map->nenemylocs; i++)
 		set_char(data, linesz, nlines, map->enemylocs[i].x, map->enemylocs[i].z, 'e', 1);
-	if (map->jumperloc.x != -1 && map->jumperloc.z != -1)
-		set_char(data, linesz, nlines, map->jumperloc.x, map->jumperloc.z, 'j', 2);
+	for (int i = 0; i < map->njumperlocs; i++)
+		set_char(data, linesz, nlines, map->jumperlocs[i].x, map->jumperlocs[i].z, 'j', 1);
 
 	log_printf("Writing to \"%s\"", map->path);
 	SDL_assert(strstr(map->path, "custom_maps") == map->path);  // map->path is like "custom_maps/00006-foo-bar.txt"
