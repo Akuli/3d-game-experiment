@@ -30,7 +30,7 @@ static SDL_Surface *get_image(enum ButtonFlags f)
 	}
 
 	if (!image_surfaces[f]) {
-		char path[100] = "assets/buttons/";
+		char path[100] = "assets/resized/buttons/";
 
 		switch((int)f & (BUTTON_TINY | BUTTON_SMALL | BUTTON_BIG | BUTTON_THICK)) {
 			case BUTTON_TINY: strcat(path, "tiny/"); break;

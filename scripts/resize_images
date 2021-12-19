@@ -29,10 +29,11 @@ for dir in resized/buttons/{tiny,small,medium,big,thick}/*; do
     fi
 done
 
-$convert hugepics/right.png -resize 30x30             resized/right.png
-$convert hugepics/right.png -resize 30x30 -rotate 90  resized/down.png
-$convert hugepics/right.png -resize 30x30 -rotate 180 resized/left.png
-$convert hugepics/right.png -resize 30x30 -rotate 270 resized/up.png
+mkdir resized/arrows/
+$convert hugepics/right.png -resize 30x30             resized/arrows/right.png
+$convert hugepics/right.png -resize 30x30 -rotate 90  resized/arrows/down.png
+$convert hugepics/right.png -resize 30x30 -rotate 180 resized/arrows/left.png
+$convert hugepics/right.png -resize 30x30 -rotate 270 resized/arrows/up.png
 
 $convert hugepics/enemy.png -resize 60x60 resized/buttons/enemy.png
 $convert hugepics/wall.png  -resize 60x60 resized/buttons/wall.png
