@@ -422,11 +422,8 @@ static void move_selected_ellipsoid(struct MapEditor *ed, int x, int z)
 	SDL_assert(ed->sel.mode == SEL_MVELLIPSOID);
 	clamp(&x, 0, ed->map->xsize-1);
 	clamp(&z, 0, ed->map->zsize-1);
-
-	for (const struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit_const(ed, &ee); ) {
-		if (ee->loc->x == x && ee->loc->z == z)
-			return;
-	}
+	if (find_ellipsoid_edit_for_square(ed, (struct MapCoords){x,z}))
+		return;
 
 	ed->sel.data.eledit->loc->x = x;
 	ed->sel.data.eledit->loc->z = z;
