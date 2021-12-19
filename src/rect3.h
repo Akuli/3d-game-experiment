@@ -24,6 +24,7 @@ struct Rect3 {
 		corners[1] --- corners[2]
 	*/
 	Vec3 corners[4];
+	bool highlight;
 };
 
 void rect3_drawborder(const struct Rect3 *r, const struct Camera *cam);
@@ -41,7 +42,7 @@ bool rect3_visible_fillcache(const struct Rect3 *r, const struct Camera *cam, st
 // Before drawing, xmin and xmax can be replaced with a subinterval.
 // If not visible at all for given y, xminmax will return false.
 bool rect3_xminmax(const struct Rect3Cache *cache, int y, int *xmin, int *xmax);
-void rect3_drawrow(const struct Rect3Cache *cache, int y, int xmin, int xmax, bool highlight);
+void rect3_drawrow(const struct Rect3Cache *cache, int y, int xmin, int xmax);
 
 // In camera coordinates, returns z of intersection with line t*(xzr,yzr,1)
 float rect3_get_camcoords_z(const struct Rect3 *r, const struct Camera *cam, float xzr, float yzr);

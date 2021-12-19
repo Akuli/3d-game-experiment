@@ -801,20 +801,18 @@ static void show_editor(struct MapEditor *ed)
 	for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); )
 		ee->el.highlighted = (ee==highlightee);
 
-	int highlight[MAX_WALLS + 1];
-	int highlightidx = 0;
+	static struct Rect3 wallrects[MAX_WALLS];  // static to keep down stack usage
 	for (int i = 0; i < ed->map->nwalls; i++) {
-		if (wall_should_be_highlighted(ed, &ed->map->walls[i]))
-			highlight[highlightidx++] = i;
+		wallrects[i] = wall_to_rect3(&ed->map->walls[i]);
+		wallrects[i].highlight = wall_should_be_highlighted(ed, &ed->map->walls[i]);
 	}
-	highlight[highlightidx] = -1;
 
 	struct Ellipsoid els[2 + MAX_ENEMIES];
 	int nels = 0;
 	for (const struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit_const(ed, &ee); )
 		els[nels++] = ee->el;
 
-	show_all(ed->map->walls, ed->map->nwalls, highlight, els, nels, &ed->cam);
+	show_all(wallrects, ed->map->nwalls, els, nels, &ed->cam);
 
 	struct Wall *borderwall;
 	switch(ed->sel.mode) {

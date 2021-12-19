@@ -83,7 +83,7 @@ bool rect3_xminmax(const struct Rect3Cache *cache, int y, int *xmin, int *xmax)
 	return (*xmin <= *xmax);
 }
 
-void rect3_drawrow(const struct Rect3Cache *cache, int y, int xmin, int xmax, bool highlight)
+void rect3_drawrow(const struct Rect3Cache *cache, int y, int xmin, int xmax)
 {
 	SDL_Surface *surf = cache->cam->surface;
 	SDL_assert(surf->pitch % sizeof(uint32_t) == 0);
@@ -95,7 +95,7 @@ void rect3_drawrow(const struct Rect3Cache *cache, int y, int xmin, int xmax, bo
 	const SDL_PixelFormat *f = surf->format;
 	SDL_assert(f->Rmask == 0xff0000 && f->Gmask == 0x00ff00 && f->Bmask == 0x0000ff);
 
-	if (highlight) {
+	if (cache->rect->highlight) {
 		for (uint32_t *ptr = start; ptr <= end; ptr++)
 			*ptr = rgb_average(*ptr, 0xff0000);
 	} else {
