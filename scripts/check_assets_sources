@@ -7,8 +7,8 @@ if [ ! -f sources.txt ]; then
     exit 0   # only a warning, don't make the build fail because of this
 fi
 
-diff \
-	<(find * -type f | grep -v sources.txt | sort) \
+diff -u --color \
+	<(find * -type f | grep -v sources.txt | grep -v ^resized/ | sort) \
 	<(printf '%s\n' $(     # this expands wildcards
 		grep ': ' sources.txt | cut -d: -f1
 	) | sort)
