@@ -6,7 +6,6 @@ set -ex
 # https://superuser.com/q/1077910
 convert="convert +set date:create +set date:modify"
 
-# Create assets/buttons/big and assets/buttons/small from assets/buttons/hugepics
 cd assets
 rm -rvf resized
 mkdir -vp resized/buttons/{tiny,small,medium,big,thick}/{horizontal,vertical}
