@@ -25,7 +25,7 @@ Small language for specifying maps in files:
 
 - content of square doesn't have to be spaces like above, can also be:
 	- 'p': initial player place (need two of these in the map)
-	- 'e': initial place for enemies (need one of these in the map)
+	- 'e': initial place for enemies
 	- 'j': jumper
 - any of the '--' or '|' walls may be replaced with spaces, that means no wall
 - each line is padded with spaces to have same length
