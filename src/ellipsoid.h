@@ -9,6 +9,8 @@
 #include "rect3.h"
 
 
+struct Map;  // IWYU pragma: keep
+
 // DON'T MAKE THIS TOO BIG, it uses this^3 amount of memory...
 #define ELLIPSOIDPIC_SIDE 150
 
@@ -119,8 +121,6 @@ void ellipsoid_move_apart(struct Ellipsoid *el1, struct Ellipsoid *el2, float mv
 
 // can't be called during jump
 void ellipsoid_beginjump(struct Ellipsoid *el);
-
-struct Map;
 
 // must be called during jump
 void ellipsoid_jumping_eachframe(struct Ellipsoid *el, const struct Map *map);
