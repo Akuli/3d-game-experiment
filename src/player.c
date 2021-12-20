@@ -72,7 +72,6 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 		Vec3 diff = { 0, 0, CAMERA_BEHIND_PLAYER };
 		vec3_apply_matrix(&diff, mat3_rotation_xz(plr->ellipsoid.angle));
 
-		plr->cam.angle = plr->ellipsoid.angle;
 		plr->cam.location = vec3_add(plr->ellipsoid.center, diff);
 		plr->cam.location.y += CAMERA_HEIGHT - plr->ellipsoid.xzradius;
 	} else {
@@ -103,11 +102,11 @@ void player_eachframe(struct Player *plr, const struct Map *map)
 		Vec3 diff = { 0, 0, CAMERA_BEHIND_PLAYER };
 		vec3_apply_matrix(&diff, mat3_rotation_xz(plr->ellipsoid.angle));
 
-		plr->cam.angle = plr->ellipsoid.angle;
 		plr->cam.location = vec3_add(plr->ellipsoid.center, diff);
 		plr->cam.location.y = CAMERA_HEIGHT;
 	}
 
+	plr->cam.angle = plr->ellipsoid.angle;
 	camera_update_caches(&plr->cam);
 }
 
