@@ -9,6 +9,8 @@
 #include "rect3.h"
 
 
+struct Map;  // IWYU pragma: keep
+
 // DON'T MAKE THIS TOO BIG, it uses this^3 amount of memory...
 #define ELLIPSOIDPIC_SIDE 150
 
@@ -42,6 +44,14 @@ void ellipsoidpic_load(struct EllipsoidPic *epic, const char *path, const SDL_Pi
 // resulting array of pointers is freed with atexit()
 struct EllipsoidPic *const *ellipsoidpic_loadmany(int *n, const char *globpat, const SDL_PixelFormat *fmt);
 
+// See jumper.h for code that initiates the jumps this thing represents.
+// Not to be confused with the jumping that happens when a player unflattens.
+struct EllipsoidJumpState {
+	float xzspeed;  // Set this once when creating ellipsoid
+	Vec3 speed;
+	bool jumping;
+};
+
 /*
 An Ellipsoid is a stretched ball shifted by the center vector, as in
 
@@ -68,6 +78,8 @@ struct Ellipsoid {
 	You also need to add/subtract the center point.
 	*/
 	Mat3 uball2world, world2uball;
+
+	struct EllipsoidJumpState jumpstate;
 };
 
 // calculate el->uball2world and el->world2uball
@@ -107,6 +119,12 @@ Move each ellipsoid away from the other one by half of the given amount without
 changing y coordinate of location
 */
 void ellipsoid_move_apart(struct Ellipsoid *el1, struct Ellipsoid *el2, float mv);
+
+// can't be called during jump
+void ellipsoid_beginjump(struct Ellipsoid *el);
+
+// must be called during jump
+void ellipsoid_jumping_eachframe(struct Ellipsoid *el, const struct Map *map);
 
 
 #endif  // ELLIPSOID_H

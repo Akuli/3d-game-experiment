@@ -50,10 +50,11 @@ Map editor:
 - Selection: arrow keys
 - Wall mode: W
 - Enemy mode: E
-- Remove selected enemy or wall: Delete key or right-click
-- Move player, enemy or wall, or resize the place: drag and drop, or arrow keys while enter pressed
+- Jumper mode: J
+- Remove selected wall, enemy or jumper: Delete key or right-click
+- Move wall, enemy or jumper, or resize the place: drag and drop, or arrow keys while enter pressed
 - Rename place: press F2 or click the name
-- Done renaming: press Enter, press Esc or click something else than the name
+- Done renaming: press Enter or click something else than the name
 - Done editing: Escape
 
 Map editor's delete confirming dialog:

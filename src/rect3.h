@@ -3,9 +3,19 @@
 #define RECT_H
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <SDL2/SDL.h>
 #include "linalg.h"
 #include "camera.h"
+
+struct Rect3Image {
+	int width;
+	int height;
+	uint32_t data[];
+};
+
+// use free()
+struct Rect3Image *rect3_load_image(const char *path, const SDL_PixelFormat *pixfmt);
 
 struct Rect3 {
 	/*
@@ -24,7 +34,9 @@ struct Rect3 {
 		corners[1] --- corners[2]
 	*/
 	Vec3 corners[4];
-	bool highlight;
+
+	const struct Rect3Image *img;
+	bool highlight;  // Does nothing if img is non-NULL
 };
 
 void rect3_drawborder(const struct Rect3 *r, const struct Camera *cam);

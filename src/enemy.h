@@ -34,7 +34,7 @@ struct Enemy enemy_new(const struct Map *map, struct MapCoords loc);
 const struct EllipsoidPic *enemy_getrandomepic(void);
 
 // runs fps times per second for each enemy
-void enemy_eachframe(struct Enemy *en);
+void enemy_eachframe(struct Enemy *en, const struct Map *map);
 
 
 #endif   // ENEMY_H

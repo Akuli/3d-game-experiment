@@ -34,8 +34,9 @@ $convert hugepics/right.png -resize 30x30 -rotate 90  resized/arrows/down.png
 $convert hugepics/right.png -resize 30x30 -rotate 180 resized/arrows/left.png
 $convert hugepics/right.png -resize 30x30 -rotate 270 resized/arrows/up.png
 
-$convert hugepics/enemy.png -resize 60x60 resized/buttons/enemy.png
-$convert hugepics/wall.png  -resize 60x60 resized/buttons/wall.png
+$convert hugepics/enemy.png -resize 50x60 resized/buttons/enemy.png
+$convert hugepics/wall.png  -resize 50x60 resized/buttons/wall.png
+$convert jumper.png         -resize 50x60 resized/buttons/jumper.png
 
 mkdir resized/listbox
 $convert hugepics/listbox/normal.png -scale '500x25!'   resized/listbox/normal.png

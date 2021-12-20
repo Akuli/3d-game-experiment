@@ -1,4 +1,5 @@
 sounds/boing.wav: https://freesound.org/people/reelworldstudio/sounds/161122/
+sounds/superboing.wav: edited with audacity from https://freesound.org/people/cfork/sounds/7967/
 sounds/pick.wav: https://freesound.org/people/debsound/sounds/320549/
 sounds/pop.wav: https://freesound.org/people/deraj/sounds/202230/
 sounds/lower.wav: sped up with audacity from https://freesound.org/people/Brsjak/sounds/482881/
@@ -13,6 +14,7 @@ players/Dog.png: from a picture taken by a relative
 hugepics/buttons/*/*/*.png: edited from https://pixabay.com/vectors/the-button-button-icon-web-pages-859346/
 
 enemies/enemy1.png: I drew this myself with gimp
+jumper.png: https://freesvg.org/explosion-vector-illustration
 guard.png: https://pixabay.com/photos/corrugated-sheet-metal-plate-2370925/
 
 hugepics/listbox/*.png: edited from https://pixabay.com/vectors/the-button-button-icon-web-pages-859346/

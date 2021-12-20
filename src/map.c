@@ -25,7 +25,8 @@ Small language for specifying maps in files:
 
 - content of square doesn't have to be spaces like above, can also be:
 	- 'p': initial player place (need two of these in the map)
-	- 'e': initial place for enemies (need one of these in the map)
+	- 'e': initial place for enemies
+	- 'j': jumper
 - any of the '--' or '|' walls may be replaced with spaces, that means no wall
 - each line is padded with spaces to have same length
 - must have these walls:
@@ -144,12 +145,16 @@ static void parse_square_content(char c, struct SquareParsingState *st)
 		SDL_assert(st->map->nenemylocs < MAX_ENEMIES);
 		st->map->enemylocs[st->map->nenemylocs++] = st->loc;
 		break;
+	case 'j':
+		SDL_assert(st->map->njumpers < MAX_JUMPERS);
+		st->map->jumperlocs[st->map->njumpers++] = st->loc;
+		break;
 	case 'p':
 		SDL_assert(st->map->playerlocs <= st->playerlocptr && st->playerlocptr < st->map->playerlocs + 2);
 		*st->playerlocptr++ = st->loc;
 		break;
 	default:
-		log_printf_abort("expected ' ', 'e' or 'p', got '%c'", c);
+		log_printf_abort("expected ' ', 'e', 'j' or 'p', got '%c'", c);
 	}
 }
 
@@ -170,7 +175,7 @@ static const char *next_line(const char *s)
 	return nl+1;
 }
 
-static void read_walls_and_players_and_enemies(FILE *f, struct Map *map)
+static void read_ascii_art_section(FILE *f, struct Map *map)
 {
 	int nlines;
 	const char *fdata = read_file_with_trailing_spaces_added(f, &nlines);
@@ -193,9 +198,6 @@ static void read_walls_and_players_and_enemies(FILE *f, struct Map *map)
 	}
 	SDL_assert(linelen % 3 == 1 && linelen >= 4);  // e.g. "|  |", one more column means off by 3
 	map->xsize = linelen / 3;
-
-	map->nwalls = 0;
-	map->nenemylocs = 0;
 
 	struct SquareParsingState st = { .map = map, .playerlocptr = map->playerlocs };
 	for (int z = 0; z < map->zsize; z++) {
@@ -261,7 +263,7 @@ static void read_map_from_file(struct Map *map, const char *path, bool custom)
 		log_printf_abort("opening \"%s\" failed: %s", path, strerror(errno));
 
 	read_metadata(f, map);
-	read_walls_and_players_and_enemies(f, map);
+	read_ascii_art_section(f, map);
 	fclose(f);
 }
 
@@ -282,7 +284,7 @@ struct Map *map_list(int *nmaps)
 	if (r != 0 && r != GLOB_NOMATCH)
 		log_printf_abort("error while globbing custom maps");
 
-	struct Map *maps = malloc(gl.gl_pathc * sizeof maps[0]);
+	struct Map *maps = calloc(gl.gl_pathc, sizeof maps[0]);
 	if (!maps)
 		log_printf_abort("not enough memory for %d maps", (int)gl.gl_pathc);
 
@@ -317,6 +319,10 @@ void map_movecontent(struct Map *map, int dx, int dz)
 	for (int i = 0; i < map->nenemylocs; i++) {
 		map->enemylocs[i].x += dx;
 		map->enemylocs[i].z += dz;
+	}
+	for (int i = 0; i < map->njumpers; i++) {
+		map->jumperlocs[i].x += dx;
+		map->jumperlocs[i].z += dz;
 	}
 }
 
@@ -434,12 +440,16 @@ static bool point_is_available(const struct Map *map, const struct MapCoords p)
 		if (map->enemylocs[i].x == p.x && map->enemylocs[i].z == p.z)
 			return false;
 	}
+	for (int i = 0; i < map->njumpers; i++) {
+		if (map->jumperlocs[i].x == p.x && map->jumperlocs[i].z == p.z)
+			return false;
+	}
 	return true;
 }
 
 static void fix_location(const struct Map *map, struct MapCoords *ptr)
 {
-	SDL_assert(2 + map->nenemylocs <= map->xsize*map->zsize);
+	SDL_assert(2 + map->nenemylocs + map->njumpers <= map->xsize*map->zsize);
 
 	// Make it temporary disappear from the map, so we won't see it when looking for free place
 	// Prevents it from always moving, but still moves in case of overlaps
@@ -453,7 +463,7 @@ static void fix_location(const struct Map *map, struct MapCoords *ptr)
 	*ptr = p;
 }
 
-static void ensure_players_and_enemies_are_inside_the_map_and_dont_overlap(struct Map *map)
+static void ensure_players_and_enemies_and_jumpers_are_inside_the_map_and_dont_overlap(struct Map *map)
 {
 	clamp(&map->nenemylocs, 0, map->xsize*map->zsize - 2);  // leave room for 2 players
 
@@ -461,6 +471,8 @@ static void ensure_players_and_enemies_are_inside_the_map_and_dont_overlap(struc
 		fix_location(map, &map->playerlocs[i]);
 	for (int i = 0; i < map->nenemylocs; i++)
 		fix_location(map, &map->enemylocs[i]);
+	for (int i = 0; i < map->njumpers; i++)
+		fix_location(map, &map->jumperlocs[i]);
 }
 
 void map_fix(struct Map *map)
@@ -471,7 +483,7 @@ void map_fix(struct Map *map)
 	delete_walls_outside_the_map(map);
 	delete_duplicate_walls(map);
 	add_missing_walls_around_edges(map);
-	ensure_players_and_enemies_are_inside_the_map_and_dont_overlap(map);
+	ensure_players_and_enemies_and_jumpers_are_inside_the_map_and_dont_overlap(map);
 }
 
 static void set_char(char *data, int linesz, int nlines, int x, int z, char c, int offset)
@@ -547,6 +559,8 @@ void map_save(struct Map *map)
 		set_char(data, linesz, nlines, map->playerlocs[i].x, map->playerlocs[i].z, 'p', 1);
 	for (int i = 0; i < map->nenemylocs; i++)
 		set_char(data, linesz, nlines, map->enemylocs[i].x, map->enemylocs[i].z, 'e', 1);
+	for (int i = 0; i < map->njumpers; i++)
+		set_char(data, linesz, nlines, map->jumperlocs[i].x, map->jumperlocs[i].z, 'j', 1);
 
 	log_printf("Writing to \"%s\"", map->path);
 	SDL_assert(strstr(map->path, "custom_maps") == map->path);  // map->path is like "custom_maps/00006-foo-bar.txt"

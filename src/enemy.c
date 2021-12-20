@@ -235,22 +235,29 @@ static float dir_to_angle(enum EnemyDir dir)
 	return atan2f((float)zdiff, (float)xdiff) + pi/2;
 }
 
-void enemy_eachframe(struct Enemy *en)
+void enemy_eachframe(struct Enemy *en, const struct Map *map)
 {
-	float angleincr = 4.0f / CAMERA_FPS;
+	// A bit unnecessary to do this each frame, but works
+	en->ellipsoid.jumpstate.xzspeed = 2*MOVE_UNITS_PER_SECOND;
 
-	if (en->flags & ENEMY_STUCK) {
-		// just spin forever...
-		en->ellipsoid.angle += angleincr;
-		ellipsoid_update_transforms(&en->ellipsoid);
-	} else if (en->flags & ENEMY_TURNING) {
-		bool done = turn(&en->ellipsoid.angle, angleincr, dir_to_angle(en->dir));
-		ellipsoid_update_transforms(&en->ellipsoid);
-		if (done) {
-			en->flags &= ~ENEMY_TURNING;
-			move(en, false);
-		}
+	if (en->ellipsoid.jumpstate.jumping) {
+		ellipsoid_jumping_eachframe(&en->ellipsoid, map);
 	} else {
-		move(en, true);
+		en->ellipsoid.center.y = 0;
+
+		float angleincr = 4.0f / CAMERA_FPS;
+		if (en->flags & ENEMY_STUCK) {
+			// just spin forever...
+			en->ellipsoid.angle += angleincr;
+		} else if (en->flags & ENEMY_TURNING) {
+			bool done = turn(&en->ellipsoid.angle, angleincr, dir_to_angle(en->dir));
+			if (done) {
+				en->flags &= ~ENEMY_TURNING;
+				move(en, false);
+			}
+		} else {
+			move(en, true);
+		}
+		ellipsoid_update_transforms(&en->ellipsoid);
 	}
 }

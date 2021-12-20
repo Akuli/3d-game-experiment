@@ -1,6 +1,7 @@
 #CFLAGS += -fsanitize=undefined -fsanitize=address
 CFLAGS += -std=c11 -Wall -Wextra -Wpedantic
 CFLAGS += -Wfloat-conversion -Wno-sign-compare -Werror=int-conversion
+CFLAGS += -Werror=switch
 CFLAGS += -Werror=incompatible-pointer-types
 CFLAGS += -Werror=implicit-function-declaration
 CFLAGS += -Werror=discarded-qualifiers

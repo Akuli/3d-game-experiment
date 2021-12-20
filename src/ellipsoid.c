@@ -7,8 +7,10 @@
 #include "camera.h"
 #include "linalg.h"
 #include "log.h"
+#include "map.h"
 #include "misc.h"
 #include "rect3.h"
+#include "sound.h"
 
 static bool ellipsoid_intersects_plane(const struct Ellipsoid *el, struct Plane pl)
 {
@@ -428,4 +430,53 @@ void ellipsoid_move_apart(struct Ellipsoid *el1, struct Ellipsoid *el2, float mv
 	from1to2 = vec3_withlength(from1to2, mv/2);
 	vec3_add_inplace(&el2->center, from1to2);
 	vec3_sub_inplace(&el1->center, from1to2);
+}
+
+void ellipsoid_beginjump(struct Ellipsoid *el)
+{
+	SDL_assert(!el->jumpstate.jumping);
+	log_printf("Jumper-jump begins");
+	el->jumpstate.jumping = true;
+
+	float v = el->jumpstate.xzspeed;
+	el->jumpstate.speed = (Vec3){ v*sinf(el->angle), 30, -v*cosf(el->angle) };
+
+	sound_play("superboing.wav");
+}
+
+static int clamp_with_bounce(float *val, float lo, float hi)
+{
+	int ret = 1;
+	*val -= lo;
+	if (*val < 0) {
+		*val = -*val;
+		ret = -1;
+	}
+	*val += lo;
+
+	*val -= hi;
+	if (*val > 0) {
+		*val = -*val;
+		ret = -1;
+	}
+	*val += hi;
+
+	return ret;
+}
+
+void ellipsoid_jumping_eachframe(struct Ellipsoid *el, const struct Map *map)
+{
+	SDL_assert(el->jumpstate.jumping);
+	vec3_add_inplace(&el->center, vec3_mul_float(el->jumpstate.speed, 1.0f/CAMERA_FPS));
+
+	el->jumpstate.speed.x *= clamp_with_bounce(&el->center.x, el->xzradius, map->xsize - el->xzradius);
+	el->jumpstate.speed.y -= GRAVITY/CAMERA_FPS;
+	el->jumpstate.speed.z *= clamp_with_bounce(&el->center.z, el->xzradius, map->zsize - el->xzradius);
+
+	float centerymin = el->epic->hidelowerhalf ? 0 : el->yradius;
+	if (el->jumpstate.speed.y < 0 && el->center.y < centerymin) {
+		log_printf("end jump");
+		el->center.y = centerymin;
+		el->jumpstate.jumping = false;
+	}
 }
