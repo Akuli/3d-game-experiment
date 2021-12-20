@@ -238,7 +238,7 @@ static float dir_to_angle(enum EnemyDir dir)
 void enemy_eachframe(struct Enemy *en, const struct Map *map)
 {
 	// A bit unnecessary to do this each frame, but works
-	en->ellipsoid.jumpstate.xzspeed = MOVE_UNITS_PER_SECOND;
+	en->ellipsoid.jumpstate.xzspeed = 2*MOVE_UNITS_PER_SECOND;
 
 	if (en->ellipsoid.jumpstate.jumping) {
 		ellipsoid_jumping_eachframe(&en->ellipsoid, map);
@@ -249,10 +249,8 @@ void enemy_eachframe(struct Enemy *en, const struct Map *map)
 		if (en->flags & ENEMY_STUCK) {
 			// just spin forever...
 			en->ellipsoid.angle += angleincr;
-			ellipsoid_update_transforms(&en->ellipsoid);
 		} else if (en->flags & ENEMY_TURNING) {
 			bool done = turn(&en->ellipsoid.angle, angleincr, dir_to_angle(en->dir));
-			ellipsoid_update_transforms(&en->ellipsoid);
 			if (done) {
 				en->flags &= ~ENEMY_TURNING;
 				move(en, false);
@@ -260,5 +258,6 @@ void enemy_eachframe(struct Enemy *en, const struct Map *map)
 		} else {
 			move(en, true);
 		}
+		ellipsoid_update_transforms(&en->ellipsoid);
 	}
 }

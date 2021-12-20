@@ -86,6 +86,6 @@ void jumper_press(struct Jumper *jmp, struct Ellipsoid *el)
 	jmp->y = min(jmp->y, h);
 	clamp_float(&jmp->y, 0, MAX_HEIGHT);
 
-	if (h < MAX_HEIGHT/5)
+	if (h < MAX_HEIGHT/5 && !el->jumpstate.jumping)
 		ellipsoid_beginjump(el);
 }

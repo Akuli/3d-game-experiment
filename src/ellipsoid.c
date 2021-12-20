@@ -470,9 +470,10 @@ void ellipsoid_jumping_eachframe(struct Ellipsoid *el, const struct Map *map)
 	el->jumpstate.speed.y -= GRAVITY/CAMERA_FPS;
 	el->jumpstate.speed.z *= clamp_with_bounce(&el->center.z, el->xzradius, map->zsize - el->xzradius);
 
-	if (el->center.y < el->yradius) {
-		// end jump
-		el->center.y = el->yradius;
+	float centerymin = el->epic->hidelowerhalf ? 0 : el->yradius;
+	if (el->jumpstate.speed.y < 0 && el->center.y < centerymin) {
+		log_printf("end jump");
+		el->center.y = centerymin;
 		el->jumpstate.jumping = false;
 	}
 }
