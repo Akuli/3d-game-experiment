@@ -804,22 +804,21 @@ static bool wall_should_be_highlighted(const struct MapEditor *ed, const struct 
 
 static void show_editor(struct MapEditor *ed)
 {
-	for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); )
-	{
-		switch(ed->sel.mode) {
-		case SEL_SQUARE:
-			ee->el.highlighted = (
-				ee->loc->x == ed->sel.data.square.x &&
-				ee->loc->z == ed->sel.data.square.z);
-			break;
-		case SEL_MVSQUARE:
-			ee->el.highlighted = ed->sel.data.mvsquare == ee->loc;
-			break;
-		default:
-			ee->el.highlighted = false;
-			break;
-		}
+	const struct MapCoords *hlsquare = NULL;
+	switch(ed->sel.mode) {
+	case SEL_SQUARE:
+		hlsquare = &ed->sel.data.square;
+		break;
+	case SEL_MVSQUARE:
+		hlsquare = ed->sel.data.mvsquare;
+		break;
+	default:
+		hlsquare = NULL;
+		break;
 	}
+
+	for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); )
+		ee->el.highlighted = hlsquare && ee->loc->x == hlsquare->x && ee->loc->z == hlsquare->z;
 
 	static struct Rect3 rects[MAX_RECTS];  // static to keep down stack usage
 	for (int i = 0; i < ed->map->nwalls; i++) {
@@ -830,11 +829,7 @@ static void show_editor(struct MapEditor *ed)
 		struct Jumper tmp = {
 			.x = ed->map->jumperlocs[i].x,
 			.z = ed->map->jumperlocs[i].z,
-			.highlight = (
-				ed->sel.mode == SEL_SQUARE
-				&& ed->map->jumperlocs[i].x == ed->sel.data.square.x
-				&& ed->map->jumperlocs[i].z == ed->sel.data.square.z
-			),
+			.highlight = hlsquare && ed->map->jumperlocs[i].x == hlsquare->x && ed->map->jumperlocs[i].z == hlsquare->z,
 		};
 		rects[ed->map->nwalls + i] = jumper_eachframe(&tmp);
 	}

@@ -35,7 +35,7 @@ void jumper_init_global_images(const SDL_PixelFormat *pixfmt)
 	memcpy(highlighted_jumper_image, jumper_image, sz);
 	for (int i = 0; i < jumper_image->width*jumper_image->height; i++)
 		if (highlighted_jumper_image->data[i] != ~(uint32_t)0)
-			highlighted_jumper_image->data[i] = pixfmt->Rmask;
+			highlighted_jumper_image->data[i] = rgb_average(highlighted_jumper_image->data[i], pixfmt->Rmask);
 
 	atexit(free_images);
 }
