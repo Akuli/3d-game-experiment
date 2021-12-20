@@ -10,6 +10,7 @@
 #include "map.h"
 #include "misc.h"
 #include "rect3.h"
+#include "sound.h"
 
 static bool ellipsoid_intersects_plane(const struct Ellipsoid *el, struct Plane pl)
 {
@@ -439,6 +440,8 @@ void ellipsoid_beginjump(struct Ellipsoid *el)
 
 	float v = el->jumpstate.xzspeed;
 	el->jumpstate.speed = (Vec3){ v*sinf(el->angle), 30, -v*cosf(el->angle) };
+
+	sound_play("superboing.wav");
 }
 
 static int clamp_with_bounce(float *val, float lo, float hi)

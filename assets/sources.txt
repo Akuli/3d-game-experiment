@@ -1,4 +1,5 @@
 sounds/boing.wav: https://freesound.org/people/reelworldstudio/sounds/161122/
+sounds/superboing.wav: edited with audacity from https://freesound.org/people/cfork/sounds/7967/
 sounds/pick.wav: https://freesound.org/people/debsound/sounds/320549/
 sounds/pop.wav: https://freesound.org/people/deraj/sounds/202230/
 sounds/lower.wav: sped up with audacity from https://freesound.org/people/Brsjak/sounds/482881/
