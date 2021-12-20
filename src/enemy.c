@@ -243,8 +243,9 @@ void enemy_eachframe(struct Enemy *en, const struct Map *map)
 	if (en->ellipsoid.jumpstate.jumping) {
 		ellipsoid_jumping_eachframe(&en->ellipsoid, map);
 	} else {
-		float angleincr = 4.0f / CAMERA_FPS;
+		en->ellipsoid.center.y = 0;
 
+		float angleincr = 4.0f / CAMERA_FPS;
 		if (en->flags & ENEMY_STUCK) {
 			// just spin forever...
 			en->ellipsoid.angle += angleincr;
