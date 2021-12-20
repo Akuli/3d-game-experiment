@@ -115,7 +115,12 @@ bool rect3_xminmax(const struct Rect3Cache *cache, int y, int *xmin, int *xmax)
 
 void rect3_drawrow(const struct Rect3Cache *cache, int y, int xmin, int xmax)
 {
-	// TODO: put common code of two cases into here
+	SDL_Surface *surf = cache->cam->surface;
+	SDL_assert(surf->pitch % sizeof(uint32_t) == 0);
+	int mypitch = surf->pitch / sizeof(uint32_t);
+	uint32_t *pxstart = (uint32_t *)surf->pixels + y*mypitch + xmin;
+	uint32_t *pxend   = (uint32_t *)surf->pixels + y*mypitch + xmax;
+
 	if (cache->rect->img) {
 		const struct Camera *cam = cache->cam;
 
@@ -191,11 +196,6 @@ void rect3_drawrow(const struct Rect3Cache *cache, int y, int xmin, int xmax)
 		int width = cache->rect->img->width;
 		int height = cache->rect->img->height;
 		const uint32_t *pxsrc = cache->rect->img->data;
-
-		SDL_assert(cam->surface->pitch % sizeof(uint32_t) == 0);
-		int mypitch = cam->surface->pitch / sizeof(uint32_t);
-		uint32_t *pxdst = (uint32_t *)cam->surface->pixels + mypitch*y + xmin;
-
 		int xdiff = xmax-xmin;
 
 		// Ugly code, but vectorization friendly. Measurable perf improvement.
@@ -211,25 +211,19 @@ void rect3_drawrow(const struct Rect3Cache *cache, int y, int xmin, int xmax)
 		LOOP clamp(&picy[i], 0, height-1);
 		ARRAY(int, idx) = width*picy[i] + picx[i];
 		ARRAY(uint32_t, px) = pxsrc[idx[i]];
-		LOOP if (px[i] != ~(uint32_t)0) pxdst[i] = px[i];
+		LOOP if (px[i] != ~(uint32_t)0) pxstart[i] = px[i];
 #undef LOOP
 #undef ARRAY
 	} else {
-		SDL_Surface *surf = cache->cam->surface;
-		SDL_assert(surf->pitch % sizeof(uint32_t) == 0);
-		int mypitch = surf->pitch / sizeof(uint32_t);
-		uint32_t *start = (uint32_t *)surf->pixels + y*mypitch + xmin;
-		uint32_t *end   = (uint32_t *)surf->pixels + y*mypitch + xmax;
-
 		// rgb_average seems to perform better when one argument is compile-time known
 		const SDL_PixelFormat *f = surf->format;
 		SDL_assert(f->Rmask == 0xff0000 && f->Gmask == 0x00ff00 && f->Bmask == 0x0000ff);
 
 		if (cache->rect->highlight) {
-			for (uint32_t *ptr = start; ptr <= end; ptr++)
+			for (uint32_t *ptr = pxstart; ptr <= pxend; ptr++)
 				*ptr = rgb_average(*ptr, 0xff0000);
 		} else {
-			for (uint32_t *ptr = start; ptr <= end; ptr++)
+			for (uint32_t *ptr = pxstart; ptr <= pxend; ptr++)
 				*ptr = rgb_average(*ptr, 0x00ffff);
 		}
 	}
