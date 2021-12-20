@@ -175,7 +175,7 @@ static const char *next_line(const char *s)
 	return nl+1;
 }
 
-static void read_walls_and_players_and_enemies(FILE *f, struct Map *map)
+static void read_ascii_art_section(FILE *f, struct Map *map)
 {
 	int nlines;
 	const char *fdata = read_file_with_trailing_spaces_added(f, &nlines);
@@ -263,7 +263,7 @@ static void read_map_from_file(struct Map *map, const char *path, bool custom)
 		log_printf_abort("opening \"%s\" failed: %s", path, strerror(errno));
 
 	read_metadata(f, map);
-	read_walls_and_players_and_enemies(f, map);
+	read_ascii_art_section(f, map);
 	fclose(f);
 }
 
@@ -319,6 +319,10 @@ void map_movecontent(struct Map *map, int dx, int dz)
 	for (int i = 0; i < map->nenemylocs; i++) {
 		map->enemylocs[i].x += dx;
 		map->enemylocs[i].z += dz;
+	}
+	for (int i = 0; i < map->njumpers; i++) {
+		map->jumperlocs[i].x += dx;
+		map->jumperlocs[i].z += dz;
 	}
 }
 
@@ -436,12 +440,16 @@ static bool point_is_available(const struct Map *map, const struct MapCoords p)
 		if (map->enemylocs[i].x == p.x && map->enemylocs[i].z == p.z)
 			return false;
 	}
+	for (int i = 0; i < map->njumpers; i++) {
+		if (map->jumperlocs[i].x == p.x && map->jumperlocs[i].z == p.z)
+			return false;
+	}
 	return true;
 }
 
 static void fix_location(const struct Map *map, struct MapCoords *ptr)
 {
-	SDL_assert(2 + map->nenemylocs <= map->xsize*map->zsize);
+	SDL_assert(2 + map->nenemylocs + map->njumpers <= map->xsize*map->zsize);
 
 	// Make it temporary disappear from the map, so we won't see it when looking for free place
 	// Prevents it from always moving, but still moves in case of overlaps
@@ -455,7 +463,7 @@ static void fix_location(const struct Map *map, struct MapCoords *ptr)
 	*ptr = p;
 }
 
-static void ensure_players_and_enemies_are_inside_the_map_and_dont_overlap(struct Map *map)
+static void ensure_players_and_enemies_and_jumpers_are_inside_the_map_and_dont_overlap(struct Map *map)
 {
 	clamp(&map->nenemylocs, 0, map->xsize*map->zsize - 2);  // leave room for 2 players
 
@@ -463,6 +471,8 @@ static void ensure_players_and_enemies_are_inside_the_map_and_dont_overlap(struc
 		fix_location(map, &map->playerlocs[i]);
 	for (int i = 0; i < map->nenemylocs; i++)
 		fix_location(map, &map->enemylocs[i]);
+	for (int i = 0; i < map->njumpers; i++)
+		fix_location(map, &map->jumperlocs[i]);
 }
 
 void map_fix(struct Map *map)
@@ -473,7 +483,7 @@ void map_fix(struct Map *map)
 	delete_walls_outside_the_map(map);
 	delete_duplicate_walls(map);
 	add_missing_walls_around_edges(map);
-	ensure_players_and_enemies_are_inside_the_map_and_dont_overlap(map);
+	ensure_players_and_enemies_and_jumpers_are_inside_the_map_and_dont_overlap(map);
 }
 
 static void set_char(char *data, int linesz, int nlines, int x, int z, char c, int offset)
