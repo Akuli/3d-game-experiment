@@ -57,15 +57,19 @@ struct Rect3 jumper_eachframe(struct Jumper *jmp)
 	};
 }
 
-// TODO: optimize, wall-player collision code could be useful for this too
 void jumper_press(struct Jumper *jmp, struct Ellipsoid *el)
 {
 	// When looking from the side, jmp is a horizontal line and el is a 2D ellipse.
 	float dx = (jmp->x+0.5f) - el->center.x;
 	float dz = (jmp->z+0.5f) - el->center.z;
+	float distSQUARED = dx*dx + dz*dz;
+
+	// pseudo-optimization for common case
+	if (distSQUARED > (RADIUS + el->xzradius)*(RADIUS + el->xzradius))
+		return;
 
 	float h;  // new height of the jumper where it would touch ellipsoid
-	if (dx*dx + dz*dz < RADIUS*RADIUS) {
+	if (distSQUARED < RADIUS*RADIUS) {
 		// directly on top of jumper
 		h = el->center.y - el->yradius;
 	} else {
