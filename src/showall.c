@@ -145,6 +145,16 @@ static void setup_dependencies(struct ShowingState *st)
 		for (int k = 0; k < i; k++) {
 			const struct Info *kinfo = &st->infos[st->visible[k]];
 
+			// Do not add dependencies between two walls
+			if (ID_TYPE(st->visible[i]) == ID_TYPE_RECT
+				&& ID_TYPE(st->visible[k]) == ID_TYPE_RECT
+				&& iinfo->rcache.rect->img == NULL
+				&& kinfo->rcache.rect->img == NULL
+				&& iinfo->rcache.rect->highlight == kinfo->rcache.rect->highlight)
+			{
+				continue;
+			}
+
 			int xstart = max(iinfo->bbox.x, kinfo->bbox.x);
 			int xend = min(iinfo->bbox.x + iinfo->bbox.w, kinfo->bbox.x + kinfo->bbox.w);
 			if (xstart > xend)
