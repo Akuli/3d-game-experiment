@@ -1,3 +1,5 @@
+// Many functions in this file are not static because tests.
+
 #include "ellipsoid.h"
 #include <math.h>
 #include <stdbool.h>
@@ -16,7 +18,7 @@ Solves the equation f(x)=0 for -1 <= x <= 1, where
 
 	f(x) = (Ax + B) sqrt(Cx^2 + D) + Ex.
 */
-static float solve_the_equation(float A, float B, float C, float D, float E)
+float ellipsoid_solve_the_equation(float A, float B, float C, float D, float E)
 {
 	/*
 	This initial guessing thing is very important. I didn't have much luck without:
@@ -113,7 +115,7 @@ origin-centered ellipse
 given the y coordinate of the points. This returns false if there are no points.
 When this returns true, you always get *pointx1 <= 0 and *pointx2 >= 0.
 */
-static bool origin_centered_ellipse_distance1_points_with_given_y(
+bool ellipsoid_origin_centered_ellipse_distance1_points_with_given_y(
 	float a, float b, float pointy, float *pointx1, float *pointx2)
 {
 	SDL_assert(a > 0);
@@ -161,7 +163,7 @@ static bool origin_centered_ellipse_distance1_points_with_given_y(
 	float C = a*a - b*b;
 	float D = b*b;
 	float E = -a;
-	float sint = solve_the_equation(A, B, C, D, E);
+	float sint = ellipsoid_solve_the_equation(A, B, C, D, E);
 
 	/*
 	Above we had an equation of vectors, and so far we used only the y coordinates
@@ -182,7 +184,7 @@ static bool origin_centered_ellipse_distance1_points_with_given_y(
 How much should the ellipse move in x direction to make it not intersect the
 origin-centered unit circle?
 */
-static float ellipse_move_amount_x_for_origin_centered_unit_circle(
+float ellipsoid_2d_move_amount_x_for_origin_centered_unit_circle(
 	float a, float b, Vec2 center)
 {
 	// If 0 is between these, then the unit circle and ellipse intersect
@@ -193,7 +195,7 @@ static float ellipse_move_amount_x_for_origin_centered_unit_circle(
 	origin. The unit circle's location is (-center.x, -center.y) in those
 	coordinates.
 	*/
-	if (!origin_centered_ellipse_distance1_points_with_given_y(
+	if (!ellipsoid_origin_centered_ellipse_distance1_points_with_given_y(
 			a, b, -center.y, &xmin, &xmax))
 	{
 		return 0;
@@ -220,8 +222,24 @@ static float ellipse_move_amount_x_for_origin_centered_unit_circle(
 	}
 }
 
+/*
+How much to move unit circle and a horizontal line apart to make them not intersect?
+Line goes from (center.x, center.y - halflen) to (center.x, center.y + halflen).
+*/
+float ellipsoid_2d_line_and_unit_circle_move_amount(Vec2 linecenter, float halflen)
+{
+	float tmp = 1 - linecenter.y*linecenter.y;
+	if (tmp < 0)  // line above/below unit circle
+		return 0;
+
+	float res = sqrtf(tmp) - fabsf(linecenter.x) + halflen;
+	if (res < 0)  // line too far left/right from unit circle
+		return 0;
+	return res;
+}
+
 static float ellipse_move_amount_x(
-	float a1, float b1, Vec2 center1,
+	float a1, float b1, Vec2 center1, bool hidelowerhalf1,
 	float a2, float b2, Vec2 center2)
 {
 	SDL_assert(a1 > 0);
@@ -230,14 +248,22 @@ static float ellipse_move_amount_x(
 	SDL_assert(b2 > 0);
 
 	/*
-	Shift coordinates so that ellipse 2 is centered, and then stretch so that
-	ellipse2 becomes a unit circle
+		el1
+
+		el2
 	*/
+	SDL_assert(center1.y >= center2.y || fabsf(center1.y - center2.y) < 1e-5f);
+
+	// Shift and stretch coordinates so that ellipse 2 is origin-centered unit circle
 	float a1new = a1 / a2;
 	float b1new = b1 / b2;
 	Vec2 center1new = { (center1.x - center2.x)/a2, (center1.y - center2.y)/b2 };
 
-	float xdiff = ellipse_move_amount_x_for_origin_centered_unit_circle(a1new, b1new, center1new);
+	float xdiff;
+	if (hidelowerhalf1)
+		xdiff = ellipsoid_2d_line_and_unit_circle_move_amount(center1new, a1new);
+	else
+		xdiff = ellipsoid_2d_move_amount_x_for_origin_centered_unit_circle(a1new, b1new, center1new);
 
 	// Result is difference of x coords, unaffected by shifting, but must be unstretched
 	return xdiff * a2;
@@ -245,6 +271,12 @@ static float ellipse_move_amount_x(
 
 float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid *el2)
 {
+	if (el1->center.y < el2->center.y) {
+		const struct Ellipsoid *tmp = el1;
+		el1 = el2;
+		el2 = tmp;
+	}
+
 	Vec3 diff = vec3_sub(el1->center, el2->center);
 	float cos = diff.x/hypotf(diff.x, diff.z);
 	float sin = diff.z/hypotf(diff.x, diff.z);
@@ -264,6 +296,6 @@ float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid 
 	Vec2 center1_xy = { center1.x, center1.y };
 	Vec2 center2_xy = { center2.x, center2.y };
 	return ellipse_move_amount_x(
-		el1->xzradius, el1->yradius, center1_xy,
+		el1->xzradius, el1->yradius, center1_xy, el1->epic->hidelowerhalf,
 		el2->xzradius, el2->yradius, center2_xy);
 }
