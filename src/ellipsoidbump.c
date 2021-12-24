@@ -222,6 +222,22 @@ float ellipsoid_2d_move_amount_x_for_origin_centered_unit_circle(
 	}
 }
 
+/*
+How much to move unit circle and a horizontal line apart to make them not intersect?
+Line goes from (center.x, center.y - halflen) to (center.x, center.y + halflen).
+*/
+float ellipsoid_2d_line_and_unit_circle_move_amount(Vec2 linecenter, float halflen)
+{
+	float tmp = 1 - linecenter.y*linecenter.y;
+	if (tmp < 0)
+		return 0;
+
+	float res = sqrtf(tmp) - fabsf(linecenter.x) + halflen;
+	if (res < 0)
+		return 0;
+	return res;
+}
+
 static float ellipse_move_amount_x_without_hidelowerhalf(
 	float a1, float b1, Vec2 center1, bool hidelowerhalf1,
 	float a2, float b2, Vec2 center2)
@@ -244,30 +260,10 @@ static float ellipse_move_amount_x_without_hidelowerhalf(
 	Vec2 center1new = { (center1.x - center2.x)/a2, (center1.y - center2.y)/b2 };
 
 	float xdiff;
-	if (hidelowerhalf1) {
-		// Think of ellipse 1 as a line segment of length 2*a1new
-		float tmp = 1 - center1new.y*center1new.y;
-		if (tmp < 0)
-			return 0;
-
-		float circlex, linex;
-		if (center1new.x < 0) {
-			// line (ellipsoid 1) on left side of circle (ellipsoid 2)
-			circlex = -sqrtf(tmp);
-			linex = center1new.x + a1new;
-			if (linex < circlex)
-				return 0;
-		} else {
-			circlex = sqrtf(tmp);
-			linex = center1new.x - a1new;
-			if (linex > circlex)
-				return 0;
-		}
-		xdiff = fabsf(linex - circlex);
-
-	} else {
+	if (hidelowerhalf1)
+		xdiff = ellipsoid_2d_line_and_unit_circle_move_amount(center1new, a1new);
+	else
 		xdiff = ellipsoid_2d_move_amount_x_for_origin_centered_unit_circle(a1new, b1new, center1new);
-	}
 
 	// Result is difference of x coords, unaffected by shifting, but must be unstretched
 	return xdiff * a2;
