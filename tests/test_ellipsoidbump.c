@@ -100,7 +100,7 @@ void test_ellipsoid_2d_line_and_unit_circle_move_amount(void)
 	assert(checked_2d_line_and_circle_thing(2, 0.5, 1) == 0);
 }
 
-void test_hidelowerhalf_with_actual_ellipsoids(void)
+void test_ellipsoid_bump_amount_and_hidelowerhalf_with_actual_ellipsoids(void)
 {
 	struct EllipsoidPic *upperpic = calloc(1, sizeof(*upperpic));
 	struct EllipsoidPic *lowerpic = calloc(1, sizeof(*lowerpic));
