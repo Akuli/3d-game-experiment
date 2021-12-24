@@ -79,22 +79,7 @@ static void add_rect_if_visible(struct ShowingState *st, int idx)
 	}
 }
 
-#if 0
-static void debug_print_dependencies(const struct ShowingState *st)
-{
-	log_printf("dependency dump:");
-	for (int i = 0; i < st->nvisible; i++) {
-		ID id = st->visible[i];
-		if (st->infos[id].ndeps == 0)
-			continue;
-
-		log_printf("  %d", id);
-		for (int d = 0; d < st->infos[id].ndeps; d++)
-			log_printf("  `--> %d", st->infos[id].deps[d]);
-	}
-}
-#endif
-
+// Debugging hint: rect3_drawborder
 static void add_dependency(struct ShowingState *st, ID before, ID after)
 {
 	for (int i = 0; i < st->infos[after].ndeps; i++) {
@@ -170,31 +155,27 @@ static void setup_dependencies(struct ShowingState *st)
 			if (ystart > yend)
 				continue;
 
-			int s;
-			if (false && vec3_lengthSQUARED(vec3_cross(planes[i].normal, planes[k].normal)) < 1e-5f) {
-				// TODO: enable this if statement or disable permanently?
-				// planes almost parallel, just use any point to order them
-				// FIXME: rect3_get_camcoords_z is overkill
-				float z1 = rect3_get_camcoords_z(&iinfo->sortrect, st->cam, 0, 0);
-				float z2 = rect3_get_camcoords_z(&kinfo->sortrect, st->cam, 0, 0);
+			int s1 = side_of_all_four_points(&planes[i], camcorners[k]);
+			int s2 = side_of_all_four_points(&planes[k], camcorners[i]);
+			if (s1 == s2 && s1 != 0) {
 				/*
-				if (z1 < z2)
-					add_dependency(st, st->visible[i], st->visible[k]);
-				else
-					add_dependency(st, st->visible[k], st->visible[i]);
-					*/
-			} else if ((s = side_of_all_four_points(&planes[i], camcorners[k])) != 0) {
-				if (s == 1)  // k on same side of i as the camera
-					add_dependency(st, st->visible[i], st->visible[k]);
-				else
-					add_dependency(st, st->visible[k], st->visible[i]);
-			} else if ((s = side_of_all_four_points(&planes[i], camcorners[k])) != 0) {
-				if (s == 1)
-					add_dependency(st, st->visible[k], st->visible[i]);
-				else
-					add_dependency(st, st->visible[i], st->visible[k]);
+				Both walls think they are on same/different side of the other wall as camera.
+				Example of when this happens:
+
+					 /  \
+					/    \
+
+					 cam
+
+				Avoid dependency cycle, order doesn't seem to matter.
+				*/
+				continue;
 			}
-			// TODO: else?
+
+			if (s1 == -1 || s2 == 1)
+				add_dependency(st, st->visible[k], st->visible[i]);
+			if (s1 == 1 || s2 == -1)
+				add_dependency(st, st->visible[i], st->visible[k]);
 		}
 	}
 }
@@ -206,7 +187,26 @@ static void add_id_to_drawing_order(struct ShowingState *st, ID id)
 	SDL_assert(0 <= bbox.y && bbox.y+bbox.h <= st->cam->surface->h);
 	for (int y = bbox.y; y < bbox.y+bbox.h; y++)
 		st->objects_by_y[y][st->nobjects_by_y[y]++] = id;
-	rect3_drawborder(&st->infos[id].sortrect, st->cam);
+}
+
+static void break_dependency_cycle(struct ShowingState *st, ID start)
+{
+	/*
+	Consider the sequence (x_n), where x_1 = start and x_(n+1) = st->infos[x_n].deps[0].
+	If all elements have some dependencies, this is an infinite sequence of finitely many
+	elements to choose from, so it will eventually cycle. To find a cycle, we compare x_n
+	and x_(2n) until they match.
+	*/
+#define next(x) st->infos[x].deps[0]
+	ID x = start;
+	ID y = next(start);
+	while (x != y) {
+		x = next(x);
+		y = next(next(y));
+	}
+#undef next
+
+	st->infos[x].deps[0] = st->infos[x].deps[--st->infos[x].ndeps];
 }
 
 static void create_showing_order_from_dependencies(struct ShowingState *st)
@@ -228,9 +228,7 @@ static void create_showing_order_from_dependencies(struct ShowingState *st)
 		}
 		if (stuck) {
 			log_printf("dependency cycle detected");
-			// TODO: This doesn't necessarily remove the cycle on first attempt.
-			//       It can remove a completely unrelated dependency instead.
-			st->infos[todo[0]].ndeps--;
+			break_dependency_cycle(st, todo[0]);
 			continue;
 		}
 		for (int i = 0; i < ntodo; i++) {
