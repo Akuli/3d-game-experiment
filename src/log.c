@@ -85,7 +85,7 @@ static void remove_old_logfile(const char *path)
 
 	if (age < 0) {
 		log_printf("creation of '%s' seems to be %f days in the future", path, fabs(age)/DAY);
-	} else if (age > 7*DAY) {
+	} else if (age > 30*DAY) {
 		log_printf("removing '%s' (%f days old)", path, age/DAY);
 		if (remove(path) < 0)
 			log_printf("removing failed: %s", strerror(errno));
