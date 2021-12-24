@@ -230,6 +230,12 @@ static float ellipse_move_amount_x_without_hidelowerhalf(
 	SDL_assert(b1 > 0);
 	SDL_assert(a2 > 0);
 	SDL_assert(b2 > 0);
+
+	/*
+		el1
+
+		el2
+	*/
 	SDL_assert(center1.y >= center2.y || fabsf(center1.y - center2.y) < 1e-5f);
 
 	// Shift and stretch coordinates so that ellipse 2 is origin-centered unit circle
@@ -269,11 +275,6 @@ static float ellipse_move_amount_x_without_hidelowerhalf(
 
 float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid *el2)
 {
-	/*
-		el1
-
-		el2
-	*/
 	if (el1->center.y < el2->center.y) {
 		const struct Ellipsoid *tmp = el1;
 		el1 = el2;
