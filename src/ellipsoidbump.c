@@ -238,7 +238,7 @@ float ellipsoid_2d_line_and_unit_circle_move_amount(Vec2 linecenter, float halfl
 	return res;
 }
 
-static float ellipse_move_amount_x_without_hidelowerhalf(
+static float ellipse_move_amount_x(
 	float a1, float b1, Vec2 center1, bool hidelowerhalf1,
 	float a2, float b2, Vec2 center2)
 {
@@ -295,7 +295,7 @@ float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid 
 	// Now this is a 2D problem on the xy plane (or some other plane parallel to xy plane)
 	Vec2 center1_xy = { center1.x, center1.y };
 	Vec2 center2_xy = { center2.x, center2.y };
-	return ellipse_move_amount_x_without_hidelowerhalf(
+	return ellipse_move_amount_x(
 		el1->xzradius, el1->yradius, center1_xy, el1->epic->hidelowerhalf,
 		el2->xzradius, el2->yradius, center2_xy);
 }
