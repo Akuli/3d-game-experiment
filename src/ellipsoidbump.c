@@ -229,11 +229,11 @@ Line goes from (center.x, center.y - halflen) to (center.x, center.y + halflen).
 float ellipsoid_2d_line_and_unit_circle_move_amount(Vec2 linecenter, float halflen)
 {
 	float tmp = 1 - linecenter.y*linecenter.y;
-	if (tmp < 0)
+	if (tmp < 0)  // line above/below unit circle
 		return 0;
 
 	float res = sqrtf(tmp) - fabsf(linecenter.x) + halflen;
-	if (res < 0)
+	if (res < 0)  // line too far left/right from unit circle
 		return 0;
 	return res;
 }
