@@ -256,8 +256,11 @@ static void handle_event(const SDL_Event *evt, struct Chooser *ch)
 
 	int oldidx = ch->mapch.listbox.selectidx;
 	listbox_handle_event(&ch->mapch.listbox, evt);
-	if (ch->mapch.listbox.selectidx != oldidx)
-		mapeditor_setmap(ch->editor, &ch->mapch.maps[ch->mapch.listbox.selectidx]);
+	if (ch->mapch.listbox.selectidx != oldidx) {
+		struct Map *m = &ch->mapch.maps[ch->mapch.listbox.selectidx];
+		log_printf("Selecing map \"%s\"", m->name);
+		mapeditor_setmap(ch->editor, m);
+	}
 }
 
 static void on_play_clicked(void *ptr) { *(enum State *)ptr = STATE_PLAY; }

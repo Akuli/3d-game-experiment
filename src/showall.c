@@ -1,10 +1,12 @@
 #include "showall.h"
+#include <SDL2/SDL.h>
+#include <math.h>
 #include <stdbool.h>
 #include <string.h>
-#include <SDL2/SDL.h>
 #include "camera.h"
 #include "ellipsoid.h"
 #include "interval.h"
+#include "linalg.h"
 #include "log.h"
 #include "max.h"
 #include "misc.h"
@@ -36,7 +38,7 @@ struct Info {
 	struct Rect3 sortrect;
 	bool sortingdone;  // for sorting infos to display them in correct order
 
-	struct Rect3Cache rcache;
+	struct Rect3Cache rcache;  // ID_TYPE_RECT only
 };
 
 struct ShowingState {
@@ -47,10 +49,6 @@ struct ShowingState {
 
 	ID visible[ARRAYLEN_CONTAINING_ID];
 	int nvisible;
-
-	// Visible objects in arbitrary order
-	ID objects_by_x[CAMERA_SCREEN_WIDTH][ARRAYLEN_CONTAINING_ID];
-	int nobjects_by_x[CAMERA_SCREEN_WIDTH];
 
 	// Visible objects in the order in which they are drawn (closest to camera last)
 	ID objects_by_y[CAMERA_SCREEN_HEIGHT][ARRAYLEN_CONTAINING_ID];
@@ -83,22 +81,7 @@ static void add_rect_if_visible(struct ShowingState *st, int idx)
 	}
 }
 
-#if 0
-static void debug_print_dependencies(const struct ShowingState *st)
-{
-	log_printf("dependency dump:");
-	for (int i = 0; i < st->nvisible; i++) {
-		ID id = st->visible[i];
-		if (st->infos[id].ndeps == 0)
-			continue;
-
-		log_printf("  %d", id);
-		for (int d = 0; d < st->infos[id].ndeps; d++)
-			log_printf("  `--> %d", st->infos[id].deps[d]);
-	}
-}
-#endif
-
+// Debugging hint: rect3_drawborder
 static void add_dependency(struct ShowingState *st, ID before, ID after)
 {
 	for (int i = 0; i < st->infos[after].ndeps; i++) {
@@ -108,55 +91,100 @@ static void add_dependency(struct ShowingState *st, ID before, ID after)
 	st->infos[after].deps[st->infos[after].ndeps++] = before;
 }
 
+// Return value: +-1 = all points on pos/neg side, 0 = points on different sides or all almost on plane
+static int side_of_all_four_points(const struct Plane *pl, const Vec3 *points)
+{
+	int res = 0;
+	for (int i=0; i<4; i++) {
+		float d = pl->constant - vec3_dot(pl->normal, points[i]);
+		if (fabsf(d) < 1e-5f)
+			continue;
+		if (d > 0) {
+			if (res == -1)
+				return 0;
+			res = 1;
+		} else {
+			if (res == 1)
+				return 0;
+			res = -1;
+		}
+	}
+	return res;
+}
+
 static void setup_dependencies(struct ShowingState *st)
 {
-	bool xcoords[CAMERA_SCREEN_WIDTH] = {0};
+	static struct Plane planes[sizeof st->visible / sizeof st->visible[0]];  // in camera coordinates
+	static Vec3 camcorners[sizeof st->visible / sizeof st->visible[0]][4];  // in camera coordinates
+
 	for (int i = 0; i < st->nvisible; i++) {
-		SDL_Rect bbox = st->infos[st->visible[i]].bbox;
-		int lo = bbox.x, hi = bbox.x+bbox.w;
-		SDL_assert(0 <= lo && lo <= CAMERA_SCREEN_WIDTH);
-		SDL_assert(0 <= hi && hi <= CAMERA_SCREEN_WIDTH);
-		if (lo != CAMERA_SCREEN_WIDTH) xcoords[lo] = true;
-		if (hi != CAMERA_SCREEN_WIDTH) xcoords[hi] = true;
+		const Vec3 *corners = st->infos[st->visible[i]].sortrect.corners;
+		Vec3 n = vec3_cross(vec3_sub(corners[0], corners[1]), vec3_sub(corners[2], corners[1]));
+		struct Plane pl = { .normal = n, .constant = vec3_dot(n, corners[0]) };
+		plane_move(&pl, vec3_mul_float(st->cam->location, -1));
+		plane_apply_mat3_INVERSE(&pl, st->cam->cam2world);
+
+		// Make sure that camera (0,0,0) is on the positive side of the plane
+		if (pl.constant < 0) {
+			pl.constant *= -1;
+			pl.normal.x *= -1;
+			pl.normal.y *= -1;
+			pl.normal.z *= -1;
+		}
+		planes[i] = pl;
+
+		for (int k=0; k<4; k++)
+			camcorners[i][k] = camera_point_world2cam(st->cam, corners[k]);
 	}
 
-	int xlist[CAMERA_SCREEN_WIDTH];
-	int xlistlen = 0;
-	for (int x = 0; x < sizeof(xcoords)/sizeof(xcoords[0]); x++)
-		if (xcoords[x])
-			xlist[xlistlen++] = x;
+	for (int i = 0; i < st->nvisible; i++) {
+		const struct Info *iinfo = &st->infos[st->visible[i]];
 
-	// It should be enough to check in the middles of intervals between bboxes
-	for (int xidx = 1; xidx < xlistlen; xidx++) {
-		int x = (xlist[xidx-1] + xlist[xidx])/2;
-		float xzr = camera_screenx_to_xzr(st->cam, x);
+		for (int k = 0; k < i; k++) {
+			const struct Info *kinfo = &st->infos[st->visible[k]];
 
-		for (int i = 0; i < st->nobjects_by_x[x]; i++)
-			for (int k = 0; k < i; k++)
+			// Do not add dependencies between two walls
+			if (ID_TYPE(st->visible[i]) == ID_TYPE_RECT
+				&& ID_TYPE(st->visible[k]) == ID_TYPE_RECT
+				&& iinfo->rcache.rect->img == NULL
+				&& kinfo->rcache.rect->img == NULL
+				&& iinfo->rcache.rect->highlight == kinfo->rcache.rect->highlight)
 			{
-				ID id1 = st->objects_by_x[x][i];
-				ID id2 = st->objects_by_x[x][k];
-				// TODO: rects of different color?
-				if (ID_TYPE(id1) == ID_TYPE_RECT && ID_TYPE(id2) == ID_TYPE_RECT)
-					continue;
-
-				int ystart = max(
-					st->infos[id1].bbox.y,
-					st->infos[id2].bbox.y);
-				int yend = min(
-					st->infos[id1].bbox.y + st->infos[id1].bbox.h,
-					st->infos[id2].bbox.y + st->infos[id2].bbox.h);
-				if (ystart > yend)
-					continue;
-
-				float yzr = camera_screeny_to_yzr(st->cam, (ystart + yend)/2);
-				float z1 = rect3_get_camcoords_z(&st->infos[id1].sortrect, st->cam, xzr, yzr);
-				float z2 = rect3_get_camcoords_z(&st->infos[id2].sortrect, st->cam, xzr, yzr);
-				if (z1 < z2)
-					add_dependency(st, id1, id2);
-				else
-					add_dependency(st, id2, id1);
+				continue;
 			}
+
+			int xstart = max(iinfo->bbox.x, kinfo->bbox.x);
+			int xend = min(iinfo->bbox.x + iinfo->bbox.w, kinfo->bbox.x + kinfo->bbox.w);
+			if (xstart > xend)
+				continue;
+
+			int ystart = max(iinfo->bbox.y, kinfo->bbox.y);
+			int yend = min(iinfo->bbox.y + iinfo->bbox.h, kinfo->bbox.y + kinfo->bbox.h);
+			if (ystart > yend)
+				continue;
+
+			int s1 = side_of_all_four_points(&planes[i], camcorners[k]);
+			int s2 = side_of_all_four_points(&planes[k], camcorners[i]);
+			if (s1 == s2 && s1 != 0) {
+				/*
+				Both walls think they are on same/different side of the other wall as camera.
+				Example of when this happens:
+
+					 /  \
+					/    \
+
+					 cam
+
+				Avoid dependency cycle, order doesn't seem to matter.
+				*/
+				continue;
+			}
+
+			if (s1 == -1 || s2 == 1)
+				add_dependency(st, st->visible[k], st->visible[i]);
+			if (s1 == 1 || s2 == -1)
+				add_dependency(st, st->visible[i], st->visible[k]);
+		}
 	}
 }
 
@@ -167,6 +195,26 @@ static void add_id_to_drawing_order(struct ShowingState *st, ID id)
 	SDL_assert(0 <= bbox.y && bbox.y+bbox.h <= st->cam->surface->h);
 	for (int y = bbox.y; y < bbox.y+bbox.h; y++)
 		st->objects_by_y[y][st->nobjects_by_y[y]++] = id;
+}
+
+static void break_dependency_cycle(struct ShowingState *st, ID start)
+{
+	/*
+	Consider the sequence (x_n), where x_1 = start and x_(n+1) = st->infos[x_n].deps[0].
+	If all elements have some dependencies, this is an infinite sequence of finitely many
+	elements to choose from, so it will eventually cycle. To find a cycle, we compare x_n
+	and x_(2n) until they match.
+	*/
+#define next(x) st->infos[x].deps[0]
+	ID x = start;
+	ID y = next(start);
+	while (x != y) {
+		x = next(x);
+		y = next(next(y));
+	}
+#undef next
+
+	st->infos[x].deps[0] = st->infos[x].deps[--st->infos[x].ndeps];
 }
 
 static void create_showing_order_from_dependencies(struct ShowingState *st)
@@ -188,9 +236,7 @@ static void create_showing_order_from_dependencies(struct ShowingState *st)
 		}
 		if (stuck) {
 			log_printf("dependency cycle detected");
-			// TODO: This doesn't necessarily remove the cycle on first attempt.
-			//       It can remove a completely unrelated dependency instead.
-			st->infos[todo[0]].ndeps--;
+			break_dependency_cycle(st, todo[0]);
 			continue;
 		}
 		for (int i = 0; i < ntodo; i++) {
@@ -238,20 +284,12 @@ void show_all(
 	st.rects = rects;
 	st.els = els;
 	st.nvisible = 0;
-	memset(st.nobjects_by_x, 0, sizeof st.nobjects_by_x);
 	memset(st.nobjects_by_y, 0, sizeof st.nobjects_by_y);
 
 	for (int i = 0; i < nels; i++)
 		add_ellipsoid_if_visible(&st, i);
 	for (int i = 0; i < nrects; i++)
 		add_rect_if_visible(&st, i);
-
-	for (int i = 0; i < st.nvisible; i++) {
-		SDL_Rect bbox = st.infos[st.visible[i]].bbox;
-		SDL_assert(0 <= bbox.x && bbox.x+bbox.w <= cam->surface->w);
-		for (int x = bbox.x; x < bbox.x+bbox.w; x++)
-			st.objects_by_x[x][st.nobjects_by_x[x]++] = st.visible[i];
-	}
 
 	setup_dependencies(&st);
 	create_showing_order_from_dependencies(&st);
