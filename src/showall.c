@@ -112,7 +112,7 @@ static int side_of_all_four_points(const struct Plane *pl, const Vec3 *points)
 
 static void setup_dependencies(struct ShowingState *st)
 {
-	struct Plane planes[sizeof st->visible / sizeof st->visible[0]];  // in camera coordinates
+	static struct Plane planes[sizeof st->visible / sizeof st->visible[0]];  // in camera coordinates
 	static Vec3 camcorners[sizeof st->visible / sizeof st->visible[0]][4];  // in camera coordinates
 
 	for (int i = 0; i < st->nvisible; i++) {
