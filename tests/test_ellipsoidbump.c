@@ -1,6 +1,17 @@
 #include <assert.h>
+#include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
-#include "../src/ellipsoidbump.c"
+#include <stdlib.h>
+#include "../src/linalg.h"
+#include "../src/ellipsoid.h"
+
+#define PRECISION_REQUIREMENT 1e-5f
+float ellipsoid_solve_the_equation(float A, float B, float C, float D, float E);
+bool ellipsoid_origin_centered_ellipse_distance1_points_with_given_y(
+	float a, float b, float pointy, float *pointx1, float *pointx2);
+float ellipsoid_2d_move_amount_x_for_origin_centered_unit_circle(
+	float a, float b, Vec2 center);
 
 
 static bool close3(float a, float b, float maxerror)
@@ -18,7 +29,7 @@ static bool close(float a, float b)
 void test_equation_solver(void)
 {
 	// (x + 1) sqrt(x^2 + 1) - 3x = 0
-	float root = solve_the_equation(1, 1, 1, 1, -3);
+	float root = ellipsoid_solve_the_equation(1, 1, 1, 1, -3);
 	float actual = 0.670211622520842f;   // from sympy
 	assert(close(root, actual));
 }
@@ -27,26 +38,26 @@ void test_origin_centered_ellipse_distance1_points_with_given_y(void)
 {
 	float x1, x2;
 
-	assert(origin_centered_ellipse_distance1_points_with_given_y(1, 1, sqrtf(2), &x1, &x2));
+	assert(ellipsoid_origin_centered_ellipse_distance1_points_with_given_y(1, 1, sqrtf(2), &x1, &x2));
 	assert(x1 + x2 == 0);
 	assert(close(x2, sqrtf(2)));
 
-	assert(origin_centered_ellipse_distance1_points_with_given_y(2, 2, 2*sqrtf(2), &x1, &x2));
+	assert(ellipsoid_origin_centered_ellipse_distance1_points_with_given_y(2, 2, 2*sqrtf(2), &x1, &x2));
 	assert(x1 + x2 == 0);
 	assert(close(x2, 1));
 
-	assert(origin_centered_ellipse_distance1_points_with_given_y(1, 1, 2, &x1, &x2));
+	assert(ellipsoid_origin_centered_ellipse_distance1_points_with_given_y(1, 1, 2, &x1, &x2));
 	assert(close(x1, 0));
 	assert(close(x2, 0));
 
-	assert(!origin_centered_ellipse_distance1_points_with_given_y(1,   2,  3.1f, &x1, &x2));
-	assert(!origin_centered_ellipse_distance1_points_with_given_y(0.5, 2,  3.1f, &x1, &x2));
-	assert(!origin_centered_ellipse_distance1_points_with_given_y(2,   2,  3.1f, &x1, &x2));
-	assert(!origin_centered_ellipse_distance1_points_with_given_y(1,   2, -3.1f, &x1, &x2));
-	assert(!origin_centered_ellipse_distance1_points_with_given_y(0.5, 2, -3.1f, &x1, &x2));
-	assert(!origin_centered_ellipse_distance1_points_with_given_y(2,   2, -3.1f, &x1, &x2));
+	assert(!ellipsoid_origin_centered_ellipse_distance1_points_with_given_y(1,   2,  3.1f, &x1, &x2));
+	assert(!ellipsoid_origin_centered_ellipse_distance1_points_with_given_y(0.5, 2,  3.1f, &x1, &x2));
+	assert(!ellipsoid_origin_centered_ellipse_distance1_points_with_given_y(2,   2,  3.1f, &x1, &x2));
+	assert(!ellipsoid_origin_centered_ellipse_distance1_points_with_given_y(1,   2, -3.1f, &x1, &x2));
+	assert(!ellipsoid_origin_centered_ellipse_distance1_points_with_given_y(0.5, 2, -3.1f, &x1, &x2));
+	assert(!ellipsoid_origin_centered_ellipse_distance1_points_with_given_y(2,   2, -3.1f, &x1, &x2));
 
-	assert(origin_centered_ellipse_distance1_points_with_given_y(2, 3, 2.5, &x1, &x2));
+	assert(ellipsoid_origin_centered_ellipse_distance1_points_with_given_y(2, 3, 2.5, &x1, &x2));
 	/*
 	Asserted x coordinates measured by plotting and then zooming such that one
 	math unit corresponds to the width of my finger.
@@ -58,14 +69,35 @@ void test_origin_centered_ellipse_distance1_points_with_given_y(void)
 void test_ellipse_move_amount_x_for_origin_centered_unit_circle(void)
 {
 	// ellipse equations and correct results come from experimenting with a grapher
-	assert(ellipse_move_amount_x_for_origin_centered_unit_circle(2, 2.5, (Vec2){2, 3}) == 0);
-	assert(ellipse_move_amount_x_for_origin_centered_unit_circle(2, 2.5, (Vec2){-2, 3}) == 0);
+	assert(ellipsoid_2d_move_amount_x_for_origin_centered_unit_circle(2, 2.5, (Vec2){2, 3}) == 0);
+	assert(ellipsoid_2d_move_amount_x_for_origin_centered_unit_circle(2, 2.5, (Vec2){-2, 3}) == 0);
 
-	float mv = ellipse_move_amount_x_for_origin_centered_unit_circle(2, 2.5, (Vec2){1, 3});
+	float mv = ellipsoid_2d_move_amount_x_for_origin_centered_unit_circle(2, 2.5, (Vec2){1, 3});
 	assert(mv > 0);
 	assert(close3(mv, 0.6f, 0.1f));
 
-	mv = ellipse_move_amount_x_for_origin_centered_unit_circle(2, 2.5, (Vec2){-1, 3});
+	mv = ellipsoid_2d_move_amount_x_for_origin_centered_unit_circle(2, 2.5, (Vec2){-1, 3});
 	assert(mv > 0);
 	assert(close3(mv, 0.6f, 0.1f));
+}
+
+void test_hidelowerhalf_basic(void)
+{
+	struct EllipsoidPic *upperpic = calloc(1, sizeof(*upperpic));
+	struct EllipsoidPic *lowerpic = calloc(1, sizeof(*lowerpic));
+	assert(upperpic && lowerpic);
+
+	struct Ellipsoid upper = { .epic = upperpic, .center = {0,3.1f,0}, .xzradius = 10, .yradius = 8 };
+	struct Ellipsoid lower = { .epic = lowerpic, .center = {0,0,0}, .xzradius = 20, .yradius = 3 };
+	ellipsoid_update_transforms(&upper);
+	ellipsoid_update_transforms(&lower);
+
+	assert(ellipsoid_bump_amount(&upper, &lower) > 20);
+	assert(ellipsoid_bump_amount(&lower, &upper) > 20);
+	lowerpic->hidelowerhalf = true;  // ignored
+	assert(ellipsoid_bump_amount(&upper, &lower) > 20);
+	assert(ellipsoid_bump_amount(&lower, &upper) > 20);
+	upperpic->hidelowerhalf = true;
+	assert(ellipsoid_bump_amount(&upper, &lower) == 0);
+	assert(ellipsoid_bump_amount(&lower, &upper) == 0);
 }

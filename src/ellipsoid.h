@@ -108,9 +108,6 @@ Returns how much ellipsoids should be moved apart from each other to make them n
 intersect. The moving should happen in xz plane direction (no moving vertically).
 Never returns negative. If this returns 0, then the ellipsoids don't intersect
 each other.
-
-Currently this does not account for the fact that the lower half of an
-ellipsoid can be hidden.
 */
 float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid *el2);
 
