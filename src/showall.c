@@ -137,7 +137,6 @@ static void setup_dependencies(struct ShowingState *st)
 
 	for (int i = 0; i < st->nvisible; i++) {
 		const struct Info *iinfo = &st->infos[st->visible[i]];
-		SDL_assert(0 <= iinfo->bbox.x && iinfo->bbox.x+iinfo->bbox.w <= st->cam->surface->w);
 
 		for (int k = 0; k < i; k++) {
 			const struct Info *kinfo = &st->infos[st->visible[k]];
