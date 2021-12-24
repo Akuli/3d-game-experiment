@@ -1,10 +1,12 @@
 #include "showall.h"
+#include <SDL2/SDL.h>
+#include <math.h>
 #include <stdbool.h>
 #include <string.h>
-#include <SDL2/SDL.h>
 #include "camera.h"
 #include "ellipsoid.h"
 #include "interval.h"
+#include "linalg.h"
 #include "log.h"
 #include "max.h"
 #include "misc.h"
