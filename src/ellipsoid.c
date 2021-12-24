@@ -187,7 +187,7 @@ struct Rect3 ellipsoid_get_sort_rect(const struct Ellipsoid *el, const struct Ca
 
 	if (el->epic->hidelowerhalf) {
 		// Hack to help stacking guards on top of player and other guards
-		Vec3 tilt = vec3_withlength(center2cam, 0.01);
+		Vec3 tilt = vec3_withlength(center2cam, 0.01f);
 		vec3_add_inplace(&botleft, tilt);
 		vec3_add_inplace(&botright, tilt);
 	}
