@@ -6,7 +6,7 @@ FLAGS += -Wno-static-local-in-inline -Wno-absolute-value
 FLAGS += -I/usr/include/SDL2
 
 # skip my weird glob implementation, too dynamic or something
-SRC := $(filter-out tests/main.c src/glob.h,$(wildcard src/*.c src/*.h tests/*.c))
+SRC := $(filter-out tests/main.c tests/test_glob.c,$(wildcard src/*.c src/*.h tests/*.c))
 
 all: $(SRC)
 
