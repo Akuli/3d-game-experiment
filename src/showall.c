@@ -116,9 +116,6 @@ static void setup_dependencies(struct ShowingState *st)
 	static Vec3 camcorners[sizeof st->visible / sizeof st->visible[0]][4];  // in camera coordinates
 
 	for (int i = 0; i < st->nvisible; i++) {
-		/*SDL_Rect bbox = st.infos[st.visible[i]].bbox;
-		SDL_assert(0 <= bbox.x && bbox.x+bbox.w <= cam->surface->w);
-		*/
 		const Vec3 *corners = st->infos[st->visible[i]].sortrect.corners;
 		Vec3 n = vec3_cross(vec3_sub(corners[0], corners[1]), vec3_sub(corners[2], corners[1]));
 		struct Plane pl = { .normal = n, .constant = vec3_dot(n, corners[0]) };
@@ -140,7 +137,6 @@ static void setup_dependencies(struct ShowingState *st)
 
 	for (int i = 0; i < st->nvisible; i++) {
 		const struct Info *iinfo = &st->infos[st->visible[i]];
-		SDL_assert(0 <= iinfo->bbox.x && iinfo->bbox.x+iinfo->bbox.w <= st->cam->surface->w);
 
 		for (int k = 0; k < i; k++) {
 			const struct Info *kinfo = &st->infos[st->visible[k]];
