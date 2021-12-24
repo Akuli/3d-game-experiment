@@ -153,10 +153,18 @@ static void setup_dependencies(struct ShowingState *st)
 			camcorners[i][k] = camera_point_world2cam(st->cam, corners[k]);
 	}
 
-	for (int i = 0; i < st->nvisible; i++)
-		for (int k = 0; k < i; k++)
-		{
-			const struct Info *iinfo = &st->infos[st->visible[i]], *kinfo = &st->infos[st->visible[k]];
+	for (int i = 0; i < st->nvisible; i++) {
+		const struct Info *iinfo = &st->infos[st->visible[i]];
+		SDL_assert(0 <= iinfo->bbox.x && iinfo->bbox.x+iinfo->bbox.w <= st->cam->surface->w);
+
+		for (int k = 0; k < i; k++) {
+			const struct Info *kinfo = &st->infos[st->visible[k]];
+
+			int xstart = max(iinfo->bbox.x, kinfo->bbox.x);
+			int xend = min(iinfo->bbox.x + iinfo->bbox.w, kinfo->bbox.x + kinfo->bbox.w);
+			if (xstart > xend)
+				continue;
+
 			int ystart = max(iinfo->bbox.y, kinfo->bbox.y);
 			int yend = min(iinfo->bbox.y + iinfo->bbox.h, kinfo->bbox.y + kinfo->bbox.h);
 			if (ystart > yend)
@@ -188,6 +196,7 @@ static void setup_dependencies(struct ShowingState *st)
 			}
 			// TODO: else?
 		}
+	}
 }
 
 // Called for each visible object, in the order of drawing
