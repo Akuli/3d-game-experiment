@@ -37,7 +37,9 @@ struct Player {
 
 extern struct EllipsoidPic *const *player_epics;  // NULL terminated
 extern int player_nepics;
-void player_init_epics(const SDL_PixelFormat *fmt);
+void player_init_epics(
+	const SDL_PixelFormat *fmt,
+	void (*progresscb)(void *cbdata, int i, int count), void *cbdata);
 
 // run before showing stuff to user
 void player_eachframe(struct Player *plr, const struct Map *map);

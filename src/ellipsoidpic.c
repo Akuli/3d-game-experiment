@@ -141,7 +141,9 @@ static void atexit_callback(void)
 	}
 }
 
-struct EllipsoidPic *const *ellipsoidpic_loadmany(int *n, const char *globpat, const SDL_PixelFormat *fmt)
+struct EllipsoidPic *const *ellipsoidpic_loadmany(
+	int *n, const char *globpat, const SDL_PixelFormat *fmt,
+	void (*progresscb)(void *cbdata, int i, int n), void *cbdata)
 {
 	glob_t gl;
 	if (glob(globpat, 0, NULL, &gl) != 0)
@@ -160,6 +162,9 @@ struct EllipsoidPic *const *ellipsoidpic_loadmany(int *n, const char *globpat, c
 	nepicarrays++;
 
 	for (int i = 0; i < *n; i++) {
+		if (progresscb)
+			progresscb(cbdata, i, *n);
+
 		if (!( epics[i] = malloc(sizeof(*epics[0])) ))
 			log_printf("not enough mem to load ellipsoid pic from \"%s\"", gl.gl_pathv[i]);
 		ellipsoidpic_load(epics[i], gl.gl_pathv[i], fmt);
