@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <SDL2/SDL.h>
 #include "camera.h"
 #include "ellipsoid.h"
@@ -354,7 +355,15 @@ enum State play_the_game(
 		SDL_FillRect(winsurf, &(SDL_Rect){ winsurf->w/2, 0, 1, winsurf->h }, SDL_MapRGB(winsurf->format, 0xff, 0xff, 0xff));
 
 		char s[100];
-		sprintf(s, "%d enemies, %d unpicked guards", gs.nenemies, gs.n_unpicked_guards);
+		if (gs.nenemies == 1)
+			strcpy(s, "1 enemy");
+		else
+			sprintf(s, "%d enemies", gs.nenemies);
+		if (gs.n_unpicked_guards == 1)
+			strcat(s, ", 1 unpicked guard");
+		else
+			sprintf(s+strlen(s), ", %d unpicked guards", gs.n_unpicked_guards);
+
 		SDL_Surface *surf = create_text_surface(s, (SDL_Color){0xff,0xff,0xff}, 20);
 		SDL_BlitSurface(surf, NULL, winsurf, &(SDL_Rect){20,10});
 		SDL_FreeSurface(surf);
