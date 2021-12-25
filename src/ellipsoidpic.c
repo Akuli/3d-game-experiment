@@ -143,7 +143,7 @@ static void atexit_callback(void)
 
 struct EllipsoidPic *const *ellipsoidpic_loadmany(
 	int *n, const char *globpat, const SDL_PixelFormat *fmt,
-	void (*progresscb)(void *cbdata, int i, int count), void *cbdata)
+	void (*progresscb)(void *cbdata, int i, int n), void *cbdata)
 {
 	glob_t gl;
 	if (glob(globpat, 0, NULL, &gl) != 0)
