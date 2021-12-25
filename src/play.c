@@ -356,7 +356,7 @@ enum State play_the_game(
 
 		char s[100];
 		if (gs.nenemies == 1)
-			sprintf(s, "1 enemy");
+			strcpy(s, "1 enemy");
 		else
 			sprintf(s, "%d enemies", gs.nenemies);
 		if (gs.n_unpicked_guards == 1)
