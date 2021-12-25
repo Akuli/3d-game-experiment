@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <math.h>
 #include <stdbool.h>
-#include <stdlib.h>
 #include "../src/linalg.h"
 #include "../src/ellipsoid.h"
 
