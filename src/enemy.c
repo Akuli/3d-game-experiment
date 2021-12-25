@@ -20,7 +20,7 @@ static int n_ellipsoid_pics = -1;
 void enemy_init_epics(const SDL_PixelFormat *fmt)
 {
 	SDL_assert(ellipsoid_pics == NULL);
-	ellipsoid_pics = ellipsoidpic_loadmany(&n_ellipsoid_pics, "assets/enemies/*.png", fmt);
+	ellipsoid_pics = ellipsoidpic_loadmany(&n_ellipsoid_pics, "assets/enemies/*.png", fmt, NULL, NULL);
 	SDL_assert(ellipsoid_pics != NULL);
 
 	for (int i = 0; i < n_ellipsoid_pics; i++)

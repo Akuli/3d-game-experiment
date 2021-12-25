@@ -42,7 +42,9 @@ struct EllipsoidPic {
 void ellipsoidpic_load(struct EllipsoidPic *epic, const char *path, const SDL_PixelFormat *fmt);
 
 // resulting array of pointers is freed with atexit()
-struct EllipsoidPic *const *ellipsoidpic_loadmany(int *n, const char *globpat, const SDL_PixelFormat *fmt);
+struct EllipsoidPic *const *ellipsoidpic_loadmany(
+	int *n, const char *globpat, const SDL_PixelFormat *fmt,
+	void (*progresscb)(void *cbdata, int i, int count), void *cbdata);
 
 // See jumper.h for code that initiates the jumps this thing represents.
 // Not to be confused with the jumping that happens when a player unflattens.

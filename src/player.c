@@ -31,10 +31,13 @@ issues with this. To avoid that, we limit things that flat players can do:
 struct EllipsoidPic *const *player_epics = NULL;
 int player_nepics = -1;
 
-void player_init_epics(const SDL_PixelFormat *fmt)
+void player_init_epics(
+	const SDL_PixelFormat *fmt,
+	void (*progresscb)(void *cbdata, int i, int count),
+	void *cbdata)
 {
 	SDL_assert(player_epics == NULL);
-	player_epics = ellipsoidpic_loadmany(&player_nepics, "assets/players/*.png", fmt);
+	player_epics = ellipsoidpic_loadmany(&player_nepics, "assets/players/*.png", fmt, progresscb, cbdata);
 	SDL_assert(player_epics != NULL);
 }
 

@@ -64,15 +64,21 @@ static void cd_where_everything_is(void)
 #endif
 }
 
-static void show_loading(const char *msg, SDL_Window *wnd, SDL_Surface *wndsurf, int yidx)
+static void show_loading(const char *msg, SDL_Window *wnd, int yidx)
 {
-	log_printf("loading begins: %s", msg);
-	int fontsz = 50;
-	SDL_Color white = { 0xff, 0xff, 0xff, 0xff };
+	log_printf("showing loading message: %s", msg);
 
-	SDL_Surface *msgsurf = create_text_surface(msg, white, fontsz);
+	SDL_Surface *wndsurf = SDL_GetWindowSurface(wnd);
+	if (!wndsurf)
+		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
+
+	int fontsz = 50;
+	int yspacing = 55;
+
+	SDL_Surface *msgsurf = create_text_surface(msg, (SDL_Color){0xff,0xff,0xff,0xff}, fontsz);
+	SDL_FillRect(wndsurf, &(SDL_Rect){0, yspacing*yidx, wndsurf->w, yspacing}, 0);
 	SDL_BlitSurface(msgsurf, NULL, wndsurf, &(SDL_Rect){
-		fontsz/5, fontsz*yidx,
+		fontsz/5, yspacing*yidx,
 		123, 456,   // ignored
 	});
 	SDL_FreeSurface(msgsurf);
@@ -80,26 +86,38 @@ static void show_loading(const char *msg, SDL_Window *wnd, SDL_Surface *wndsurf,
 	SDL_UpdateWindowSurface(wnd);
 }
 
-static void load_the_stuff(SDL_Window *wnd, SDL_Surface *wndsurf, bool sound)
+static void loading_player_pics_progress_callback(void *cbdata, int i, int count)
 {
+	SDL_Window *wnd = cbdata;
+	char msg[100];
+	sprintf(msg, "Loading player pictures... (%d/%d)", i+1, count);
+	show_loading(msg, wnd, 0);
+}
+
+static void load_the_stuff(SDL_Window *wnd, bool sound)
+{
+	SDL_Surface *wndsurf = SDL_GetWindowSurface(wnd);
+	if (!wndsurf)
+		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 	SDL_FillRect(wndsurf, NULL, 0);
+
 	int yidx = 0;
 
-	show_loading("Loading player pictures...", wnd, wndsurf, yidx++);
-	player_init_epics(wndsurf->format);
+	show_loading("Loading player pictures...", wnd, yidx++);
+	player_init_epics(wndsurf->format, loading_player_pics_progress_callback, wnd);
 
-	show_loading("Loading enemy pictures...", wnd, wndsurf, yidx++);
+	show_loading("Loading enemy pictures...", wnd, yidx++);
 	enemy_init_epics(wndsurf->format);
 
-	show_loading("Loading the guard picture...", wnd, wndsurf, yidx++);
+	show_loading("Loading the guard picture...", wnd, yidx++);
 	guard_init_epic(wndsurf->format);
 
 	if (sound) {
-		show_loading("Loading sounds...", wnd, wndsurf, yidx++);
+		show_loading("Loading sounds...", wnd, yidx++);
 		sound_init();
 	}
 
-	show_loading("Loading some other stuff...", wnd, wndsurf, yidx++);
+	show_loading("Loading some other stuff...", wnd, yidx++);
 	jumper_init_global_images(wndsurf->format);
 }
 
@@ -139,11 +157,11 @@ int main(int argc, char **argv)
 	*/
 	SDL_Event e;
 	while (SDL_PollEvent(&e)) { }
-
 	SDL_Surface *wndsurf = SDL_GetWindowSurface(wnd);
 	if (!wndsurf)
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
-	load_the_stuff(wnd, wndsurf, sound);
+
+	load_the_stuff(wnd, sound);
 
 	struct Chooser ch;
 	chooser_init(&ch, wnd);
