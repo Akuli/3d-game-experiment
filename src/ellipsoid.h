@@ -32,9 +32,6 @@ struct EllipsoidPic {
 	Here highlighted is usually 0, but can be 1 for different color.
 	*/
 	uint32_t cubepixels[2][ELLIPSOIDPIC_SIDE][ELLIPSOIDPIC_SIDE][ELLIPSOIDPIC_SIDE];
-
-	// if true, then only the upper half of the ellipsoid is visible
-	bool hidelowerhalf;
 };
 
 // epic lmao
@@ -66,6 +63,7 @@ it to change the center.
 struct Ellipsoid {
 	Vec3 center;
 	const struct EllipsoidPic *epic;
+	bool hidelowerhalf;  // if true, only the upper half of the ellipsoid is visible
 	bool highlighted;
 
 	// call ellipsoid_update_transforms() after changing these

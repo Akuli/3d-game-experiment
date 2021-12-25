@@ -1020,6 +1020,7 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 		ed->enemyedits[i].el.xzradius = ENEMY_XZRADIUS;
 		ed->enemyedits[i].el.yradius = ENEMY_YRADIUS,
 		ed->enemyedits[i].el.epic = enemy_getrandomepic();
+		ed->enemyedits[i].el.hidelowerhalf = true;
 		ellipsoid_update_transforms(&ed->enemyedits[i].el);
 	}
 	return ed;

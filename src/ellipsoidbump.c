@@ -296,6 +296,6 @@ float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid 
 	Vec2 center1_xy = { center1.x, center1.y };
 	Vec2 center2_xy = { center2.x, center2.y };
 	return ellipse_move_amount_x(
-		el1->xzradius, el1->yradius, center1_xy, el1->epic->hidelowerhalf,
+		el1->xzradius, el1->yradius, center1_xy, el1->hidelowerhalf,
 		el2->xzradius, el2->yradius, center2_xy);
 }

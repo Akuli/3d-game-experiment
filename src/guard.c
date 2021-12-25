@@ -19,9 +19,7 @@ void guard_init_epic(const SDL_PixelFormat *fmt)
 	static bool ready = false;
 	SDL_assert(!ready);
 	ready = true;
-
 	ellipsoidpic_load(&guard_ellipsoidpic, "assets/guard.png", fmt);
-	guard_ellipsoidpic.hidelowerhalf = true;
 }
 
 // this function could be slow with many nonpicked guards
@@ -52,6 +50,7 @@ int guard_create_unpickeds_center(
 		struct Ellipsoid el = {
 			.center = center,
 			.epic = &guard_ellipsoidpic,
+			.hidelowerhalf = true,
 			.angle = 0,
 			.xzradius = GUARD_XZRADIUS,
 			.yradius = YRADIUS_BASIC,
@@ -96,6 +95,7 @@ int guard_create_picked(struct Ellipsoid *arr, const struct Player *plr)
 			plr->ellipsoid.center.z,
 		},
 		.epic = &guard_ellipsoidpic,
+		.hidelowerhalf = true,
 		.angle = plr->ellipsoid.angle,
 		.xzradius = GUARD_XZRADIUS,
 		.yradius = yradius,
