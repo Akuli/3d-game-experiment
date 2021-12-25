@@ -518,13 +518,6 @@ static void on_arrow_key(struct MapEditor *ed, float angle, bool oppositespresse
 	}
 }
 
-static void swap(struct EllipsoidEdit *a, struct EllipsoidEdit *b)
-{
-	struct EllipsoidEdit tmp = *a;
-	*a = *b;
-	*b = tmp;
-}
-
 static void delete_selected(struct MapEditor *ed)
 {
 	log_printf("Trying to delete selected item");
@@ -536,7 +529,12 @@ static void delete_selected(struct MapEditor *ed)
 					&& ed->map->enemylocs[i].z == ed->sel.data.square.z)
 				{
 					ed->map->enemylocs[i] = ed->map->enemylocs[--ed->map->nenemylocs];
-					swap(&ed->enemyedits[i], &ed->enemyedits[ed->map->nenemylocs]);
+
+					int k = ed->map->nenemylocs;
+					const struct EllipsoidPic *tmp = ed->enemyedits[i].el.epic;
+					ed->enemyedits[i].el.epic = ed->enemyedits[k].el.epic;
+					ed->enemyedits[k].el.epic = tmp;
+
 					log_printf("Deleted an enemy spawning location");
 					map_save(ed->map);
 					return;
