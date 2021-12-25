@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include "../src/glob.h"
+#include "../src/glob.h"  // IWYU pragma: keep
 #include "../src/misc.h"
 
 void test_glob_success(void)

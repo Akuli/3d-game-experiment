@@ -38,7 +38,7 @@ Caveats:
 #define MY_GLOB_H
 
 #ifndef _WIN32
-#include <glob.h>
+#include <glob.h>  // IWYU pragma: export
 #else
 
 #include <windows.h>    // TODO: get MAX_PATH without all of windows.h?
