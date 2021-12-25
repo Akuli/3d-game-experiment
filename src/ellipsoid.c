@@ -158,9 +158,8 @@ static SDL_Rect bbox_of_middle_circle(
 
 SDL_Rect ellipsoid_bbox(const struct Ellipsoid *el, const struct Camera *cam)
 {
-
 	SDL_Rect bbox = bbox_without_hidelowerhalf(el, cam);
-	if (el->epic->hidelowerhalf) {
+	if (el->hidelowerhalf) {
 		SDL_Rect circlebbox = bbox_of_middle_circle(el, cam);
 		bbox.h = (circlebbox.y - bbox.y) + circlebbox.h;
 	}
@@ -185,7 +184,7 @@ struct Rect3 ellipsoid_get_sort_rect(const struct Ellipsoid *el, const struct Ca
 	botleft.y -= el->yradius;
 	botright.y -= el->yradius;
 
-	if (el->epic->hidelowerhalf) {
+	if (el->hidelowerhalf) {
 		// Hack to help stacking guards on top of player and other guards
 		Vec3 tilt = vec3_withlength(center2cam, 0.01f);
 		vec3_add_inplace(&botleft, tilt);
@@ -277,7 +276,7 @@ bool ellipsoid_xminmax(const struct Ellipsoid *el, const struct Camera *cam, int
 	float xzrleft = -b+offset;
 	float xzrright = -b-offset;
 
-	if (el->epic->hidelowerhalf) {
+	if (el->hidelowerhalf) {
 		// Find y coords of corresponding points on the unit ball (l left side, r right side)
 		Vec3 ul = vec3_add(vec3_mul_float(v, xzrleft), w);
 		Vec3 ur = vec3_add(vec3_mul_float(v, xzrright), w);
@@ -473,7 +472,7 @@ void ellipsoid_jumping_eachframe(struct Ellipsoid *el, const struct Map *map)
 	el->jumpstate.speed.y -= GRAVITY/CAMERA_FPS;
 	el->jumpstate.speed.z *= clamp_with_bounce(&el->center.z, el->xzradius, map->zsize - el->xzradius);
 
-	float centerymin = el->epic->hidelowerhalf ? 0 : el->yradius;
+	float centerymin = el->hidelowerhalf ? 0 : el->yradius;
 	if (el->jumpstate.speed.y < 0 && el->center.y < centerymin) {
 		log_printf("end jump");
 		el->center.y = centerymin;

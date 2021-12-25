@@ -101,21 +101,17 @@ void test_ellipsoid_2d_line_and_unit_circle_move_amount(void)
 
 void test_ellipsoid_bump_amount_and_hidelowerhalf_with_actual_ellipsoids(void)
 {
-	struct EllipsoidPic *upperpic = calloc(1, sizeof(*upperpic));
-	struct EllipsoidPic *lowerpic = calloc(1, sizeof(*lowerpic));
-	assert(upperpic && lowerpic);
-
-	struct Ellipsoid upper = { .epic = upperpic, .center = {0,3.1f,0}, .xzradius = 10, .yradius = 8 };
-	struct Ellipsoid lower = { .epic = lowerpic, .center = {0,0,0}, .xzradius = 20, .yradius = 3 };
+	struct Ellipsoid upper = { .center = {0,3.1f,0}, .xzradius = 10, .yradius = 8 };
+	struct Ellipsoid lower = { .center = {0,0,0}, .xzradius = 20, .yradius = 3 };
 	ellipsoid_update_transforms(&upper);
 	ellipsoid_update_transforms(&lower);
 
 	assert(ellipsoid_bump_amount(&upper, &lower) > 20);
 	assert(ellipsoid_bump_amount(&lower, &upper) > 20);
-	lowerpic->hidelowerhalf = true;  // ignored
+	lower.hidelowerhalf = true;  // ignored
 	assert(ellipsoid_bump_amount(&upper, &lower) > 20);
 	assert(ellipsoid_bump_amount(&lower, &upper) > 20);
-	upperpic->hidelowerhalf = true;
+	upper.hidelowerhalf = true;
 	assert(ellipsoid_bump_amount(&upper, &lower) == 0);
 	assert(ellipsoid_bump_amount(&lower, &upper) == 0);
 }

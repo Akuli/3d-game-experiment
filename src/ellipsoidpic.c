@@ -122,7 +122,6 @@ void ellipsoidpic_load(
 	snprintf(epic->path, sizeof(epic->path), "%s", path);
 	epic->pixfmt = fmt;
 	read_image(epic);
-	epic->hidelowerhalf = false;
 }
 
 // no way to pass data to atexit callbacks
