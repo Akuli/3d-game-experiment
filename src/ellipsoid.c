@@ -1,9 +1,8 @@
 #include "ellipsoid.h"
+#include <SDL2/SDL.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <string.h>
-#include <SDL2/SDL.h>
 #include "camera.h"
 #include "linalg.h"
 #include "log.h"
@@ -299,13 +298,6 @@ bool ellipsoid_xminmax(const struct Ellipsoid *el, const struct Camera *cam, int
 	return *xmin <= *xmax;
 }
 
-static inline float linear_map(float srcmin, float srcmax, float dstmin, float dstmax, float val)
-{
-	// ratio should get inlined when everything except val is constants
-	float ratio = (dstmax - dstmin)/(srcmax - srcmin);
-	return dstmin + (val - srcmin)*ratio;
-}
-
 void ellipsoid_drawrow(
 	const struct Ellipsoid *el, const struct Camera *cam,
 	int y, int xmin, int xmax)
@@ -324,74 +316,60 @@ void ellipsoid_drawrow(
 	bottleneck of the game before making it more vectorizable, and it still is
 	at the time of writing this comment.
 	*/
-
 #define LOOP for(int i = 0; i < xdiff; i++)
+#define ARRAY(T, Name) T Name[CAMERA_SCREEN_WIDTH]; LOOP Name[i]
 
-	float xzr[CAMERA_SCREEN_WIDTH];
-	LOOP xzr[i] = camera_screenx_to_xzr(cam, (float)(xmin + i));
+	ARRAY(float, xzr) = camera_screenx_to_xzr(cam, (float)(xmin + i));
 
 	/*
 	line equation in camera coordinates:
 
 		x = xzr*z, y = yzr*z aka (x,y,z) = z*(xzr,yzr,1)
 
-	Note that this has z coordinate 1 in camera coordinates, i.e. pointing toward camera.
+	Note that the direction vector (xzr,yzr,1) is pointing towards the camera.
 	*/
 	float yzr = camera_screeny_to_yzr(cam, y);
-	float linedirx[CAMERA_SCREEN_WIDTH], linediry[CAMERA_SCREEN_WIDTH], linedirz[CAMERA_SCREEN_WIDTH];
-	LOOP linedirx[i] = mat3_mul_vec3(el->world2uball, (Vec3){xzr[i],yzr,1}).x;
-	LOOP linediry[i] = mat3_mul_vec3(el->world2uball, (Vec3){xzr[i],yzr,1}).y;
-	LOOP linedirz[i] = mat3_mul_vec3(el->world2uball, (Vec3){xzr[i],yzr,1}).z;
-#define LineDir(i) ( (Vec3){ linedirx[i], linediry[i], linedirz[i] } )
+
+	// Line equation in unit ball coordinates:  (x,y,z) = camloc + t*linedir
+	Vec3 camloc = mat3_mul_vec3(el->world2uball, vec3_sub(cam->location, el->center));
+	Mat3 M = mat3_mul_mat3(el->world2uball, cam->cam2world);
+	ARRAY(float, linedirx) = mat3_mul_vec3(M, (Vec3){xzr[i],yzr,1}).x;
+	ARRAY(float, linediry) = mat3_mul_vec3(M, (Vec3){xzr[i],yzr,1}).y;
+	ARRAY(float, linedirz) = mat3_mul_vec3(M, (Vec3){xzr[i],yzr,1}).z;
 
 	/*
-	Intersecting the ball
-
-		((x,y,z) - ballcenter) dot ((x,y,z) - ballcenter) = 1
-
-	with the line
-
-		(x,y,z) = t*linedir
-
-	creates a quadratic equation in t. We want the solution with bigger t,
-	because the direction vector is pointing towards the camera.
+	Intersecting the ball x^2+y^2+z^2=1 with the line creates a quadratic equation in t.
+	We want the solution with bigger t, because the direction vector points towards camera.
 	*/
-	Vec3 ballcenter = mat3_mul_vec3(el->world2uball, camera_point_world2cam(cam, el->center));
-	float cc = vec3_dot(ballcenter, ballcenter);
-	float dd[CAMERA_SCREEN_WIDTH];
-	float cd[CAMERA_SCREEN_WIDTH];
-	LOOP dd[i] = vec3_dot(LineDir(i), LineDir(i));
-	LOOP cd[i] = vec3_dot(ballcenter, LineDir(i));
-
-	float t[CAMERA_SCREEN_WIDTH];
-	LOOP t[i] = cd[i]*cd[i] - dd[i]*(cc-1);
-	LOOP t[i] = max(0, t[i]);   // no negative under sqrt plz. Don't know why t[i] can be more than just a little bit negative...
-	LOOP t[i] = (cd[i] + sqrtf(t[i]))/dd[i];
-
-	float vecx[CAMERA_SCREEN_WIDTH], vecy[CAMERA_SCREEN_WIDTH], vecz[CAMERA_SCREEN_WIDTH];
-	LOOP vecx[i] = mat3_mul_vec3(cam->cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), ballcenter)).x;
-	LOOP vecy[i] = mat3_mul_vec3(cam->cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), ballcenter)).y;
-	LOOP vecz[i] = mat3_mul_vec3(cam->cam2world, vec3_sub(vec3_mul_float(LineDir(i), t[i]), ballcenter)).z;
+	float cc = vec3_dot(camloc, camloc);
+#define LineDir(i) ( (Vec3){ linedirx[i], linediry[i], linedirz[i] } )
+	ARRAY(float, dd) = vec3_dot(LineDir(i), LineDir(i));
+	ARRAY(float, cd) = vec3_dot(camloc, LineDir(i));
 #undef LineDir
 
-	int ex[CAMERA_SCREEN_WIDTH], ey[CAMERA_SCREEN_WIDTH], ez[CAMERA_SCREEN_WIDTH];
-	LOOP ex[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE, vecx[i]);
-	LOOP ey[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE, vecy[i]);
-	LOOP ez[i] = (int)linear_map(-1, 1, 0, ELLIPSOIDPIC_SIDE, vecz[i]);
+	ARRAY(float, tmp) = cd[i]*cd[i] - dd[i]*(cc-1);
+	ARRAY(float, tmppos) = max(0, tmp[i]);   // no negative under sqrt plz. Don't know why t[i] can be more than just a little bit negative...
+	ARRAY(float, roots) = sqrtf(tmppos[i]);
+	ARRAY(float, t) = (roots[i] - cd[i])/dd[i];
+
+	// These coordinates are on the unit ball x^2+y^2+z^2=1
+	ARRAY(float, vecx) = linedirx[i]*t[i] + camloc.x;
+	ARRAY(float, vecy) = linediry[i]*t[i] + camloc.y;
+	ARRAY(float, vecz) = linedirz[i]*t[i] + camloc.z;
+
+	ARRAY(int, ex) = (int)(ELLIPSOIDPIC_SIDE/2 * (1+vecx[i]));
+	ARRAY(int, ey) = (int)(ELLIPSOIDPIC_SIDE/2 * (1+vecy[i]));
+	ARRAY(int, ez) = (int)(ELLIPSOIDPIC_SIDE/2 * (1+vecz[i]));
 
 	// just in case floats do something weird, e.g. division by zero
 	LOOP clamp(&ex[i], 0, ELLIPSOIDPIC_SIDE-1);
 	LOOP clamp(&ey[i], 0, ELLIPSOIDPIC_SIDE-1);
 	LOOP clamp(&ez[i], 0, ELLIPSOIDPIC_SIDE-1);
 
-	uint32_t px[CAMERA_SCREEN_WIDTH];
+	uint32_t *px = (uint32_t *)cam->surface->pixels + mypitch*y + xmin;
 	bool hl = el->highlighted;
 	LOOP px[i] = el->epic->cubepixels[hl][ex[i]][ey[i]][ez[i]];
 #undef LOOP
-
-	// TODO: faster with or without memcpy?
-	uint32_t *pixdst = (uint32_t *)cam->surface->pixels + mypitch*y + xmin;
-	memcpy(pixdst, px, sizeof(uint32_t)*xdiff);
 }
 
 static Mat3 diag(float a, float b, float c)
