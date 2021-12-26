@@ -9,7 +9,7 @@ CFLAGS += -Wno-format-truncation            # gcc warns about how snprintf trunc
 CFLAGS += -Wno-missing-field-initializers   # it's often handy to leave stuff zeroed
 CFLAGS += -DSDL_ASSERT_LEVEL=2              # enable SDL_assert()
 CFLAGS += -g
-CFLAGS += -Ofast
+CFLAGS += -Ofast -fno-finite-math-only  # https://stackoverflow.com/q/47703436
 VENDOR_CFLAGS := $(CFLAGS:-W%=)   # no warnings from other people's code please
 LDFLAGS += -lSDL2 -lSDL2_mixer -lSDL2_ttf
 LDFLAGS += -lm
