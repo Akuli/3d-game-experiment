@@ -299,13 +299,6 @@ bool ellipsoid_xminmax(const struct Ellipsoid *el, const struct Camera *cam, int
 	return *xmin <= *xmax;
 }
 
-static inline float linear_map(float srcmin, float srcmax, float dstmin, float dstmax, float val)
-{
-	// ratio should get inlined when everything except val is constants
-	float ratio = (dstmax - dstmin)/(srcmax - srcmin);
-	return dstmin + (val - srcmin)*ratio;
-}
-
 void ellipsoid_drawrow(
 	const struct Ellipsoid *el, const struct Camera *cam,
 	int y, int xmin, int xmax)
@@ -346,16 +339,8 @@ void ellipsoid_drawrow(
 	ARRAY(float, linedirz) = mat3_mul_vec3(M, (Vec3){xzr[i],yzr,1}).z;
 
 	/*
-	Intersecting the ball
-
-		(x,y,z) dot (x,y,z) = 1
-
-	with the line
-
-		(x,y,z) = camloc + t*linedir
-
-	creates a quadratic equation in t. We want the solution with bigger t,
-	because the direction vector is pointing towards the camera.
+	Intersecting the ball x^2+y^2+z^2=1 with the line creates a quadratic equation in t.
+	We want the solution with bigger t, because the direction vector points towards camera.
 	*/
 	float cc = vec3_dot(camloc, camloc);
 #define LineDir(i) ( (Vec3){ linedirx[i], linediry[i], linedirz[i] } )
