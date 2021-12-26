@@ -3,7 +3,6 @@
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <string.h>
 #include "camera.h"
 #include "linalg.h"
 #include "log.h"
