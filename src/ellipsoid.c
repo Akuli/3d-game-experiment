@@ -353,6 +353,7 @@ void ellipsoid_drawrow(
 	ARRAY(float, roots) = sqrtf(tmppos[i]);
 	ARRAY(float, t) = (roots[i] - cd[i])/dd[i];
 
+	// These coordinates are on the unit ball x^2+y^2+z^2=1
 	ARRAY(float, vecx) = linedirx[i]*t[i] + camloc.x;
 	ARRAY(float, vecy) = linediry[i]*t[i] + camloc.y;
 	ARRAY(float, vecz) = linedirz[i]*t[i] + camloc.z;
