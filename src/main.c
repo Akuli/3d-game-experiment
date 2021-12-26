@@ -72,8 +72,8 @@ static void show_loading(const char *msg, SDL_Window *wnd, int yidx)
 	if (!wndsurf)
 		log_printf_abort("SDL_GetWindowSurface failed: %s", SDL_GetError());
 
-	int fontsz = 50;
-	int yspacing = 55;
+	int fontsz = 40;
+	int yspacing = 45;
 
 	SDL_Surface *msgsurf = create_text_surface(msg, (SDL_Color){0xff,0xff,0xff,0xff}, fontsz);
 	SDL_FillRect(wndsurf, &(SDL_Rect){0, yspacing*yidx, wndsurf->w, yspacing}, 0);
