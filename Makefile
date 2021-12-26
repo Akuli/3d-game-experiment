@@ -1,4 +1,3 @@
-#CFLAGS += -fsanitize=undefined -fsanitize=address
 CFLAGS += -std=c11 -Wall -Wextra -Wpedantic
 CFLAGS += -Wfloat-conversion -Wno-sign-compare -Werror=int-conversion
 CFLAGS += -Werror=switch
@@ -10,7 +9,7 @@ CFLAGS += -Wno-format-truncation            # gcc warns about how snprintf trunc
 CFLAGS += -Wno-missing-field-initializers   # it's often handy to leave stuff zeroed
 CFLAGS += -DSDL_ASSERT_LEVEL=2              # enable SDL_assert()
 CFLAGS += -g
-CFLAGS += -O3
+CFLAGS += -Ofast
 VENDOR_CFLAGS := $(CFLAGS:-W%=)   # no warnings from other people's code please
 LDFLAGS += -lSDL2 -lSDL2_mixer -lSDL2_ttf
 LDFLAGS += -lm
