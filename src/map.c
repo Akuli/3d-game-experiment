@@ -465,7 +465,9 @@ static void fix_location(const struct Map *map, struct MapCoords *ptr)
 
 static void ensure_players_and_enemies_and_jumpers_are_inside_the_map_and_dont_overlap(struct Map *map)
 {
-	clamp(&map->nenemylocs, 0, map->xsize*map->zsize - 2);  // leave room for 2 players
+	// Delete enemies and jumpers until they fit
+	clamp(&map->nenemylocs, 0, map->xsize*map->zsize - 2);
+	clamp(&map->njumpers, 0, map->xsize*map->zsize - 2 - map->nenemylocs);
 
 	for (int i=0; i<2; i++)
 		fix_location(map, &map->playerlocs[i]);
