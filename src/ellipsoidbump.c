@@ -74,7 +74,7 @@ static float max_x_intersection_between_ellipsoids(float a1, float b1, Vec2 cent
 
 	/*
 	If center1.x < center2.x, we use right edge of ellipsoid 1 and left
-	edge of ellipsoid 2. Their distance along a horizontal line at height y:
+	edge of ellipsoid 2. Their distance along a horizontal line at height y is:
 
 		  (center1.x + sqrt(a1^2 - (a1/b1)^2 (y - center1.y)^2))
 		- (center2.x - sqrt(a2^2 - (a2/b2)^2 (y - center2.y)^2))
