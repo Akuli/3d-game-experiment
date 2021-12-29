@@ -61,7 +61,7 @@ Calculates how much, along a horizontal line, the ellipsoids
 	((x - center1.x)/a1)^2 + ((y - center1.y)/b1)^2 = 1
 	((x - center2.x)/a2)^2 + ((y - center2.y)/b2)^2 = 1
 
-intersect, where the line is chosen to make them intersect as little as
+intersect, where the height of the line is so that they intersect as little as
 possible. Negative result means no intersection.
 */
 static float max_x_intersection_between_ellipsoids(float a1, float b1, Vec2 center1, float a2, float b2, Vec2 center2)
