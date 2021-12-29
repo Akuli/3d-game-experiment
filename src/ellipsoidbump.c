@@ -51,7 +51,7 @@ static float find_max_value(float A1, float B1, float C1, float A2, float B2, fl
 			ft = f(t);
 		}
 	}
-	return (ft+fu)/2;
+	return f((t+u)/2);
 #undef f
 }
 
