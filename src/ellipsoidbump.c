@@ -31,6 +31,7 @@ static float find_max_value(float A1, float B1, float C1, float A2, float B2, fl
 
 	int iter = 0;  // just in case of nan weirdness, lol
 	while (b-a > 1e-3f) {
+		// It usually does about 20 iterations, depending only on length of input interval
 		if (iter++ == 25) {
 			log_printf(
 				"hitting max number of iterations: "
