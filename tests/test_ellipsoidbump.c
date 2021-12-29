@@ -18,36 +18,36 @@ static bool close(float a, float b)
 
 void test_ellipsoid_bump_amount_without_hidelowerhalf(void)
 {
-	float ellipse_move_amount_x(
+	float ellipse_bump_amount(
 		float a1, float b1, Vec2 center1, bool hidelowerhalf1,
 		float a2, float b2, Vec2 center2);
 
 	// ellipse equations and correct results come from experimenting with a grapher
-	assert(ellipse_move_amount_x(2, 2.5, (Vec2){2, 3}, false, 1, 1, (Vec2){0,0}) == 0);
-	assert(ellipse_move_amount_x(2, 2.5, (Vec2){-2, 3}, false, 1, 1, (Vec2){0,0}) == 0);
+	assert(ellipse_bump_amount(2, 2.5, (Vec2){2, 3}, false, 1, 1, (Vec2){0,0}) == 0);
+	assert(ellipse_bump_amount(2, 2.5, (Vec2){-2, 3}, false, 1, 1, (Vec2){0,0}) == 0);
 
-	float mv = ellipse_move_amount_x(2, 2.5, (Vec2){1, 3}, false, 1, 1, (Vec2){0,0});
+	float mv = ellipse_bump_amount(2, 2.5, (Vec2){1, 3}, false, 1, 1, (Vec2){0,0});
 	assert(mv > 0);
 	assert(close3(mv, 0.6f, 0.1f));
 
-	mv = ellipse_move_amount_x(2, 2.5, (Vec2){-1, 3}, false, 1, 1, (Vec2){0,0});
+	mv = ellipse_bump_amount(2, 2.5, (Vec2){-1, 3}, false, 1, 1, (Vec2){0,0});
 	assert(mv > 0);
 	assert(close3(mv, 0.6f, 0.1f));
 }
 
 void test_ellipsoid_bump_amount_with_hidelowerhalf(void)
 {
-	float ellipse_move_amount_x(
+	float ellipse_bump_amount(
 		float a1, float b1, Vec2 center1, bool hidelowerhalf1,
 		float a2, float b2, Vec2 center2);
 
-	assert(close(ellipse_move_amount_x(1, 1, (Vec2){1+cosf(1), sinf(1)}, true, 1, 1, (Vec2){0,0}), 0));
-	assert(close(ellipse_move_amount_x(7, 1, (Vec2){1+cosf(1), sinf(1)}, true, 1, 1, (Vec2){0,0}), 6));
-	assert(close(ellipse_move_amount_x(10, 1, (Vec2){4+cosf(1), sinf(1)}, true, 1, 1, (Vec2){0,0}), 6));
-	assert(close(ellipse_move_amount_x(1, 1, (Vec2){1, sqrtf(2)/2}, true, 1, 1, (Vec2){0,0}), sqrtf(2)/2));
-	assert(close(ellipse_move_amount_x(0.5f, 1, (Vec2){1, sqrtf(2)/2}, true, 1, 1, (Vec2){0,0}), sqrtf(2)/2 - 0.5f));
-	assert(close(ellipse_move_amount_x(1, 1, (Vec2){0.5f,2}, true, 1, 1, (Vec2){0,0}), 0));
-	assert(close(ellipse_move_amount_x(1, 1, (Vec2){2,0.5f}, true, 1, 1, (Vec2){0,0}), 0));
+	assert(close(ellipse_bump_amount(1, 1, (Vec2){1+cosf(1), sinf(1)}, true, 1, 1, (Vec2){0,0}), 0));
+	assert(close(ellipse_bump_amount(7, 1, (Vec2){1+cosf(1), sinf(1)}, true, 1, 1, (Vec2){0,0}), 6));
+	assert(close(ellipse_bump_amount(10, 1, (Vec2){4+cosf(1), sinf(1)}, true, 1, 1, (Vec2){0,0}), 6));
+	assert(close(ellipse_bump_amount(1, 1, (Vec2){1, sqrtf(2)/2}, true, 1, 1, (Vec2){0,0}), sqrtf(2)/2));
+	assert(close(ellipse_bump_amount(0.5f, 1, (Vec2){1, sqrtf(2)/2}, true, 1, 1, (Vec2){0,0}), sqrtf(2)/2 - 0.5f));
+	assert(close(ellipse_bump_amount(1, 1, (Vec2){0.5f,2}, true, 1, 1, (Vec2){0,0}), 0));
+	assert(close(ellipse_bump_amount(1, 1, (Vec2){2,0.5f}, true, 1, 1, (Vec2){0,0}), 0));
 }
 
 void test_ellipsoid_bump_amount_hidelowerhalf_with_actual_ellipsoids(void)

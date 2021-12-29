@@ -56,7 +56,7 @@ static float find_max_value(float A1, float B1, float C1, float A2, float B2, fl
 }
 
 /*
-Calculates how much, along a horizontal line, the ellipsoids
+Calculates how much, along a horizontal line, the ellipses
 
 	((x - center1.x)/a1)^2 + ((y - center1.y)/b1)^2 = 1
 	((x - center2.x)/a2)^2 + ((y - center2.y)/b2)^2 = 1
@@ -64,7 +64,7 @@ Calculates how much, along a horizontal line, the ellipsoids
 intersect, where the height of the line is so that they intersect as little as
 possible. Negative result means no intersection.
 */
-static float max_x_intersection_between_ellipsoids(float a1, float b1, Vec2 center1, float a2, float b2, Vec2 center2)
+static float max_x_intersection_between_ellipses(float a1, float b1, Vec2 center1, float a2, float b2, Vec2 center2)
 {
 	// [a,b] = overlapping y coordinates of the two ellipses
 	float a = max(center1.y - b1, center2.y - b2);
@@ -73,8 +73,8 @@ static float max_x_intersection_between_ellipsoids(float a1, float b1, Vec2 cent
 		return -1;  // no overlap in y direction
 
 	/*
-	If center1.x < center2.x, we use right edge of ellipsoid 1 and left
-	edge of ellipsoid 2. Their distance along a horizontal line at height y is:
+	If center1.x < center2.x, we use right edge of ellipse 1 and left
+	edge of ellipse 2. Their distance along a horizontal line at height y is:
 
 		  (center1.x + sqrt(a1^2 - (a1/b1)^2 (y - center1.y)^2))
 		- (center2.x - sqrt(a2^2 - (a2/b2)^2 (y - center2.y)^2))
@@ -97,7 +97,7 @@ static float max_x_intersection_between_ellipsoids(float a1, float b1, Vec2 cent
 
 // Special case of the previous function: b1 = 0
 // Needs to be special cased because division by zero and stuff.
-static float max_x_intersection_between_line_and_ellipsoid(float a1, Vec2 center1, float a2, float b2, Vec2 center2)
+static float max_x_intersection_between_line_and_ellipse(float a1, Vec2 center1, float a2, float b2, Vec2 center2)
 {
 	float ydiffrelative = (center1.y - center2.y)/b2;  // y coords overlap <=> this is between -1 and +1
 	float tmp = 1 - ydiffrelative*ydiffrelative;
@@ -106,7 +106,7 @@ static float max_x_intersection_between_line_and_ellipsoid(float a1, Vec2 center
 	return a2*sqrtf(tmp) + a1 - fabsf(center1.x - center2.x);
 }
 
-float ellipse_move_amount_x(
+float ellipse_bump_amount(
 	float a1, float b1, Vec2 center1, bool hidelowerhalf1,
 	float a2, float b2, Vec2 center2)
 {
@@ -124,9 +124,9 @@ float ellipse_move_amount_x(
 
 	float xdiff;
 	if (hidelowerhalf1)
-		xdiff = max_x_intersection_between_line_and_ellipsoid(a1, center1, a2, b2, center2);
+		xdiff = max_x_intersection_between_line_and_ellipse(a1, center1, a2, b2, center2);
 	else
-		xdiff = max_x_intersection_between_ellipsoids(a1, b1, center1, a2, b2, center2);
+		xdiff = max_x_intersection_between_ellipses(a1, b1, center1, a2, b2, center2);
 	return max(xdiff, 0);
 }
 
@@ -161,7 +161,7 @@ float ellipsoid_bump_amount(const struct Ellipsoid *el1, const struct Ellipsoid 
 	// Now this is a 2D problem on the xy plane (or some other plane parallel to xy plane)
 	Vec2 center1_xy = { center1.x, center1.y };
 	Vec2 center2_xy = { center2.x, center2.y };
-	return ellipse_move_amount_x(
+	return ellipse_bump_amount(
 		el1->xzradius, el1->yradius, center1_xy, el1->hidelowerhalf,
 		el2->xzradius, el2->yradius, center2_xy);
 }
