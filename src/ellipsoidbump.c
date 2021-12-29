@@ -25,7 +25,7 @@ static float find_max_value(float A1, float B1, float C1, float A2, float B2, fl
 	float t = a + (2-phi)*(b-a);
 	float u = a + (-1+phi)*(b-a);
 
-#define f(x) (sqrtf(A1*x*x + B1*x + C1) + sqrtf(A2*x*x + B2*x + C2))
+#define f(x) (sqrtf(A1*(x)*(x) + B1*(x) + C1) + sqrtf(A2*(x)*(x) + B2*(x) + C2))
 	float ft = f(t);
 	float fu = f(u);
 
