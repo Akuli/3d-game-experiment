@@ -103,7 +103,7 @@ static float max_x_intersection_between_line_and_ellipsoid(float a1, Vec2 center
 	float tmp = 1 - ydiffrelative*ydiffrelative;
 	if (tmp < 0)
 		return -1;
-	return -fabsf(center1.x - center2.x) + a1 + sqrtf(a2*a2*tmp);
+	return a2*sqrtf(tmp) + a1 - fabsf(center1.x - center2.x);
 }
 
 float ellipse_move_amount_x(
