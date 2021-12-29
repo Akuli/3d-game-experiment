@@ -33,10 +33,7 @@ static float find_max_value(float A1, float B1, float C1, float A2, float B2, fl
 	while (b-a > 1e-3f) {  // Function values more precise because derivative zero at max
 		// It usually does about 20 iterations, depending only on length of input interval
 		if (iter++ == 25) {
-			log_printf(
-				"hitting max number of iterations: "
-				"f(x) = sqrt(%fx^2 + %fx + %f) + sqrt(%fx^2 + %fx + %f) on [%f,%f]",
-				A1,B1,C1,A2,B2,C2,a,b);
+			log_printf("hitting max number of iterations, current interval [%f,%f]", a, b);
 			break;
 		}
 		if (ft < fu) {
