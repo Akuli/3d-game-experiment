@@ -99,7 +99,7 @@ static void position_and_rotate_camera(struct MapEditor *ed, float rotspeed, flo
 
 	ed->cam.angle += rotspeed/CAMERA_FPS;
 	ed->campos += posspeed/CAMERA_FPS;
-	clamp_float(&ed->campos, 1, d+2);
+	clamp_float(&ed->campos, 8, d+2);
 
 	Vec3 tocamera = vec3_mul_float((Vec3){ 0, 0, 0.7f }, ed->campos / ed->zoom);
 	vec3_apply_matrix(&tocamera, mat3_rotation_xz(ed->cam.angle));
@@ -1079,7 +1079,7 @@ static void show_and_rotate_map_editor(struct MapEditor *ed, bool canedit)
 			ee->el.center.x = ee->loc->x + 0.5f;
 			ee->el.center.z = ee->loc->z + 0.5f;
 		}
-		position_and_rotate_camera(ed, ed->rotatedir * (canedit ? 3.0f : 1.0f), ed->posdir * 10);
+		position_and_rotate_camera(ed, ed->rotatedir * (canedit ? 3.0f : 1.0f), ed->posdir * 15);
 
 		SDL_FillRect(ed->cam.surface, NULL, 0);
 		show_editor(ed);
