@@ -961,7 +961,7 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 			[TOOL_WALL] = {
 				.imgpath = "assets/resized/buttons/wall.png",
 				.flags = bf | BUTTON_PRESSED,
-				.scancodes = { SDL_SCANCODE_W },
+				.scancodes = { SDL_SCANCODE_1 },
 				.destsurf = surf,
 				.center = {
 					CAMERA_SCREEN_WIDTH - button_width(BUTTON_THICK)/2,
@@ -973,7 +973,7 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 			[TOOL_ENEMY] = {
 				.imgpath = "assets/resized/buttons/enemy.png",
 				.flags = bf,
-				.scancodes = { SDL_SCANCODE_E },
+				.scancodes = { SDL_SCANCODE_2 },
 				.destsurf = surf,
 				.center = {
 					CAMERA_SCREEN_WIDTH - button_width(BUTTON_THICK)/2,
@@ -985,7 +985,7 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 			[TOOL_JUMPER] = {
 				.imgpath = "assets/resized/buttons/jumper.png",
 				.flags = bf,
-				.scancodes = { SDL_SCANCODE_J },
+				.scancodes = { SDL_SCANCODE_3 },
 				.destsurf = surf,
 				.center = {
 					CAMERA_SCREEN_WIDTH - button_width(BUTTON_THICK)/2,
