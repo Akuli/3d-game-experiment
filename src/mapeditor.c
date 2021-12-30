@@ -59,7 +59,9 @@ struct MapEditor {
 	struct EllipsoidEdit enemyedits[MAX_ENEMIES];
 	struct Camera cam;
 	float zoom;
+	float campos;
 	int rotatedir;
+	int posdir;
 	struct Button donebutton;
 	struct Button toolbuttons[TOOL_COUNT];
 	enum Tool tool;
@@ -91,14 +93,15 @@ static bool next_ellipsoid_edit_const(const struct MapEditor *ed, const struct E
 	return next_ellipsoid_edit((void*)ed, (void*)ptr);
 }
 
-static void rotate_camera(struct MapEditor *ed, float speed)
+static void position_and_rotate_camera(struct MapEditor *ed, float rotspeed, float posspeed)
 {
-	ed->cam.angle += speed/CAMERA_FPS;
+	float d = max(8, hypotf(ed->map->xsize, ed->map->zsize));
 
-	float d = hypotf(ed->map->xsize, ed->map->zsize);
-	clamp_float(&d, 8, HUGE_VALF);
+	ed->cam.angle += rotspeed/CAMERA_FPS;
+	ed->campos += posspeed/CAMERA_FPS;
+	clamp_float(&ed->campos, 8, d+2);
 
-	Vec3 tocamera = vec3_mul_float((Vec3){ 0, 0.5f, 0.7f }, d / ed->zoom);
+	Vec3 tocamera = { 0, 0.5f*d/ed->zoom, 0.7f*ed->campos/ed->zoom };
 	vec3_apply_matrix(&tocamera, mat3_rotation_xz(ed->cam.angle));
 
 	Vec3 mapcenter = { ed->map->xsize*0.5f, 0, ed->map->zsize*0.5f };
@@ -756,6 +759,12 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 			ed->right = true;
 			on_arrow_key(ed, ed->cam.angle + 3*pi/2, ed->left && ed->right);
 			return true;
+		case SDL_SCANCODE_W:
+			ed->posdir = -1;
+			return true;
+		case SDL_SCANCODE_S:
+			ed->posdir = 1;
+			return true;
 		case SDL_SCANCODE_A:
 			ed->rotatedir = 1;
 			return false;
@@ -782,6 +791,14 @@ static bool handle_event(struct MapEditor *ed, const SDL_Event *e)
 			case SDL_SCANCODE_RETURN:
 				on_mouse_or_enter_released(ed);
 				return true;
+			case SDL_SCANCODE_W:
+				if (ed->posdir == -1)
+					ed->posdir = 0;
+				return false;
+			case SDL_SCANCODE_S:
+				if (ed->posdir == 1)
+					ed->posdir = 0;
+				return false;
 			case SDL_SCANCODE_A:
 				if (ed->rotatedir == 1)
 					ed->rotatedir = 0;
@@ -961,7 +978,7 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 			[TOOL_WALL] = {
 				.imgpath = "assets/resized/buttons/wall.png",
 				.flags = bf | BUTTON_PRESSED,
-				.scancodes = { SDL_SCANCODE_W },
+				.scancodes = { SDL_SCANCODE_1 },
 				.destsurf = surf,
 				.center = {
 					CAMERA_SCREEN_WIDTH - button_width(BUTTON_THICK)/2,
@@ -973,7 +990,7 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 			[TOOL_ENEMY] = {
 				.imgpath = "assets/resized/buttons/enemy.png",
 				.flags = bf,
-				.scancodes = { SDL_SCANCODE_E },
+				.scancodes = { SDL_SCANCODE_2 },
 				.destsurf = surf,
 				.center = {
 					CAMERA_SCREEN_WIDTH - button_width(BUTTON_THICK)/2,
@@ -985,7 +1002,7 @@ struct MapEditor *mapeditor_new(SDL_Surface *surf, int ytop, float zoom)
 			[TOOL_JUMPER] = {
 				.imgpath = "assets/resized/buttons/jumper.png",
 				.flags = bf,
-				.scancodes = { SDL_SCANCODE_J },
+				.scancodes = { SDL_SCANCODE_3 },
 				.destsurf = surf,
 				.center = {
 					CAMERA_SCREEN_WIDTH - button_width(BUTTON_THICK)/2,
@@ -1036,10 +1053,12 @@ void mapeditor_setmap(struct MapEditor *ed, struct Map *map)
 	SDL_FillRect(ed->cam.surface, NULL, 0);
 
 	ed->map = map;
+	ed->campos = HUGE_VALF;
+	ed->posdir = 0;
+	ed->rotatedir = 0;
 	ed->redraw = true;
 	ed->sel = (struct Selection){ .mode = SEL_NONE };
 	ed->state = STATE_MAPEDITOR;
-	ed->rotatedir = 0;
 
 	ed->nameentry.text = map->name;
 	ed->nameentry.redraw = true;
@@ -1054,12 +1073,12 @@ void mapeditor_setmap(struct MapEditor *ed, struct Map *map)
 
 static void show_and_rotate_map_editor(struct MapEditor *ed, bool canedit)
 {
-	if (ed->rotatedir != 0 || ed->redraw) {
+	if (ed->rotatedir != 0 || ed->posdir != 0 || ed->redraw) {
 		for (struct EllipsoidEdit *ee = NULL; next_ellipsoid_edit(ed, &ee); ) {
 			ee->el.center.x = ee->loc->x + 0.5f;
 			ee->el.center.z = ee->loc->z + 0.5f;
 		}
-		rotate_camera(ed, ed->rotatedir * (canedit ? 3.0f : 1.0f));
+		position_and_rotate_camera(ed, ed->rotatedir * (canedit ? 3.0f : 1.0f), ed->posdir * 15);
 
 		SDL_FillRect(ed->cam.surface, NULL, 0);
 		show_editor(ed);
@@ -1079,6 +1098,7 @@ static void show_and_rotate_map_editor(struct MapEditor *ed, bool canedit)
 void mapeditor_displayonly_eachframe(struct MapEditor *ed)
 {
 	ed->rotatedir = -1;  // same direction as players in chooser
+	ed->posdir = 0;
 	show_and_rotate_map_editor(ed, false);
 }
 

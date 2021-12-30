@@ -331,7 +331,7 @@ void chooser_init(struct Chooser *ch, SDL_Window *win)
 		.w = CAMERA_SCREEN_WIDTH - LISTBOX_WIDTH,
 		.h = CAMERA_SCREEN_HEIGHT - PLAYER_CHOOSER_HEIGHT - button_height(0),
 	});
-	ch->editor = mapeditor_new(ch->editorsurf, -0.22f*CAMERA_SCREEN_HEIGHT, 0.6f);
+	ch->editor = mapeditor_new(ch->editorsurf, -0.20f*CAMERA_SCREEN_HEIGHT, 0.6f);
 	mapeditor_setmap(ch->editor, &ch->mapch.maps[ch->mapch.listbox.selectidx]);
 	mapeditor_setplayers(ch->editor, ch->playerch[0].epic, ch->playerch[1].epic);
 }
