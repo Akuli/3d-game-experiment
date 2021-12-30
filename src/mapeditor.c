@@ -103,7 +103,6 @@ static void position_and_rotate_camera(struct MapEditor *ed, float rotspeed, flo
 
 	Vec3 tocamera = { 0, 0.5f*d/ed->zoom, 0.7f*ed->campos/ed->zoom };
 	vec3_apply_matrix(&tocamera, mat3_rotation_xz(ed->cam.angle));
-	tocamera.y = 0.5f * d / ed->zoom;
 
 	Vec3 mapcenter = { ed->map->xsize*0.5f, 0, ed->map->zsize*0.5f };
 	ed->cam.location = vec3_add(mapcenter, tocamera);
