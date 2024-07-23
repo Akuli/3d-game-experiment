@@ -4,12 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_mixer.h>
 #include "glob.h"
 #include "log.h"
 
 struct Sound {
-	Mix_Chunk *chunk;
 	char name[1024];    // includes "assets/sounds/" prefix
 };
 
@@ -39,27 +37,6 @@ void sound_init(void)
 		return;
 	}
 
-	/*
-	wav is supported by default, add other flags here as needed. I don't check the
-	return value of Mix_Init because I found this problem that it has had only a
-	couple years ago: https://stackoverflow.com/q/52131807
-	*/
-	Mix_Init(0);
-
-	if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, 2, CHUNK_SIZE) == -1)
-	{
-		log_printf("Mix_OpenAudio failed: %s", Mix_GetError());
-		return;
-	}
-
-	/*
-	Make sure that we can play all the needed sounds at the same time, even
-	when smashing buttons. With 20 channels, I could barely smash buttons fast
-	enough to run out of channels, but I couldn't do that with 25 channels. The
-	default seems to be 16 channels.
-	*/
-	Mix_AllocateChannels(32);
-
 	glob_t gl = {0};
 	if (glob("assets/sounds/*.wav", GLOB_APPEND, NULL, &gl) != 0)
 		log_printf("can't find non-fart sounds");
@@ -68,15 +45,10 @@ void sound_init(void)
 
 	SDL_assert(gl.gl_pathc <= sizeof(sounds)/sizeof(sounds[0]));
 	for (int i = 0; i < gl.gl_pathc; i++) {
-		SDL_assert(sounds[nsounds].chunk == NULL);
-		if (( sounds[nsounds].chunk = Mix_LoadWAV(gl.gl_pathv[i]) )) {
-			snprintf(sounds[nsounds].name, sizeof(sounds[nsounds].name), "%s", gl.gl_pathv[i]);
-			nsounds++;
-			SDL_assert(nsounds < sizeof(sounds)/sizeof(sounds[0]));
-		} else {
-			log_printf("Mix_LoadWav(\"%s\") failed: %s", gl.gl_pathv[i], Mix_GetError());
-		}
+		snprintf(sounds[nsounds].name, sizeof(sounds[nsounds].name), "%s", gl.gl_pathv[i]);
+		nsounds++;
 	}
+
 	globfree(&gl);
 
 	qsort(sounds, nsounds, sizeof(sounds[0]), compare_sounds);   // for binary searching
@@ -100,12 +72,11 @@ void sound_play(const char *fnpattern)
 	SDL_assert(gl.gl_pathc >= 1);
 	const char *path = gl.gl_pathv[rand() % gl.gl_pathc];
 	const struct Sound *s = bsearch(path, sounds, nsounds, sizeof(sounds[0]), compare_sound_filename);
-	if (s && s->chunk) {
-		int chan = Mix_PlayChannel(-1, s->chunk, 0);
-		if (chan == -1)
-			log_printf("Mix_PlayChannel failed: %s", Mix_GetError());
-		else
-			log_printf("Playing '%s' on channel %d/%d", s->name, chan, Mix_AllocateChannels(-1));
+	if (s) {
+		char command[1024];
+		snprintf(command, sizeof(command), "aplay '%s' &", s->name);
+		puts(command);
+		system(command);
 	} else {
 		log_printf("sound not loaded: %s", path);
 	}
@@ -115,8 +86,4 @@ void sound_play(const char *fnpattern)
 
 void sound_deinit(void)
 {
-	for (int i = 0; i < nsounds; i++)
-		Mix_FreeChunk(sounds[i].chunk);
-	Mix_CloseAudio();
-	Mix_Quit();
 }

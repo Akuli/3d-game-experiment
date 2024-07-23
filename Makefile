@@ -11,7 +11,7 @@ CFLAGS += -DSDL_ASSERT_LEVEL=2              # enable SDL_assert()
 CFLAGS += -g
 CFLAGS += -Ofast -fno-finite-math-only  # https://stackoverflow.com/q/47703436
 VENDOR_CFLAGS := $(CFLAGS:-W%=)   # no warnings from other people's code please
-LDFLAGS += -lSDL2 -lSDL2_mixer -lSDL2_ttf
+LDFLAGS += -lSDL2 -lSDL2_ttf
 LDFLAGS += -lm
 
 SRC := $(wildcard src/*.c src/*/*.c)
